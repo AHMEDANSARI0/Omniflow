@@ -12,9 +12,19 @@ export default async function AdminPanelLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Real auth guard for every admin panel page (proxy handles redirects too)
   if (!user) {
     redirect("/admin/login");
+  }
+
+  // Role check — only admins may enter the admin panel
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") {
+    redirect("/");
   }
 
   return <AdminShell userEmail={user.email ?? "admin"}>{children}</AdminShell>;
