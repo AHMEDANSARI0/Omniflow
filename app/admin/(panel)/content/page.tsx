@@ -16,12 +16,26 @@ const sections: ContentSection[] = [
     icon: "◇",
     enabled: true,
   },
+    {
+    label: "AI Intelligence",
+    description: "Section heading and the 3 intelligence pillars.",
+    href: "/admin/content/ai-intelligence",
+    icon: "✦",
+    enabled: true,
+  },
+    {
+    label: "How It Works",
+    description: "Section heading and the 4 workflow steps.",
+    href: "/admin/content/how-it-works",
+    icon: "↗",
+    enabled: true,
+  },
   {
     label: "Problem / Solution",
     description: "The problem framing and OmniFlow's answer.",
     href: "/admin/content/problem-solution",
     icon: "◇",
-    enabled: false,
+    enabled: true,
   },
   {
     label: "Features",
@@ -51,6 +65,13 @@ const sections: ContentSection[] = [
     icon: "◇",
     enabled: true,
   },
+    {
+    label: "Multi-Channel",
+    description: "Channel cards, workflow strip and section heading.",
+    href: "/admin/content/multi-channel",
+    icon: "◈",
+    enabled: true,
+  },
   {
     label: "Footer",
     description: "Footer description and link labels.",
@@ -66,12 +87,13 @@ const sections: ContentSection[] = [
     enabled: true,
   },
     {
-    label: "Problem / Solution",
-    description: "The problem framing, comparison cards and metrics.",
-    href: "/admin/content/problem-solution",
-    icon: "◎",
+    label: "Customer Memory",
+    description: "Section heading, context points and bottom note.",
+    href: "/admin/content/customer-memory",
+    icon: "◉",
     enabled: true,
   },
+    
 ];
 
 export default function ContentHubPage() {

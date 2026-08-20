@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import type { HeroContent } from "../../lib/content-defaults";
+import HexGrid from "./HexGrid";
 
 export default function Hero({ content }: { content: HeroContent }) {
   const integrations = content.integrations
@@ -16,33 +17,15 @@ export default function Hero({ content }: { content: HeroContent }) {
     >
       {/* ============ BACKGROUND (all continuous motion = CSS, compositor-only) ============ */}
 
-      {/* ============ BACKGROUND (all continuous motion = CSS, compositor-only) ============ */}
-
       {/* Static ambient glows */}
       <div className="pointer-events-none absolute left-[8%] top-[10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.09)_0%,transparent_70%)]" />
       <div className="pointer-events-none absolute bottom-[5%] right-[5%] h-[450px] w-[450px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.08)_0%,transparent_70%)]" />
 
-      {/* Radial fade — grid/orbs se PEHLE, taake unhe dhak na de */}
+      {/* Radial fade */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#07111f_78%)]" />
 
-      {/* Kinetic grid — ab fade ke UPAR */}
-      <div
-        className="of-grid-drift pointer-events-none absolute -inset-16 opacity-[0.07]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(148,197,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(148,197,255,0.6) 1px, transparent 1px)",
-          backgroundSize: "64px 64px",
-          maskImage:
-            "radial-gradient(ellipse at center, black 30%, transparent 75%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse at center, black 30%, transparent 75%)",
-        }}
-      />
-
-      {/* Floating orbs — ab fade ke UPAR, zyada visible */}
-      <div className="of-orb-a pointer-events-none absolute right-[16%] top-[20%] h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.35)_0%,rgba(34,211,238,0.1)_45%,transparent_70%)]" />
-      <div className="of-orb-b pointer-events-none absolute bottom-[22%] left-[10%] h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.3)_0%,rgba(139,92,246,0.08)_45%,transparent_70%)]" />
-      <div className="of-orb-c pointer-events-none absolute left-[42%] top-[64%] h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(96,165,250,0.32)_0%,rgba(96,165,250,0.09)_45%,transparent_70%)]" />
+      {/* Kinetic hexagon grid + blinking corner dots */}
+      <HexGrid opacity={0.4} />
 
       {/* ============ CONTENT ============ */}
 
@@ -337,12 +320,13 @@ function FlowCard({
 
       <div className="ml-auto shrink-0">
         <span
-          className={`of-pulse block h-1.5 w-1.5 rounded-full ${type === "ai"
-            ? "bg-violet-400"
-            : type === "action"
-              ? "bg-cyan-400"
-              : "bg-slate-500"
-            }`}
+          className={`of-pulse block h-1.5 w-1.5 rounded-full ${
+            type === "ai"
+              ? "bg-violet-400"
+              : type === "action"
+                ? "bg-cyan-400"
+                : "bg-slate-500"
+          }`}
           style={{ animationDelay: `${delay}s` }}
         />
       </div>

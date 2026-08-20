@@ -294,3 +294,148 @@ export const PROBLEM_SOLUTION_DEFAULTS: ProblemSolutionContent = {
   m4_value: "1",
   m4_label: "Automation layer",
 };
+export interface AiIntelligenceContent extends Record<string, unknown> {
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  description: string;
+  i1_title: string;
+  i1_desc: string;
+  i1_tags: string; // comma separated
+  i2_title: string;
+  i2_desc: string;
+  i2_tags: string;
+  i3_title: string;
+  i3_desc: string;
+  i3_tags: string;
+}
+
+export const AI_INTELLIGENCE_DEFAULTS: AiIntelligenceContent = {
+  badge: "AI Intelligence",
+  heading_line1: "More than automation.",
+  heading_line2: "Intelligence behind every action.",
+  description:
+    "OmniFlow combines AI understanding, conversation context and automation logic to make every interaction feel intentional.",
+  i1_title: "Understand",
+  i1_desc:
+    "OmniFlow understands what the customer is asking instead of simply matching keywords.",
+  i1_tags: "Intent, Language, Context",
+  i2_title: "Decide",
+  i2_desc:
+    "The AI evaluates the conversation and chooses the most appropriate response or workflow.",
+  i2_tags: "Reasoning, Rules, Memory",
+  i3_title: "Act",
+  i3_desc:
+    "Once the decision is made, OmniFlow responds or triggers the right automation automatically.",
+  i3_tags: "Reply, Workflow, Follow-up",
+};
+export interface MultiChannelContent extends Record<string, unknown> {
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  description: string;
+  c1_name: string;
+  c1_short: string;
+  c1_desc: string;
+  c2_name: string;
+  c2_short: string;
+  c2_desc: string;
+  c3_name: string;
+  c3_short: string;
+  c3_desc: string;
+  c4_name: string;
+  c4_short: string;
+  c4_desc: string;
+  workflow_title: string;
+  workflow_subtitle: string;
+  actions: string; // comma separated
+  bottom_note: string;
+}
+
+export const MULTI_CHANNEL_DEFAULTS: MultiChannelContent = {
+  badge: "Multi-channel automation",
+  heading_line1: "One intelligence layer.",
+  heading_line2: "Every channel.",
+  description:
+    "Connect the platforms your customers already use and let one intelligent automation layer handle the conversations.",
+  c1_name: "WhatsApp",
+  c1_short: "WA",
+  c1_desc: "Conversations",
+  c2_name: "Instagram",
+  c2_short: "IG",
+  c2_desc: "Direct messages",
+  c3_name: "Messenger",
+  c3_short: "MS",
+  c3_desc: "Customer chats",
+  c4_name: "Telegram",
+  c4_short: "TG",
+  c4_desc: "Community & support",
+  workflow_title: "One workflow layer",
+  workflow_subtitle: "Build once. Automate everywhere.",
+  actions: "Reply, Qualify, Route, Follow-up",
+  bottom_note: "More channels can be added as your business grows.",
+};
+export interface CustomerMemoryContent extends Record<string, unknown> {
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  description: string;
+  context_items: string; // separated by |
+  bottom_note: string;
+}
+
+export const CUSTOMER_MEMORY_DEFAULTS: CustomerMemoryContent = {
+  badge: "Contextual intelligence",
+  heading_line1: "Conversations that",
+  heading_line2: "remember.",
+  description:
+    "Give your AI the context it needs to make every conversation more relevant. OmniFlow can work with customer history, preferences and conversation context to create more meaningful interactions.",
+  context_items:
+    "Previous conversations | Customer preferences | Conversation intent | Important details",
+  bottom_note:
+    "Better context creates better conversations — while keeping your automation workflows consistent.",
+};
+export interface HowItWorksContent extends Record<string, unknown> {
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  description: string;
+  s1_type: string;
+  s1_title: string;
+  s1_desc: string;
+  s2_type: string;
+  s2_title: string;
+  s2_desc: string;
+  s3_type: string;
+  s3_title: string;
+  s3_desc: string;
+  s4_type: string;
+  s4_title: string;
+  s4_desc: string;
+  bottom_note: string;
+}
+
+export const HOW_IT_WORKS_DEFAULTS: HowItWorksContent = {
+  badge: "How it works",
+  heading_line1: "Build once.",
+  heading_line2: "Let it run.",
+  description:
+    "Turn repetitive conversations into intelligent workflows with a simple visual automation system.",
+  s1_type: "Trigger",
+  s1_title: "Customer sends a message",
+  s1_desc:
+    "Start your automation whenever a customer reaches out through a connected channel.",
+  s2_type: "AI",
+  s2_title: "OmniFlow understands",
+  s2_desc:
+    "AI analyzes the message, conversation context and customer intent in real time.",
+  s3_type: "Decision",
+  s3_title: "Choose what happens next",
+  s3_desc:
+    "Use intelligent conditions and workflow logic to decide the right next action.",
+  s4_type: "Action",
+  s4_title: "Automation takes action",
+  s4_desc:
+    "Send a reply, qualify a lead, route the conversation or trigger another workflow.",
+  bottom_note: "Your workflows can evolve as your business grows.",
+};

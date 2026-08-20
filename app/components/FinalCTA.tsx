@@ -7,6 +7,7 @@ import {
   type EarlyAccessState,
 } from "../actions/early-access";
 import type { FinalCtaContent } from "../../lib/content-defaults";
+import HexGrid from "./HexGrid";
 
 const initialFormState: EarlyAccessState = { success: false, message: "" };
 
@@ -27,6 +28,7 @@ export default function FinalCTA({ content }: { content: FinalCtaContent }) {
 
   return (
     <section id="get-started" className="relative overflow-hidden py-24 sm:py-32">
+      <HexGrid opacity={0.12} />
       <div className="relative mx-auto max-w-6xl px-5 sm:px-8">
         <motion.div
           initial={{ opacity: 0, y: 32 }}

@@ -1,118 +1,68 @@
 "use client";
 
 import { motion } from "motion/react";
+import type { HowItWorksContent } from "../../lib/content-defaults";
+import HexGrid from "./HexGrid";
 
-const workflowSteps = [
-  {
-    number: "01",
-    type: "Trigger",
-    title: "Customer sends a message",
-    description:
-      "Start your automation whenever a customer reaches out through a connected channel.",
-    icon: "↗",
-  },
-  {
-    number: "02",
-    type: "AI",
-    title: "OmniFlow understands",
-    description:
-      "AI analyzes the message, conversation context and customer intent in real time.",
-    icon: "✦",
-  },
-  {
-    number: "03",
-    type: "Decision",
-    title: "Choose what happens next",
-    description:
-      "Use intelligent conditions and workflow logic to decide the right next action.",
-    icon: "◇",
-  },
-  {
-    number: "04",
-    type: "Action",
-    title: "Automation takes action",
-    description:
-      "Send a reply, qualify a lead, route the conversation or trigger another workflow.",
-    icon: "✓",
-  },
-];
+const stepIcons = ["↗", "✦", "◇", "✓"];
 
-export default function HowItWorks() {
+interface WorkflowStepData {
+  number: string;
+  type: string;
+  title: string;
+  description: string;
+  icon: string;
+}
+
+export default function HowItWorks({
+  content,
+}: {
+  content: HowItWorksContent;
+}) {
+  const workflowSteps: WorkflowStepData[] = [1, 2, 3, 4].map((i, index) => ({
+    number: `0${i}`,
+    type: content[`s${i}_type`] as string,
+    title: content[`s${i}_title`] as string,
+    description: content[`s${i}_desc`] as string,
+    icon: stepIcons[index],
+  }));
+
   return (
     <section
       id="how-it-works"
       className="relative overflow-hidden border-t border-white/[0.05] bg-[#07111f] py-28 sm:py-36"
     >
-      {/* Background */}
-      <div className="pointer-events-none absolute inset-0">
-        <motion.div
-          animate={{
-            y: [0, -30, 0],
-            opacity: [0.15, 0.3, 0.15],
-          }}
-          transition={{
-            duration: 11,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute left-[15%] top-[20%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(167,139,250,0.065)_0%,transparent_70%)]"
-        />
+      {/* Kinetic hexagon grid */}
+      <HexGrid />
 
-        <motion.div
-          animate={{
-            y: [0, 30, 0],
-            opacity: [0.15, 0.3, 0.15],
-          }}
-          transition={{
-            duration: 13,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute bottom-[10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.045)_0%,transparent_70%)]"
-        />
+      {/* Background — static glows (perf-safe) */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-[15%] top-[20%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(167,139,250,0.065)_0%,transparent_70%)]" />
+
+        <div className="absolute bottom-[10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.045)_0%,transparent_70%)]" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
         {/* Heading */}
         <div className="mx-auto max-w-3xl text-center">
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 20,
-            }}
-            whileInView={{
-              opacity: 1,
-              y: 0,
-            }}
-            viewport={{
-              once: true,
-              amount: 0.3,
-            }}
-            transition={{
-              duration: 0.7,
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.7 }}
             className="inline-flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
 
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
-              How it works
+              {content.badge}
             </span>
           </motion.div>
 
           <motion.h2
-            initial={{
-              opacity: 0,
-              y: 30,
-            }}
-            whileInView={{
-              opacity: 1,
-              y: 0,
-            }}
-            viewport={{
-              once: true,
-              amount: 0.3,
-            }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
             transition={{
               duration: 0.8,
               delay: 0.08,
@@ -120,35 +70,22 @@ export default function HowItWorks() {
             }}
             className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl"
           >
-            Build once.
+            {content.heading_line1}
             <br />
 
             <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-300 bg-clip-text text-transparent">
-              Let it run.
+              {content.heading_line2}
             </span>
           </motion.h2>
 
           <motion.p
-            initial={{
-              opacity: 0,
-              y: 20,
-            }}
-            whileInView={{
-              opacity: 1,
-              y: 0,
-            }}
-            viewport={{
-              once: true,
-              amount: 0.3,
-            }}
-            transition={{
-              duration: 0.7,
-              delay: 0.18,
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.7, delay: 0.18 }}
             className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base"
           >
-            Turn repetitive conversations into intelligent workflows with a
-            simple visual automation system.
+            {content.description}
           </motion.p>
         </div>
 
@@ -159,33 +96,17 @@ export default function HowItWorks() {
 
           <div className="space-y-5">
             {workflowSteps.map((step, index) => (
-              <WorkflowStep
-                key={step.number}
-                step={step}
-                index={index}
-              />
+              <WorkflowStep key={step.number} step={step} index={index} />
             ))}
           </div>
         </div>
 
         {/* Mini builder preview */}
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 30,
-          }}
-          whileInView={{
-            opacity: 1,
-            y: 0,
-          }}
-          viewport={{
-            once: true,
-            amount: 0.2,
-          }}
-          transition={{
-            duration: 0.8,
-            delay: 0.25,
-          }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.8, delay: 0.25 }}
           className="mx-auto mt-20 max-w-5xl"
         >
           <div className="overflow-hidden rounded-[26px] border border-white/[0.07] bg-[#081522] shadow-2xl">
@@ -220,7 +141,7 @@ export default function HowItWorks() {
 
                 <div className="mt-4 space-y-2">
                   {["Trigger", "AI action", "Condition", "Response"].map(
-                    (item, index) => (
+                    (item) => (
                       <div
                         key={item}
                         className="flex items-center gap-2 rounded-lg border border-white/[0.04] bg-white/[0.015] px-3 py-2.5"
@@ -268,17 +189,9 @@ export default function HowItWorks() {
                   <FlowLine />
 
                   <div className="grid w-full max-w-lg grid-cols-2 gap-3">
-                    <BuilderNode
-                      type="ACTION"
-                      title="High intent"
-                      icon="✓"
-                    />
+                    <BuilderNode type="ACTION" title="High intent" icon="✓" />
 
-                    <BuilderNode
-                      type="ACTION"
-                      title="Needs support"
-                      icon="→"
-                    />
+                    <BuilderNode type="ACTION" title="Needs support" icon="→" />
                   </div>
                 </div>
               </div>
@@ -288,24 +201,13 @@ export default function HowItWorks() {
 
         {/* Bottom CTA statement */}
         <motion.div
-          initial={{
-            opacity: 0,
-          }}
-          whileInView={{
-            opacity: 1,
-          }}
-          viewport={{
-            once: true,
-          }}
-          transition={{
-            duration: 0.8,
-            delay: 0.35,
-          }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.35 }}
           className="mt-14 text-center"
         >
-          <p className="text-xs text-slate-700">
-            Your workflows can evolve as your business grows.
-          </p>
+          <p className="text-xs text-slate-700">{content.bottom_note}</p>
         </motion.div>
       </div>
     </section>
@@ -316,31 +218,20 @@ function WorkflowStep({
   step,
   index,
 }: {
-  step: (typeof workflowSteps)[number];
+  step: WorkflowStepData;
   index: number;
 }) {
   return (
     <motion.div
-      initial={{
-        opacity: 0,
-        y: 25,
-      }}
-      whileInView={{
-        opacity: 1,
-        y: 0,
-      }}
-      viewport={{
-        once: true,
-        amount: 0.2,
-      }}
+      initial={{ opacity: 0, y: 25 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
       transition={{
         duration: 0.7,
         delay: index * 0.08,
         ease: [0.22, 1, 0.36, 1],
       }}
-      whileHover={{
-        x: 4,
-      }}
+      whileHover={{ x: 4 }}
       className="group relative flex gap-4 md:gap-6"
     >
       {/* Number */}
@@ -379,16 +270,7 @@ function WorkflowStep({
 function FlowLine() {
   return (
     <div className="flex h-5 justify-center">
-      <motion.div
-        animate={{
-          opacity: [0.2, 0.8, 0.2],
-        }}
-        transition={{
-          duration: 1.8,
-          repeat: Infinity,
-        }}
-        className="h-full w-px bg-gradient-to-b from-cyan-400/20 to-violet-400/20"
-      />
+      <div className="of-pulse h-full w-px bg-gradient-to-b from-cyan-400/20 to-violet-400/20" />
     </div>
   );
 }
@@ -406,9 +288,7 @@ function BuilderNode({
 }) {
   return (
     <motion.div
-      whileHover={{
-        y: -3,
-      }}
+      whileHover={{ y: -3 }}
       className={`relative w-full max-w-xs rounded-xl border p-3 transition-colors duration-300 ${
         active
           ? "border-cyan-400/15 bg-cyan-400/[0.025]"

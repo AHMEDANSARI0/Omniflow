@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import type { ProblemSolutionContent } from "../../lib/content-defaults";
+import HexGrid from "./HexGrid";
 
 export default function ProblemSolution({
   content,
@@ -28,6 +29,7 @@ export default function ProblemSolution({
       id="solution"
       className="relative overflow-hidden border-t border-white/[0.05] bg-[#07111f] py-28 sm:py-36"
     >
+      <HexGrid />
       {/* Background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-10%] top-[20%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(239,68,68,0.035)_0%,transparent_70%)]" />

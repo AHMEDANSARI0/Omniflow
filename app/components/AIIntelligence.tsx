@@ -1,61 +1,36 @@
 "use client";
 
 import { motion } from "motion/react";
+import type { AiIntelligenceContent } from "../../lib/content-defaults";
+import HexGrid from "./HexGrid";
 
-const intelligenceItems = [
-  {
-    number: "01",
-    title: "Understand",
-    description:
-      "OmniFlow understands what the customer is asking instead of simply matching keywords.",
-    tags: ["Intent", "Language", "Context"],
-  },
-  {
-    number: "02",
-    title: "Decide",
-    description:
-      "The AI evaluates the conversation and chooses the most appropriate response or workflow.",
-    tags: ["Reasoning", "Rules", "Memory"],
-  },
-  {
-    number: "03",
-    title: "Act",
-    description:
-      "Once the decision is made, OmniFlow responds or triggers the right automation automatically.",
-    tags: ["Reply", "Workflow", "Follow-up"],
-  },
-];
+export default function AIIntelligence({
+  content,
+}: {
+  content: AiIntelligenceContent;
+}) {
+  const intelligenceItems = [1, 2, 3].map((i) => ({
+    number: `0${i}`,
+    title: content[`i${i}_title`] as string,
+    description: content[`i${i}_desc`] as string,
+    tags: (content[`i${i}_tags`] as string)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean),
+  }));
 
-export default function AIIntelligence() {
   return (
     <section
       id="intelligence"
       className="relative overflow-hidden border-t border-white/[0.05] bg-[#06101d] py-28 sm:py-36"
     >
-      {/* Background */}
+      {/* Background — static glow (perf-safe) */}
       <div className="pointer-events-none absolute inset-0">
-        <motion.div
-          animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute left-1/2 top-[15%] h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.06)_0%,transparent_70%)]"
-        />
-
-        <div
-          className="absolute inset-0 opacity-[0.025]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-            backgroundSize: "72px 72px",
-          }}
-        />
+        <div className="absolute left-1/2 top-[15%] h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.06)_0%,transparent_70%)]" />
       </div>
+
+      {/* Kinetic hexagon grid */}
+      <HexGrid opacity={0.07} />
 
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
         {/* Heading */}
@@ -67,20 +42,10 @@ export default function AIIntelligence() {
             transition={{ duration: 0.7 }}
             className="inline-flex items-center gap-2 rounded-full border border-cyan-400/15 bg-cyan-400/[0.035] px-4 py-2"
           >
-            <motion.span
-              animate={{
-                opacity: [0.4, 1, 0.4],
-                scale: [0.85, 1.1, 0.85],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-              }}
-              className="h-1.5 w-1.5 rounded-full bg-cyan-400"
-            />
+            <span className="of-pulse h-1.5 w-1.5 rounded-full bg-cyan-400" />
 
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-300/80">
-              AI Intelligence
+              {content.badge}
             </span>
           </motion.div>
 
@@ -95,11 +60,11 @@ export default function AIIntelligence() {
             }}
             className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl"
           >
-            More than automation.
+            {content.heading_line1}
             <br />
 
             <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-300 bg-clip-text text-transparent">
-              Intelligence behind every action.
+              {content.heading_line2}
             </span>
           </motion.h2>
 
@@ -107,33 +72,18 @@ export default function AIIntelligence() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{
-              duration: 0.7,
-              delay: 0.18,
-            }}
+            transition={{ duration: 0.7, delay: 0.18 }}
             className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base"
           >
-            OmniFlow combines AI understanding, conversation context and
-            automation logic to make every interaction feel intentional.
+            {content.description}
           </motion.p>
         </div>
 
         {/* AI visual */}
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 35,
-            scale: 0.97,
-          }}
-          whileInView={{
-            opacity: 1,
-            y: 0,
-            scale: 1,
-          }}
-          viewport={{
-            once: true,
-            amount: 0.2,
-          }}
+          initial={{ opacity: 0, y: 35, scale: 0.97 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.2 }}
           transition={{
             duration: 0.9,
             delay: 0.2,
@@ -144,7 +94,7 @@ export default function AIIntelligence() {
           {/* Outer glow */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.075)_0%,transparent_70%)]" />
 
-          <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#081522]/90 p-5 shadow-2xl sm:p-7 lg:p-9">
+          <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#081522]/95 p-5 shadow-2xl sm:p-7 lg:p-9">
             {/* Top bar */}
             <div className="flex flex-col gap-4 border-b border-white/[0.06] pb-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -162,11 +112,9 @@ export default function AIIntelligence() {
               </div>
 
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-400/10 bg-emerald-400/[0.03] px-3 py-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="of-pulse h-1.5 w-1.5 rounded-full bg-emerald-400" />
 
-                <span className="text-[9px] text-emerald-300">
-                  Processing
-                </span>
+                <span className="text-[9px] text-emerald-300">Processing</span>
               </div>
             </div>
 
@@ -193,43 +141,18 @@ export default function AIIntelligence() {
 
               {/* Center AI */}
               <div className="relative flex justify-center">
-                <motion.div
-                  animate={{
-                    rotate: 360,
-                  }}
-                  transition={{
-                    duration: 16,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute h-40 w-40 rounded-full border border-dashed border-cyan-400/15"
+                <div
+                  className="of-spin-slow absolute h-40 w-40 rounded-full border border-dashed border-cyan-400/15"
+                  style={{ animationDuration: "16s" }}
                 />
 
-                <motion.div
-                  animate={{
-                    rotate: -360,
-                  }}
-                  transition={{
-                    duration: 12,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute h-28 w-28 rounded-full border border-dashed border-violet-400/15"
+                <div
+                  className="of-spin-rev absolute h-28 w-28 rounded-full border border-dashed border-violet-400/15"
+                  style={{ animationDuration: "12s" }}
                 />
 
                 <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl border border-cyan-400/20 bg-[#0b1a2a] shadow-[0_0_50px_rgba(34,211,238,0.1)]">
-                  <motion.div
-                    animate={{
-                      scale: [0.8, 1.05, 0.8],
-                      opacity: [0.5, 1, 0.5],
-                    }}
-                    transition={{
-                      duration: 2.4,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                    className="absolute h-10 w-10 rounded-full bg-cyan-400/[0.12] blur-xl"
-                  />
+                  <span className="of-pulse absolute h-10 w-10 rounded-full bg-cyan-400/[0.12] blur-xl" />
 
                   <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06]">
                     <span className="text-lg text-cyan-300">✦</span>
@@ -239,18 +162,13 @@ export default function AIIntelligence() {
                 {/* Processing dots */}
                 <div className="absolute -bottom-8 flex items-center gap-1">
                   {[0, 1, 2].map((item) => (
-                    <motion.span
+                    <span
                       key={item}
-                      animate={{
-                        opacity: [0.2, 1, 0.2],
-                        y: [0, -2, 0],
+                      className="of-pulse h-1 w-1 rounded-full bg-cyan-400"
+                      style={{
+                        animationDelay: `${item * 0.18}s`,
+                        animationDuration: "1.2s",
                       }}
-                      transition={{
-                        duration: 1.2,
-                        repeat: Infinity,
-                        delay: item * 0.18,
-                      }}
-                      className="h-1 w-1 rounded-full bg-cyan-400"
                     />
                   ))}
                 </div>
@@ -285,18 +203,14 @@ export default function AIIntelligence() {
                     initial={{ opacity: 0, y: 10 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{
-                      delay: 0.45 + index * 0.1,
-                    }}
+                    transition={{ delay: 0.45 + index * 0.1 }}
                     className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3"
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-cyan-400/10 bg-cyan-400/[0.04] text-[9px] text-cyan-300">
                       0{index + 1}
                     </span>
 
-                    <span className="text-[10px] text-slate-500">
-                      {item}
-                    </span>
+                    <span className="text-[10px] text-slate-500">{item}</span>
 
                     <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   </motion.div>
@@ -311,25 +225,11 @@ export default function AIIntelligence() {
           {intelligenceItems.map((item, index) => (
             <motion.div
               key={item.number}
-              initial={{
-                opacity: 0,
-                y: 25,
-              }}
-              whileInView={{
-                opacity: 1,
-                y: 0,
-              }}
-              viewport={{
-                once: true,
-                amount: 0.2,
-              }}
-              transition={{
-                duration: 0.7,
-                delay: index * 0.1,
-              }}
-              whileHover={{
-                y: -5,
-              }}
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.7, delay: index * 0.1 }}
+              whileHover={{ y: -5 }}
               className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-colors duration-500 hover:border-cyan-400/10 hover:bg-white/[0.025]"
             >
               <div className="flex items-center justify-between">
@@ -381,22 +281,10 @@ function IntelligencePanel({
 }) {
   return (
     <motion.div
-      initial={{
-        opacity: 0,
-        x: side === "left" ? -20 : 20,
-      }}
-      whileInView={{
-        opacity: 1,
-        x: 0,
-      }}
-      viewport={{
-        once: true,
-        amount: 0.3,
-      }}
-      transition={{
-        duration: 0.7,
-        delay: side === "left" ? 0.25 : 0.35,
-      }}
+      initial={{ opacity: 0, x: side === "left" ? -20 : 20 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.7, delay: side === "left" ? 0.25 : 0.35 }}
       className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4"
     >
       <div className="mb-4">
@@ -410,13 +298,7 @@ function IntelligencePanel({
   );
 }
 
-function Tag({
-  label,
-  active = false,
-}: {
-  label: string;
-  active?: boolean;
-}) {
+function Tag({ label, active = false }: { label: string; active?: boolean }) {
   return (
     <span
       className={`rounded-full border px-2.5 py-1 text-[9px] ${

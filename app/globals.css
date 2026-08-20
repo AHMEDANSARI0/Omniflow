@@ -177,3 +177,37 @@ a {
 .of-orb-b { animation: of-orb-b 17s ease-in-out infinite 2s; will-change: transform, opacity; }
 .of-orb-c { animation: of-orb-c 21s ease-in-out infinite 5s; will-change: transform, opacity; }
 .of-pulse { animation: of-pulse 2s ease-in-out infinite; }
+/* ===== Hexagon grid + blinking dots ===== */
+
+@keyframes of-hex-drift {
+  to { transform: translate(56px, 100px); }
+}
+
+@keyframes of-dot-blink {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 1; }
+}
+
+.of-hex-drift { animation: of-hex-drift 60s linear infinite; will-change: transform; }
+.of-dot-blink { animation: of-dot-blink 3.2s ease-in-out infinite; }
+
+@keyframes of-ripple {
+  0% { transform: scale(1); opacity: 0.3; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.of-ripple { animation: of-ripple 2.5s ease-out infinite; will-change: transform, opacity; }
+
+@keyframes of-loadbar {
+  0%, 100% { transform: scaleX(0.2); }
+  50% { transform: scaleX(0.85); }
+}
+
+.of-loadbar { animation: of-loadbar 4s ease-in-out infinite; will-change: transform; }
+
+@keyframes of-borderpulse {
+  0%, 100% { border-color: rgba(139, 92, 246, 0.08); }
+  50% { border-color: rgba(34, 211, 238, 0.18); }
+}
+
+.of-borderpulse { animation: of-borderpulse 3s ease-in-out infinite; }
