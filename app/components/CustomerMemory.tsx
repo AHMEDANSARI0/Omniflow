@@ -47,7 +47,7 @@ export default function CustomerMemory() {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute right-[5%] top-[10%] h-[420px] w-[420px] rounded-full bg-violet-500/[0.045] blur-[150px]"
+          className="absolute right-[5%] top-[10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.06)_0%,transparent_70%)]"
         />
 
         <div
@@ -198,7 +198,7 @@ export default function CustomerMemory() {
             className="relative mx-auto w-full max-w-xl"
           >
             {/* Glow */}
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[350px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-400/[0.05] blur-[130px]" />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[350px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(167,139,250,0.065)_0%,transparent_70%)]" />
 
             {/* Floating history card */}
             <motion.div
@@ -210,7 +210,7 @@ export default function CustomerMemory() {
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-              className="absolute -right-2 -top-6 z-20 hidden w-44 rounded-2xl border border-white/[0.07] bg-[#0b1929]/95 p-4 shadow-2xl backdrop-blur-xl sm:block"
+              className="absolute -right-2 -top-6 z-20 hidden w-44 rounded-2xl border border-white/[0.07] bg-[#0b1929]/95 p-4 shadow-2xl sm:block"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
@@ -240,7 +240,7 @@ export default function CustomerMemory() {
             </motion.div>
 
             {/* Main card */}
-            <div className="relative rounded-[28px] border border-white/[0.08] bg-[#091624]/95 p-5 shadow-2xl backdrop-blur-xl sm:p-7">
+            <div className="relative rounded-[28px] border border-white/[0.08] bg-[#091624]/95 p-5 shadow-2xl sm:p-7">
               {/* Header */}
               <div className="flex items-center justify-between border-b border-white/[0.06] pb-5">
                 <div className="flex items-center gap-3">
@@ -395,7 +395,7 @@ export default function CustomerMemory() {
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-              className="absolute -bottom-5 -left-3 z-20 hidden w-48 rounded-2xl border border-cyan-400/10 bg-[#0b1929]/95 p-4 shadow-2xl backdrop-blur-xl sm:block"
+              className="absolute -bottom-5 -left-3 z-20 hidden w-48 rounded-2xl border border-cyan-400/10 bg-[#0b1929]/95 p-4 shadow-2xl sm:block"
             >
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-cyan-400/[0.05] text-[10px] text-cyan-300">

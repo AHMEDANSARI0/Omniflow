@@ -112,3 +112,68 @@ a {
     scroll-margin-top: 85px;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* ============================================================
+   Performance-friendly continuous animations (compositor-only)
+   ============================================================ */
+
+@keyframes of-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes of-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+@keyframes of-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes of-spin-rev {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes of-grid-drift {
+  to { transform: translate(64px, 64px); }
+}
+
+@keyframes of-orb-a {
+  0%, 100% { transform: translate(0, 0); opacity: 0.5; }
+  50% { transform: translate(14px, -28px); opacity: 0.9; }
+}
+
+@keyframes of-orb-b {
+  0%, 100% { transform: translate(0, 0); opacity: 0.4; }
+  50% { transform: translate(-12px, 24px); opacity: 0.75; }
+}
+
+@keyframes of-orb-c {
+  0%, 100% { transform: translateY(0); opacity: 0.35; }
+  50% { transform: translateY(-18px); opacity: 0.7; }
+}
+
+@keyframes of-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.of-float { animation: of-float 5s ease-in-out infinite; will-change: transform; }
+.of-bob { animation: of-bob 2s ease-in-out infinite; }
+.of-spin-slow { animation: of-spin 28s linear infinite; will-change: transform; }
+.of-spin-rev { animation: of-spin-rev 35s linear infinite; will-change: transform; }
+.of-grid-drift { animation: of-grid-drift 30s linear infinite; will-change: transform; }
+.of-orb-a { animation: of-orb-a 13s ease-in-out infinite; will-change: transform, opacity; }
+.of-orb-b { animation: of-orb-b 17s ease-in-out infinite 2s; will-change: transform, opacity; }
+.of-orb-c { animation: of-orb-c 21s ease-in-out infinite 5s; will-change: transform, opacity; }
+.of-pulse { animation: of-pulse 2s ease-in-out infinite; }

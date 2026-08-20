@@ -43,7 +43,7 @@ export default function Footer({ content }: { content: FooterContent }) {
   return (
     <footer className="relative overflow-hidden border-t border-white/[0.06] bg-[#050d18]">
       {/* Background glow */}
-      <div className="pointer-events-none absolute left-1/2 top-0 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-cyan-400/[0.025] blur-[120px]" />
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.035)_0%,transparent_70%)]" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
         {/* Main footer */}

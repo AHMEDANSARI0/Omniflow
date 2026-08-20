@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import type { WhyOmniFlowContent } from "../../lib/content-defaults";
 
 /* ============================================================
    Types
@@ -26,35 +27,11 @@ interface ActivityEvent {
    Data
    ============================================================ */
 
-const benefits: Benefit[] = [
-  {
-    number: "01",
-    title: "Always on, always instant",
-    description:
-      "Customers message at midnight, on weekends, during rush hours. OmniFlow answers in seconds — no queues, no missed conversations.",
-    accent: "cyan",
-  },
-  {
-    number: "02",
-    title: "Consistent on every channel",
-    description:
-      "The same accurate, on-brand answer whether the customer writes on WhatsApp, Instagram or anywhere else you connect.",
-    accent: "blue",
-  },
-  {
-    number: "03",
-    title: "Your team stays on high-value work",
-    description:
-      "AI absorbs the repetitive questions and qualification. Your people step in only where a human actually makes the difference.",
-    accent: "violet",
-  },
-  {
-    number: "04",
-    title: "One layer instead of five tools",
-    description:
-      "Channels, AI, workflows and customer context live in one place — not scattered across disconnected apps and inboxes.",
-    accent: "cyan",
-  },
+const benefitMeta: { number: string; accent: Accent }[] = [
+  { number: "01", accent: "cyan" },
+  { number: "02", accent: "blue" },
+  { number: "03", accent: "violet" },
+  { number: "04", accent: "cyan" },
 ];
 
 const activityEvents: ActivityEvent[] = [
@@ -142,7 +119,7 @@ function ActivityFeed() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-60px" }}
         transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
-        className="relative rounded-2xl border border-white/[0.07] bg-[#081522]/80 p-5 backdrop-blur-sm sm:p-6"
+        className="relative rounded-2xl border border-white/[0.07] bg-[#081522]/95 p-5 sm:p-6"
       >
         {/* Card header */}
         <div className="mb-5 flex items-center justify-between border-b border-white/[0.05] pb-4">
@@ -173,13 +150,12 @@ function ActivityFeed() {
                 transition={{ duration: 0.45, ease: "easeOut", delay: 0.3 + i * 0.12 }}
                 className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.015] px-3.5 py-3"
               >
-                <motion.span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-xs ${accent.text}`}
-                  animate={{ opacity: [0.55, 1, 0.55] }}
-                  transition={{ duration: 3, repeat: Infinity, delay: i * 0.6 }}
+                <span
+                  className={`of-pulse flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-xs ${accent.text}`}
+                  style={{ animationDelay: `${i * 0.6}s`, animationDuration: "3s" }}
                 >
                   {event.icon}
-                </motion.span>
+                </span>
                 <span className="flex-1 text-xs text-slate-300 sm:text-[13px]">
                   {event.text}
                 </span>
@@ -203,11 +179,7 @@ function ActivityFeed() {
             AI handling conversations while your team is offline
           </span>
           <span className="flex items-center gap-1.5 text-[11px] text-cyan-300">
-            <motion.span
-              className="h-1 w-1 rounded-full bg-cyan-400"
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1.6, repeat: Infinity }}
-            />
+            <span className="of-pulse h-1 w-1 rounded-full bg-cyan-400" />
             Active
           </span>
         </motion.div>
@@ -221,16 +193,12 @@ function ActivityFeed() {
         transition={{ duration: 0.6, delay: 1.1 }}
         className="absolute -right-3 -top-4 sm:-right-5"
       >
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-          className="flex items-center gap-2 rounded-xl border border-violet-400/20 bg-[#0a1727]/90 px-3 py-2 shadow-lg shadow-black/30 backdrop-blur-sm"
-        >
+        <div className="of-float flex items-center gap-2 rounded-xl border border-violet-400/20 bg-[#0a1727] px-3 py-2 shadow-lg shadow-black/30">
           <span className="text-xs text-violet-300">✦</span>
           <span className="text-[11px] font-medium text-slate-300">
             No conversation missed
           </span>
-        </motion.div>
+        </div>
       </motion.div>
     </div>
   );
@@ -240,7 +208,17 @@ function ActivityFeed() {
    Section
    ============================================================ */
 
-export default function WhyOmniFlow() {
+export default function WhyOmniFlow({
+  content,
+}: {
+  content: WhyOmniFlowContent;
+}) {
+  const benefits: Benefit[] = benefitMeta.map((meta, index) => ({
+    ...meta,
+    title: content[`b${index + 1}_title`] as string,
+    description: content[`b${index + 1}_desc`] as string,
+  }));
+
   return (
     <section id="why-omniflow" className="relative overflow-hidden py-24 sm:py-32">
       {/* Background glow */}
@@ -262,20 +240,18 @@ export default function WhyOmniFlow() {
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-400" />
                 </span>
                 <span className="text-xs font-medium uppercase tracking-widest text-slate-400">
-                  Why OmniFlow
+                  {content.badge}
                 </span>
               </div>
 
               <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]">
-                The difference between{" "}
+                {content.heading_line1}{" "}
                 <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-violet-300 bg-clip-text text-transparent">
-                  replying and running
+                  {content.heading_line2}
                 </span>
               </h2>
               <p className="mt-4 max-w-lg text-base leading-relaxed text-slate-400 sm:text-lg">
-                Most businesses react to messages. OmniFlow turns every
-                conversation into a system that qualifies, follows up and
-                routes — automatically.
+                {content.description}
               </p>
             </motion.div>
 

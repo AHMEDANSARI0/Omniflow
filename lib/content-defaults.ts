@@ -183,3 +183,114 @@ export const USE_CASES_DEFAULTS: UseCasesContent = {
     "Instant answers to repeated questions | Context kept across the conversation | Smooth human handoff when needed",
   u5_status: "Escalated with full context",
 };
+export interface WhyOmniFlowContent extends Record<string, unknown> {
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  description: string;
+  b1_title: string;
+  b1_desc: string;
+  b2_title: string;
+  b2_desc: string;
+  b3_title: string;
+  b3_desc: string;
+  b4_title: string;
+  b4_desc: string;
+}
+
+export const WHY_OMNIFLOW_DEFAULTS: WhyOmniFlowContent = {
+  badge: "Why OmniFlow",
+  heading_line1: "The difference between",
+  heading_line2: "replying and running",
+  description:
+    "Most businesses react to messages. OmniFlow turns every conversation into a system that qualifies, follows up and routes — automatically.",
+  b1_title: "Always on, always instant",
+  b1_desc:
+    "Customers message at midnight, on weekends, during rush hours. OmniFlow answers in seconds — no queues, no missed conversations.",
+  b2_title: "Consistent on every channel",
+  b2_desc:
+    "The same accurate, on-brand answer whether the customer writes on WhatsApp, Instagram or anywhere else you connect.",
+  b3_title: "Your team stays on high-value work",
+  b3_desc:
+    "AI absorbs the repetitive questions and qualification. Your people step in only where a human actually makes the difference.",
+  b4_title: "One layer instead of five tools",
+  b4_desc:
+    "Channels, AI, workflows and customer context live in one place — not scattered across disconnected apps and inboxes.",
+};
+export interface TrustContent extends Record<string, unknown> {
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  description: string;
+  p1_title: string;
+  p1_desc: string;
+  p2_title: string;
+  p2_desc: string;
+  p3_title: string;
+  p3_desc: string;
+  p4_title: string;
+  p4_desc: string;
+  principles: string; // separated by |
+}
+
+export const TRUST_DEFAULTS: TrustContent = {
+  badge: "Built on trust",
+  heading_line1: "Automation you can",
+  heading_line2: "actually trust",
+  description:
+    "Handing conversations to AI is a serious decision. OmniFlow is designed so you never trade control for automation.",
+  p1_title: "You stay in control",
+  p1_desc:
+    "Define exactly what the AI can say and do. Every workflow, rule and boundary is configured by you — not decided for you.",
+  p2_title: "Humans always in the loop",
+  p2_desc:
+    "Automation never locks your team out. Any conversation can be taken over by a human at any moment, with full context.",
+  p3_title: "Transparent automation",
+  p3_desc:
+    "No black boxes. See why the AI qualified a lead, triggered a follow-up or routed a conversation — every step is visible.",
+  p4_title: "Your data stays yours",
+  p4_desc:
+    "Customer conversations belong to your business. OmniFlow is being built privacy-first, from the architecture up.",
+  principles:
+    "No black boxes | Human handoff anytime | You define the rules | Privacy-first architecture",
+};
+export interface ProblemSolutionContent extends Record<string, unknown> {
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  description: string;
+  problem_title: string;
+  problems: string; // separated by |
+  solution_title: string;
+  solutions: string; // separated by |
+  m1_value: string;
+  m1_label: string;
+  m2_value: string;
+  m2_label: string;
+  m3_value: string;
+  m3_label: string;
+  m4_value: string;
+  m4_label: string;
+}
+
+export const PROBLEM_SOLUTION_DEFAULTS: ProblemSolutionContent = {
+  badge: "From chaos to automation",
+  heading_line1: "Stop managing conversations.",
+  heading_line2: "Start automating them.",
+  description:
+    "Every customer conversation creates work. OmniFlow turns that work into intelligent, automated workflows that keep running without constant human intervention.",
+  problem_title: "The old way",
+  problems:
+    "Customers waiting for replies | Messages scattered across platforms | Repetitive manual conversations",
+  solution_title: "The intelligent way",
+  solutions:
+    "Instant AI-powered responses | One intelligent automation layer | Workflows that run automatically",
+  m1_value: "24/7",
+  m1_label: "Always available",
+  m2_value: "AI",
+  m2_label: "Understands context",
+  m3_value: "∞",
+  m3_label: "Scales with you",
+  m4_value: "1",
+  m4_label: "Automation layer",
+};

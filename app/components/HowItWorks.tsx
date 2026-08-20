@@ -55,7 +55,7 @@ export default function HowItWorks() {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute left-[15%] top-[20%] h-[420px] w-[420px] rounded-full bg-blue-500/[0.04] blur-[150px]"
+          className="absolute left-[15%] top-[20%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(167,139,250,0.065)_0%,transparent_70%)]"
         />
 
         <motion.div
@@ -68,7 +68,7 @@ export default function HowItWorks() {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute bottom-[10%] right-[10%] h-[400px] w-[400px] rounded-full bg-cyan-400/[0.035] blur-[140px]"
+          className="absolute bottom-[10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.045)_0%,transparent_70%)]"
         />
       </div>
 

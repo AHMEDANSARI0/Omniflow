@@ -47,7 +47,7 @@ export default function MultiChannel() {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute left-1/2 top-1/2 h-[550px] w-[550px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/[0.05] blur-[150px]"
+          className="absolute left-1/2 top-1/2 h-[550px] w-[550px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.06)_0%,transparent_70%)]"
         />
 
         <div
@@ -368,7 +368,7 @@ function ChannelCard({
         y: -3,
         x: direction === "left" ? 4 : -4,
       }}
-      className="group relative rounded-2xl border border-white/[0.06] bg-[#091624]/80 p-4 backdrop-blur-xl transition-colors duration-300 hover:border-cyan-400/10"
+      className="group relative rounded-2xl border border-white/[0.06] bg-[#091624]/95 p-4  transition-colors duration-300 hover:border-cyan-400/10"
     >
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.025] text-xs font-semibold text-slate-400 transition-colors duration-300 group-hover:border-cyan-400/15 group-hover:text-cyan-300">

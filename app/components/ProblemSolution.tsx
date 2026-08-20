@@ -1,20 +1,28 @@
 "use client";
 
 import { motion } from "motion/react";
+import type { ProblemSolutionContent } from "../../lib/content-defaults";
 
-const problems = [
-  "Customers waiting for replies",
-  "Messages scattered across platforms",
-  "Repetitive manual conversations",
-];
+export default function ProblemSolution({
+  content,
+}: {
+  content: ProblemSolutionContent;
+}) {
+  const problems = content.problems
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
-const solutions = [
-  "Instant AI-powered responses",
-  "One intelligent automation layer",
-  "Workflows that run automatically",
-];
+  const solutions = content.solutions
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
-export default function ProblemSolution() {
+  const metrics = [1, 2, 3, 4].map((i) => ({
+    value: content[`m${i}_value`] as string,
+    label: content[`m${i}_label`] as string,
+  }));
+
   return (
     <section
       id="solution"
@@ -22,9 +30,9 @@ export default function ProblemSolution() {
     >
       {/* Background */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-10%] top-[20%] h-[400px] w-[400px] rounded-full bg-red-500/[0.025] blur-[130px]" />
+        <div className="absolute left-[-10%] top-[20%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(239,68,68,0.035)_0%,transparent_70%)]" />
 
-        <div className="absolute right-[-10%] bottom-[10%] h-[450px] w-[450px] rounded-full bg-cyan-400/[0.035] blur-[140px]" />
+        <div className="absolute right-[-10%] bottom-[10%] h-[450px] w-[450px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.045)_0%,transparent_70%)]" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
@@ -38,7 +46,7 @@ export default function ProblemSolution() {
             className="inline-flex rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2"
           >
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
-              From chaos to automation
+              {content.badge}
             </span>
           </motion.div>
 
@@ -53,10 +61,10 @@ export default function ProblemSolution() {
             }}
             className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-tight tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl"
           >
-            Stop managing conversations.
+            {content.heading_line1}
             <br />
             <span className="bg-gradient-to-r from-slate-300 via-cyan-300 to-slate-300 bg-clip-text text-transparent">
-              Start automating them.
+              {content.heading_line2}
             </span>
           </motion.h2>
 
@@ -64,15 +72,10 @@ export default function ProblemSolution() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{
-              duration: 0.7,
-              delay: 0.18,
-            }}
+            transition={{ duration: 0.7, delay: 0.18 }}
             className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base"
           >
-            Every customer conversation creates work. OmniFlow turns that work
-            into intelligent, automated workflows that keep running without
-            constant human intervention.
+            {content.description}
           </motion.p>
         </div>
 
@@ -85,7 +88,7 @@ export default function ProblemSolution() {
             {/* Problem */}
             <ComparisonCard
               eyebrow="Without OmniFlow"
-              title="The old way"
+              title={content.problem_title}
               items={problems}
               variant="problem"
               delay={0.1}
@@ -104,30 +107,13 @@ export default function ProblemSolution() {
               className="relative z-10 flex justify-center"
             >
               <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-cyan-400/20 bg-[#0a1727] shadow-[0_0_50px_rgba(34,211,238,0.08)]">
-                <motion.div
-                  animate={{
-                    rotate: 360,
-                  }}
-                  transition={{
-                    duration: 8,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute inset-1 rounded-full border border-dashed border-cyan-400/15"
+                <div
+                  className="of-spin-slow absolute inset-1 rounded-full border border-dashed border-cyan-400/15"
+                  style={{ animationDuration: "8s" }}
                 />
 
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06]">
-                  <motion.span
-                    animate={{
-                      opacity: [0.5, 1, 0.5],
-                      scale: [0.9, 1.05, 0.9],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                    }}
-                    className="h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)]"
-                  />
+                  <span className="of-pulse h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)]" />
                 </div>
               </div>
             </motion.div>
@@ -135,7 +121,7 @@ export default function ProblemSolution() {
             {/* Solution */}
             <ComparisonCard
               eyebrow="With OmniFlow"
-              title="The intelligent way"
+              title={content.solution_title}
               items={solutions}
               variant="solution"
               delay={0.2}
@@ -148,16 +134,12 @@ export default function ProblemSolution() {
           initial={{ opacity: 0, y: 25 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }}
-          transition={{
-            duration: 0.7,
-            delay: 0.3,
-          }}
+          transition={{ duration: 0.7, delay: 0.3 }}
           className="mx-auto mt-14 grid max-w-4xl grid-cols-2 divide-x divide-white/[0.06] border-y border-white/[0.06] py-7 sm:grid-cols-4"
         >
-          <Metric value="24/7" label="Always available" />
-          <Metric value="AI" label="Understands context" />
-          <Metric value="∞" label="Scales with you" />
-          <Metric value="1" label="Automation layer" />
+          {metrics.map((metric) => (
+            <Metric key={metric.label} value={metric.value} label={metric.label} />
+          ))}
         </motion.div>
       </div>
     </section>
@@ -181,26 +163,11 @@ function ComparisonCard({
 
   return (
     <motion.div
-      initial={{
-        opacity: 0,
-        x: isSolution ? 35 : -35,
-      }}
-      whileInView={{
-        opacity: 1,
-        x: 0,
-      }}
-      viewport={{
-        once: true,
-        amount: 0.25,
-      }}
-      transition={{
-        duration: 0.8,
-        delay,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      whileHover={{
-        y: -4,
-      }}
+      initial={{ opacity: 0, x: isSolution ? 35 : -35 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true, amount: 0.25 }}
+      transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4 }}
       className={`relative overflow-hidden rounded-3xl border p-6 transition-colors duration-500 sm:p-8 ${
         isSolution
           ? "border-cyan-400/10 bg-cyan-400/[0.025] hover:border-cyan-400/20"
@@ -243,10 +210,7 @@ function ComparisonCard({
             initial={{ opacity: 0, x: isSolution ? 10 : -10 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{
-              duration: 0.45,
-              delay: delay + 0.15 + index * 0.08,
-            }}
+            transition={{ duration: 0.45, delay: delay + 0.15 + index * 0.08 }}
             className="flex items-center gap-3"
           >
             <span
@@ -267,13 +231,7 @@ function ComparisonCard({
   );
 }
 
-function Metric({
-  value,
-  label,
-}: {
-  value: string;
-  label: string;
-}) {
+function Metric({ value, label }: { value: string; label: string }) {
   return (
     <div className="px-3 text-center">
       <div className="font-[var(--font-heading)] text-xl font-semibold tracking-[-0.03em] text-white sm:text-2xl">

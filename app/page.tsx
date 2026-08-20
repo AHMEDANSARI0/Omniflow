@@ -12,28 +12,31 @@ import Trust from "./components/Trust";
 import FinalCTA from "./components/FinalCTA";
 import Footer from "./components/Footer";
 import { getSectionContent } from "../lib/content";
-import { HERO_DEFAULTS, FINAL_CTA_DEFAULTS, FOOTER_DEFAULTS, FEATURES_DEFAULTS, USE_CASES_DEFAULTS } from "../lib/content-defaults";
+import { HERO_DEFAULTS, FINAL_CTA_DEFAULTS, FOOTER_DEFAULTS, FEATURES_DEFAULTS, USE_CASES_DEFAULTS, WHY_OMNIFLOW_DEFAULTS, TRUST_DEFAULTS, PROBLEM_SOLUTION_DEFAULTS } from "../lib/content-defaults";
 
 export default async function Home() {
   const heroContent = await getSectionContent("hero", HERO_DEFAULTS);
   const finalCtaContent = await getSectionContent("final_cta", FINAL_CTA_DEFAULTS);
   const useCasesContent = await getSectionContent("use_cases", USE_CASES_DEFAULTS);
   const featuresContent = await getSectionContent("features", FEATURES_DEFAULTS);
+  const trustContent = await getSectionContent("trust", TRUST_DEFAULTS);
+  const whyOmniFlowContent = await getSectionContent("why_omniflow", WHY_OMNIFLOW_DEFAULTS);
+    const problemSolutionContent = await getSectionContent("problem_solution", PROBLEM_SOLUTION_DEFAULTS);
   const footerContent = await getSectionContent("footer", FOOTER_DEFAULTS);
 
   return (
     <main className="min-h-screen bg-[#07111f]">
       <Navbar />
        <Hero content={heroContent} />
-      <ProblemSolution />
+      <ProblemSolution content={problemSolutionContent} />
       <AIIntelligence />
       <MultiChannel />
       <CustomerMemory />
       <HowItWorks />
       <Features content={featuresContent} />
       <UseCases content={useCasesContent} />
-      <WhyOmniFlow />
-      <Trust />
+      <WhyOmniFlow content={whyOmniFlowContent} />
+      <Trust content={trustContent} />
       <FinalCTA content={finalCtaContent} />
       <Footer content={footerContent} />
     </main>

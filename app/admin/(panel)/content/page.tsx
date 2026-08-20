@@ -37,11 +37,11 @@ const sections: ContentSection[] = [
     icon: "◇",
     enabled: true,
   },
-    {
-    label: "Use cases",
-    description: "The 5 business tabs — headlines, automations and statuses.",
-    href: "/admin/content/use-cases",
-    icon: "◇",
+  {
+    label: "Why OmniFlow",
+    description: "Section heading and the 4 benefit rows.",
+    href: "/admin/content/why-omniflow",
+    icon: "◆",
     enabled: true,
   },
   {
@@ -56,6 +56,20 @@ const sections: ContentSection[] = [
     description: "Footer description and link labels.",
     href: "/admin/content/footer",
     icon: "⌘",
+    enabled: true,
+  },
+    {
+    label: "Trust",
+    description: "The 4 trust pillars and principles strip.",
+    href: "/admin/content/trust",
+    icon: "✦",
+    enabled: true,
+  },
+    {
+    label: "Problem / Solution",
+    description: "The problem framing, comparison cards and metrics.",
+    href: "/admin/content/problem-solution",
+    icon: "◎",
     enabled: true,
   },
 ];

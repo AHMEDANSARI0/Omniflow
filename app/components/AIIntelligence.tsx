@@ -44,7 +44,7 @@ export default function AIIntelligence() {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute left-1/2 top-[15%] h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-cyan-400/[0.045] blur-[150px]"
+          className="absolute left-1/2 top-[15%] h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.06)_0%,transparent_70%)]"
         />
 
         <div
@@ -142,9 +142,9 @@ export default function AIIntelligence() {
           className="relative mx-auto mt-16 max-w-5xl"
         >
           {/* Outer glow */}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/[0.06] blur-[120px]" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.075)_0%,transparent_70%)]" />
 
-          <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#081522]/90 p-5 shadow-2xl backdrop-blur-xl sm:p-7 lg:p-9">
+          <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#081522]/90 p-5 shadow-2xl sm:p-7 lg:p-9">
             {/* Top bar */}
             <div className="flex flex-col gap-4 border-b border-white/[0.06] pb-6 sm:flex-row sm:items-center sm:justify-between">
               <div>

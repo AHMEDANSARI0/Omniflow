@@ -59,7 +59,7 @@ export default function Navbar() {
             duration: 0.35,
             ease: "easeOut",
           }}
-          className="mx-auto max-w-7xl rounded-2xl border px-4 py-3 backdrop-blur-xl sm:px-5"
+          className="mx-auto max-w-7xl rounded-2xl border px-4 py-3 backdrop-blur-md sm:px-5"
         >
           <div className="flex items-center justify-between">
             {/* Logo */}
