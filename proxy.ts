@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Next.js 16 proxy (formerly middleware).
- * Refreshes the Supabase session and guards /admin routes.
- * Real auth enforcement also happens server-side in the admin pages
+ * Refreshes the Supabase session and guards /admin and /dashboard routes.
+ * Real auth + role enforcement also happens server-side in the layouts
  * (defense in depth) — this proxy handles redirects for UX.
  */
 export async function proxy(request: NextRequest) {
@@ -37,25 +37,43 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isLoginPage = pathname === "/admin/login";
 
-  // Not logged in → only the login page is allowed
-  if (!user && !isLoginPage) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/admin/login";
-    return NextResponse.redirect(url);
+  const isAdminArea = pathname.startsWith("/admin");
+  const isDashboardArea = pathname.startsWith("/dashboard");
+  const isAdminLogin = pathname === "/admin/login";
+  const isDashboardLogin = pathname === "/dashboard/login";
+
+  // Admin area
+  if (isAdminArea) {
+    if (!user && !isAdminLogin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      return NextResponse.redirect(url);
+    }
+    if (user && isAdminLogin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      return NextResponse.redirect(url);
+    }
   }
 
-  // Already logged in → keep out of the login page
-  if (user && isLoginPage) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/admin";
-    return NextResponse.redirect(url);
+  // Client dashboard area
+  if (isDashboardArea) {
+    if (!user && !isDashboardLogin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard/login";
+      return NextResponse.redirect(url);
+    }
+    if (user && isDashboardLogin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/dashboard/:path*"],
 };
