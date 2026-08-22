@@ -11,25 +11,25 @@ const modules: ModuleCard[] = [
     title: "My Bot",
     description:
       "Configure your AI assistant — welcome message, behavior and status.",
-    status: "soon",
+    status: "active",
   },
   {
     icon: "◎",
     title: "Conversations",
     description: "See the conversations your bot is handling in real time.",
-    status: "soon",
+    status: "active",
   },
   {
     icon: "◉",
     title: "Business profile",
     description: "Your company details, hours and contact information.",
-    status: "soon",
+    status: "active",
   },
   {
     icon: "⌘",
     title: "Settings",
     description: "Account preferences and password.",
-    status: "soon",
+    status: "active",
   },
 ];
 

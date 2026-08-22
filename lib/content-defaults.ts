@@ -439,3 +439,45 @@ export const HOW_IT_WORKS_DEFAULTS: HowItWorksContent = {
     "Send a reply, qualify a lead, route the conversation or trigger another workflow.",
   bottom_note: "Your workflows can evolve as your business grows.",
 };
+export interface FaqContent extends Record<string, unknown> {
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  description: string;
+  q1: string;
+  a1: string;
+  q2: string;
+  a2: string;
+  q3: string;
+  a3: string;
+  q4: string;
+  a4: string;
+  q5: string;
+  a5: string;
+  q6: string;
+  a6: string;
+  contact_text: string;
+  contact_email: string;
+}
+
+export const FAQ_DEFAULTS: FaqContent = {
+  badge: "FAQ",
+  heading_line1: "Questions,",
+  heading_line2: "answered.",
+  description:
+    "Everything you need to know about OmniFlow and early access.",
+  q1: "When will pricing be announced?",
+  a1: "Pricing is being finalized and will be announced before public launch. Early-access members will see it first — and get preferred early-access terms.",
+  q2: "How long does setup take?",
+  a2: "OmniFlow is designed so you can go live quickly: connect a channel, add your business details and switch on your assistant. During early access, our team personally helps you get set up.",
+  q3: "Which channels are supported?",
+  a3: "We're launching with WhatsApp first, with Instagram, Messenger and Telegram rolling out next. The platform is built multi-channel from day one, so new channels plug into the same automation layer.",
+  q4: "Is my customer data secure?",
+  a4: "Your customer conversations belong to your business — full stop. OmniFlow is being built privacy-first: you define what the AI can say and do, every automation step is visible, and your data is never shared.",
+  q5: "Do I need technical skills to use OmniFlow?",
+  a5: "No. Workflows are no-code and the dashboard is designed for business owners, not developers. If you can use WhatsApp, you can use OmniFlow.",
+  q6: "Can a human take over a conversation?",
+  a6: "Yes — anytime. Automation never locks your team out. Any conversation can be taken over by a human at any moment, with the full conversation context in front of them.",
+  contact_text: "Still have questions?",
+  contact_email: "hello@omniflow.example.com",
+};

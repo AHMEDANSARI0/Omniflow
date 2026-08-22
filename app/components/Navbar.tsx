@@ -102,7 +102,13 @@ export default function Navbar() {
             </div>
 
             {/* Desktop CTA */}
-            <div className="hidden md:block">
+            <div className="hidden items-center gap-5 md:flex">
+              <a
+                href="/dashboard/login"
+                className="text-sm text-slate-400 transition-colors duration-300 hover:text-white"
+              >
+                Login
+              </a>
               <motion.a
                 href="#get-started"
                 whileHover={{
@@ -223,7 +229,16 @@ export default function Navbar() {
                         {item.label}
                       </motion.a>
                     ))}
-
+                                        <motion.a
+                      href="/dashboard/login"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.12 }}
+                      onClick={handleNavClick}
+                      className="block rounded-xl px-3 py-3 text-sm text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-white"
+                    >
+                      Login
+                    </motion.a>
                     <motion.a
                       href="#get-started"
                       initial={{

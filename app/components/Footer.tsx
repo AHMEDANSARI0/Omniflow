@@ -25,6 +25,7 @@ const columns = [
   {
     title: "Company",
     links: [
+      { label: "FAQ", href: "#faq" },
       { label: "Trust & principles", href: "#trust" },
       { label: "Early access", href: "#get-started" },
       { label: "Privacy", href: "#" },

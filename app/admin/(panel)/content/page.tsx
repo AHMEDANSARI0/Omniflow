@@ -66,6 +66,13 @@ const sections: ContentSection[] = [
     enabled: true,
   },
     {
+    label: "FAQ",
+    description: "Questions, answers and contact email.",
+    href: "/admin/content/faq",
+    icon: "◎",
+    enabled: true,
+  },
+    {
     label: "Multi-Channel",
     description: "Channel cards, workflow strip and section heading.",
     href: "/admin/content/multi-channel",

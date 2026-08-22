@@ -10,12 +10,13 @@ import UseCases from "./components/UseCases";
 import WhyOmniFlow from "./components/WhyOmniFlow";
 import Trust from "./components/Trust";
 import FinalCTA from "./components/FinalCTA";
+import FAQ from "./components/FAQ";
 import Footer from "./components/Footer";
 import { getSectionContent } from "../lib/content";
 import {
   HERO_DEFAULTS, FINAL_CTA_DEFAULTS, FOOTER_DEFAULTS, FEATURES_DEFAULTS, USE_CASES_DEFAULTS, WHY_OMNIFLOW_DEFAULTS, TRUST_DEFAULTS,
   PROBLEM_SOLUTION_DEFAULTS, AI_INTELLIGENCE_DEFAULTS, MULTI_CHANNEL_DEFAULTS,
-  CUSTOMER_MEMORY_DEFAULTS, HOW_IT_WORKS_DEFAULTS
+  CUSTOMER_MEMORY_DEFAULTS, HOW_IT_WORKS_DEFAULTS, FAQ_DEFAULTS
 } from "../lib/content-defaults";
 
 export default async function Home() {
@@ -30,6 +31,7 @@ export default async function Home() {
   const multiChannelContent = await getSectionContent("multi_channel", MULTI_CHANNEL_DEFAULTS);
   const problemSolutionContent = await getSectionContent("problem_solution", PROBLEM_SOLUTION_DEFAULTS);
   const customerMemoryContent = await getSectionContent("customer_memory", CUSTOMER_MEMORY_DEFAULTS);
+  const faqContent = await getSectionContent("faq", FAQ_DEFAULTS);
   const footerContent = await getSectionContent("footer", FOOTER_DEFAULTS);
 
   return (
@@ -45,6 +47,7 @@ export default async function Home() {
       <UseCases content={useCasesContent} />
       <WhyOmniFlow content={whyOmniFlowContent} />
       <Trust content={trustContent} />
+      <FAQ content={faqContent} />
       <FinalCTA content={finalCtaContent} />
       <Footer content={footerContent} />
     </main>
