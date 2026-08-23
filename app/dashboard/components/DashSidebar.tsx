@@ -15,20 +15,26 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Overview", href: "/dashboard", icon: "◈", enabled: true },
-  { label: "My Bot", href: "/dashboard/bot", icon: "✦", enabled: true },
+  {
+    label: "WhatsApp setup",
+    href: "/dashboard/channels/whatsapp",
+    icon: "◉",
+    enabled: false,
+  },
+  { label: "AI agents", href: "/dashboard/bot", icon: "✦", enabled: false },
   {
     label: "Conversations",
     href: "/dashboard/conversations",
     icon: "◎",
-    enabled: true,
+    enabled: false,
   },
   {
     label: "Business profile",
     href: "/dashboard/profile",
-    icon: "◉",
-    enabled: true,
+    icon: "◇",
+    enabled: false,
   },
-  { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: true },
+  { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: false },
 ];
 
 function BrandMark({ compact = false }: { compact?: boolean }) {
@@ -121,9 +127,13 @@ function NavLinks({
 
 function SidebarFooter({
   userEmail,
+  clientId,
+  role,
   collapsed = false,
 }: {
   userEmail: string;
+  clientId: number;
+  role: string;
   collapsed?: boolean;
 }) {
   if (collapsed) {
@@ -154,8 +164,11 @@ function SidebarFooter({
         <span>↗</span> Visit website
       </a>
       <div className="px-3">
-        <p className="truncate text-[11px] text-slate-600" title={userEmail}>
+        <p className="truncate text-[11px] text-slate-500" title={userEmail}>
           {userEmail}
+        </p>
+        <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-700">
+          Workspace {clientId} · {role}
         </p>
       </div>
       <div className="px-3 pb-1">
@@ -167,10 +180,14 @@ function SidebarFooter({
 
 export default function DashSidebar({
   userEmail,
+  clientId,
+  role,
   collapsed,
   onToggle,
 }: {
   userEmail: string;
+  clientId: number;
+  role: string;
   collapsed: boolean;
   onToggle: () => void;
 }) {
@@ -208,7 +225,12 @@ export default function DashSidebar({
           <NavLinks collapsed={collapsed} />
         </div>
 
-        <SidebarFooter userEmail={userEmail} collapsed={collapsed} />
+        <SidebarFooter
+          userEmail={userEmail}
+          clientId={clientId}
+          role={role}
+          collapsed={collapsed}
+        />
       </motion.aside>
 
       {/* Mobile top bar */}
@@ -258,7 +280,11 @@ export default function DashSidebar({
               <div className="flex-1">
                 <NavLinks onNavigate={() => setMobileOpen(false)} />
               </div>
-              <SidebarFooter userEmail={userEmail} />
+              <SidebarFooter
+                userEmail={userEmail}
+                clientId={clientId}
+                role={role}
+              />
             </motion.div>
           </>
         )}
