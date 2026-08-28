@@ -2,18 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "../../../lib/supabase/client";
+
 
 export default function SignOutButton({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleSignOut() {
+    if (loading) return;
     setLoading(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/dashboard/login");
-    router.refresh();
+
+    try {
+      await fetch("/api/omniflow/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+    } finally {
+      router.replace("/dashboard/login");
+      router.refresh();
+      setLoading(false);
+    }
   }
 
   if (compact) {
