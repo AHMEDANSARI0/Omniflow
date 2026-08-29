@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
           {done ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-slate-300">
-                Password update ho gaya. Ab naye password se sign in karein.
+                Your password has been updated. Sign in with your new password.
               </p>
               <Link
                 href="/dashboard/login"

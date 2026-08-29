@@ -38,7 +38,7 @@ export default function AdminCustomersPage() {
       if (!response.ok) {
         setError(
           payload?.error?.message ??
-            "Clients load nahi ho saken. Dobara try karein."
+            "Could not load clients. Please try again."
         );
         setUsers(null);
       } else {
@@ -145,7 +145,7 @@ export default function AdminCustomersPage() {
           className="mb-4 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.05] p-4"
         >
           <p className="text-xs font-medium uppercase tracking-wider text-cyan-300">
-            Naya temporary password — sirf abhi dekh raha hai
+            New temporary password — visible only once
           </p>
           <p className="mt-1 text-sm text-slate-300">
             {resetResult.email}
@@ -162,8 +162,8 @@ export default function AdminCustomersPage() {
             </button>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-            Client ko ye password secure channel se bataayen. Client login ke
-            baad apna password change kar sakta hai.
+            Share this password with the client over a secure channel. They can
+            change it after signing in.
           </p>
         </motion.div>
       )}
@@ -175,7 +175,7 @@ export default function AdminCustomersPage() {
           </div>
         ) : !users || users.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-slate-500">
-            Koi client nahi mila.
+            No clients found.
           </div>
         ) : (
           <div className="overflow-x-auto">

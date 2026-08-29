@@ -86,17 +86,17 @@ export default function ForgotPasswordPage() {
           {done ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-slate-300">
-                Agar yeh email registered hai to ek 6-digit reset code generate
-                ho gaya hai.
+                If this email is registered, a 6-digit reset code has been
+                generated.
               </p>
               <p className="text-xs leading-relaxed text-slate-500">
-                Test environment mein yeh code server logs par aata hai — apne
-                administrator se code maang lein, phir{" "}
+                In this test environment the code is delivered to the server
+                logs — ask your administrator for the code, then{" "}
                 <Link
                   href="/dashboard/reset-password"
                   className="text-cyan-400/80 hover:text-cyan-300"
                 >
-                  yahan se naya password set karein
+                  set a new password here
                 </Link>
                 .
               </p>
