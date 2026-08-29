@@ -86,14 +86,17 @@ export default function ForgotPasswordPage() {
           {done ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-slate-300">
-                Agar yeh email registered hai toh ek 6-digit reset code generate
-                ho gaya hai.
+                If this email is registered, a 6-digit reset code has been
+                generated.
               </p>
               <p className="text-xs leading-relaxed text-slate-500">
-                Test environment mein yeh code server logs par aata hai — apne
-                administrator se code maang lein, phir{" "}
-                <Link href="/dashboard/reset-password" className="text-cyan-400/80 hover:text-cyan-300">
-                  yahan se naya password set karein
+                In this test environment the code is delivered to the server
+                logs — ask your administrator for the code, then{" "}
+                <Link
+                  href="/dashboard/reset-password"
+                  className="text-cyan-400/80 hover:text-cyan-300"
+                >
+                  set a new password here
                 </Link>
                 .
               </p>
@@ -107,7 +110,10 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label
+                  htmlFor="email"
+                  className="mb-1.5 block text-xs font-medium text-slate-400"
+                >
                   Email
                 </label>
                 <input
@@ -150,7 +156,10 @@ export default function ForgotPasswordPage() {
         </div>
 
         <p className="mt-5 text-center text-xs text-slate-600">
-          <Link href="/dashboard/login" className="text-cyan-400/80 transition-colors hover:text-cyan-300">
+          <Link
+            href="/dashboard/login"
+            className="text-cyan-400/80 transition-colors hover:text-cyan-300"
+          >
             Back to sign in
           </Link>
         </p>

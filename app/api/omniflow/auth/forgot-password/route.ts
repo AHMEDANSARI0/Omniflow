@@ -48,7 +48,8 @@ export async function POST(request: Request) {
           {
             error: {
               code: "reset_not_configured",
-              message: "Password reset is not available on the server yet. Please contact support.",
+              message:
+                "Password reset is not available on the server yet. Please contact support.",
             },
           },
           501
@@ -59,7 +60,8 @@ export async function POST(request: Request) {
           {
             error: {
               code: "rate_limited",
-              message: "Too many reset requests. Please wait a few minutes and try again.",
+              message:
+                "Too many reset requests. Please wait a few minutes and try again.",
             },
           },
           429
@@ -71,7 +73,8 @@ export async function POST(request: Request) {
       {
         error: {
           code: "reset_unavailable",
-          message: "Password reset is temporarily unavailable. Please try again.",
+          message:
+            "Password reset is temporarily unavailable. Please try again.",
         },
       },
       503

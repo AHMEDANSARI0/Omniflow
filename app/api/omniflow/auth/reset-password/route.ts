@@ -56,7 +56,8 @@ export async function POST(request: Request) {
           {
             error: {
               code: "invalid_code",
-              message: "This reset code is invalid or has expired. Request a new one.",
+              message:
+                "This reset code is invalid or has expired. Request a new one.",
             },
           },
           400
@@ -67,7 +68,8 @@ export async function POST(request: Request) {
           {
             error: {
               code: "rate_limited",
-              message: "Too many attempts. Request a new code and try again later.",
+              message:
+                "Too many attempts. Request a new code and try again later.",
             },
           },
           429
@@ -78,7 +80,8 @@ export async function POST(request: Request) {
           {
             error: {
               code: "reset_not_configured",
-              message: "Password reset is not available on the server yet. Please contact support.",
+              message:
+                "Password reset is not available on the server yet. Please contact support.",
             },
           },
           501
@@ -90,7 +93,8 @@ export async function POST(request: Request) {
       {
         error: {
           code: "reset_unavailable",
-          message: "Password reset is temporarily unavailable. Please try again.",
+          message:
+            "Password reset is temporarily unavailable. Please try again.",
         },
       },
       503

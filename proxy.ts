@@ -19,7 +19,9 @@ export async function proxy(request: NextRequest) {
     const isPublicDashboardRoute =
       pathname === "/dashboard/login" ||
       pathname === "/dashboard/reauth" ||
-      pathname === "/dashboard/unavailable";
+      pathname === "/dashboard/unavailable" ||
+      pathname === "/dashboard/forgot-password" ||
+      pathname === "/dashboard/reset-password";
 
     if (isPublicDashboardRoute) return NextResponse.next({ request });
 

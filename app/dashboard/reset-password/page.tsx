@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
           {done ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-slate-300">
-                Password update ho gaya. Ab naye password se sign in karein.
+                Your password has been updated. Sign in with your new password.
               </p>
               <Link
                 href="/dashboard/login"
@@ -104,7 +104,10 @@ export default function ResetPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="code" className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label
+                  htmlFor="code"
+                  className="mb-1.5 block text-xs font-medium text-slate-400"
+                >
                   Reset code (6 digits)
                 </label>
                 <input
@@ -117,14 +120,19 @@ export default function ResetPasswordPage() {
                   required
                   autoComplete="one-time-code"
                   value={code}
-                  onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  onChange={(event) =>
+                    setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
                   className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-center text-lg tracking-[0.4em] text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
                   placeholder="••••••"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label
+                  htmlFor="password"
+                  className="mb-1.5 block text-xs font-medium text-slate-400"
+                >
                   New password
                 </label>
                 <input
@@ -143,7 +151,10 @@ export default function ResetPasswordPage() {
               </div>
 
               <div>
-                <label htmlFor="confirm" className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label
+                  htmlFor="confirm"
+                  className="mb-1.5 block text-xs font-medium text-slate-400"
+                >
                   Confirm new password
                 </label>
                 <input
@@ -187,7 +198,10 @@ export default function ResetPasswordPage() {
         </div>
 
         <p className="mt-5 text-center text-xs text-slate-600">
-          <Link href="/dashboard/login" className="text-cyan-400/80 transition-colors hover:text-cyan-300">
+          <Link
+            href="/dashboard/login"
+            className="text-cyan-400/80 transition-colors hover:text-cyan-300"
+          >
             Back to sign in
           </Link>
         </p>
