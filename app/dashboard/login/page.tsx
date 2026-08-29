@@ -173,6 +173,15 @@ export default function DashboardLoginPage() {
             >
               {loading ? "Signing in…" : "Sign in securely"}
             </motion.button>
+
+            <p className="text-center text-xs">
+              <Link
+                href="/dashboard/forgot-password"
+                className="text-cyan-400/80 transition-colors hover:text-cyan-300"
+              >
+                Forgot password?
+              </Link>
+            </p>
           </form>
         </div>
 
