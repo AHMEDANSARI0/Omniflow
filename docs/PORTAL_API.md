@@ -66,14 +66,35 @@ AI agent config (normalized). Backend module pending ho to defaults ke saath
 
 ---
 
-## Control Plane endpoints ye UI expect karte hain (jab deploy hon)
+## Control Plane endpoints (LIVE — portal module deployed)
 
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/v1/portal/channels/whatsapp` | `{state, account_name, phone, last_seen_at}` |
-| POST | `/api/v1/portal/channels/whatsapp` | `{action}` → `{ok, message}` |
-| GET | `/api/v1/portal/bot` | agent config (`agent_name`, `tone`, `greeting`, `fallback`, `working_hours_*`, `human_handoff_enabled`) |
-| PUT | `/api/v1/portal/bot` | save agent config |
+| POST | `/api/v1/portal/channels/whatsapp` | `{action}` → `{ok, message}` (command queue) |
+| GET | `/api/v1/portal/bot` | agent config (`agent_name`, `tone`, `greeting`, `fallback`, `working_hours_*`, `human_handoff_enabled`, `updated_at`) |
+| PUT | `/api/v1/portal/bot` | save agent config → `{ok, updated_at}` |
 
-Auth: `Authorization: Bearer <access token>` (website khud forward karti hai).
-404/501 ka matlab "module pending" — website gracefully handle karti hai.
+Portal auth: `Authorization: Bearer <access token>` — backend extension token
+ko main app ke in-process `GET /api/v1/auth/me` call se validate karta hai
+(platform ke apne rules, koi duplicate validation nahi).
+
+WhatsApp session server par NAHI chalti — status connector (customer ke
+laptop) report karta hai; Connect/Disconnect commands table me queue hote
+hain jo connector poll karta hai. Migration 008 tables (lazy auto-created):
+`portal_whatsapp_status`, `portal_bot_configs`, `portal_connector_commands`.
+
+---
+
+## Control Plane CONNECTOR endpoints (laptop bridge ke liye)
+
+Auth: `X-Omniflow-Key: <OMNIFLOW_SERVICE_KEY>` (server-to-device).
+Tenant: body/query me `client_id` ya backend env `OMNIFLOW_CONNECTOR_USER_EMAIL`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/v1/connector/whatsapp/status` | `{state, phone?, account_name?}` → portal status update |
+| GET | `/api/v1/connector/whatsapp/commands` | pending commands (oldest first, `?limit=20`) |
+| POST | `/api/v1/connector/whatsapp/commands/ack` | `{command_id, ok, note?}` |
+| GET | `/api/v1/connector/bot` | tenant ka agent config (laptop bot isi se chalta hai) |
+
