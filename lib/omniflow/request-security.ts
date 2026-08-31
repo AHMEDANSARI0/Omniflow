@@ -25,10 +25,16 @@ export function safeJson(
 
 export function sameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
-  if (!origin) return false;
 
   const fetchSite = request.headers.get("sec-fetch-site");
   if (fetchSite && fetchSite !== "same-origin") return false;
+
+  if (!origin) {
+    // Same-origin GET/HEAD fetch() requests and address-bar navigations may
+    // omit the Origin header. Browsers still send Sec-Fetch-Site, which is
+    // checked above; without either signal we reject (conservative).
+    return fetchSite === "same-origin" || fetchSite === "none";
+  }
 
   try {
     const requestUrl = new URL(request.url);

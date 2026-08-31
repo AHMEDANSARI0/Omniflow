@@ -114,3 +114,28 @@ export async function resetAdminPassword(
   }
   return payload as AdminPasswordReset;
 }
+
+export interface AdminResetCode {
+  user_id: number;
+  email: string;
+  code: string;
+  expires_at: string;
+  created_at: string;
+}
+
+/** TEST-PHASE: recent undelivered reset codes (populated only without SMTP). */
+export async function listRecentResetCodes(): Promise<AdminResetCode[]> {
+  const response = await adminRequest("api/v1/admin/reset-codes", {
+    method: "GET",
+  });
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("codes" in payload) ||
+    !Array.isArray((payload as { codes: unknown }).codes)
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return (payload as { codes: AdminResetCode[] }).codes;
+}

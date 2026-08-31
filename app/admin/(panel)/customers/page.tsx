@@ -19,8 +19,26 @@ interface ResetResult {
   temp_password: string;
 }
 
+interface ResetCode {
+  user_id: number;
+  email: string;
+  code: string;
+  expires_at: string;
+  created_at: string;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return value;
+  }
+}
+
 export default function AdminCustomersPage() {
   const [users, setUsers] = useState<ClientUser[] | null>(null);
+  const [resetCodes, setResetCodes] = useState<ResetCode[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -30,22 +48,38 @@ export default function AdminCustomersPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/omniflow/admin/clients", {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
+      const [clientsResponse, codesResponse] = await Promise.all([
+        fetch("/api/omniflow/admin/clients", {
+          credentials: "same-origin",
+          cache: "no-store",
+        }),
+        fetch("/api/omniflow/admin/reset-codes", {
+          credentials: "same-origin",
+          cache: "no-store",
+        }),
+      ]);
+
+      const clientsPayload = await clientsResponse.json().catch(() => null);
+      if (!clientsResponse.ok) {
         setError(
-          payload?.error?.message ??
+          clientsPayload?.error?.message ??
             "Could not load clients. Please try again."
         );
         setUsers(null);
       } else {
-        setUsers(Array.isArray(payload?.users) ? payload.users : []);
+        setUsers(
+          Array.isArray(clientsPayload?.users) ? clientsPayload.users : []
+        );
       }
+
+      const codesPayload = await codesResponse.json().catch(() => null);
+      setResetCodes(
+        codesResponse.ok && Array.isArray(codesPayload?.codes)
+          ? codesPayload.codes
+          : []
+      );
     } catch {
-      setError("Network error — dobara try karein.");
+      setError("Network error — please try again.");
       setUsers(null);
     } finally {
       setLoading(false);
@@ -59,7 +93,7 @@ export default function AdminCustomersPage() {
   async function resetPassword(userId: number, email: string) {
     if (
       !window.confirm(
-        `Client "${email}" ka password reset karna hai?\n\nNaya temporary password sirf EK baar dikhega — abhi copy kar lein.`
+        `Reset the password for client "${email}"?\n\nThe temporary password will be shown only once — copy it now.`
       )
     ) {
       return;
@@ -74,9 +108,7 @@ export default function AdminCustomersPage() {
       );
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        setError(
-          payload?.error?.message ?? "Reset failed. Dobara try karein."
-        );
+        setError(payload?.error?.message ?? "Reset failed. Please try again.");
       } else {
         setResetResult({
           email: payload?.email ?? email,
@@ -85,26 +117,17 @@ export default function AdminCustomersPage() {
         await load();
       }
     } catch {
-      setError("Network error — reset fail hua. Dobara try karein.");
+      setError("Network error — reset failed. Please try again.");
     } finally {
       setBusyId(null);
     }
   }
 
-  async function copyTempPassword(value: string) {
+  async function copyValue(value: string) {
     try {
       await navigator.clipboard.writeText(value);
     } catch {
       // Clipboard may be unavailable — the user can still select the text.
-    }
-  }
-
-  function formatDate(value: string | null) {
-    if (!value) return "—";
-    try {
-      return new Date(value).toLocaleString();
-    } catch {
-      return value;
     }
   }
 
@@ -116,7 +139,7 @@ export default function AdminCustomersPage() {
             Customers
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Client accounts — password reset aur lock status (Control Plane).
+            Client accounts — password reset and lock status (Control Plane).
           </p>
         </div>
         <button
@@ -147,15 +170,13 @@ export default function AdminCustomersPage() {
           <p className="text-xs font-medium uppercase tracking-wider text-cyan-300">
             New temporary password — visible only once
           </p>
-          <p className="mt-1 text-sm text-slate-300">
-            {resetResult.email}
-          </p>
+          <p className="mt-1 text-sm text-slate-300">{resetResult.email}</p>
           <div className="mt-3 flex items-center gap-2">
             <code className="rounded-lg border border-white/[0.08] bg-black/40 px-3 py-2 text-sm font-semibold tracking-wider text-white">
               {resetResult.temp_password}
             </code>
             <button
-              onClick={() => void copyTempPassword(resetResult.temp_password)}
+              onClick={() => void copyValue(resetResult.temp_password)}
               className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-semibold text-[#07111f] transition-opacity hover:opacity-90"
             >
               Copy
@@ -165,6 +186,44 @@ export default function AdminCustomersPage() {
             Share this password with the client over a secure channel. They can
             change it after signing in.
           </p>
+        </motion.div>
+      )}
+
+      {resetCodes && resetCodes.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/[0.04] p-4"
+        >
+          <p className="text-xs font-medium uppercase tracking-wider text-amber-300">
+            Recent password reset codes — test phase
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+            Shown here because email delivery (SMTP) is not configured yet.
+            Codes expire in 10 minutes and die after a single use.
+          </p>
+          <div className="mt-3 space-y-2">
+            {resetCodes.map((entry) => (
+              <div
+                key={`${entry.user_id}-${entry.created_at}`}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.05] bg-black/20 px-3 py-2"
+              >
+                <span className="text-xs text-slate-300">{entry.email}</span>
+                <code className="rounded-md border border-white/[0.08] bg-black/40 px-2.5 py-1 text-xs font-semibold tracking-[0.3em] text-white">
+                  {entry.code}
+                </code>
+                <button
+                  onClick={() => void copyValue(entry.code)}
+                  className="rounded-md bg-amber-400/90 px-2 py-1 text-[10px] font-semibold text-[#07111f] transition-opacity hover:opacity-90"
+                >
+                  Copy
+                </button>
+                <span className="ml-auto text-[10px] text-slate-500">
+                  expires {formatDate(entry.expires_at)}
+                </span>
+              </div>
+            ))}
+          </div>
         </motion.div>
       )}
 
