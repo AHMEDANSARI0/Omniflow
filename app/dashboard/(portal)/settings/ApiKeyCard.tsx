@@ -42,8 +42,8 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
         <h2 className="mb-1 text-sm font-semibold text-white">API key</h2>
         <p className="mb-5 text-xs text-slate-500">
-          Your bot uses this key to read its configuration and push
-          conversations to OmniFlow. Keep it secret.
+          Read-only key for your own integrations — it reads your bot config,
+          profile and conversations from the OmniFlow API. Keep it secret.
         </p>
 
         {/* Newly generated key — shown once */}
@@ -160,10 +160,10 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
         <div className="space-y-4">
           <div>
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
-              1 · Read your bot&apos;s configuration
+              1 · Read your AI agent configuration
             </p>
             <code className="block overflow-x-auto rounded-lg border border-white/[0.06] bg-[#060f1b] px-3 py-2.5 font-mono text-[11px] leading-relaxed text-slate-400">
-              GET /api/bot/config
+              GET https://omniflow-control-plane-rho.vercel.app/api/v1/portal/bot
               <br />
               Authorization: Bearer ofk_your_key
             </code>
@@ -171,22 +171,19 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
 
           <div>
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
-              2 · Push conversation messages
+              2 · Read your business profile
             </p>
             <code className="block overflow-x-auto rounded-lg border border-white/[0.06] bg-[#060f1b] px-3 py-2.5 font-mono text-[11px] leading-relaxed text-slate-400">
-              POST /api/bot/messages
+              GET https://omniflow-control-plane-rho.vercel.app/api/v1/portal/profile
               <br />
               Authorization: Bearer ofk_your_key
-              <br />
-              {`{ "customer_identifier": "+92300...", "customer_name": "Ahmed", "channel": "whatsapp", "role": "customer", "text": "Hello!" }`}
             </code>
           </div>
 
           <p className="text-[11px] leading-relaxed text-slate-600">
-            role = <span className="text-slate-400">customer</span> (incoming),{" "}
-            <span className="text-slate-400">bot</span> (AI reply) or{" "}
-            <span className="text-slate-400">agent</span> (human reply).
-            Conversations appear automatically in your dashboard.
+            Keys are tenant-scoped and <span className="text-slate-400">read-only</span>{" "}
+            — perfect for dashboards and custom integrations. Your managed
+            connector (laptop) uses its own service key.
           </p>
         </div>
       </div>

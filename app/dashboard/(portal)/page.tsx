@@ -14,28 +14,28 @@ const modules: ModuleCard[] = [
     title: "Managed WhatsApp",
     description:
       "Authorize once from mobile, then OmniFlow-managed infrastructure keeps the session available.",
-    status: "next",
+    status: "active",
   },
   {
     icon: "✦",
     title: "AI agents",
     description:
-      "Versioned instructions, knowledge, tone, qualification, workflows and handoff policies.",
-    status: "soon",
+      "Tone, greetings, fallbacks, working hours and handoff policies — live from the Control Plane.",
+    status: "active",
   },
   {
     icon: "◎",
     title: "Conversations",
     description:
       "Tenant-isolated customer conversations, AI outcomes and human handoffs across channels.",
-    status: "soon",
+    status: "active",
   },
   {
     icon: "◇",
     title: "Business profile",
     description:
       "Products, services, prices, policies, FAQs, operating hours and language preferences.",
-    status: "soon",
+    status: "active",
   },
 ];
 
@@ -87,7 +87,7 @@ export default async function ClientDashboardPage() {
         <div>
           <p className="text-sm text-slate-300">Secure portal authentication is active.</p>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            Managed WhatsApp pairing is the next module. Direct Supabase customer-data access is disabled while each feature moves behind the versioned Control Plane API.
+            All portal modules are live on the versioned Control Plane API. Link your WhatsApp connector and every message, AI reply and conversation lands here automatically.
           </p>
         </div>
       </div>

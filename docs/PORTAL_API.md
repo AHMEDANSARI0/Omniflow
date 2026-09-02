@@ -64,6 +64,37 @@ AI agent config (normalized). Backend module pending ho to defaults ke saath
 **200 Response:** `{ "ok": true, "configured": true }`
 (`configured: false` = server module pending; website local draft rakhti hai.)
 
+## `GET /api/omniflow/portal/profile`
+
+Business profile (JSONB doc) — `{ configured, data: {...}, updatedAt }`.
+`data` khali ho sakta hai (defaults website side merge hote hain).
+
+## `PUT /api/omniflow/portal/profile`
+
+**Body:** `{ "profile": { "business_name": "...", ... } }` →
+`{ "ok": true, "configured": true, "message": null }`
+
+## `GET /api/omniflow/portal/api-key`
+
+`{ configured, keyPrefix, revoked, createdAt, lastUsedAt }` — portal `ofk_` key
+info (SHA-256 hashed server-side; plaintext sirf rotate ke waqt aik dafa).
+
+## `POST /api/omniflow/portal/api-key`
+
+**Body:** `{ "action": "rotate" | "revoke" }` →
+rotate: `{ ok, key: "ofk_...", message: null }` | revoke: `{ ok, message }`
+
+## `GET /api/omniflow/portal/conversations`
+
+`{ conversations: [{ id, channel, contactId, contactName, status,
+lastMessageAt, lastMessagePreview, createdAt }] }` (newest first).
+503 `portal_pending` = module abhi server par deploy nahi hua.
+
+## `GET /api/omniflow/portal/conversations/[id]`
+
+`{ conversation, messages: [{ id, direction: "in"|"out", body, status,
+createdAt }] }` (oldest-first, last 200). 404 = is tenant ki conversation nahi.
+
 ---
 
 ## Control Plane endpoints (LIVE — portal module deployed)
@@ -74,10 +105,18 @@ AI agent config (normalized). Backend module pending ho to defaults ke saath
 | POST | `/api/v1/portal/channels/whatsapp` | `{action}` → `{ok, message}` (command queue) |
 | GET | `/api/v1/portal/bot` | agent config (`agent_name`, `tone`, `greeting`, `fallback`, `working_hours_*`, `human_handoff_enabled`, `updated_at`) |
 | PUT | `/api/v1/portal/bot` | save agent config → `{ok, updated_at}` |
+| GET | `/api/v1/portal/profile` | `{profile: {...}, updated_at}` (JSONB doc) |
+| PUT | `/api/v1/portal/profile` | `{profile: {...}}` → `{ok, updated_at}` |
+| GET | `/api/v1/portal/api-key` | `{configured, key_prefix, key_last4, revoked, created_at, last_used_at}` |
+| POST | `/api/v1/portal/api-key/rotate` | naya `ofk_` key (sirf aik dafa wapis) → `{ok, key}` |
+| POST | `/api/v1/portal/api-key/revoke` | active key revoke → `{ok}` |
+| GET | `/api/v1/portal/conversations` | `?status=all|open|closed&limit=50` → `{conversations:[...]}` |
+| GET | `/api/v1/portal/conversations/<id>` | `{conversation, messages:[...]}` (client-scoped, 404 otherwise) |
 
 Portal auth: `Authorization: Bearer <access token>` — backend extension token
 ko main app ke in-process `GET /api/v1/auth/me` call se validate karta hai
-(platform ke apne rules, koi duplicate validation nahi).
+(platform ke apne rules, koi duplicate validation nahi). `ofk_...` se shuru
+hone wale tokens `portal_api_keys` table se validate hote hain (READ-ONLY).
 
 WhatsApp session server par NAHI chalti — status connector (customer ke
 laptop) report karta hai; Connect/Disconnect commands table me queue hote
@@ -97,4 +136,5 @@ Tenant: body/query me `client_id` ya backend env `OMNIFLOW_CONNECTOR_USER_EMAIL`
 | GET | `/api/v1/connector/whatsapp/commands` | pending commands (oldest first, `?limit=20`) |
 | POST | `/api/v1/connector/whatsapp/commands/ack` | `{command_id, ok, note?}` |
 | GET | `/api/v1/connector/bot` | tenant ka agent config (laptop bot isi se chalta hai) |
+| POST | `/api/v1/connector/whatsapp/messages` | `{messages:[{from, body, name?, direction?}]}` (max 100) → conversation upsert + messages store |
 
