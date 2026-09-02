@@ -19,22 +19,22 @@ const navItems: NavItem[] = [
     label: "WhatsApp setup",
     href: "/dashboard/channels/whatsapp",
     icon: "◉",
-    enabled: false,
+    enabled: true,
   },
-  { label: "AI agents", href: "/dashboard/bot", icon: "✦", enabled: false },
+  { label: "AI agents", href: "/dashboard/bot", icon: "✦", enabled: true },
   {
     label: "Conversations",
     href: "/dashboard/conversations",
     icon: "◎",
-    enabled: false,
+    enabled: true,
   },
   {
     label: "Business profile",
     href: "/dashboard/profile",
     icon: "◇",
-    enabled: false,
+    enabled: true,
   },
-  { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: false },
+  { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: true },
 ];
 
 function BrandMark({ compact = false }: { compact?: boolean }) {
