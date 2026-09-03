@@ -12,10 +12,6 @@ export interface BusinessProfile extends Record<string, unknown> {
   timezone: string;
   business_hours: string;
   default_language: string;
-  about: string;
-  products: string;
-  policies: string;
-  faqs: string;
 }
 
 const initialState: ProfileActionState = { success: false, message: "" };
@@ -174,61 +170,6 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
               className={inputClass}
             />
           </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="about" className={labelClass}>
-            About your business
-          </label>
-          <textarea
-            id="about"
-            name="about"
-            rows={2}
-            defaultValue={profile.about ?? ""}
-            placeholder="Aik line me apna business batayein"
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label htmlFor="products" className={labelClass}>
-            Products &amp; prices (har line: item — price)
-          </label>
-          <textarea
-            id="products"
-            name="products"
-            rows={5}
-            defaultValue={profile.products ?? ""}
-            placeholder={"LED TV 43 inch — 45,000 PKR\nInverter AC 1 ton — 95,000 PKR"}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label htmlFor="policies" className={labelClass}>
-            Policies (return, warranty, delivery)
-          </label>
-          <textarea
-            id="policies"
-            name="policies"
-            rows={3}
-            defaultValue={profile.policies ?? ""}
-            placeholder={"7 din return warranty\nLahore me free delivery"}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label htmlFor="faqs" className={labelClass}>
-            FAQs (har line: sawal? — jawab)
-          </label>
-          <textarea
-            id="faqs"
-            name="faqs"
-            rows={4}
-            defaultValue={profile.faqs ?? ""}
-            placeholder={"Delivery kitne din me hoti hai? — 2 se 3 din\nPayment method? — Cash on delivery ya bank transfer"}
-            className={inputClass}
-          />
         </div>
       </div>
 

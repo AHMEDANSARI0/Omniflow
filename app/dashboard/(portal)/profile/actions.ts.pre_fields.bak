@@ -21,13 +21,6 @@ const OPTIONAL_FIELDS = [
   "default_language",
 ] as const;
 
-const EXTENDED_FIELDS: ReadonlyArray<readonly [string, number]> = [
-  ["about", 1000],
-  ["products", 3000],
-  ["policies", 2000],
-  ["faqs", 3000],
-] as const;
-
 function field(formData: FormData, name: string, max: number): string {
   const raw = formData.get(name);
   const value = typeof raw === "string" ? raw.trim().slice(0, max) : "";
@@ -53,9 +46,6 @@ export async function updateBusinessProfile(
   const profile: Record<string, string> = { business_name: businessName };
   for (const name of OPTIONAL_FIELDS) {
     profile[name] = field(formData, name, 500);
-  }
-  for (const [name, max] of EXTENDED_FIELDS) {
-    profile[name] = field(formData, name, max);
   }
 
   try {
