@@ -38,7 +38,7 @@ export async function GET() {
   }
 }
 
-const ACTIONS: ReadonlySet<string> = new Set(["connect", "disconnect"]);
+const ACTIONS: ReadonlySet<string> = new Set(["connect", "disconnect", "restart"]);
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) {

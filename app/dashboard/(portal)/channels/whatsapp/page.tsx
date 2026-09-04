@@ -79,7 +79,7 @@ export default function WhatsAppChannelPage() {
     };
   }, [refresh]);
 
-  async function runAction(action: "connect" | "disconnect") {
+  async function runAction(action: "connect" | "disconnect" | "restart") {
     if (busy) return;
     setBusy(true);
     setNotice(null);
@@ -213,6 +213,13 @@ export default function WhatsAppChannelPage() {
                 className="rounded-xl border border-red-400/25 bg-red-400/[0.06] px-4 py-2.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-400/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy ? "Working…" : "Disconnect"}
+              </button>
+              <button
+                onClick={() => void runAction("restart")}
+                disabled={busy}
+                className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy ? "Working…" : "Restart session"}
               </button>
             ) : (
               <button
