@@ -21,7 +21,7 @@ const navItems: NavItem[] = [
     icon: "◉",
     enabled: true,
   },
-  { label: "AI agents", href: "/dashboard/bot", icon: "✦", enabled: true },
+  { label: "Configure AI", href: "/dashboard/bot", icon: "✦", enabled: true },
   {
     label: "Conversations",
     href: "/dashboard/conversations",

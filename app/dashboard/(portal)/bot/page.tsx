@@ -16,8 +16,10 @@ export default async function MyBotPage() {
           AI agent
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Personality, greeting and handoff rules for the assistant that answers
-          on your connected channels.
+          Behaviour of the assistant that answers on your connected channels.
+          Business details (products, prices, policies, FAQs) live in
+          Business profile — this page is only about how the assistant talks
+          and takes decisions.
         </p>
       </div>
 
