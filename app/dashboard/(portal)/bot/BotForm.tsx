@@ -14,6 +14,7 @@ export interface BotConfigView {
   workingHoursStart: string;
   workingHoursEnd: string;
   humanHandoffEnabled: boolean;
+  customInstructions: string;
 }
 
 const DRAFT_KEY = "omniflow.bot.draft.v1";
@@ -34,6 +35,7 @@ const FALLBACK_INITIAL: BotConfigView = {
   workingHoursStart: "09:00",
   workingHoursEnd: "18:00",
   humanHandoffEnabled: false,
+  customInstructions: "",
 };
 
 function Toggle({
@@ -233,6 +235,23 @@ export default function BotForm({
             onChange={(e) => update("fallback", e.target.value)}
             placeholder="I'm not sure about that — connecting you to a human colleague."
           />
+        </div>
+
+        <div className="mt-4">
+          <label htmlFor="customInstructions" className={labelClass}>
+            Custom instructions
+          </label>
+          <textarea
+            id="customInstructions"
+            className={`${inputClass} min-h-[96px] resize-y`}
+            maxLength={2000}
+            value={config.customInstructions}
+            onChange={(e) => update("customInstructions", e.target.value)}
+            placeholder={"Example: Always offer free delivery on orders above 10,000 PKR. Never share supplier prices with customers."}
+          />
+          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+            The assistant follows these instructions with the highest priority in every conversation.
+          </p>
         </div>
       </div>
 

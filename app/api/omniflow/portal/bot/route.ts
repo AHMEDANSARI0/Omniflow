@@ -80,6 +80,10 @@ export async function PUT(request: Request) {
         ? payload.workingHoursEnd
         : "18:00",
     humanHandoffEnabled: payload.humanHandoffEnabled === true,
+    customInstructions:
+      typeof payload.customInstructions === "string"
+        ? payload.customInstructions.slice(0, 2000)
+        : "",
     updatedAt: null,
   };
 
