@@ -1,59 +1,23 @@
-2026/08/21-02:04:41.105 dc4 Reusing MANIFEST C:\Users\Ahmed Ansari\Desktop\whatsapp-ai-bot\whatsapp_sessions\account_1\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/08/21-02:04:41.106 dc4 Recovering log #612
-2026/08/21-02:04:41.112 dc4 Reusing old log C:\Users\Ahmed Ansari\Desktop\whatsapp-ai-bot\whatsapp_sessions\account_1\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000612.log 
-2026/08/21-02:04:47.995 dc4 Level-0 table #622: started
-2026/08/21-02:04:48.027 dc4 Level-0 table #622: 2423686 bytes OK
-2026/08/21-02:04:48.029 dc4 Delete type=0 #612
-2026/08/21-02:04:48.033 ca8 Compacting 1@1 + 7@2 files
-2026/08/21-02:04:48.101 ca8 Generated table #623@1: 39237 keys, 2170025 bytes
-2026/08/21-02:04:48.238 ca8 Generated table #624@1: 100846 keys, 2253685 bytes
-2026/08/21-02:04:48.334 ca8 Generated table #625@1: 35523 keys, 2501570 bytes
-2026/08/21-02:04:48.385 ca8 Generated table #626@1: 410 keys, 2128066 bytes
-2026/08/21-02:04:48.412 ca8 Generated table #627@1: 7609 keys, 1554911 bytes
-2026/08/21-02:04:48.412 ca8 Compacted 1@1 + 7@2 files => 10608257 bytes
-2026/08/21-02:04:48.413 ca8 compacted to: files[ 0 0 6 0 0 0 0 ]
-2026/08/21-02:04:49.151 ca8 Level-0 table #629: started
-2026/08/21-02:04:49.179 ca8 Level-0 table #629: 1660925 bytes OK
-2026/08/21-02:04:49.180 ca8 Delete type=2 #611
-2026/08/21-02:04:49.180 ca8 Delete type=2 #614
-2026/08/21-02:04:49.180 ca8 Delete type=2 #615
-2026/08/21-02:04:49.180 ca8 Delete type=2 #616
-2026/08/21-02:04:49.180 ca8 Delete type=2 #617
-2026/08/21-02:04:49.180 ca8 Delete type=2 #618
-2026/08/21-02:04:49.180 ca8 Delete type=2 #619
-2026/08/21-02:04:49.180 ca8 Delete type=0 #621
-2026/08/21-02:04:49.180 ca8 Delete type=2 #622
-2026/08/21-02:04:49.190 ca8 Compacting 1@1 + 5@2 files
-2026/08/21-02:04:49.256 ca8 Generated table #630@1: 30623 keys, 2158346 bytes
-2026/08/21-02:04:49.347 ca8 Generated table #631@1: 100650 keys, 2253293 bytes
-2026/08/21-02:04:49.425 ca8 Generated table #632@1: 41282 keys, 2504901 bytes
-2026/08/21-02:04:49.456 ca8 Generated table #633@1: 3733 keys, 2130807 bytes
-2026/08/21-02:04:49.479 ca8 Generated table #634@1: 4761 keys, 2117140 bytes
-2026/08/21-02:04:49.492 ca8 Generated table #635@1: 3035 keys, 284471 bytes
-2026/08/21-02:04:49.492 ca8 Compacted 1@1 + 5@2 files => 11448958 bytes
-2026/08/21-02:04:49.493 ca8 compacted to: files[ 0 0 7 0 0 0 0 ]
-2026/08/21-02:04:49.494 ca8 Delete type=2 #623
-2026/08/21-02:04:49.495 ca8 Delete type=2 #624
-2026/08/21-02:04:49.495 ca8 Delete type=2 #625
-2026/08/21-02:04:49.495 ca8 Delete type=2 #626
-2026/08/21-02:04:49.495 ca8 Delete type=2 #627
-2026/08/21-02:04:49.495 ca8 Delete type=2 #629
-2026/08/21-02:05:30.600 ca8 Level-0 table #637: started
-2026/08/21-02:05:30.618 ca8 Level-0 table #637: 1187164 bytes OK
-2026/08/21-02:05:30.619 ca8 Delete type=0 #628
-2026/08/21-02:05:30.622 ca8 Compacting 1@1 + 6@2 files
-2026/08/21-02:05:30.670 ca8 Generated table #638@1: 24551 keys, 2151353 bytes
-2026/08/21-02:05:30.736 ca8 Generated table #639@1: 100524 keys, 2253266 bytes
-2026/08/21-02:05:30.818 ca8 Generated table #640@1: 50368 keys, 2514634 bytes
-2026/08/21-02:05:30.853 ca8 Generated table #641@1: 6384 keys, 2127296 bytes
-2026/08/21-02:05:30.874 ca8 Generated table #642@1: 4676 keys, 2111982 bytes
-2026/08/21-02:05:30.884 ca8 Generated table #643@1: 3181 keys, 563066 bytes
-2026/08/21-02:05:30.884 ca8 Compacted 1@1 + 6@2 files => 11721597 bytes
-2026/08/21-02:05:30.885 ca8 compacted to: files[ 0 0 7 0 0 0 0 ]
-2026/08/21-02:05:30.885 ca8 Delete type=2 #630
-2026/08/21-02:05:30.885 ca8 Delete type=2 #631
-2026/08/21-02:05:30.885 ca8 Delete type=2 #632
-2026/08/21-02:05:30.885 ca8 Delete type=2 #633
-2026/08/21-02:05:30.885 ca8 Delete type=2 #634
-2026/08/21-02:05:30.885 ca8 Delete type=2 #635
-2026/08/21-02:05:30.885 ca8 Delete type=2 #637
+2026/09/04-01:03:40.201 21c8 Reusing MANIFEST C:\Users\Ahmed Ansari\Desktop\whatsapp-ai-bot\whatsapp_sessions\account_1\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/04-01:03:40.202 21c8 Recovering log #909
+2026/09/04-01:03:40.237 21c8 Reusing old log C:\Users\Ahmed Ansari\Desktop\whatsapp-ai-bot\whatsapp_sessions\account_1\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000909.log 
+2026/09/04-01:03:44.479 434 Level-0 table #918: started
+2026/09/04-01:03:44.508 434 Level-0 table #918: 1414152 bytes OK
+2026/09/04-01:03:44.513 434 Delete type=0 #909
+2026/09/04-01:03:46.119 3eb0 Compacting 1@1 + 7@2 files
+2026/09/04-01:03:46.227 3eb0 Generated table #919@1: 59048 keys, 2199485 bytes
+2026/09/04-01:03:46.322 3eb0 Generated table #920@1: 101519 keys, 2254791 bytes
+2026/09/04-01:03:46.410 3eb0 Generated table #921@1: 64981 keys, 2565716 bytes
+2026/09/04-01:03:46.462 3eb0 Generated table #922@1: 14542 keys, 2176205 bytes
+2026/09/04-01:03:46.478 3eb0 Generated table #923@1: 219 keys, 2112158 bytes
+2026/09/04-01:03:46.499 3eb0 Generated table #924@1: 10819 keys, 1508306 bytes
+2026/09/04-01:03:46.499 3eb0 Compacted 1@1 + 7@2 files => 12816661 bytes
+2026/09/04-01:03:46.500 3eb0 compacted to: files[ 0 0 7 0 0 0 0 ]
+2026/09/04-01:03:46.501 3eb0 Delete type=2 #907
+2026/09/04-01:03:46.501 3eb0 Delete type=2 #908
+2026/09/04-01:03:46.501 3eb0 Delete type=2 #911
+2026/09/04-01:03:46.501 3eb0 Delete type=2 #912
+2026/09/04-01:03:46.501 3eb0 Delete type=2 #913
+2026/09/04-01:03:46.501 3eb0 Delete type=2 #914
+2026/09/04-01:03:46.501 3eb0 Delete type=2 #915
+2026/09/04-01:03:46.501 3eb0 Delete type=2 #918

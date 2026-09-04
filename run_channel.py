@@ -42,6 +42,7 @@ from channels import (  # noqa: E402
 )
 from account_lease import ChannelAccountLease  # noqa: E402
 from conversation import ConversationManager  # noqa: E402
+from control_plane_bridge import ControlPlaneBridge  # noqa: E402
 
 
 LEASE_BUSY_EXIT_CODE = 75
@@ -349,6 +350,16 @@ def deliver_outbound(
                     result.external_message_id
                 )
             )
+
+            bridge_out = getattr(manager, "cp_bridge", None)
+
+            if bridge_out is not None:
+                bridge_out.ingest_message(
+                    external_user_id=outbound.external_user_id,
+                    body=outbound.content,
+                    direction="out",
+                )
+
             return True
 
         manager.memory.mark_reply_delivery_failed(
@@ -476,6 +487,7 @@ def run_worker(
     )
     previous_signal_handlers = {}
     next_due_reply_scan_at = 0.0
+    next_command_poll_at = 0.0
 
     def request_stop(signum, frame):
         del frame
@@ -531,8 +543,21 @@ def run_worker(
     )
 
     try:
+        bridge = None
+
         adapter.start()
         adapter_started = True
+
+        try:
+            bridge = ControlPlaneBridge(
+                account_name=account.account_name,
+            )
+
+            manager.cp_bridge = bridge
+
+            bridge.report_status("connected")
+        except Exception as bridge_error:
+            print(f"CP bridge init warning: {bridge_error}")
 
         print("Channel worker running. Press Ctrl+C to stop.\n")
 
@@ -544,6 +569,23 @@ def run_worker(
             )
         ):
             now = time.monotonic()
+
+            if (
+                bridge is not None
+                and now >= next_command_poll_at
+            ):
+                try:
+                    bridge.run_due_commands(
+                        adapter,
+                        stop_requested,
+                    )
+                except Exception as bridge_error:
+                    print(f"CP bridge commands warning: {bridge_error}")
+
+                next_command_poll_at = (
+                    time.monotonic()
+                    + bridge.command_poll_seconds
+                )
 
             if now >= next_due_reply_scan_at:
                 try:
@@ -612,6 +654,14 @@ def run_worker(
                         f"message={event.external_message_id}"
                     )
 
+                    if bridge is not None:
+                        bridge.ingest_message(
+                            external_user_id=event.external_user_id,
+                            body=event.content,
+                            direction="in",
+                            display_name=event.display_name,
+                        )
+
                     outbound = manager.process_event(
                         event
                     )
@@ -666,6 +716,12 @@ def run_worker(
                 print(
                     f"Browser cleanup warning: {error}"
                 )
+
+        if bridge is not None:
+            try:
+                bridge.report_status("disconnected")
+            except Exception:
+                pass
 
         try:
             manager.close()

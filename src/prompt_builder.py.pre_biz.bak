@@ -1,0 +1,40 @@
+from system_prompt import SYSTEM_PROMPT
+from portal_agent_config import (
+    build_directives,
+    start_background_refresh,
+)
+
+
+class PromptBuilder:
+
+    def __init__(self):
+        start_background_refresh()
+
+    def build(self, history, user_message):
+
+        prompt = SYSTEM_PROMPT.strip()
+
+        prompt += "\n\n"
+        prompt += build_directives()
+
+        prompt += "\n\n"
+
+        if history:
+
+            prompt += "Conversation History:\n\n"
+
+            for item in history:
+
+                role = item["role"].capitalize()
+
+                content = item["message"]
+
+                prompt += f"{role}: {content}\n"
+
+            prompt += "\n"
+
+        prompt += f"User: {user_message}\n"
+
+        prompt += "Assistant:"
+
+        return prompt
