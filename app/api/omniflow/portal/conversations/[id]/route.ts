@@ -35,7 +35,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const result = await getConversation(accessToken, conversationId);
     if (result.kind === "not_found") {
       return safeJson(
-        { error: { code: "not_found", message: "Conversation nahi mili." } },
+        { error: { code: "not_found", message: "Conversation not found." } },
         404
       );
     }

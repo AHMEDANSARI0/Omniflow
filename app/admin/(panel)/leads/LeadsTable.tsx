@@ -162,8 +162,8 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
                     Password: {inviteResult.tempPassword}
                   </code>
                   <p className="text-[11px] text-slate-500">
-                    ⚠ Ye password dobara nahi dikhega — abhi copy kar ke client
-                    ko securely bhej dein.
+                    ⚠ This password will not be shown again — copy it now and
+                    share it securely with the client.
                   </p>
                 </div>
               )}
