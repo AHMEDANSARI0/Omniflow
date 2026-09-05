@@ -187,13 +187,13 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
             name="about"
             rows={2}
             defaultValue={profile.about ?? ""}
-            placeholder="Aik line me apna business batayein"
+            placeholder="Describe your business in one line"
             className={inputClass}
           />
         </div>
         <div>
           <label htmlFor="products" className={labelClass}>
-            Products &amp; prices (har line: item — price)
+            Products &amp; prices (one item per line: item — price)
           </label>
           <textarea
             id="products"
@@ -213,20 +213,20 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
             name="policies"
             rows={3}
             defaultValue={profile.policies ?? ""}
-            placeholder={"7 din return warranty\nLahore me free delivery"}
+            placeholder={"7-day return warranty\nFree delivery in Lahore"}
             className={inputClass}
           />
         </div>
         <div>
           <label htmlFor="faqs" className={labelClass}>
-            FAQs (har line: sawal? — jawab)
+            FAQs (one per line: question? — answer)
           </label>
           <textarea
             id="faqs"
             name="faqs"
             rows={4}
             defaultValue={profile.faqs ?? ""}
-            placeholder={"Delivery kitne din me hoti hai? — 2 se 3 din\nPayment method? — Cash on delivery ya bank transfer"}
+            placeholder={"How long does delivery take? — 2 to 3 days\nPayment methods? — Cash on delivery or bank transfer"}
             className={inputClass}
           />
         </div>
