@@ -1,12 +1,13 @@
-"""Portal "Business profile" ka live mirror — bot ke jawabat isi se.
+"""Live mirror of the portal "Business profile" page — the bot answers
+from this data.
 
-Background thread har 120s fetch karta hai:
+A background thread fetches the profile every 120 seconds:
   GET /api/v1/connector/profile?client_id=1   (X-Omniflow-Key)
   -> {profile: {...free-form JSON...}, updated_at}
 
-build_business_directives() system prompt me jaata hai — business name,
-products, prices, policies, FAQs. Profile khali ho to "" (kuch inject nahi).
-Network fail -> previous profile chalti rehti hai.
+build_business_directives() goes into the system prompt — business name,
+products, prices, policies, FAQs. When the profile is empty it returns ""
+(nothing is injected). On network failure the previous profile keeps running.
 
 Env: OMNIFLOW_SERVICE_KEY, OMNIFLOW_CP_BASE_URL, OMNIFLOW_CLIENT_ID,
 OMNIFLOW_PROFILE_SECONDS (refresh interval, default 120).
@@ -92,7 +93,7 @@ def _render_value(value):
 
 
 def build_business_directives():
-    """System prompt ke liye business-profile section (ya "")."""
+    """Builds the business-profile system-prompt section (or "")."""
     with _lock:
         profile = dict(_current)
 
@@ -118,8 +119,8 @@ def build_business_directives():
 
         if total > MAX_DIRECTIVE_CHARS:
             lines.append(
-                "- (aur bhi information maujood hai — zaroorat par "
-                "owner se poochna)"
+                "- (more information is available — check with the owner "
+                "when needed)"
             )
             break
 

@@ -1,12 +1,14 @@
-"""Portal "AI agents" page ka live mirror — laptop bot ke liye.
+"""Live mirror of the portal "Configure AI" page — drives the laptop bot.
 
-Background daemon thread har 60s Control Plane se agent config fetch karta hai:
+A background daemon thread fetches the agent config from the Control Plane
+every 60 seconds:
   GET /api/v1/connector/bot?client_id=1   (X-Omniflow-Key)
 Response (flat): {agent_name, tone, greeting, fallback, working_hours_*,
 human_handoff_enabled, updated_at}
 
-get_config() kabhi block nahi karta — hamesha aakhri known config (ya defaults).
-Network fail ho to chupchaap previous config chalti rehti hai (bot kabhi nahi rukta).
+get_config() never blocks — it always returns the last known config (or
+defaults). If the network fails, the previous config keeps running (the bot
+never stops).
 
 Env (same as bridge): OMNIFLOW_SERVICE_KEY, OMNIFLOW_CP_BASE_URL,
 OMNIFLOW_CLIENT_ID, OMNIFLOW_AGENT_CONFIG_SECONDS (refresh interval).
@@ -30,6 +32,7 @@ DEFAULTS = {
     "working_hours_start": "09:00",
     "working_hours_end": "18:00",
     "human_handoff_enabled": False,
+    "custom_instructions": "",
     "configured": False,
 }
 
@@ -70,7 +73,7 @@ def get_config():
 
 
 def build_directives():
-    """System prompt ke liye portal-driven instructions (string)."""
+    """Builds the portal-driven system-prompt instructions (string)."""
     config = get_config()
     lines = []
 
@@ -117,6 +120,14 @@ def build_directives():
             "do not argue."
         )
 
+    if config.get("custom_instructions"):
+        lines.append("")
+        lines.append(
+            "OWNER CUSTOM INSTRUCTIONS (highest priority after the rules "
+            "above — follow them exactly):"
+        )
+        lines.append(str(config["custom_instructions"]))
+
     return "\n".join(lines)
 
 
@@ -154,6 +165,9 @@ def _apply(data):
 
             if isinstance(value, str) and value.strip():
                 config[field] = value.strip()
+
+        if isinstance(data.get("custom_instructions"), str):
+            config["custom_instructions"] = data["custom_instructions"].strip()
 
         config["configured"] = data.get("updated_at") is not None
 
@@ -200,6 +214,7 @@ def _fetch_once():
         + (", fallback=on" if config["fallback"] else "")
         + (", hours=on" if config["working_hours_enabled"] else "")
         + (", handoff=on" if config["human_handoff_enabled"] else "")
+        + (", custom=on" if config["custom_instructions"] else "")
     )
 
     return True

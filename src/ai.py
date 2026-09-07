@@ -1,6 +1,47 @@
 import asyncio
 import os
 import re
+from portal_agent_config import (
+    build_directives,
+)
+from portal_business_profile import (
+    build_business_directives,
+)
+
+
+def PORTAL_SYSTEM_PROMPT():
+    """Portal-driven system prompt — OWNER INSTRUCTIONS top priority."""
+    sections = [
+        "You are a professional WhatsApp business assistant.",
+        "The OWNER INSTRUCTIONS below have top priority: follow them "
+        "strictly in every reply.",
+        "",
+        "OWNER INSTRUCTIONS:",
+        build_directives(),
+    ]
+
+    business = build_business_directives()
+
+    if business:
+        sections.append("")
+        sections.append(business)
+
+    sections.append("")
+    sections.append("RULES:")
+    sections.append(
+        "- Anything not covered above: say you will check with the team "
+        "instead of guessing."
+    )
+    sections.append(
+        "- Reply in the customer's language (English or Urdu/Roman Urdu)."
+    )
+    sections.append(
+        "- Keep replies short (1-4 lines), polite and helpful. No emojis "
+        "unless the customer uses them."
+    )
+
+    return "\n".join(sections)
+
 import time
 import uuid
 from pathlib import Path
@@ -19,7 +60,7 @@ from config import (
     GROQ_TTS_VOICE,
     OPENROUTER_MODEL,
 )
-from gemini_ai import GeminiAI, SYSTEM_INSTRUCTION
+from gemini_ai import GeminiAI
 
 try:
     from openai import OpenAI
@@ -189,7 +230,7 @@ class AI:
             messages=[
                 {
                     "role": "system",
-                    "content": SYSTEM_INSTRUCTION,
+                    "content": PORTAL_SYSTEM_PROMPT(),
                 },
                 {
                     "role": "user",

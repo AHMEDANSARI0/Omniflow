@@ -4,10 +4,10 @@ Reports session status, ingests inbound/outbound messages and polls
 portal commands from the OmniFlow Control Plane API (Vercel).
 
 Stdlib only (urllib) — no new dependencies. Every network call is
-failure-tolerant: bridge kabhi bot loop ko nahi girata.
+failure-tolerant: the bridge never crashes the bot loop.
 
 Env (from .env, loaded by run_channel.py):
-  OMNIFLOW_SERVICE_KEY          (zaroori — oflow_service_key.txt wali value)
+  OMNIFLOW_SERVICE_KEY          (required — the value stored in oflow_service_key.txt)
   OMNIFLOW_CP_BASE_URL          (optional, default: production Control Plane)
   OMNIFLOW_CLIENT_ID            (optional, default: 1)
   OMNIFLOW_COMMAND_POLL_SECONDS (optional, default: 15)
@@ -16,6 +16,7 @@ Env (from .env, loaded by run_channel.py):
 import json
 import os
 import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -37,8 +38,8 @@ class ControlPlaneBridge:
 
         if not self.service_key:
             raise RuntimeError(
-                "OMNIFLOW_SERVICE_KEY .env me nahi mila — "
-                "oflow_service_key.txt ki value .env me daalo"
+                "OMNIFLOW_SERVICE_KEY not found in .env — "
+                "put the value from oflow_service_key.txt into .env"
             )
 
         self.client_id = int(
@@ -75,6 +76,7 @@ class ControlPlaneBridge:
 
         self._pending = []
         self._lock = threading.Lock()
+        self._last_heartbeat = 0.0
 
         print(
             "CP bridge: "
@@ -267,6 +269,12 @@ class ControlPlaneBridge:
     # ---------- commands ----------
 
     def fetch_commands(self, limit=10):
+        now = time.monotonic()
+
+        if now - self._last_heartbeat >= 60.0:
+            self.report_status("connected")
+            self._last_heartbeat = now
+
         status, data = self._request(
             "GET",
             "/api/v1/connector/whatsapp/commands?client_id="
