@@ -656,6 +656,48 @@ export async function updateConversationStatus(
   return { kind: "ok", conversation };
 }
 
+export type ConversationSendResult =
+  | { kind: "ok"; queued: boolean; commandId: number | null }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function sendConversationMessage(
+  accessToken: string,
+  conversationId: number,
+  body: string
+): Promise<ConversationSendResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        encodeURIComponent(String(conversationId)) +
+        "/messages",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  return {
+    kind: "ok",
+    queued: p.queued === true,
+    commandId: typeof p.command_id === "number" ? p.command_id : null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Session helper for BFF routes
 // ---------------------------------------------------------------------------

@@ -87,8 +87,6 @@ export default function ConversationThreadPage() {
   }, [refresh]);
 
   const [statusBusy, setStatusBusy] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
 
   async function toggleStatus() {
     if (!conversation || statusBusy) return;
@@ -114,31 +112,6 @@ export default function ConversationThreadPage() {
       // Transient network issue — the badge updates on the next poll.
     } finally {
       if (mounted.current) setStatusBusy(false);
-    }
-  }
-
-  async function sendReply() {
-    const body = draft.trim();
-    if (!body || sending) return;
-    setSending(true);
-    try {
-      const response = await fetch(
-        `/api/omniflow/portal/conversations/${encodeURIComponent(id)}/messages`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "same-origin",
-          body: JSON.stringify({ body }),
-        }
-      );
-      if (response.ok) {
-        setDraft("");
-        void refresh();
-      }
-    } catch {
-      // Transient network issue — the reply can be retried.
-    } finally {
-      if (mounted.current) setSending(false);
     }
   }
 
@@ -250,38 +223,6 @@ export default function ConversationThreadPage() {
             </div>
           ))}
         </motion.div>
-      )}
-
-      {!expired && !notFound && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void sendReply();
-          }}
-          className="mt-6 flex items-end gap-3"
-        >
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void sendReply();
-              }
-            }}
-            rows={2}
-            maxLength={4096}
-            placeholder="Reply as a human agent — Enter to send, Shift+Enter for a new line"
-            className="flex-1 resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
-          />
-          <button
-            type="submit"
-            disabled={sending || !draft.trim()}
-            className="shrink-0 rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {sending ? "Sending…" : "Send"}
-          </button>
-        </form>
       )}
     </div>
   );
