@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -69,6 +69,47 @@ function NavLinks({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadUnread() {
+      try {
+        const response = await fetch("/api/omniflow/portal/conversations", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (response.status !== 200 || !alive) return;
+        const payload = (await response.json().catch(() => null)) as {
+          conversations?: { unread?: boolean }[];
+        } | null;
+        if (
+          alive &&
+          payload &&
+          Array.isArray(payload.conversations)
+        ) {
+          setUnreadCount(
+            payload.conversations.filter(
+              (conversation) => conversation.unread === true
+            ).length
+          );
+        }
+      } catch {
+        // Transient network issue — the next poll retries.
+      }
+    }
+
+    void loadUnread();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadUnread();
+    }, 10_000);
+
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   return (
     <nav className="space-y-1">
@@ -106,7 +147,7 @@ function NavLinks({
             href={item.href}
             onClick={onNavigate}
             title={item.label}
-            className={`flex items-center gap-3 rounded-xl border py-2.5 text-sm transition-colors duration-200 ${
+            className={`relative flex items-center gap-3 rounded-xl border py-2.5 text-sm transition-colors duration-200 ${
               collapsed ? "justify-center px-0" : "px-3"
             } ${
               isActive
@@ -118,6 +159,17 @@ function NavLinks({
               {item.icon}
             </span>
             {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+            {item.href === "/dashboard/conversations" &&
+              unreadCount > 0 &&
+              (collapsed ? (
+                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-400 px-1 text-[9px] font-bold text-[#07111f]">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-400 px-1.5 text-[10px] font-bold text-[#07111f]">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ))}
           </Link>
         );
       })}
