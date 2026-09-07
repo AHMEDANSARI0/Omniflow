@@ -19,7 +19,6 @@ interface ConversationMessage {
   direction: "in" | "out";
   body: string;
   status: string;
-  intent: string | null;
   createdAt: string | null;
 }
 
@@ -246,11 +245,6 @@ export default function ConversationThreadPage() {
                 <p className="mt-1 text-[10px] text-slate-500">
                   {message.direction === "out" ? "Bot / you" : "Customer"}
                   {formatTime(message.createdAt) ? ` · ${formatTime(message.createdAt)}` : ""}
-                  {message.direction === "in" &&
-                  message.intent &&
-                  message.intent !== "general"
-                    ? ` · ${message.intent.replace(/_/g, " ")}`
-                    : ""}
                 </p>
               </div>
             </div>

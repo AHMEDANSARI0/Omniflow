@@ -24,16 +24,10 @@ export async function GET(request: Request) {
     const statusParam = url.searchParams.get("status");
     const statusFilter =
       statusParam === "open" || statusParam === "closed" ? statusParam : undefined;
-    const intentParam = url.searchParams.get("intent");
-    const intentFilter =
-      intentParam && intentParam !== "all"
-        ? intentParam.toLowerCase().slice(0, 40)
-        : undefined;
     const conversations = await listConversations(
       accessToken,
       searchQuery,
-      statusFilter,
-      intentFilter
+      statusFilter
     );
     if (conversations === null) {
       return safeJson(

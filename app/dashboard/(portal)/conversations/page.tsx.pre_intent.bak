@@ -14,7 +14,6 @@ interface ConversationSummary {
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   unread: boolean;
-  lastIntent: string | null;
 }
 
 const POLL_MS = 10_000;
@@ -42,11 +41,6 @@ export default function ConversationsPage() {
   const debounceRef = useRef<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
   const statusRef = useRef<"all" | "open" | "closed">("all");
-  const [intentFilter, setIntentFilter] = useState("all");
-  const intentRef = useRef("all");
-  const [intentCounts, setIntentCounts] = useState<
-    { intent: string; conversations: number }[]
-  >([]);
   const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
@@ -54,7 +48,6 @@ export default function ConversationsPage() {
       const listParams = new URLSearchParams();
       if (searchRef.current) listParams.set("q", searchRef.current);
       if (statusRef.current !== "all") listParams.set("status", statusRef.current);
-      if (intentRef.current !== "all") listParams.set("intent", intentRef.current);
       const listQs = listParams.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
@@ -96,35 +89,6 @@ export default function ConversationsPage() {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
   }, [refresh]);
-
-  const loadIntentSummary = useCallback(async () => {
-    try {
-      const response = await fetch(
-        "/api/omniflow/portal/conversations/intents",
-        {
-          credentials: "same-origin",
-          cache: "no-store",
-        }
-      );
-      if (response.status !== 200) return;
-      const payload = (await response.json().catch(() => null)) as {
-        intents?: { intent: string; conversations: number }[];
-      } | null;
-      if (mounted.current && payload && Array.isArray(payload.intents)) {
-        setIntentCounts(payload.intents.slice(0, 6));
-      }
-    } catch {
-      // Transient network issue — the next poll retries.
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadIntentSummary();
-    const summaryTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void loadIntentSummary();
-    }, 30_000);
-    return () => window.clearInterval(summaryTimer);
-  }, [loadIntentSummary]);
 
   function onSearchChange(value: string) {
     setSearch(value);
@@ -169,41 +133,6 @@ export default function ConversationsPage() {
           Refresh
         </button>
       </div>
-
-      {(intentCounts.length > 0 || intentFilter !== "all") && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {intentCounts.map((entry) => (
-            <button
-              key={entry.intent}
-              onClick={() => {
-                const next = intentFilter === entry.intent ? "all" : entry.intent;
-                intentRef.current = next;
-                setIntentFilter(next);
-                void refresh();
-              }}
-              className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                intentFilter === entry.intent
-                  ? "border-cyan-400/40 bg-cyan-400/[0.12] text-cyan-200"
-                  : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-300/70 hover:bg-cyan-400/[0.09]"
-              }`}
-            >
-              {entry.intent.replace(/_/g, " ")} · {entry.conversations}
-            </button>
-          ))}
-          {intentFilter !== "all" && (
-            <button
-              onClick={() => {
-                intentRef.current = "all";
-                setIntentFilter("all");
-                void refresh();
-              }}
-              className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:text-white"
-            >
-              Clear ✕
-            </button>
-          )}
-        </div>
-      )}
 
       <div className="mb-5">
         <input
@@ -318,11 +247,6 @@ export default function ConversationsPage() {
                   <p className="mt-3 truncate text-xs text-slate-400">
                     {item.lastMessagePreview}
                   </p>
-                )}
-                {item.lastIntent && item.lastIntent !== "general" && (
-                  <span className="mt-2 inline-block rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-cyan-300/70">
-                    {item.lastIntent.replace(/_/g, " ")}
-                  </span>
                 )}
               </Link>
             </li>

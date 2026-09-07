@@ -501,6 +501,7 @@ export interface ConversationSummary {
   lastMessagePreview: string | null;
   createdAt: string | null;
   unread: boolean;
+  lastIntent: string | null;
 }
 
 export interface ConversationMessage {
@@ -508,6 +509,7 @@ export interface ConversationMessage {
   direction: "in" | "out";
   body: string;
   status: string;
+  intent: string | null;
   createdAt: string | null;
 }
 
@@ -527,13 +529,15 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
       typeof p.last_message_preview === "string" ? p.last_message_preview : null,
     createdAt: typeof p.created_at === "string" ? p.created_at : null,
     unread: p.unread === true,
+    lastIntent: typeof p.last_intent === "string" ? p.last_intent : null,
   };
 }
 
 export async function listConversations(
   accessToken: string,
   searchQuery?: string,
-  statusFilter?: string
+  statusFilter?: string,
+  intentFilter?: string
 ): Promise<ConversationSummary[] | null> {
   const searchPart =
     searchQuery && searchQuery.trim()
@@ -543,7 +547,11 @@ export async function listConversations(
     statusFilter && statusFilter !== "all"
       ? "status=" + encodeURIComponent(statusFilter)
       : "";
-  const parts = [searchPart, statusPart].filter(Boolean);
+  const intentPart =
+    intentFilter && intentFilter !== "all"
+      ? "intent=" + encodeURIComponent(intentFilter)
+      : "";
+  const parts = [searchPart, statusPart, intentPart].filter(Boolean);
   const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;
   try {
@@ -611,10 +619,51 @@ export async function getConversation(
       direction: m.direction === "out" ? "out" : "in",
       body: typeof m.body === "string" ? m.body : "",
       status: typeof m.status === "string" ? m.status : "delivered",
+      intent: typeof m.intent === "string" ? m.intent : null,
       createdAt: typeof m.created_at === "string" ? m.created_at : null,
     });
   }
   return { kind: "ok", conversation, messages };
+}
+
+export interface IntentSummaryEntry {
+  intent: string;
+  conversations: number;
+}
+
+export async function fetchIntentSummary(
+  accessToken: string
+): Promise<IntentSummaryEntry[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/intents/summary"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawList = (payload as Record<string, unknown>).intents;
+  if (!Array.isArray(rawList)) return null;
+  const entries: IntentSummaryEntry[] = [];
+  for (const item of rawList) {
+    if (item === null || typeof item !== "object") continue;
+    const entry = item as Record<string, unknown>;
+    if (typeof entry.intent !== "string") continue;
+    entries.push({
+      intent: entry.intent,
+      conversations:
+        typeof entry.conversations === "number" ? entry.conversations : 0,
+    });
+  }
+  return entries;
 }
 
 export type ConversationStatusResult =
