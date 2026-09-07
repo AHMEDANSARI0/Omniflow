@@ -19,16 +19,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const url = new URL(request.url);
-    const searchQuery = url.searchParams.get("q")?.slice(0, 100) || undefined;
-    const statusParam = url.searchParams.get("status");
-    const statusFilter =
-      statusParam === "open" || statusParam === "closed" ? statusParam : undefined;
-    const conversations = await listConversations(
-      accessToken,
-      searchQuery,
-      statusFilter
-    );
+    const searchQuery =
+      new URL(request.url).searchParams.get("q")?.slice(0, 100) || undefined;
+    const conversations = await listConversations(accessToken, searchQuery);
     if (conversations === null) {
       return safeJson(
         {

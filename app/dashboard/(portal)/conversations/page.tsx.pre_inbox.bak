@@ -39,18 +39,14 @@ export default function ConversationsPage() {
   const [search, setSearch] = useState("");
   const searchRef = useRef("");
   const debounceRef = useRef<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
-  const statusRef = useRef<"all" | "open" | "closed">("all");
   const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
     try {
-      const listParams = new URLSearchParams();
-      if (searchRef.current) listParams.set("q", searchRef.current);
-      if (statusRef.current !== "all") listParams.set("status", statusRef.current);
-      const listQs = listParams.toString();
+      const query = searchRef.current;
       const response = await fetch(
-        "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
+        "/api/omniflow/portal/conversations" +
+          (query ? "?q=" + encodeURIComponent(query) : ""),
         {
           credentials: "same-origin",
           cache: "no-store",
@@ -142,26 +138,6 @@ export default function ConversationsPage() {
           placeholder="Search by contact name, number, or message text"
           className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
         />
-      </div>
-
-      <div className="mb-4 flex items-center gap-2">
-        {(["all", "open", "closed"] as const).map((value) => (
-          <button
-            key={value}
-            onClick={() => {
-              statusRef.current = value;
-              setStatusFilter(value);
-              void refresh();
-            }}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-              statusFilter === value
-                ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-                : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
-            }`}
-          >
-            {value}
-          </button>
-        ))}
       </div>
 
       {!items ? (

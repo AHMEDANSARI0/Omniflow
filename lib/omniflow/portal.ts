@@ -532,12 +532,19 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
 
 export async function listConversations(
   accessToken: string,
-  searchQuery?: string
+  searchQuery?: string,
+  statusFilter?: string
 ): Promise<ConversationSummary[] | null> {
-  const query =
+  const searchPart =
     searchQuery && searchQuery.trim()
-      ? "?q=" + encodeURIComponent(searchQuery.trim().slice(0, 100))
+      ? "q=" + encodeURIComponent(searchQuery.trim().slice(0, 100))
       : "";
+  const statusPart =
+    statusFilter && statusFilter !== "all"
+      ? "status=" + encodeURIComponent(statusFilter)
+      : "";
+  const parts = [searchPart, statusPart].filter(Boolean);
+  const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;
   try {
     response = await portalRequest(
@@ -608,6 +615,45 @@ export async function getConversation(
     });
   }
   return { kind: "ok", conversation, messages };
+}
+
+export type ConversationStatusResult =
+  | { kind: "ok"; conversation: ConversationSummary }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function updateConversationStatus(
+  accessToken: string,
+  conversationId: number,
+  status: "open" | "closed"
+): Promise<ConversationStatusResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" + encodeURIComponent(String(conversationId)),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const conversation = normalizeConversation(
+    (payload as Record<string, unknown>).conversation
+  );
+  if (!conversation) return { kind: "unavailable" };
+  return { kind: "ok", conversation };
 }
 
 // ---------------------------------------------------------------------------
