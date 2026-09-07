@@ -369,6 +369,60 @@ class ControlPlaneBridge:
 
                     note = "Session restarted."
 
+                elif action == "send_message":
+                    try:
+                        from channels.contracts import OutboundMessage
+                    except ImportError:
+                        from src.channels.contracts import OutboundMessage
+
+                    command_payload = command.get("payload") or {}
+                    if isinstance(command_payload, str):
+                        try:
+                            command_payload = json.loads(command_payload)
+                        except Exception:
+                            command_payload = {}
+                    target_user = str(
+                        command_payload.get("external_user_id") or ""
+                    ).strip()
+                    body_text = str(command_payload.get("body") or "").strip()
+                    display_name = command_payload.get("target_display_name")
+
+                    if not target_user or not body_text:
+                        ok = False
+                        note = (
+                            "send_message payload requires external_user_id "
+                            "and body."
+                        )
+                    else:
+                        account_id = getattr(
+                            getattr(adapter, "account", None), "id", 0
+                        )
+                        send_result = adapter.send(
+                            OutboundMessage(
+                                channel_account_id=int(account_id or 0),
+                                external_user_id=target_user,
+                                content=body_text,
+                                message_type="text",
+                                metadata=(
+                                    {"target_display_name": display_name}
+                                    if display_name
+                                    else {}
+                                ),
+                            )
+                        )
+                        if send_result.success:
+                            self.ingest_message(
+                                external_user_id=target_user,
+                                body=body_text,
+                                direction="out",
+                            )
+                            note = "Message sent."
+                        else:
+                            ok = False
+                            note = "Send failed: " + str(
+                                send_result.error or "unknown error"
+                            )
+
                 else:
                     ok = False
                     note = (
