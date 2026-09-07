@@ -207,6 +207,7 @@ export default function WhatsAppChannelPage() {
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {state === "connected" ? (
+              <>
               <button
                 onClick={() => void runAction("disconnect")}
                 disabled={busy}
@@ -221,6 +222,7 @@ export default function WhatsAppChannelPage() {
               >
                 {busy ? "Working…" : "Restart session"}
               </button>
+              </>
             ) : (
               <button
                 onClick={() => void runAction("connect")}
