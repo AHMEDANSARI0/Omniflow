@@ -9,7 +9,7 @@ import {
 } from "../../../../../lib/omniflow/request-security";
 
 
-export async function GET() {
+export async function GET(request: Request) {
   const accessToken = await requirePortalAccessToken();
   if (!accessToken) {
     return safeJson(
@@ -19,7 +19,9 @@ export async function GET() {
   }
 
   try {
-    const conversations = await listConversations(accessToken);
+    const searchQuery =
+      new URL(request.url).searchParams.get("q")?.slice(0, 100) || undefined;
+    const conversations = await listConversations(accessToken, searchQuery);
     if (conversations === null) {
       return safeJson(
         {

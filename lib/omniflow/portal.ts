@@ -500,6 +500,7 @@ export interface ConversationSummary {
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   createdAt: string | null;
+  unread: boolean;
 }
 
 export interface ConversationMessage {
@@ -525,15 +526,24 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
     lastMessagePreview:
       typeof p.last_message_preview === "string" ? p.last_message_preview : null,
     createdAt: typeof p.created_at === "string" ? p.created_at : null,
+    unread: p.unread === true,
   };
 }
 
 export async function listConversations(
-  accessToken: string
+  accessToken: string,
+  searchQuery?: string
 ): Promise<ConversationSummary[] | null> {
+  const query =
+    searchQuery && searchQuery.trim()
+      ? "?q=" + encodeURIComponent(searchQuery.trim().slice(0, 100))
+      : "";
   let response: Response;
   try {
-    response = await portalRequest(accessToken, "api/v1/portal/conversations");
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations" + query
+    );
   } catch (error) {
     assertNotAuthError(error);
     return null;

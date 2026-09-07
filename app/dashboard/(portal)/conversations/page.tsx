@@ -13,6 +13,7 @@ interface ConversationSummary {
   status: string;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
+  unread: boolean;
 }
 
 const POLL_MS = 10_000;
@@ -35,14 +36,22 @@ export default function ConversationsPage() {
   const [items, setItems] = useState<ConversationSummary[] | null>(null);
   const [pending, setPending] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [search, setSearch] = useState("");
+  const searchRef = useRef("");
+  const debounceRef = useRef<number | null>(null);
   const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/omniflow/portal/conversations", {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
+      const query = searchRef.current;
+      const response = await fetch(
+        "/api/omniflow/portal/conversations" +
+          (query ? "?q=" + encodeURIComponent(query) : ""),
+        {
+          credentials: "same-origin",
+          cache: "no-store",
+        }
+      );
       if (response.status === 401) {
         if (mounted.current) setExpired(true);
         return;
@@ -73,8 +82,18 @@ export default function ConversationsPage() {
     return () => {
       mounted.current = false;
       window.clearInterval(timer);
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
   }, [refresh]);
+
+  function onSearchChange(value: string) {
+    setSearch(value);
+    searchRef.current = value;
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      void refresh();
+    }, 350);
+  }
 
   if (expired) {
     return (
@@ -111,6 +130,16 @@ export default function ConversationsPage() {
         </button>
       </div>
 
+      <div className="mb-5">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search by contact name, number, or message text"
+          className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+        />
+      </div>
+
       {!items ? (
         <div className="animate-pulse space-y-3">
           {[0, 1, 2].map((index) => (
@@ -130,7 +159,9 @@ export default function ConversationsPage() {
           <p className="text-sm font-medium text-slate-200">
             {pending
               ? "The conversations module is rolling out on the server."
-              : "No conversations yet."}
+              : search
+                ? "No conversations match your search."
+                : "No conversations yet."}
           </p>
           <p className="mt-2 text-xs leading-relaxed text-slate-500">
             {pending
@@ -157,8 +188,16 @@ export default function ConversationsPage() {
                       {(item.contactName || item.contactId || "?").slice(0, 2).toUpperCase()}
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-white">
-                        {item.contactName || item.contactId || "Unknown contact"}
+                      <p className="flex items-center gap-2 truncate text-sm font-medium text-white">
+                        <span className="truncate">
+                          {item.contactName || item.contactId || "Unknown contact"}
+                        </span>
+                        {item.unread && (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"
+                            title="Unread messages"
+                          />
+                        )}
                       </p>
                       <p className="truncate text-xs text-slate-500">
                         {item.contactId ?? "—"}
