@@ -11,6 +11,7 @@ Env (from .env, loaded by run_channel.py):
   OMNIFLOW_CP_BASE_URL          (optional, default: production Control Plane)
   OMNIFLOW_CLIENT_ID            (optional, default: 1)
   OMNIFLOW_COMMAND_POLL_SECONDS (optional, default: 15)
+  OMNIFLOW_PHONE                (optional — shown as the connected WhatsApp number in the portal)
 """
 
 import json
@@ -44,6 +45,10 @@ class ControlPlaneBridge:
 
         self.client_id = int(
             os.getenv("OMNIFLOW_CLIENT_ID", "1")
+        )
+
+        self.phone = (
+            str(os.getenv("OMNIFLOW_PHONE", "")).strip() or None
         )
 
         self.command_poll_seconds = max(
@@ -157,6 +162,8 @@ class ControlPlaneBridge:
     # ---------- status ----------
 
     def report_status(self, state, phone=None):
+        if phone is None and getattr(self, "phone", None):
+            phone = self.phone
         payload = {
             "client_id": self.client_id,
             "state": state,
