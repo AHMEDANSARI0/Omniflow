@@ -1,6 +1,0 @@
-2026/09/05-00:29:34.552 e18 Reusing MANIFEST C:\Users\Ahmed Ansari\Desktop\whatsapp-ai-bot\whatsapp_sessions\account_1\Default\Local Storage\leveldb/MANIFEST-000001
-2026/09/05-00:29:34.642 e18 Recovering log #85
-2026/09/05-00:29:34.648 e18 Reusing old log C:\Users\Ahmed Ansari\Desktop\whatsapp-ai-bot\whatsapp_sessions\account_1\Default\Local Storage\leveldb/000085.log 
-2026/09/05-00:30:34.677 2988 Level-0 table #89: started
-2026/09/05-00:30:34.684 2988 Level-0 table #89: 17274 bytes OK
-2026/09/05-00:30:34.687 2988 Delete type=0 #85
