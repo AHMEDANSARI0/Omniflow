@@ -35,12 +35,6 @@ const navItems: NavItem[] = [
     enabled: true,
   },
   {
-    label: "Analytics",
-    href: "/dashboard/analytics",
-    icon: "◢",
-    enabled: true,
-  },
-  {
     label: "Business profile",
     href: "/dashboard/profile",
     icon: "◇",
