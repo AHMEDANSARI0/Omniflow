@@ -905,6 +905,286 @@ export async function saveKbSettings(
   return response.ok;
 }
 
+export interface CatalogItem {
+  id: number;
+  kind: "product" | "service";
+  name: string;
+  priceText: string;
+  notes: string;
+  isActive: boolean;
+}
+
+export interface CatalogItemInput {
+  kind: "product" | "service";
+  name: string;
+  priceText: string;
+  notes: string;
+  isActive: boolean;
+}
+
+export interface IndustryPreset {
+  id: string;
+  label: string;
+  description: string;
+  entryCount: number;
+}
+
+export interface ActivityItem {
+  id: number;
+  action: string;
+  label: string;
+  note: string;
+  createdAt: string;
+  timeAgo: string;
+}
+
+function mapCatalogItem(raw: Record<string, unknown>): CatalogItem {
+  return {
+    id: typeof raw.id === "number" ? raw.id : 0,
+    kind: raw.kind === "service" ? "service" : "product",
+    name: typeof raw.name === "string" ? raw.name : "",
+    priceText: typeof raw.price_text === "string" ? raw.price_text : "",
+    notes: typeof raw.notes === "string" ? raw.notes : "",
+    isActive: raw.is_active === true,
+  };
+}
+
+export async function getCatalog(
+  accessToken: string
+): Promise<{ items: CatalogItem[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/catalog");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawItems = (payload as Record<string, unknown>).items;
+  if (!Array.isArray(rawItems)) return { items: [] };
+  return {
+    items: rawItems
+      .filter(
+        (item): item is Record<string, unknown> =>
+          item !== null && typeof item === "object"
+      )
+      .map(mapCatalogItem),
+  };
+}
+
+export async function createCatalogItem(
+  accessToken: string,
+  item: CatalogItemInput
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/catalog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        item: {
+          kind: item.kind,
+          name: item.name,
+          price_text: item.priceText,
+          notes: item.notes,
+          is_active: item.isActive,
+        },
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function updateCatalogItem(
+  accessToken: string,
+  itemId: number,
+  item: CatalogItemInput
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/catalog/" + itemId,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item: {
+            kind: item.kind,
+            name: item.name,
+            price_text: item.priceText,
+            notes: item.notes,
+            is_active: item.isActive,
+          },
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function deleteCatalogItem(
+  accessToken: string,
+  itemId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/catalog/" + itemId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function getIndustryPresets(
+  accessToken: string
+): Promise<{ presets: IndustryPreset[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/presets");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawPresets = (payload as Record<string, unknown>).presets;
+  if (!Array.isArray(rawPresets)) return { presets: [] };
+  return {
+    presets: rawPresets
+      .filter(
+        (item): item is Record<string, unknown> =>
+          item !== null && typeof item === "object"
+      )
+      .map((raw) => ({
+        id: typeof raw.id === "string" ? raw.id : "",
+        label: typeof raw.label === "string" ? raw.label : "",
+        description: typeof raw.description === "string" ? raw.description : "",
+        entryCount: typeof raw.entryCount === "number" ? raw.entryCount : 0,
+      })),
+  };
+}
+
+export async function applyIndustryPreset(
+  accessToken: string,
+  industry: string
+): Promise<
+  | { kind: "ok"; applied: number; skipped: number }
+  | { kind: "bad_request" }
+  | null
+> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/presets/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ industry }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "bad_request" };
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  return {
+    kind: "ok",
+    applied: typeof p.applied === "number" ? p.applied : 0,
+    skipped: typeof p.skipped === "number" ? p.skipped : 0,
+  };
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  "kb.auto_reply": "Instant answer sent",
+  "message.enqueued": "Reply queued",
+  "conversation.status_changed": "Conversation status changed",
+  "followup.ack": "Follow-up delivered",
+  "preset.applied": "Starter pack loaded",
+  "catalog.changed": "Catalog updated",
+};
+
+function timeAgoLabel(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  const days = Math.floor(hours / 24);
+  return days + "d ago";
+}
+
+export async function getRecentActivity(
+  accessToken: string
+): Promise<ActivityItem[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/activity");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawItems = (payload as Record<string, unknown>).items;
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems
+    .filter(
+      (item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object"
+    )
+    .map((raw) => {
+      const action = typeof raw.action === "string" ? raw.action : "";
+      const createdAt =
+        typeof raw.created_at === "string" ? raw.created_at : "";
+      return {
+        id: typeof raw.id === "number" ? raw.id : 0,
+        action,
+        label: ACTION_LABELS[action] || action,
+        note: typeof raw.note === "string" ? raw.note : "",
+        createdAt,
+        timeAgo: timeAgoLabel(createdAt),
+      };
+    });
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

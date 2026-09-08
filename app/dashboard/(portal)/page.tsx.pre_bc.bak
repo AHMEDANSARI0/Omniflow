@@ -1,6 +1,4 @@
 import { requireOmniFlowPrincipal } from "../../../lib/omniflow/auth-dal";
-import { getRecentActivity } from "../../../lib/omniflow/portal";
-import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
 
 
 interface ModuleCard {
@@ -49,8 +47,6 @@ const statusStyle = {
 
 export default async function ClientDashboardPage() {
   const principal = await requireOmniFlowPrincipal();
-  const { accessToken } = await readSessionCookies();
-  const activity = accessToken ? await getRecentActivity(accessToken) : null;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -95,32 +91,6 @@ export default async function ClientDashboardPage() {
           </p>
         </div>
       </div>
-
-      {activity && activity.length > 0 && (
-        <div className="mb-8 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-          <h2 className="text-sm font-semibold text-white">Recent activity</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Live audit trail of what your assistant and team did across
-            conversations.
-          </p>
-          <ul className="mt-4 space-y-2.5">
-            {activity.slice(0, 6).map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-4 text-xs"
-              >
-                <span className="min-w-0 truncate text-slate-300">
-                  {item.label}
-                  {item.note ? (
-                    <span className="text-slate-600"> — {item.note}</span>
-                  ) : null}
-                </span>
-                <span className="shrink-0 text-slate-600">{item.timeAgo}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {modules.map((module) => (
