@@ -334,6 +334,11 @@ class ControlPlaneBridge:
         adapter,
         stop_requested=None,
     ):
+        try:
+            self.process_due_followups(adapter)
+        except Exception as followup_error:
+            print(f"CP bridge followups warning: {followup_error}")
+
         commands = self.fetch_commands()
 
         for command in commands:
@@ -451,6 +456,121 @@ class ControlPlaneBridge:
                 "CP bridge command "
                 f"{command_id} ({action}): "
                 + ("done" if ok else "failed")
+                + (
+                    " — " + note
+                    if note
+                    else ""
+                )
+            )
+
+    # ---------- follow-ups ----------
+
+    def fetch_due_followups(self, limit=5):
+        status, data = self._request(
+            "GET",
+            "/api/v1/connector/followups?client_id="
+            + str(self.client_id)
+            + "&limit="
+            + str(int(limit)),
+        )
+        if status != 200:
+            return []
+        followups = data.get("followups") if isinstance(data, dict) else None
+        if not isinstance(followups, list):
+            return []
+        return followups
+
+    def acknowledge_followup(self, followup_id, ok, note=None):
+        self._request(
+            "POST",
+            "/api/v1/connector/followups/ack",
+            {
+                "followup_id": followup_id,
+                "ok": bool(ok),
+                "note": note,
+            },
+        )
+
+    def process_due_followups(self, adapter):
+        try:
+            followups = self.fetch_due_followups()
+        except Exception as error:
+            print(f"CP bridge followups warning: {error}")
+            return
+        if not followups:
+            return
+
+        try:
+            from channels.contracts import OutboundMessage
+        except ImportError:
+            from src.channels.contracts import OutboundMessage
+
+        account_id = getattr(
+            getattr(adapter, "account", None), "id", 0
+        )
+
+        for followup in followups:
+            followup_id = followup.get("id")
+            if not isinstance(followup_id, int):
+                continue
+
+            target_user = str(
+                followup.get("external_user_id") or ""
+            ).strip()
+            body_text = str(followup.get("body") or "").strip()
+            display_name = followup.get("contact_name")
+
+            if not target_user or not body_text:
+                self.acknowledge_followup(
+                    followup_id, False, "Invalid follow-up payload."
+                )
+                continue
+
+            send_result = None
+            note = None
+            try:
+                send_result = adapter.send(
+                    OutboundMessage(
+                        channel_account_id=int(account_id or 0),
+                        external_user_id=target_user,
+                        content=body_text,
+                        message_type="text",
+                        metadata=(
+                            {"target_display_name": display_name}
+                            if display_name
+                            else {}
+                        ),
+                    )
+                )
+            except Exception as error:
+                note = f"Follow-up send error: {error}"
+
+            success = (
+                send_result is not None
+                and send_result.success
+            )
+
+            if success:
+                try:
+                    self.ingest_message(
+                        external_user_id=target_user,
+                        body=body_text,
+                        direction="out",
+                    )
+                except Exception:
+                    pass
+                note = "Follow-up sent."
+            elif send_result is not None:
+                note = "Follow-up send failed: " + str(
+                    send_result.error or "unknown error"
+                )
+
+            self.acknowledge_followup(followup_id, success, note)
+
+            print(
+                "CP bridge follow-up "
+                f"{followup_id}: "
+                + ("sent" if success else "failed/deferred")
                 + (
                     " — " + note
                     if note
