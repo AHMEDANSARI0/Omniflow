@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import { getSiteSettings } from "../lib/settings";
+import WebsiteChatWidget from "./components/WebsiteChatWidget";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -64,6 +65,7 @@ export default function RootLayout({
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${inter.variable} ${sora.variable}`}>
         {children}
+        <WebsiteChatWidget />
       </body>
     </html>
   );
