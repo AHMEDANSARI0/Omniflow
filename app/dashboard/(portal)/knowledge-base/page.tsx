@@ -1,6 +1,7 @@
 import { getKnowledgeBase } from "../../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../../lib/omniflow/session-cookies";
 import KnowledgeBaseClient from "./KnowledgeBaseClient";
+import KbGapsCard from "./KbGapsCard";
 
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,10 @@ export default async function KnowledgeBasePage() {
           </p>
         </div>
       ) : (
-        <KnowledgeBaseClient initial={data} />
+        <>
+          <KbGapsCard />
+          <KnowledgeBaseClient initial={data} />
+        </>
       )}
     </div>
   );

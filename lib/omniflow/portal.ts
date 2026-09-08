@@ -1772,6 +1772,343 @@ export async function addConversationNote(
   return { kind: "ok", note };
 }
 
+// ---------------------------------------------------------------------------
+// Growth: broadcasts, KB gap report, CSAT ratings
+// ---------------------------------------------------------------------------
+
+export type BroadcastAudience = "all" | "open" | "hot";
+
+export interface BroadcastPreview {
+  audience: BroadcastAudience;
+  count: number;
+  sample: string[];
+}
+
+export interface BroadcastRow {
+  id: number;
+  audience: BroadcastAudience;
+  body: string;
+  recipientCount: number;
+  createdAt: string | null;
+  queued: number | null;
+  done: number | null;
+  failed: number | null;
+}
+
+export interface CsatRequest {
+  id: number;
+  score: number | null;
+  requestedAt: string | null;
+  answeredAt: string | null;
+}
+
+export interface CsatSummary {
+  average: number | null;
+  total: number;
+  pending: number;
+  dist: number[];
+}
+
+export interface KbGap {
+  id: number;
+  conversationId: number;
+  question: string;
+  intent: string;
+  resolved: boolean;
+  createdAt: string | null;
+}
+
+function normalizeBroadcast(value: unknown): BroadcastRow | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  if (id === null) return null;
+  const audience: BroadcastAudience =
+    p.audience === "open" || p.audience === "hot" ? p.audience : "all";
+  return {
+    id,
+    audience,
+    body: typeof p.body === "string" ? p.body : "",
+    recipientCount: typeof p.recipient_count === "number" ? p.recipient_count : 0,
+    createdAt: typeof p.created_at === "string" ? p.created_at : null,
+    queued: typeof p.queued === "number" ? p.queued : null,
+    done: typeof p.done === "number" ? p.done : null,
+    failed: typeof p.failed === "number" ? p.failed : null,
+  };
+}
+
+export async function listBroadcasts(
+  accessToken: string
+): Promise<{ broadcasts: BroadcastRow[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/broadcasts");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawItems = (payload as Record<string, unknown>).broadcasts;
+  if (!Array.isArray(rawItems)) return { broadcasts: [] };
+  const broadcasts: BroadcastRow[] = [];
+  for (const raw of rawItems) {
+    const row = normalizeBroadcast(raw);
+    if (row) broadcasts.push(row);
+  }
+  return { broadcasts };
+}
+
+export async function previewBroadcast(
+  accessToken: string,
+  audience: BroadcastAudience
+): Promise<BroadcastPreview | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/broadcasts/preview?audience=" + encodeURIComponent(audience)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  return {
+    audience:
+      p.audience === "open" || p.audience === "hot"
+        ? p.audience
+        : "all",
+    count: typeof p.count === "number" ? p.count : 0,
+    sample: Array.isArray(p.sample)
+      ? p.sample.filter((item): item is string => typeof item === "string")
+      : [],
+  };
+}
+
+export type BroadcastSendResult =
+  | { kind: "ok"; broadcast: BroadcastRow; recipients: number }
+  | { kind: "no_recipients" }
+  | { kind: "too_many" }
+  | { kind: "unavailable" };
+
+export async function sendBroadcast(
+  accessToken: string,
+  audience: BroadcastAudience,
+  body: string
+): Promise<BroadcastSendResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/broadcasts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audience, body }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) {
+    const payload: unknown = await response.json().catch(() => null);
+    const code =
+      payload !== null && typeof payload === "object"
+        ? ((payload as Record<string, unknown>).error as Record<string, unknown> | undefined)
+            ?.code
+        : null;
+    if (code === "no_recipients") return { kind: "no_recipients" };
+    if (code === "too_many_recipients") return { kind: "too_many" };
+    return { kind: "unavailable" };
+  }
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  const broadcast = normalizeBroadcast(p.broadcast);
+  if (!broadcast) return { kind: "unavailable" };
+  return {
+    kind: "ok",
+    broadcast,
+    recipients: typeof p.recipients === "number" ? p.recipients : broadcast.recipientCount,
+  };
+}
+
+export type CsatRequestResult =
+  | { kind: "ok"; csat: CsatRequest }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+function normalizeCsat(value: unknown): CsatRequest | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  if (id === null) return null;
+  return {
+    id,
+    score: typeof p.score === "number" ? p.score : null,
+    requestedAt: typeof p.requested_at === "string" ? p.requested_at : null,
+    answeredAt: typeof p.answered_at === "string" ? p.answered_at : null,
+  };
+}
+
+export async function requestCsat(
+  accessToken: string,
+  conversationId: number
+): Promise<CsatRequestResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        encodeURIComponent(String(conversationId)) +
+        "/csat",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const csat = normalizeCsat((payload as Record<string, unknown>).csat);
+  if (!csat) return { kind: "unavailable" };
+  return { kind: "ok", csat };
+}
+
+export async function getConversationCsat(
+  accessToken: string,
+  conversationId: number
+): Promise<{ csat: CsatRequest | null } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        encodeURIComponent(String(conversationId)) +
+        "/csat"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { csat: null };
+  return { csat: normalizeCsat((payload as Record<string, unknown>).csat) };
+}
+
+export async function getCsatSummary(
+  accessToken: string
+): Promise<CsatSummary | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/csat/summary");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const rawDist = Array.isArray(p.dist) ? p.dist : [];
+  const dist = [0, 1, 2, 3, 4].map(
+    (index) => (typeof rawDist[index] === "number" ? rawDist[index] : 0) as number
+  );
+  return {
+    average: typeof p.average === "number" ? p.average : null,
+    total: typeof p.total === "number" ? p.total : 0,
+    pending: typeof p.pending === "number" ? p.pending : 0,
+    dist,
+  };
+}
+
+export async function listKbGaps(
+  accessToken: string,
+  status: "open" | "all" = "open"
+): Promise<{ gaps: KbGap[]; openCount: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/gaps?status=" + encodeURIComponent(status)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const rawGaps = Array.isArray(p.gaps) ? p.gaps : [];
+  const gaps: KbGap[] = [];
+  for (const raw of rawGaps) {
+    if (raw === null || typeof raw !== "object") continue;
+    const g = raw as Record<string, unknown>;
+    const id = typeof g.id === "number" ? g.id : null;
+    if (id === null) continue;
+    gaps.push({
+      id,
+      conversationId: typeof g.conversation_id === "number" ? g.conversation_id : 0,
+      question: typeof g.question === "string" ? g.question : "",
+      intent: typeof g.intent === "string" ? g.intent : "general",
+      resolved: g.resolved === true || g.resolved === 1,
+      createdAt: typeof g.created_at === "string" ? g.created_at : null,
+    });
+  }
+  return {
+    gaps,
+    openCount: typeof p.open_count === "number" ? p.open_count : 0,
+  };
+}
+
+export async function resolveKbGap(
+  accessToken: string,
+  gapId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/gaps/" + encodeURIComponent(String(gapId)),
+      { method: "PATCH" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

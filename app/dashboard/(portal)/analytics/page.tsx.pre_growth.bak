@@ -1,7 +1,6 @@
 import { getAnalytics } from "../../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../../lib/omniflow/session-cookies";
 import AnalyticsClient from "./AnalyticsClient";
-import CsatSummaryCard from "./CsatSummaryCard";
 
 
 export const dynamic = "force-dynamic";
@@ -30,10 +29,7 @@ export default async function AnalyticsPage() {
           </p>
         </div>
       ) : (
-        <>
-          <AnalyticsClient initial={data} />
-          <CsatSummaryCard />
-        </>
+        <AnalyticsClient initial={data} />
       )}
     </div>
   );
