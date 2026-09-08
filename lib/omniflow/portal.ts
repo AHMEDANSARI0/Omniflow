@@ -666,6 +666,67 @@ export async function fetchIntentSummary(
   return entries;
 }
 
+export interface FollowupSettings {
+  enabled: boolean;
+  delayHours: number;
+  maxAttempts: number;
+  messageTemplate: string;
+}
+
+export async function getFollowupSettings(
+  accessToken: string
+): Promise<FollowupSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/followups");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const raw = (payload as Record<string, unknown>).settings;
+  if (raw === null || typeof raw !== "object") return null;
+  const p = raw as Record<string, unknown>;
+  return {
+    enabled: p.enabled === true,
+    delayHours: typeof p.delay_hours === "number" ? p.delay_hours : 24,
+    maxAttempts: typeof p.max_attempts === "number" ? p.max_attempts : 2,
+    messageTemplate: typeof p.message_template === "string" ? p.message_template : "",
+  };
+}
+
+export async function saveFollowupSettings(
+  accessToken: string,
+  settings: FollowupSettings
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/followups", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        settings: {
+          enabled: settings.enabled,
+          delay_hours: settings.delayHours,
+          max_attempts: settings.maxAttempts,
+          message_template: settings.messageTemplate,
+        },
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }
