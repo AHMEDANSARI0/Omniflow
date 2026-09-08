@@ -14,6 +14,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  {
+    label: "Knowledge base",
+    href: "/dashboard/knowledge-base",
+    icon: "▣",
+    enabled: true,
+  },
   { label: "Overview", href: "/dashboard", icon: "◈", enabled: true },
   {
     label: "WhatsApp setup",

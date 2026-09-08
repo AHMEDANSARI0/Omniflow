@@ -727,6 +727,184 @@ export async function saveFollowupSettings(
   return response.ok;
 }
 
+export interface KbEntry {
+  id: number;
+  title: string;
+  category: string;
+  keywords: string;
+  content: string;
+  isActive: boolean;
+  usageCount: number;
+}
+
+export interface KbEntryInput {
+  title: string;
+  category: string;
+  keywords: string;
+  content: string;
+  isActive: boolean;
+}
+
+export interface KbSettings {
+  autoReply: boolean;
+}
+
+export interface KnowledgeBaseData {
+  settings: KbSettings;
+  entries: KbEntry[];
+}
+
+function mapKbEntry(raw: Record<string, unknown>): KbEntry {
+  return {
+    id: typeof raw.id === "number" ? raw.id : 0,
+    title: typeof raw.title === "string" ? raw.title : "",
+    category: typeof raw.category === "string" ? raw.category : "general",
+    keywords: typeof raw.keywords === "string" ? raw.keywords : "",
+    content: typeof raw.content === "string" ? raw.content : "",
+    isActive: raw.is_active === true,
+    usageCount: typeof raw.usage_count === "number" ? raw.usage_count : 0,
+  };
+}
+
+export async function getKnowledgeBase(
+  accessToken: string
+): Promise<KnowledgeBaseData | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/kb");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const rawSettings = p.settings;
+  const rawEntries = p.entries;
+  if (rawSettings === null || typeof rawSettings !== "object") return null;
+  const settingsRaw = rawSettings as Record<string, unknown>;
+  return {
+    settings: { autoReply: settingsRaw.auto_reply === true },
+    entries: Array.isArray(rawEntries)
+      ? rawEntries
+          .filter(
+            (item): item is Record<string, unknown> =>
+              item !== null && typeof item === "object"
+          )
+          .map(mapKbEntry)
+      : [],
+  };
+}
+
+export async function createKbEntry(
+  accessToken: string,
+  entry: KbEntryInput
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/kb", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        entry: {
+          title: entry.title,
+          category: entry.category,
+          keywords: entry.keywords,
+          content: entry.content,
+          is_active: entry.isActive,
+        },
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function updateKbEntry(
+  accessToken: string,
+  entryId: number,
+  entry: KbEntryInput
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/" + entryId,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entry: {
+            title: entry.title,
+            category: entry.category,
+            keywords: entry.keywords,
+            content: entry.content,
+            is_active: entry.isActive,
+          },
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function deleteKbEntry(
+  accessToken: string,
+  entryId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/" + entryId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function saveKbSettings(
+  accessToken: string,
+  settings: KbSettings
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/kb", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        settings: {
+          auto_reply: settings.autoReply,
+        },
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }
