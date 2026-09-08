@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import CodCard from "./CodCard";
-import TeamCard from "./TeamCard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 
@@ -14,7 +13,6 @@ interface ConversationSummary {
   contactId: string | null;
   contactName: string | null;
   status: string;
-  assignedTo: string | null;
 }
 
 interface ConversationMessage {
@@ -198,12 +196,6 @@ export default function ConversationThreadPage() {
       </div>
 
       {!expired && !notFound && <CodCard conversationId={Number(id)} />}
-      {!expired && !notFound && (
-        <TeamCard
-          conversationId={Number(id)}
-          initialAssignedTo={conversation?.assignedTo ?? null}
-        />
-      )}
 
       {expired ? (
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">

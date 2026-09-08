@@ -16,7 +16,6 @@ interface ConversationSummary {
   unread: boolean;
   lastIntent: string | null;
   leadTemp: string;
-  assigneeName: string | null;
 }
 
 const POLL_MS = 10_000;
@@ -322,8 +321,7 @@ export default function ConversationsPage() {
                   </p>
                 )}
                 {((item.lastIntent && item.lastIntent !== "general") ||
-                  item.leadTemp === "hot" ||
-                  Boolean(item.assigneeName)) && (
+                  item.leadTemp === "hot") && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {item.lastIntent && item.lastIntent !== "general" && (
                       <span className="inline-block rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-cyan-300/70">
@@ -333,11 +331,6 @@ export default function ConversationsPage() {
                     {item.leadTemp === "hot" && (
                       <span className="inline-block rounded-md border border-orange-400/25 bg-orange-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-orange-300">
                         Hot lead
-                      </span>
-                    )}
-                    {item.assigneeName && (
-                      <span className="inline-block rounded-md border border-violet-400/25 bg-violet-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-300">
-                        {item.assigneeName}
                       </span>
                     )}
                   </div>

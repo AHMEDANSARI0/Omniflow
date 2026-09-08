@@ -504,6 +504,8 @@ export interface ConversationSummary {
   lastIntent: string | null;
   leadScore: number;
   leadTemp: string;
+  assignedTo: string | null;
+  assigneeName: string | null;
 }
 
 export interface ConversationMessage {
@@ -534,6 +536,8 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
     lastIntent: typeof p.last_intent === "string" ? p.last_intent : null,
     leadScore: typeof p.lead_score === "number" ? p.lead_score : 0,
     leadTemp: typeof p.lead_temp === "string" ? p.lead_temp : "cold",
+    assignedTo: typeof p.assigned_to === "string" ? p.assigned_to : null,
+    assigneeName: typeof p.assignee_name === "string" ? p.assignee_name : null,
   };
 }
 
@@ -1472,6 +1476,300 @@ export async function deleteOrder(
 
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   return response.ok;
+}
+
+// ---------------------------------------------------------------------------
+// Team (multi-user roles, assignment) + internal conversation notes
+// ---------------------------------------------------------------------------
+
+export type TeamRole = "owner" | "admin" | "agent";
+
+export interface TeamMember {
+  id: number;
+  email: string;
+  name: string;
+  role: TeamRole;
+  status: string;
+  createdAt: string | null;
+}
+
+export interface TeamOverview {
+  members: TeamMember[];
+  myRole: TeamRole | null;
+}
+
+export interface NoteEntry {
+  id: number;
+  authorEmail: string;
+  authorName: string;
+  body: string;
+  createdAt: string | null;
+}
+
+export type TeamMutationResult =
+  | { kind: "ok"; member: TeamMember | null }
+  | { kind: "forbidden" }
+  | { kind: "exists" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export type AssignConversationResult =
+  | { kind: "ok"; assignedTo: string | null; assigneeName: string | null }
+  | { kind: "not_found" }
+  | { kind: "assignee_not_found" }
+  | { kind: "unavailable" };
+
+export type NoteAddResult =
+  | { kind: "ok"; note: NoteEntry | null }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+function normalizeTeamMember(value: unknown): TeamMember | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  const email = typeof p.email === "string" ? p.email : "";
+  if (id === null || !email) return null;
+  const role: TeamRole = p.role === "owner" || p.role === "admin" ? p.role : "agent";
+  return {
+    id,
+    email,
+    name: typeof p.name === "string" ? p.name : "",
+    role,
+    status: p.status === "disabled" ? "disabled" : "active",
+    createdAt: typeof p.created_at === "string" ? p.created_at : null,
+  };
+}
+
+function normalizeNoteEntry(value: unknown): NoteEntry | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  if (id === null) return null;
+  return {
+    id,
+    authorEmail: typeof p.author_email === "string" ? p.author_email : "",
+    authorName: typeof p.author_name === "string" ? p.author_name : "",
+    body: typeof p.body === "string" ? p.body : "",
+    createdAt: typeof p.created_at === "string" ? p.created_at : null,
+  };
+}
+
+export async function listTeam(
+  accessToken: string
+): Promise<TeamOverview | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/team");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const rawMembers = Array.isArray(p.members) ? p.members : [];
+  const members: TeamMember[] = [];
+  for (const raw of rawMembers) {
+    const member = normalizeTeamMember(raw);
+    if (member) members.push(member);
+  }
+  const myRole =
+    p.my_role === "owner" || p.my_role === "admin" || p.my_role === "agent"
+      ? p.my_role
+      : null;
+  return { members, myRole };
+}
+
+async function teamMutation(
+  accessToken: string,
+  path: string,
+  init: RequestInit
+): Promise<TeamMutationResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, path, init);
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 403) return { kind: "forbidden" };
+  if (response.status === 409) return { kind: "exists" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") {
+    return { kind: "ok", member: null };
+  }
+  const member = normalizeTeamMember(
+    (payload as Record<string, unknown>).member
+  );
+  return { kind: "ok", member };
+}
+
+export async function addTeamMember(
+  accessToken: string,
+  email: string,
+  name: string,
+  role: "admin" | "agent"
+): Promise<TeamMutationResult> {
+  return teamMutation(accessToken, "api/v1/portal/team", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, name, role }),
+  });
+}
+
+export async function updateTeamMember(
+  accessToken: string,
+  memberId: number,
+  patch: { role?: string; status?: string }
+): Promise<TeamMutationResult> {
+  return teamMutation(
+    accessToken,
+    "api/v1/portal/team/" + encodeURIComponent(String(memberId)),
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }
+  );
+}
+
+export async function removeTeamMember(
+  accessToken: string,
+  memberId: number
+): Promise<TeamMutationResult> {
+  return teamMutation(
+    accessToken,
+    "api/v1/portal/team/" + encodeURIComponent(String(memberId)),
+    { method: "DELETE" }
+  );
+}
+
+export async function assignConversation(
+  accessToken: string,
+  conversationId: number,
+  assigneeEmail: string | null
+): Promise<AssignConversationResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        encodeURIComponent(String(conversationId)) +
+        "/assign",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignee_email: assigneeEmail }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) {
+    const payload: unknown = await response.json().catch(() => null);
+    const code =
+      payload !== null && typeof payload === "object"
+        ? (payload as Record<string, unknown>).error
+        : null;
+    const errorCode =
+      code !== null && typeof code === "object"
+        ? (code as Record<string, unknown>).code
+        : null;
+    if (errorCode === "assignee_not_found") return { kind: "assignee_not_found" };
+    return { kind: "not_found" };
+  }
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") {
+    return { kind: "unavailable" };
+  }
+  const p = payload as Record<string, unknown>;
+  return {
+    kind: "ok",
+    assignedTo: typeof p.assigned_to === "string" ? p.assigned_to : null,
+    assigneeName: typeof p.assignee_name === "string" ? p.assignee_name : null,
+  };
+}
+
+export async function listConversationNotes(
+  accessToken: string,
+  conversationId: number
+): Promise<{ notes: NoteEntry[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        encodeURIComponent(String(conversationId)) +
+        "/notes"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawNotes = (payload as Record<string, unknown>).notes;
+  if (!Array.isArray(rawNotes)) return { notes: [] };
+  const notes: NoteEntry[] = [];
+  for (const raw of rawNotes) {
+    const note = normalizeNoteEntry(raw);
+    if (note) notes.push(note);
+  }
+  return { notes };
+}
+
+export async function addConversationNote(
+  accessToken: string,
+  conversationId: number,
+  body: string
+): Promise<NoteAddResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        encodeURIComponent(String(conversationId)) +
+        "/notes",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") {
+    return { kind: "ok", note: null };
+  }
+  const note = normalizeNoteEntry((payload as Record<string, unknown>).note);
+  return { kind: "ok", note };
 }
 
 export type ConversationStatusResult =
