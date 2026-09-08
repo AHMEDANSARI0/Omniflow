@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import ProfileForm, { type BusinessProfile } from "./ProfileForm";
 import CatalogSection from "./CatalogSection";
-import OrdersSection from "./OrdersSection";
 import {
   DEFAULT_BUSINESS_PROFILE,
   getBusinessProfile,
@@ -46,10 +45,6 @@ export default async function BusinessProfilePage() {
 
       <div className="mt-6">
         <CatalogSection />
-      </div>
-
-      <div className="mt-6">
-        <OrdersSection />
       </div>
     </div>
   );

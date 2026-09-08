@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import CodCard from "./CodCard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 
@@ -194,8 +193,6 @@ export default function ConversationThreadPage() {
           )}
         </div>
       </div>
-
-      {!expired && !notFound && <CodCard conversationId={Number(id)} />}
 
       {expired ? (
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">

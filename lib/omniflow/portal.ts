@@ -502,6 +502,8 @@ export interface ConversationSummary {
   createdAt: string | null;
   unread: boolean;
   lastIntent: string | null;
+  leadScore: number;
+  leadTemp: string;
 }
 
 export interface ConversationMessage {
@@ -530,6 +532,8 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
     createdAt: typeof p.created_at === "string" ? p.created_at : null,
     unread: p.unread === true,
     lastIntent: typeof p.last_intent === "string" ? p.last_intent : null,
+    leadScore: typeof p.lead_score === "number" ? p.lead_score : 0,
+    leadTemp: typeof p.lead_temp === "string" ? p.lead_temp : "cold",
   };
 }
 
@@ -1310,6 +1314,164 @@ export async function getAnalytics(
           }))
       : [],
   };
+}
+
+export interface CodConfirmation {
+  id: number;
+  status: string;
+  details: string;
+  attempts: number;
+  createdAt: string | null;
+  answeredAt: string | null;
+}
+
+export interface OrderRow {
+  id: number;
+  code: string;
+  statusText: string;
+  note: string;
+  updatedAt: string | null;
+}
+
+export interface OrderImportItem {
+  code: string;
+  status: string;
+  note: string;
+}
+
+export async function getConversationCod(
+  accessToken: string,
+  conversationId: number
+): Promise<{ cod: CodConfirmation | null } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" + conversationId + "/cod"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const raw = (payload as Record<string, unknown>).cod;
+  if (raw === null || raw === undefined) return { cod: null };
+  if (typeof raw !== "object") return { cod: null };
+  const p = raw as Record<string, unknown>;
+  return {
+    cod: {
+      id: typeof p.id === "number" ? p.id : 0,
+      status: typeof p.status === "string" ? p.status : "pending",
+      details: typeof p.details === "string" ? p.details : "",
+      attempts: typeof p.attempts === "number" ? p.attempts : 1,
+      createdAt: typeof p.created_at === "string" ? p.created_at : null,
+      answeredAt: typeof p.answered_at === "string" ? p.answered_at : null,
+    },
+  };
+}
+
+export async function requestCodConfirmation(
+  accessToken: string,
+  conversationId: number,
+  details: string
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" + conversationId + "/cod",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ details }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function listOrders(
+  accessToken: string
+): Promise<{ items: OrderRow[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/orders");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawItems = (payload as Record<string, unknown>).items;
+  if (!Array.isArray(rawItems)) return { items: [] };
+  return {
+    items: rawItems
+      .filter(
+        (item): item is Record<string, unknown> =>
+          item !== null && typeof item === "object"
+      )
+      .map((raw) => ({
+        id: typeof raw.id === "number" ? raw.id : 0,
+        code: typeof raw.code === "string" ? raw.code : "",
+        statusText: typeof raw.status_text === "string" ? raw.status_text : "",
+        note: typeof raw.note === "string" ? raw.note : "",
+        updatedAt: typeof raw.updated_at === "string" ? raw.updated_at : null,
+      })),
+  };
+}
+
+export async function importOrders(
+  accessToken: string,
+  items: OrderImportItem[]
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/orders/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function deleteOrder(
+  accessToken: string,
+  orderId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/orders/" + orderId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
 }
 
 export type ConversationStatusResult =
