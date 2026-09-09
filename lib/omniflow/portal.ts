@@ -2574,6 +2574,169 @@ export async function listCustomers(
     .filter((row): row is CustomerSummary => row !== null);
 }
 
+// ---------------------------------------------------------------------------
+// Automations (deterministic keyword rules)
+// ---------------------------------------------------------------------------
+
+export interface AutomationRule {
+  id: number;
+  keyword: string;
+  actionType: "add_tag" | "assign";
+  actionValue: string;
+  isActive: boolean;
+  timesTriggered: number;
+  createdAt: string | null;
+}
+
+function normalizeAutomation(value: unknown): AutomationRule | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  if (id === null) return null;
+  return {
+    id,
+    keyword: typeof p.keyword === "string" ? p.keyword : "",
+    actionType: p.action_type === "assign" ? "assign" : "add_tag",
+    actionValue: typeof p.action_value === "string" ? p.action_value : "",
+    isActive: p.is_active === true,
+    timesTriggered: typeof p.times_triggered === "number" ? p.times_triggered : 0,
+    createdAt: typeof p.created_at === "string" ? p.created_at : null,
+  };
+}
+
+export async function listAutomations(
+  accessToken: string
+): Promise<AutomationRule[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/automations");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rows = (payload as Record<string, unknown>).automations;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row) => normalizeAutomation(row))
+    .filter((row): row is AutomationRule => row !== null);
+}
+
+export type AutomationWriteResult =
+  | { kind: "ok"; automation: AutomationRule }
+  | { kind: "invalid" }
+  | { kind: "assignee_not_found" }
+  | { kind: "duplicate" }
+  | { kind: "limit_reached" };
+
+export async function createAutomation(
+  accessToken: string,
+  keyword: string,
+  actionType: "add_tag" | "assign",
+  actionValue: string
+): Promise<AutomationWriteResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/automations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        keyword,
+        action_type: actionType,
+        action_value: actionValue,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) {
+    const payload: unknown = await response.json().catch(() => null);
+    const code =
+      payload !== null && typeof payload === "object"
+        ? (payload as Record<string, unknown>).error
+        : null;
+    const errorCode =
+      code !== null && typeof code === "object"
+        ? (code as Record<string, unknown>).code
+        : null;
+    if (errorCode === "assignee_not_found") return { kind: "assignee_not_found" };
+    return { kind: "invalid" };
+  }
+  if (response.status === 409) {
+    const payload: unknown = await response.json().catch(() => null);
+    const error = payload as {
+      error?: { code?: string };
+    } | null;
+    if (error?.error?.code === "limit_reached") return { kind: "limit_reached" };
+    return { kind: "duplicate" };
+  }
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const automation = normalizeAutomation(
+    (payload as Record<string, unknown>).automation
+  );
+  if (automation === null) return null;
+  return { kind: "ok", automation };
+}
+
+export async function setAutomationActive(
+  accessToken: string,
+  ruleId: number,
+  isActive: boolean
+): Promise<"ok" | "missing" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/automations/" + ruleId,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: isActive }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return "missing";
+  return response.ok ? "ok" : null;
+}
+
+export async function deleteAutomation(
+  accessToken: string,
+  ruleId: number
+): Promise<"ok" | "missing" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/automations/" + ruleId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return "missing";
+  return response.ok ? "ok" : null;
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

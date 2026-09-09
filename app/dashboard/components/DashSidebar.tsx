@@ -41,6 +41,12 @@ const navItems: NavItem[] = [
     enabled: true,
   },
   {
+    label: "Automations",
+    href: "/dashboard/automations",
+    icon: "⚡",
+    enabled: true,
+  },
+  {
     label: "Analytics",
     href: "/dashboard/analytics",
     icon: "◢",
