@@ -506,6 +506,7 @@ export interface ConversationSummary {
   leadTemp: string;
   assignedTo: string | null;
   assigneeName: string | null;
+  tags: string[];
 }
 
 export interface ConversationMessage {
@@ -538,6 +539,9 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
     leadTemp: typeof p.lead_temp === "string" ? p.lead_temp : "cold",
     assignedTo: typeof p.assigned_to === "string" ? p.assigned_to : null,
     assigneeName: typeof p.assignee_name === "string" ? p.assignee_name : null,
+    tags: Array.isArray(p.tags)
+      ? p.tags.filter((tag): tag is string => typeof tag === "string")
+      : [],
   };
 }
 
@@ -546,7 +550,8 @@ export async function listConversations(
   searchQuery?: string,
   statusFilter?: string,
   intentFilter?: string,
-  channelFilter?: string
+  channelFilter?: string,
+  tagFilter?: string
 ): Promise<ConversationSummary[] | null> {
   const searchPart =
     searchQuery && searchQuery.trim()
@@ -564,7 +569,11 @@ export async function listConversations(
     channelFilter && channelFilter !== "all"
       ? "channel=" + encodeURIComponent(channelFilter)
       : "";
-  const parts = [searchPart, statusPart, intentPart, channelPart].filter(Boolean);
+  const tagPart =
+    tagFilter && tagFilter !== "all" ? "tag=" + encodeURIComponent(tagFilter) : "";
+  const parts = [searchPart, statusPart, intentPart, channelPart, tagPart].filter(
+    Boolean
+  );
   const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;
   try {
@@ -2179,6 +2188,113 @@ export async function saveWidgetSettings(
 
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   return response.ok;
+}
+
+// ---------------------------------------------------------------------------
+// Conversation tags (labels)
+// ---------------------------------------------------------------------------
+
+export interface ConversationTagSummary {
+  tag: string;
+  count: number;
+}
+
+export async function getConversationTagSummary(
+  accessToken: string
+): Promise<ConversationTagSummary[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/tags/summary"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rows = (payload as Record<string, unknown>).tags;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter(
+      (row): row is Record<string, unknown> =>
+        row !== null && typeof row === "object"
+    )
+    .map((row) => ({
+      tag: typeof row.tag === "string" ? row.tag : "",
+      count: typeof row.count === "number" ? row.count : 0,
+    }))
+    .filter((row) => row.tag !== "");
+}
+
+export type ConversationTagWriteResult =
+  | { kind: "ok"; duplicate: boolean }
+  | { kind: "invalid" }
+  | { kind: "limit_reached" };
+
+export async function addConversationTag(
+  accessToken: string,
+  conversationId: number,
+  tag: string
+): Promise<ConversationTagWriteResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" + conversationId + "/tags",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 409) return { kind: "limit_reached" };
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  const duplicate =
+    payload !== null &&
+    typeof payload === "object" &&
+    (payload as Record<string, unknown>).duplicate === true;
+  return { kind: "ok", duplicate };
+}
+
+export async function removeConversationTag(
+  accessToken: string,
+  conversationId: number,
+  tag: string
+): Promise<"ok" | "missing" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        conversationId +
+        "/tags?tag=" +
+        encodeURIComponent(tag),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return "missing";
+  return response.ok ? "ok" : null;
 }
 
 export type ConversationStatusResult =

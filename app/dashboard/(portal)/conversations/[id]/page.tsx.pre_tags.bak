@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import CodCard from "./CodCard";
 import TeamCard from "./TeamCard";
-import TagsCard from "./TagsCard";
 import RatingCard from "./RatingCard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
@@ -17,7 +16,6 @@ interface ConversationSummary {
   contactName: string | null;
   status: string;
   assignedTo: string | null;
-  tags: string[];
 }
 
 interface ConversationMessage {
@@ -208,9 +206,6 @@ export default function ConversationThreadPage() {
           conversationId={Number(id)}
           initialAssignedTo={conversation?.assignedTo ?? null}
         />
-      )}
-      {!expired && !notFound && (
-        <TagsCard conversationId={Number(id)} initialTags={conversation?.tags ?? []} />
       )}
       {!expired && !notFound && conversation?.channel !== "website" && (
         <RatingCard conversationId={Number(id)} />

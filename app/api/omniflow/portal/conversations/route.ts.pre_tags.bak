@@ -34,15 +34,12 @@ export async function GET(request: Request) {
       channelParam === "whatsapp" || channelParam === "website"
         ? channelParam
         : undefined;
-    const tagParam = url.searchParams.get("tag");
-    const tagFilter = tagParam ? tagParam.trim().slice(0, 24) : undefined;
     const conversations = await listConversations(
       accessToken,
       searchQuery,
       statusFilter,
       intentFilter,
-      channelFilter,
-      tagFilter
+      channelFilter
     );
     if (conversations === null) {
       return safeJson(
