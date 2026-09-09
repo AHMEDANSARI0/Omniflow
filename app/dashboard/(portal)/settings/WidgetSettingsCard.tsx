@@ -6,7 +6,20 @@ interface WidgetSettings {
   enabled: boolean;
   businessName: string;
   welcomeText: string;
+  accent: string;
+  position: "left" | "right";
+  launcherLabel: string;
 }
+
+const ACCENT_PRESETS = [
+  "#22d3ee",
+  "#a78bfa",
+  "#34d399",
+  "#f472b6",
+  "#fbbf24",
+  "#fb7185",
+  "#60a5fa",
+];
 
 const inputClass =
   "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
@@ -38,6 +51,9 @@ export default function WidgetSettingsCard() {
           enabled?: boolean;
           businessName?: string;
           welcomeText?: string;
+          accent?: string;
+          position?: string;
+          launcherLabel?: string;
         } | null;
       } | null;
       if (payload?.settings) {
@@ -45,6 +61,9 @@ export default function WidgetSettingsCard() {
           enabled: payload.settings.enabled === true,
           businessName: payload.settings.businessName ?? "",
           welcomeText: payload.settings.welcomeText ?? "",
+          accent: payload.settings.accent ?? "#22d3ee",
+          position: payload.settings.position === "left" ? "left" : "right",
+          launcherLabel: payload.settings.launcherLabel ?? "",
         });
       }
       setLoaded(true);
@@ -70,6 +89,9 @@ export default function WidgetSettingsCard() {
           enabled: next.enabled,
           businessName: next.businessName.trim(),
           welcomeText: next.welcomeText.trim(),
+          accent: next.accent,
+          position: next.position,
+          launcherLabel: next.launcherLabel.trim(),
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -185,6 +207,64 @@ export default function WidgetSettingsCard() {
               maxLength={200}
               placeholder="Hi! Message us here and we will reply right away."
               className={inputClass + " resize-none"}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              Accent colour
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              {ACCENT_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  aria-label={"Accent colour " + preset}
+                  onClick={() => setSettings({ ...settings, accent: preset })}
+                  className={
+                    "h-8 w-8 rounded-full border-2 transition-transform duration-150 " +
+                    (settings.accent.toLowerCase() === preset
+                      ? "scale-110 border-white"
+                      : "border-white/20 hover:scale-105")
+                  }
+                  style={{ backgroundColor: preset }}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              Bubble position (desktop)
+            </label>
+            <div className="flex gap-2">
+              {(["left", "right"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSettings({ ...settings, position: value })}
+                  className={
+                    "rounded-xl border px-4 py-2 text-xs font-medium capitalize transition-colors duration-300 " +
+                    (settings.position === value
+                      ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
+                      : "border-white/[0.08] bg-white/[0.02] text-slate-400 hover:text-white")
+                  }
+                >
+                  {value === "left" ? "Bottom left" : "Bottom right"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              Launcher label (optional)
+            </label>
+            <input
+              value={settings.launcherLabel}
+              onChange={(event) =>
+                setSettings({ ...settings, launcherLabel: event.target.value })
+              }
+              maxLength={24}
+              placeholder="Chat with us"
+              className={inputClass}
             />
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">

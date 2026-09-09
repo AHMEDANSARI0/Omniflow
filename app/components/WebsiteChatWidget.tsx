@@ -7,6 +7,9 @@ interface WidgetConfig {
   enabled: boolean;
   businessName: string;
   welcomeText: string;
+  accent: string;
+  position: "left" | "right";
+  launcherLabel: string;
 }
 
 interface WidgetMessage {
@@ -76,12 +79,25 @@ export default function WebsiteChatWidget() {
           enabled?: boolean;
           business_name?: string;
           welcome_text?: string;
+          accent?: string;
+          position?: string;
+          launcher_label?: string;
         } | null;
         if (alive && payload?.enabled) {
           setConfig({
             enabled: true,
             businessName: payload.business_name ?? "",
             welcomeText: payload.welcome_text ?? "",
+            accent:
+              typeof payload.accent === "string" &&
+              /^#[0-9a-fA-F]{6}$/.test(payload.accent)
+                ? payload.accent
+                : "#22d3ee",
+            position: payload.position === "left" ? "left" : "right",
+            launcherLabel:
+              typeof payload.launcher_label === "string"
+                ? payload.launcher_label
+                : "",
           });
         }
       } catch {
@@ -175,14 +191,29 @@ export default function WebsiteChatWidget() {
     <>
       {open && (
         <div
-          className="fixed inset-x-3 bottom-3 top-20 z-50 flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060f1b] shadow-2xl shadow-black/40 sm:inset-x-auto sm:bottom-20 sm:right-5 sm:top-auto sm:h-[540px] sm:w-96"
+          className={
+            "fixed inset-x-3 bottom-3 top-20 z-50 flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060f1b] shadow-2xl shadow-black/40 sm:inset-x-auto sm:bottom-20 sm:top-auto sm:h-[540px] sm:w-96 " +
+            (config.position === "left" ? "sm:left-5" : "sm:right-5")
+          }
           role="dialog"
           aria-label="Chat with us"
         >
           <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-400/[0.06]">
-                <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)]" />
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                style={{
+                  border: "1px solid " + config.accent + "33",
+                  backgroundColor: config.accent + "0F",
+                }}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{
+                    backgroundColor: config.accent,
+                    boxShadow: "0 0 12px " + config.accent + "B3",
+                  }}
+                />
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-white">
@@ -222,8 +253,16 @@ export default function WebsiteChatWidget() {
                     className={
                       "max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed " +
                       (message.direction === "in"
-                        ? "rounded-br-md border border-cyan-400/20 bg-cyan-400/[0.08] text-cyan-50"
+                        ? "rounded-br-md border text-slate-50"
                         : "rounded-bl-md border border-white/[0.06] bg-white/[0.03] text-slate-200")
+                    }
+                    style={
+                      message.direction === "in"
+                        ? {
+                            borderColor: config.accent + "33",
+                            backgroundColor: config.accent + "14",
+                          }
+                        : undefined
                     }
                   >
                     {message.body}
@@ -249,12 +288,17 @@ export default function WebsiteChatWidget() {
               onChange={(event) => setDraft(event.target.value)}
               maxLength={1000}
               placeholder="Type your message…"
-              className="min-w-0 flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+              className="min-w-0 flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-white/30"
             />
             <button
               type="submit"
               disabled={busy || !draft.trim()}
-              className="shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.1] px-4 py-2.5 text-xs font-semibold text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.18] disabled:opacity-50"
+              className="shrink-0 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-colors duration-300 disabled:opacity-50"
+              style={{
+                borderColor: config.accent + "40",
+                backgroundColor: config.accent + "1A",
+                color: config.accent,
+              }}
             >
               {busy ? "…" : "Send"}
             </button>
@@ -266,9 +310,23 @@ export default function WebsiteChatWidget() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label={open ? "Close chat" : "Open chat"}
-        className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-400 text-lg text-[#07111f] shadow-xl shadow-cyan-500/20 transition-transform duration-200 hover:scale-105"
+        className={
+          "fixed bottom-5 z-50 flex items-center justify-center gap-2 border text-lg text-[#07111f] shadow-xl transition-transform duration-200 hover:scale-105 " +
+          (config.position === "left" ? "left-5" : "right-5") +
+          (!open && config.launcherLabel
+            ? " h-12 rounded-full px-4 text-sm font-semibold"
+            : " h-12 w-12 rounded-full")
+        }
+        style={{
+          borderColor: config.accent + "4D",
+          backgroundColor: config.accent,
+          boxShadow: "0 10px 30px " + config.accent + "33",
+        }}
       >
-        {open ? "✕" : "❖"}
+        <span aria-hidden>{open ? "✕" : "❖"}</span>
+        {!open && config.launcherLabel ? (
+          <span>{config.launcherLabel}</span>
+        ) : null}
       </button>
     </>
   );

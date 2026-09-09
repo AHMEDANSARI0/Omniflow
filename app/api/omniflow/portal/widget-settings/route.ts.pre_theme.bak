@@ -51,9 +51,6 @@ export async function PUT(request: Request) {
     enabled?: unknown;
     businessName?: unknown;
     welcomeText?: unknown;
-    accent?: unknown;
-    position?: unknown;
-    launcherLabel?: unknown;
   } | null;
   if (typeof payload?.enabled !== "boolean") {
     return safeJson(
@@ -77,29 +74,12 @@ export async function PUT(request: Request) {
       400
     );
   }
-  const accent =
-    typeof payload.accent === "string" ? payload.accent.trim().toLowerCase() : "";
-  if (accent && !/^#[0-9a-f]{6}$/.test(accent)) {
-    return safeJson(
-      { error: { code: "bad_request", message: "Accent must be a hex colour like #22d3ee." } },
-      400
-    );
-  }
-  const rawPosition = typeof payload.position === "string" ? payload.position : "";
-  const position = rawPosition === "left" ? "left" : "right";
-  const launcherLabel =
-    typeof payload.launcherLabel === "string"
-      ? payload.launcherLabel.trim().slice(0, 24)
-      : "";
 
   try {
     const ok = await saveWidgetSettings(accessToken, {
       enabled: payload.enabled,
       businessName,
       welcomeText,
-      accent: accent || "#22d3ee",
-      position,
-      launcherLabel,
     });
     if (!ok) {
       return safeJson(

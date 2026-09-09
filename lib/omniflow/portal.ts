@@ -2131,6 +2131,9 @@ export interface WidgetSettings {
   enabled: boolean;
   businessName: string;
   welcomeText: string;
+  accent: string;
+  position: "left" | "right";
+  launcherLabel: string;
 }
 
 function normalizeWidgetSettings(value: unknown): WidgetSettings | null {
@@ -2143,6 +2146,14 @@ function normalizeWidgetSettings(value: unknown): WidgetSettings | null {
       typeof settings.business_name === "string" ? settings.business_name : "",
     welcomeText:
       typeof settings.welcome_text === "string" ? settings.welcome_text : "",
+    accent:
+      typeof settings.accent === "string" &&
+      /^#[0-9a-fA-F]{6}$/.test(settings.accent)
+        ? settings.accent
+        : "#22d3ee",
+    position: settings.position === "left" ? "left" : "right",
+    launcherLabel:
+      typeof settings.launcher_label === "string" ? settings.launcher_label : "",
   };
 }
 
@@ -2168,7 +2179,14 @@ export async function getWidgetSettings(
 
 export async function saveWidgetSettings(
   accessToken: string,
-  settings: { enabled: boolean; businessName: string; welcomeText: string }
+  settings: {
+    enabled: boolean;
+    businessName: string;
+    welcomeText: string;
+    accent: string;
+    position: "left" | "right";
+    launcherLabel: string;
+  }
 ): Promise<boolean> {
   let response: Response;
   try {
@@ -2179,6 +2197,9 @@ export async function saveWidgetSettings(
         enabled: settings.enabled,
         business_name: settings.businessName,
         welcome_text: settings.welcomeText,
+        accent: settings.accent,
+        position: settings.position,
+        launcher_label: settings.launcherLabel,
       }),
     });
   } catch (error) {
