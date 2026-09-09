@@ -29,17 +29,11 @@ export async function GET(request: Request) {
       intentParam && intentParam !== "all"
         ? intentParam.toLowerCase().slice(0, 40)
         : undefined;
-    const channelParam = url.searchParams.get("channel");
-    const channelFilter =
-      channelParam === "whatsapp" || channelParam === "website"
-        ? channelParam
-        : undefined;
     const conversations = await listConversations(
       accessToken,
       searchQuery,
       statusFilter,
-      intentFilter,
-      channelFilter
+      intentFilter
     );
     if (conversations === null) {
       return safeJson(

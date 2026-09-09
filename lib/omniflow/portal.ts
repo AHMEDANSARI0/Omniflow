@@ -545,7 +545,8 @@ export async function listConversations(
   accessToken: string,
   searchQuery?: string,
   statusFilter?: string,
-  intentFilter?: string
+  intentFilter?: string,
+  channelFilter?: string
 ): Promise<ConversationSummary[] | null> {
   const searchPart =
     searchQuery && searchQuery.trim()
@@ -559,7 +560,11 @@ export async function listConversations(
     intentFilter && intentFilter !== "all"
       ? "intent=" + encodeURIComponent(intentFilter)
       : "";
-  const parts = [searchPart, statusPart, intentPart].filter(Boolean);
+  const channelPart =
+    channelFilter && channelFilter !== "all"
+      ? "channel=" + encodeURIComponent(channelFilter)
+      : "";
+  const parts = [searchPart, statusPart, intentPart, channelPart].filter(Boolean);
   const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;
   try {
@@ -2100,6 +2105,73 @@ export async function resolveKbGap(
       "api/v1/portal/kb/gaps/" + encodeURIComponent(String(gapId)),
       { method: "PATCH" }
     );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+// ---------------------------------------------------------------------------
+// Website widget settings
+// ---------------------------------------------------------------------------
+
+export interface WidgetSettings {
+  enabled: boolean;
+  businessName: string;
+  welcomeText: string;
+}
+
+function normalizeWidgetSettings(value: unknown): WidgetSettings | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const settings = (p.settings !== undefined ? p.settings : p) as Record<string, unknown>;
+  return {
+    enabled: settings.enabled === true,
+    businessName:
+      typeof settings.business_name === "string" ? settings.business_name : "",
+    welcomeText:
+      typeof settings.welcome_text === "string" ? settings.welcome_text : "",
+  };
+}
+
+export async function getWidgetSettings(
+  accessToken: string
+): Promise<WidgetSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/widget/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  return normalizeWidgetSettings(payload);
+}
+
+export async function saveWidgetSettings(
+  accessToken: string,
+  settings: { enabled: boolean; businessName: string; welcomeText: string }
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/widget/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        enabled: settings.enabled,
+        business_name: settings.businessName,
+        welcome_text: settings.welcomeText,
+      }),
+    });
   } catch (error) {
     assertNotAuthError(error);
     return false;

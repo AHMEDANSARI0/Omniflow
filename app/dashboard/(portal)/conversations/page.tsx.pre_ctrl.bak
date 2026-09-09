@@ -46,8 +46,6 @@ export default function ConversationsPage() {
   const statusRef = useRef<"all" | "open" | "closed">("all");
   const [intentFilter, setIntentFilter] = useState("all");
   const intentRef = useRef("all");
-  const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "website">("all");
-  const channelRef = useRef<"all" | "whatsapp" | "website">("all");
   const [intentCounts, setIntentCounts] = useState<
     { intent: string; conversations: number }[]
   >([]);
@@ -59,7 +57,6 @@ export default function ConversationsPage() {
       if (searchRef.current) listParams.set("q", searchRef.current);
       if (statusRef.current !== "all") listParams.set("status", statusRef.current);
       if (intentRef.current !== "all") listParams.set("intent", intentRef.current);
-      if (channelRef.current !== "all") listParams.set("channel", channelRef.current);
       const listQs = listParams.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
@@ -218,26 +215,6 @@ export default function ConversationsPage() {
           placeholder="Search by contact name, number, or message text"
           className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
         />
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {(["all", "whatsapp", "website"] as const).map((value) => (
-          <button
-            key={"channel-" + value}
-            onClick={() => {
-              channelRef.current = value;
-              setChannelFilter(value);
-              void refresh();
-            }}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-              channelFilter === value
-                ? "border-violet-400/30 bg-violet-400/[0.08] text-violet-200"
-                : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
-            }`}
-          >
-            {value === "all" ? "All channels" : value}
-          </button>
-        ))}
       </div>
 
       <div className="mb-4 flex items-center gap-2">

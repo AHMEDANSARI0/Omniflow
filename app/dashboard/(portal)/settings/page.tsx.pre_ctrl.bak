@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import ApiKeyCard from "./ApiKeyCard";
-import WidgetSettingsCard from "./WidgetSettingsCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -46,9 +45,6 @@ export default async function ClientSettingsPage() {
       </div>
 
       <ApiKeyCard keyInfo={keyInfo} />
-      <div className="mt-6">
-        <WidgetSettingsCard />
-      </div>
     </div>
   );
 }
