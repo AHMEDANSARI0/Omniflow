@@ -2297,6 +2297,124 @@ export async function removeConversationTag(
   return response.ok ? "ok" : null;
 }
 
+// ---------------------------------------------------------------------------
+// Saved replies (canned response templates)
+// ---------------------------------------------------------------------------
+
+export interface SavedReply {
+  id: number;
+  shortcut: string;
+  body: string;
+  createdAt: string | null;
+}
+
+function normalizeSavedReply(value: unknown): SavedReply | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  if (id === null) return null;
+  return {
+    id,
+    shortcut: typeof p.shortcut === "string" ? p.shortcut : "",
+    body: typeof p.body === "string" ? p.body : "",
+    createdAt: typeof p.created_at === "string" ? p.created_at : null,
+  };
+}
+
+export async function listSavedReplies(
+  accessToken: string
+): Promise<SavedReply[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/saved-replies");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rows = (payload as Record<string, unknown>).replies;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row) => normalizeSavedReply(row))
+    .filter((row): row is SavedReply => row !== null);
+}
+
+export type SavedReplyWriteResult =
+  | { kind: "ok"; reply: SavedReply }
+  | { kind: "invalid" }
+  | { kind: "duplicate" }
+  | { kind: "limit_reached" };
+
+export async function createSavedReply(
+  accessToken: string,
+  shortcut: string,
+  body: string
+): Promise<SavedReplyWriteResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/saved-replies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shortcut, body }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 409) {
+    const payload: unknown = await response.json().catch(() => null);
+    const code =
+      payload !== null &&
+      typeof payload === "object" &&
+      (payload as Record<string, unknown>).error !== null &&
+      typeof (payload as Record<string, unknown>).error === "object" &&
+      ((payload as Record<string, unknown>).error as Record<string, unknown>)
+        .code === "limit_reached"
+        ? "limit_reached"
+        : "duplicate";
+    return { kind: code };
+  }
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const reply = normalizeSavedReply(
+    (payload as Record<string, unknown>).reply
+  );
+  if (reply === null) return null;
+  return { kind: "ok", reply };
+}
+
+export async function deleteSavedReply(
+  accessToken: string,
+  replyId: number
+): Promise<"ok" | "missing" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/saved-replies/" + replyId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return "missing";
+  return response.ok ? "ok" : null;
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

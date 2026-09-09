@@ -6,7 +6,6 @@ import CodCard from "./CodCard";
 import TeamCard from "./TeamCard";
 import TagsCard from "./TagsCard";
 import RatingCard from "./RatingCard";
-import SavedRepliesPicker from "./SavedRepliesPicker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 
@@ -281,9 +280,6 @@ export default function ConversationThreadPage() {
         </motion.div>
       )}
 
-      {!expired && !notFound && (
-        <SavedRepliesPicker onPick={(text) => setDraft(text)} />
-      )}
       {!expired && !notFound && (
         <form
           onSubmit={(event) => {
