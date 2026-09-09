@@ -2436,6 +2436,64 @@ export async function deleteSavedReply(
   return response.ok ? "ok" : null;
 }
 
+// ---------------------------------------------------------------------------
+// Conversation export (CSV download source)
+// ---------------------------------------------------------------------------
+
+export interface ConversationExportFilters {
+  searchQuery?: string;
+  statusFilter?: string;
+  intentFilter?: string;
+  channelFilter?: string;
+  tagFilter?: string;
+}
+
+export async function exportConversations(
+  accessToken: string,
+  filters: ConversationExportFilters = {}
+): Promise<ConversationSummary[] | null> {
+  const parts: string[] = [];
+  if (filters.searchQuery) {
+    parts.push("q=" + encodeURIComponent(filters.searchQuery));
+  }
+  if (filters.statusFilter && filters.statusFilter !== "all") {
+    parts.push("status=" + encodeURIComponent(filters.statusFilter));
+  }
+  if (filters.intentFilter && filters.intentFilter !== "all") {
+    parts.push("intent=" + encodeURIComponent(filters.intentFilter));
+  }
+  if (filters.channelFilter && filters.channelFilter !== "all") {
+    parts.push("channel=" + encodeURIComponent(filters.channelFilter));
+  }
+  if (filters.tagFilter && filters.tagFilter !== "all") {
+    parts.push("tag=" + encodeURIComponent(filters.tagFilter));
+  }
+  const query = parts.length ? "?" + parts.join("&") : "";
+
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/export" + query
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rows = (payload as Record<string, unknown>).conversations;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row) => normalizeConversation(row))
+    .filter((row): row is ConversationSummary => row !== null);
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

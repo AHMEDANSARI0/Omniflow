@@ -16,6 +16,8 @@ interface ConversationSummary {
   unread: boolean;
   lastIntent: string | null;
   leadTemp: string;
+  leadScore: number;
+  assignedTo: string | null;
   assigneeName: string | null;
   tags: string[];
 }
@@ -60,6 +62,8 @@ export default function ConversationsPage() {
   const [tagFilter, setTagFilter] = useState("all");
   const tagRef = useRef("all");
   const [tagOptions, setTagOptions] = useState<{ tag: string; count: number }[]>([]);
+  const [teamMembers, setTeamMembers] = useState<{ email: string; name: string }[]>([]);
+  const [exporting, setExporting] = useState(false);
   const [intentCounts, setIntentCounts] = useState<
     { intent: string; conversations: number }[]
   >([]);
@@ -115,6 +119,116 @@ export default function ConversationsPage() {
     };
   }, [refresh]);
 
+  async function quickAssign(conversationId: number, assigneeEmail: string) {
+    const previous = items;
+    setItems((current) =>
+      current
+        ? current.map((item) =>
+            item.id === conversationId
+              ? {
+                  ...item,
+                  assignedTo: assigneeEmail || null,
+                  assigneeName:
+                    teamMembers.find((member) => member.email === assigneeEmail)
+                      ?.name || (assigneeEmail || null),
+                }
+              : item
+          )
+        : current
+    );
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/conversations/" + conversationId + "/assign",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ assigneeEmail: assigneeEmail || null }),
+        }
+      );
+      if (!response.ok) setItems(previous);
+    } catch {
+      setItems(previous);
+    }
+  }
+
+  async function exportCsv() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchRef.current) params.set("q", searchRef.current);
+      if (statusRef.current !== "all") params.set("status", statusRef.current);
+      if (intentRef.current !== "all") params.set("intent", intentRef.current);
+      if (channelRef.current !== "all") params.set("channel", channelRef.current);
+      if (tagRef.current !== "all") params.set("tag", tagRef.current);
+      const qs = params.toString();
+      const response = await fetch(
+        "/api/omniflow/portal/conversations/export" + (qs ? "?" + qs : ""),
+        { credentials: "same-origin", cache: "no-store" }
+      );
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        conversations?: ConversationSummary[];
+      } | null;
+      const rows = Array.isArray(payload?.conversations)
+        ? payload.conversations
+        : [];
+      const headers = [
+        "id",
+        "channel",
+        "contact_name",
+        "contact_id",
+        "status",
+        "last_intent",
+        "lead_temp",
+        "lead_score",
+        "assignee",
+        "labels",
+        "last_message_at",
+        "last_message_preview",
+      ];
+      const csvCell = (value: unknown): string => {
+        const text = value === null || value === undefined ? "" : String(value);
+        return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+      };
+      const lines = [headers.join(",")];
+      for (const row of rows) {
+        lines.push(
+          [
+            row.id,
+            row.channel,
+            row.contactName,
+            row.contactId,
+            row.status,
+            row.lastIntent,
+            row.leadTemp,
+            row.leadScore,
+            row.assigneeName,
+            row.tags.join(" | "),
+            row.lastMessageAt,
+            row.lastMessagePreview,
+          ]
+            .map(csvCell)
+            .join(",")
+        );
+      }
+      const blob = new Blob(["\ufeff" + lines.join("\n")], {
+        type: "text/csv;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "omniflow-conversations.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Export is best-effort — the merchant can retry.
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const loadIntentSummary = useCallback(async () => {
     try {
       const response = await fetch(
@@ -152,6 +266,39 @@ export default function ConversationsPage() {
         }
       } catch {
         // Transient network issue — the next visit retries.
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetch("/api/omniflow/portal/team", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (response.status !== 200) return;
+        const payload = (await response.json().catch(() => null)) as {
+          members?: { email?: string; name?: string; status?: string }[];
+        } | null;
+        if (mounted.current && payload && Array.isArray(payload.members)) {
+          setTeamMembers(
+            payload.members
+              .filter(
+                (member): member is { email: string; name?: string; status?: string } =>
+                  member !== null &&
+                  typeof member === "object" &&
+                  typeof member.email === "string" &&
+                  member.status === "active"
+              )
+              .map((member) => ({
+                email: member.email,
+                name: typeof member.name === "string" ? member.name : "",
+              }))
+          );
+        }
+      } catch {
+        // The team list is optional here — the thread page still manages assignment.
       }
     })();
   }, []);
@@ -314,6 +461,14 @@ export default function ConversationsPage() {
             {value}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => void exportCsv()}
+          disabled={exporting || !items || items.length === 0}
+          className="ml-auto rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
+        >
+          {exporting ? "Preparing…" : "Export CSV"}
+        </button>
       </div>
 
       {!items ? (
@@ -436,6 +591,31 @@ export default function ConversationsPage() {
                     {item.tags.length > 2 && (
                       <span className="inline-block rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-slate-400">
                         +{item.tags.length - 2}
+                      </span>
+                    )}
+                    {teamMembers.length > 0 && (
+                      <span
+                        className="inline-flex"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                      >
+                        <select
+                          value={item.assignedTo ?? ""}
+                          onChange={(event) =>
+                            void quickAssign(item.id, event.target.value)
+                          }
+                          aria-label="Assign conversation"
+                          className="max-w-[130px] rounded-md border border-violet-400/25 bg-violet-400/[0.06] px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-300 outline-none"
+                        >
+                          <option value="">Unassigned</option>
+                          {teamMembers.map((member) => (
+                            <option key={member.email} value={member.email}>
+                              {member.name || member.email}
+                            </option>
+                          ))}
+                        </select>
                       </span>
                     )}
                   </div>
