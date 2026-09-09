@@ -1,9 +1,9 @@
-import { ControlPlaneRequestError } from "../../../../../lib/omniflow/control-plane";
+import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
 import {
   previewBroadcast,
   requirePortalAccessToken,
-} from "../../../../../lib/omniflow/portal";
-import { safeJson } from "../../../../../lib/omniflow/request-security";
+} from "../../../../../../lib/omniflow/portal";
+import { safeJson } from "../../../../../../lib/omniflow/request-security";
 
 export async function GET(request: Request) {
   const accessToken = await requirePortalAccessToken();
