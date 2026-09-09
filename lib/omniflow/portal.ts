@@ -2494,6 +2494,86 @@ export async function exportConversations(
     .filter((row): row is ConversationSummary => row !== null);
 }
 
+// ---------------------------------------------------------------------------
+// Customers (contacts aggregated across conversations)
+// ---------------------------------------------------------------------------
+
+export interface CustomerSummary {
+  contactId: string;
+  name: string;
+  channels: string[];
+  conversationCount: number;
+  openCount: number;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  leadTemp: string;
+  tags: string[];
+}
+
+function normalizeCustomer(value: unknown): CustomerSummary | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const contactId =
+    typeof p.contact_id === "string" ? p.contact_id : "";
+  if (!contactId) return null;
+  return {
+    contactId,
+    name: typeof p.name === "string" ? p.name : "",
+    channels: Array.isArray(p.channels)
+      ? p.channels.filter((c): c is string => typeof c === "string")
+      : [],
+    conversationCount:
+      typeof p.conversation_count === "number" ? p.conversation_count : 0,
+    openCount: typeof p.open_count === "number" ? p.open_count : 0,
+    lastMessageAt:
+      typeof p.last_message_at === "string" ? p.last_message_at : null,
+    lastMessagePreview:
+      typeof p.last_message_preview === "string"
+        ? p.last_message_preview
+        : null,
+    leadTemp: typeof p.lead_temp === "string" ? p.lead_temp : "cold",
+    tags: Array.isArray(p.tags)
+      ? p.tags.filter((tag): tag is string => typeof tag === "string")
+      : [],
+  };
+}
+
+export async function listCustomers(
+  accessToken: string,
+  searchQuery?: string,
+  channelFilter?: string
+): Promise<CustomerSummary[] | null> {
+  const parts: string[] = [];
+  if (searchQuery) parts.push("q=" + encodeURIComponent(searchQuery));
+  if (channelFilter && channelFilter !== "all") {
+    parts.push("channel=" + encodeURIComponent(channelFilter));
+  }
+  const query = parts.length ? "?" + parts.join("&") : "";
+
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/customers" + query
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rows = (payload as Record<string, unknown>).customers;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row) => normalizeCustomer(row))
+    .filter((row): row is CustomerSummary => row !== null);
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

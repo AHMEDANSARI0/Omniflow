@@ -35,6 +35,12 @@ const navItems: NavItem[] = [
     enabled: true,
   },
   {
+    label: "Customers",
+    href: "/dashboard/customers",
+    icon: "☻",
+    enabled: true,
+  },
+  {
     label: "Analytics",
     href: "/dashboard/analytics",
     icon: "◢",
