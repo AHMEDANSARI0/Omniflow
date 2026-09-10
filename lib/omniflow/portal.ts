@@ -1965,6 +1965,70 @@ export async function getOverview(
 }
 
 // ---------------------------------------------------------------------------
+// Automations: welcome message (new-conversation greeting)
+// ---------------------------------------------------------------------------
+
+export interface WelcomeAutomationSettings {
+  enabled: boolean;
+  text: string;
+}
+
+export type WelcomeSaveResult =
+  | { kind: "ok"; enabled: boolean; text: string }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function getWelcomeAutomation(
+  accessToken: string
+): Promise<WelcomeAutomationSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/automations/welcome");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  return {
+    enabled: p.enabled === true,
+    text: typeof p.text === "string" ? p.text : "",
+  };
+}
+
+export async function saveWelcomeAutomation(
+  accessToken: string,
+  enabled: boolean,
+  text: string
+): Promise<WelcomeSaveResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/automations/welcome", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled, text }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  return { kind: "ok", enabled: p.enabled === true, text: typeof p.text === "string" ? p.text : "" };
+}
+
+// ---------------------------------------------------------------------------
 // Growth: broadcasts, KB gap report, CSAT ratings
 // ---------------------------------------------------------------------------
 

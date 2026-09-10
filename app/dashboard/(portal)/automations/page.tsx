@@ -28,6 +28,13 @@ export default function AutomationsPage() {
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(
     null
   );
+  const [welcomeEnabled, setWelcomeEnabled] = useState(false);
+  const [welcomeText, setWelcomeText] = useState("");
+  const [welcomeBusy, setWelcomeBusy] = useState(false);
+  const [welcomeMessage, setWelcomeMessage] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
   const mounted = useRef(true);
 
   const load = useCallback(async () => {
@@ -50,6 +57,34 @@ export default function AutomationsPage() {
       // Transient network issue — retry on next visit.
     }
   }, []);
+
+  const loadWelcome = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/welcome", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (response.status === 401) {
+        setExpired(true);
+        return;
+      }
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        enabled?: boolean;
+        text?: string;
+      } | null;
+      if (payload) {
+        setWelcomeEnabled(payload.enabled === true);
+        setWelcomeText(typeof payload.text === "string" ? payload.text : "");
+      }
+    } catch {
+      // Additive card — never block the page on it.
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadWelcome();
+  }, [loadWelcome]);
 
   useEffect(() => {
     mounted.current = true;
@@ -88,6 +123,36 @@ export default function AutomationsPage() {
       mounted.current = false;
     };
   }, [load]);
+
+  async function saveWelcome() {
+    if (welcomeBusy) return;
+    setWelcomeBusy(true);
+    setWelcomeMessage(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/welcome", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ enabled: welcomeEnabled, text: welcomeText.trim() }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setWelcomeMessage({ kind: "ok", text: "Welcome message saved." });
+      } else {
+        setWelcomeMessage({
+          kind: "error",
+          text: payload?.error?.message || "Could not save. Try again shortly.",
+        });
+      }
+    } catch {
+      setWelcomeMessage({ kind: "error", text: "Network error — try again." });
+    } finally {
+      setWelcomeBusy(false);
+    }
+  }
 
   async function addRule() {
     if (busy) return;
@@ -194,6 +259,61 @@ export default function AutomationsPage() {
         Simple keyword rules that run instantly on every incoming message —
         WhatsApp and website. No AI, fully deterministic.
       </p>
+
+      <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-slate-300">Welcome message</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
+              Sent automatically when a customer messages for the first time.
+              Use {"{{name}}"} to greet by first name.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWelcomeEnabled(!welcomeEnabled)}
+            className={
+              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              (welcomeEnabled
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                : "border-white/[0.08] bg-white/[0.03] text-slate-500")
+            }
+          >
+            {welcomeEnabled ? "On" : "Off"}
+          </button>
+        </div>
+        <textarea
+          value={welcomeText}
+          onChange={(event) => setWelcomeText(event.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="Hi! Thanks for reaching out — how can we help you today?"
+          className="mt-3 w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+        />
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] text-slate-600">
+            {welcomeText.trim().length}/500
+          </span>
+          <button
+            type="button"
+            onClick={() => void saveWelcome()}
+            disabled={welcomeBusy || (welcomeEnabled && !welcomeText.trim())}
+            className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+          >
+            {welcomeBusy ? "Saving…" : "Save welcome message"}
+          </button>
+        </div>
+        {welcomeMessage && (
+          <p
+            className={
+              "mt-2 text-xs " +
+              (welcomeMessage.kind === "ok" ? "text-emerald-300" : "text-red-300")
+            }
+          >
+            {welcomeMessage.text}
+          </p>
+        )}
+      </div>
 
       <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
         <p className="text-xs font-medium text-slate-300">
