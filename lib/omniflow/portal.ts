@@ -2163,6 +2163,123 @@ export async function saveAutoAssign(
 }
 
 // ---------------------------------------------------------------------------
+// Customers: contact-level notes (CRM)
+// ---------------------------------------------------------------------------
+
+export interface CustomerNote {
+  id: number;
+  body: string;
+  authorEmail: string;
+  authorName: string;
+  createdAt: string | null;
+}
+
+function normalizeCustomerNote(value: unknown): CustomerNote | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  const body = typeof p.body === "string" ? p.body : "";
+  if (id === null || !body) return null;
+  return {
+    id,
+    body,
+    authorEmail: typeof p.author_email === "string" ? p.author_email : "",
+    authorName: typeof p.author_name === "string" ? p.author_name : "",
+    createdAt: typeof p.created_at === "string" ? p.created_at : null,
+  };
+}
+
+export async function listCustomerNotes(
+  accessToken: string,
+  contactId: string
+): Promise<CustomerNote[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/customers/notes?contact_id=" +
+        encodeURIComponent(contactId.slice(0, 120))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawNotes = (payload as Record<string, unknown>).notes;
+  if (!Array.isArray(rawNotes)) return [];
+  const notes: CustomerNote[] = [];
+  for (const raw of rawNotes) {
+    const note = normalizeCustomerNote(raw);
+    if (note) notes.push(note);
+  }
+  return notes;
+}
+
+export type CustomerNoteAddResult =
+  | { kind: "ok"; note: CustomerNote }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function addCustomerNote(
+  accessToken: string,
+  contactId: string,
+  body: string
+): Promise<CustomerNoteAddResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/customers/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact_id: contactId.slice(0, 120), body }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const note = normalizeCustomerNote((payload as Record<string, unknown>).note);
+  if (!note) return { kind: "unavailable" };
+  return { kind: "ok", note };
+}
+
+export type CustomerNoteDeleteResult =
+  | { kind: "ok" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function deleteCustomerNote(
+  accessToken: string,
+  noteId: number
+): Promise<CustomerNoteDeleteResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/customers/notes/" + encodeURIComponent(String(noteId)),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  return response.ok ? { kind: "ok" } : { kind: "unavailable" };
+}
+
+// ---------------------------------------------------------------------------
 // Growth: broadcasts, KB gap report, CSAT ratings
 // ---------------------------------------------------------------------------
 

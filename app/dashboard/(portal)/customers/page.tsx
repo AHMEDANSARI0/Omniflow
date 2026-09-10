@@ -44,6 +44,16 @@ export default function CustomersPage() {
   const [expired, setExpired] = useState(false);
   const [pending, setPending] = useState(false);
   const [search, setSearch] = useState("");
+  const [notesOpenFor, setNotesOpenFor] = useState<string | null>(null);
+  const [notesByContact, setNotesByContact] = useState<
+    Record<
+      string,
+      { id: number; body: string; authorEmail: string; authorName: string; createdAt: string | null }[]
+    >
+  >({});
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteBusy, setNoteBusy] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const searchRef = useRef("");
   const debounceRef = useRef<number | null>(null);
   const [channelFilter, setChannelFilter] = useState<
@@ -104,6 +114,122 @@ export default function CustomersPage() {
       searchRef.current = value.trim();
       void refresh();
     }, 300);
+  }
+
+  async function toggleNotes(contactId: string) {
+    if (notesOpenFor === contactId) {
+      setNotesOpenFor(null);
+      return;
+    }
+    setNotesOpenFor(contactId);
+    setNoteError(null);
+    if (notesByContact[contactId] !== undefined) return;
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/customers/notes?contact_id=" +
+          encodeURIComponent(contactId),
+        { credentials: "same-origin", cache: "no-store" }
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        notes?: {
+          id?: number;
+          body?: string;
+          author_email?: string;
+          author_name?: string;
+          created_at?: string | null;
+        }[];
+      } | null;
+      const notes = (payload?.notes || [])
+        .map((note) => ({
+          id: typeof note.id === "number" ? note.id : 0,
+          body: typeof note.body === "string" ? note.body : "",
+          authorEmail: typeof note.author_email === "string" ? note.author_email : "",
+          authorName: typeof note.author_name === "string" ? note.author_name : "",
+          createdAt: typeof note.created_at === "string" ? note.created_at : null,
+        }))
+        .filter((note) => note.id > 0 && note.body);
+      setNotesByContact((prev) => ({ ...prev, [contactId]: notes }));
+    } catch {
+      setNotesByContact((prev) => ({ ...prev, [contactId]: [] }));
+    }
+  }
+
+  async function addNote(contactId: string) {
+    const body = noteDraft.trim();
+    if (noteBusy || !body) return;
+    setNoteBusy(true);
+    setNoteError(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/customers/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ contact_id: contactId, body }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        note?: {
+          id?: number;
+          body?: string;
+          author_email?: string;
+          author_name?: string;
+          created_at?: string | null;
+        };
+        error?: { message?: string };
+      } | null;
+      if (
+        response.ok &&
+        payload?.ok &&
+        typeof payload.note?.id === "number" &&
+        typeof payload.note?.body === "string"
+      ) {
+        const note = {
+          id: payload.note.id,
+          body: payload.note.body,
+          authorEmail:
+            typeof payload.note.author_email === "string" ? payload.note.author_email : "",
+          authorName:
+            typeof payload.note.author_name === "string" ? payload.note.author_name : "",
+          createdAt:
+            typeof payload.note.created_at === "string" ? payload.note.created_at : null,
+        };
+        setNotesByContact((prev) => ({
+          ...prev,
+          [contactId]: [note, ...(prev[contactId] || [])],
+        }));
+        setNoteDraft("");
+      } else {
+        setNoteError(payload?.error?.message || "Could not save the note. Try again shortly.");
+      }
+    } catch {
+      setNoteError("Network error — try again.");
+    } finally {
+      setNoteBusy(false);
+    }
+  }
+
+  async function removeNote(contactId: string, noteId: number) {
+    if (noteBusy) return;
+    setNoteBusy(true);
+    setNoteError(null);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/customers/notes/" + String(noteId),
+        { method: "DELETE", credentials: "same-origin" }
+      );
+      if (response.ok) {
+        setNotesByContact((prev) => ({
+          ...prev,
+          [contactId]: (prev[contactId] || []).filter((note) => note.id !== noteId),
+        }));
+      } else {
+        setNoteError("Could not delete the note. Try again shortly.");
+      }
+    } catch {
+      setNoteError("Network error — try again.");
+    } finally {
+      setNoteBusy(false);
+    }
   }
 
   if (expired) {
@@ -179,13 +305,17 @@ export default function CustomersPage() {
       ) : (
         <ul className="space-y-3">
           {customers.map((customer) => (
-            <li key={customer.contactId}>
+            <li
+              key={customer.contactId}
+              className="overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015]"
+            >
+              <div className="flex items-stretch">
               <Link
                 href={
                   "/dashboard/conversations?q=" +
                   encodeURIComponent(customer.contactId)
                 }
-                className="block rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 transition-colors duration-300 hover:border-white/[0.12] hover:bg-white/[0.03]"
+                className="min-w-0 flex-1 p-4 transition-colors duration-300 hover:bg-white/[0.03]"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
@@ -259,6 +389,79 @@ export default function CustomersPage() {
                   </div>
                 )}
               </Link>
+                <div className="flex w-14 shrink-0 items-stretch border-l border-white/[0.05] sm:w-16">
+                  <button
+                    type="button"
+                    onClick={() => void toggleNotes(customer.contactId)}
+                    className={
+                      "h-full w-full text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+                      (notesOpenFor === customer.contactId
+                        ? "bg-cyan-400/[0.08] text-cyan-200"
+                        : "text-slate-500 hover:text-white")
+                    }
+                  >
+                    Notes
+                  </button>
+                </div>
+              </div>
+              {notesOpenFor === customer.contactId && (
+                <div className="border-t border-white/[0.05] p-4">
+                  {notesByContact[customer.contactId] === undefined ? (
+                    <p className="text-[11px] text-slate-600">Loading notes…</p>
+                  ) : (notesByContact[customer.contactId] || []).length === 0 ? (
+                    <p className="text-[11px] text-slate-600">
+                      No notes yet — add context your team should always see
+                      for this customer.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {(notesByContact[customer.contactId] || []).map((note) => (
+                        <li
+                          key={"note-" + String(note.id)}
+                          className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="min-w-0 whitespace-pre-wrap break-words text-xs text-slate-300">
+                              {note.body}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => void removeNote(customer.contactId, note.id)}
+                              className="shrink-0 text-[10px] text-slate-600 transition-colors duration-300 hover:text-red-300"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                          <p className="mt-1 text-[10px] text-slate-600">
+                            {note.authorName || note.authorEmail || "Team"}
+                            {note.createdAt ? " · " + formatWhen(note.createdAt) : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <input
+                      value={noteDraft}
+                      onChange={(event) => setNoteDraft(event.target.value)}
+                      maxLength={1000}
+                      placeholder="Add a note about this customer…"
+                      className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void addNote(customer.contactId)}
+                      disabled={noteBusy || !noteDraft.trim()}
+                      className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                    >
+                      {noteBusy ? "Saving…" : "Add note"}
+                    </button>
+                  </div>
+                  {noteError && (
+                    <p className="mt-2 text-[11px] text-red-300">{noteError}</p>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
