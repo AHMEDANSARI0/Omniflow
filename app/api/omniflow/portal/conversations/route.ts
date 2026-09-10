@@ -36,7 +36,9 @@ export async function GET(request: Request) {
         : undefined;
     const tagParam = url.searchParams.get("tag");
     const tagFilter = tagParam ? tagParam.trim().slice(0, 24) : undefined;
-    const needsReplyOnly = url.searchParams.get("needs_reply") === "1";
+    const needsReplyRaw = url.searchParams.get("needs_reply") || "";
+    const needsReplyFilter =
+      needsReplyRaw === "1" || needsReplyRaw === "overdue" ? needsReplyRaw : "";
     const conversations = await listConversations(
       accessToken,
       searchQuery,
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
       intentFilter,
       channelFilter,
       tagFilter,
-      needsReplyOnly
+      needsReplyFilter
     );
     if (conversations === null) {
       return safeJson(

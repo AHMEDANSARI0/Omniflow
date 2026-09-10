@@ -94,9 +94,27 @@ export default async function ClientDashboardPage() {
             <StatTile
               label="Needs reply"
               value={overview.needsReplyOpen}
-              sub="customer sent the last message"
+              sub={
+                overview.needsReplyOverdue > 0
+                  ? overview.needsReplyOverdue + " overdue"
+                  : "customer sent the last message"
+              }
             />
           </div>
+          {overview.needsReplyOverdue > 0 && (
+            <Link
+              href="/dashboard/conversations?needs_reply=overdue"
+              className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-red-400/25 bg-red-400/[0.06] px-5 py-4 transition-colors duration-300 hover:bg-red-400/[0.10]"
+            >
+              <span className="text-sm text-red-200">
+                {overview.needsReplyOverdue}{" "}
+                {overview.needsReplyOverdue === 1 ? "customer is" : "customers are"} waiting longer than the reply SLA.
+              </span>
+              <span className="shrink-0 text-xs font-medium text-red-300">
+                Review overdue →
+              </span>
+            </Link>
+          )}
           {overview.unassignedOpen > 0 && (
             <Link
               href="/dashboard/conversations"

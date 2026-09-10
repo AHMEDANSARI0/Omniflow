@@ -554,7 +554,7 @@ export async function listConversations(
   intentFilter?: string,
   channelFilter?: string,
   tagFilter?: string,
-  needsReplyOnly?: boolean
+  needsReplyFilter?: string
 ): Promise<ConversationSummary[] | null> {
   const searchPart =
     searchQuery && searchQuery.trim()
@@ -574,7 +574,10 @@ export async function listConversations(
       : "";
   const tagPart =
     tagFilter && tagFilter !== "all" ? "tag=" + encodeURIComponent(tagFilter) : "";
-  const replyPart = needsReplyOnly ? "needs_reply=1" : "";
+  const replyPart =
+    needsReplyFilter === "1" || needsReplyFilter === "overdue"
+      ? "needs_reply=" + needsReplyFilter
+      : "";
   const parts = [searchPart, statusPart, intentPart, channelPart, tagPart, replyPart].filter(
     Boolean
   );
@@ -1928,6 +1931,7 @@ export interface OverviewData {
   openNow: number;
   unassignedOpen: number;
   needsReplyOpen: number;
+  needsReplyOverdue: number;
   hotLeads: OverviewHotLead[];
 }
 
@@ -1987,6 +1991,8 @@ export async function getOverview(
       typeof stats.unassigned_open === "number" ? stats.unassigned_open : 0,
     needsReplyOpen:
       typeof stats.needs_reply_open === "number" ? stats.needs_reply_open : 0,
+    needsReplyOverdue:
+      typeof stats.needs_reply_overdue === "number" ? stats.needs_reply_overdue : 0,
     hotLeads,
   };
 }

@@ -60,8 +60,8 @@ export default function ConversationsPage() {
   const intentRef = useRef("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "website">("all");
   const channelRef = useRef<"all" | "whatsapp" | "website">("all");
-  const [needsReplyOnly, setNeedsReplyOnly] = useState(false);
-  const needsReplyRef = useRef(false);
+  const [replyFilter, setReplyFilter] = useState("");
+  const replyFilterRef = useRef("");
   const [tagFilter, setTagFilter] = useState("all");
   const tagRef = useRef("all");
   const [tagOptions, setTagOptions] = useState<{ tag: string; count: number }[]>([]);
@@ -80,7 +80,7 @@ export default function ConversationsPage() {
       if (intentRef.current !== "all") listParams.set("intent", intentRef.current);
       if (channelRef.current !== "all") listParams.set("channel", channelRef.current);
       if (tagRef.current !== "all") listParams.set("tag", tagRef.current);
-      if (needsReplyRef.current) listParams.set("needs_reply", "1");
+      if (replyFilterRef.current) listParams.set("needs_reply", replyFilterRef.current);
       const listQs = listParams.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
@@ -112,6 +112,17 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     mounted.current = true;
+    const urlFilters = new URLSearchParams(window.location.search);
+    const urlQuery = (urlFilters.get("q") || "").trim();
+    if (urlQuery) {
+      searchRef.current = urlQuery;
+      setSearch(urlQuery);
+    }
+    const urlReply = urlFilters.get("needs_reply");
+    if (urlReply === "1" || urlReply === "overdue") {
+      replyFilterRef.current = urlReply;
+      setReplyFilter(urlReply);
+    }
     void refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
@@ -166,6 +177,7 @@ export default function ConversationsPage() {
       if (intentRef.current !== "all") params.set("intent", intentRef.current);
       if (channelRef.current !== "all") params.set("channel", channelRef.current);
       if (tagRef.current !== "all") params.set("tag", tagRef.current);
+      if (replyFilterRef.current) params.set("needs_reply", replyFilterRef.current);
       const qs = params.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations/export" + (qs ? "?" + qs : ""),
@@ -425,18 +437,34 @@ export default function ConversationsPage() {
         <button
           type="button"
           onClick={() => {
-            const next = !needsReplyRef.current;
-            needsReplyRef.current = next;
-            setNeedsReplyOnly(next);
+            const next = replyFilter === "1" ? "" : "1";
+            replyFilterRef.current = next;
+            setReplyFilter(next);
             void refresh();
           }}
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-            needsReplyOnly
+            replyFilter === "1"
               ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
               : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
           }`}
         >
           Needs reply
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const next = replyFilter === "overdue" ? "" : "overdue";
+            replyFilterRef.current = next;
+            setReplyFilter(next);
+            void refresh();
+          }}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            replyFilter === "overdue"
+              ? "border-red-400/30 bg-red-400/[0.08] text-red-200"
+              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+          }`}
+        >
+          Overdue
         </button>
       </div>
 
