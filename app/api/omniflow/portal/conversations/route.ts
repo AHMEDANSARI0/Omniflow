@@ -39,6 +39,8 @@ export async function GET(request: Request) {
     const needsReplyRaw = url.searchParams.get("needs_reply") || "";
     const needsReplyFilter =
       needsReplyRaw === "1" || needsReplyRaw === "overdue" ? needsReplyRaw : "";
+    const sortRaw = url.searchParams.get("sort") || "";
+    const sortOrder = sortRaw === "oldest" ? "oldest" : "";
     const conversations = await listConversations(
       accessToken,
       searchQuery,
@@ -46,7 +48,8 @@ export async function GET(request: Request) {
       intentFilter,
       channelFilter,
       tagFilter,
-      needsReplyFilter
+      needsReplyFilter,
+      sortOrder
     );
     if (conversations === null) {
       return safeJson(

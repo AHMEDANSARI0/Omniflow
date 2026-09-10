@@ -554,7 +554,8 @@ export async function listConversations(
   intentFilter?: string,
   channelFilter?: string,
   tagFilter?: string,
-  needsReplyFilter?: string
+  needsReplyFilter?: string,
+  sortOrder?: string
 ): Promise<ConversationSummary[] | null> {
   const searchPart =
     searchQuery && searchQuery.trim()
@@ -578,9 +579,16 @@ export async function listConversations(
     needsReplyFilter === "1" || needsReplyFilter === "overdue"
       ? "needs_reply=" + needsReplyFilter
       : "";
-  const parts = [searchPart, statusPart, intentPart, channelPart, tagPart, replyPart].filter(
-    Boolean
-  );
+  const sortPart = sortOrder === "oldest" ? "sort=oldest" : "";
+  const parts = [
+    searchPart,
+    statusPart,
+    intentPart,
+    channelPart,
+    tagPart,
+    replyPart,
+    sortPart,
+  ].filter(Boolean);
   const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;
   try {

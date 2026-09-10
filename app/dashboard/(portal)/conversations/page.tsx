@@ -62,6 +62,8 @@ export default function ConversationsPage() {
   const channelRef = useRef<"all" | "whatsapp" | "website">("all");
   const [replyFilter, setReplyFilter] = useState("");
   const replyFilterRef = useRef("");
+  const [oldestFirst, setOldestFirst] = useState(false);
+  const oldestRef = useRef(false);
   const [tagFilter, setTagFilter] = useState("all");
   const tagRef = useRef("all");
   const [tagOptions, setTagOptions] = useState<{ tag: string; count: number }[]>([]);
@@ -81,6 +83,7 @@ export default function ConversationsPage() {
       if (channelRef.current !== "all") listParams.set("channel", channelRef.current);
       if (tagRef.current !== "all") listParams.set("tag", tagRef.current);
       if (replyFilterRef.current) listParams.set("needs_reply", replyFilterRef.current);
+      if (oldestRef.current) listParams.set("sort", "oldest");
       const listQs = listParams.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
@@ -122,6 +125,10 @@ export default function ConversationsPage() {
     if (urlReply === "1" || urlReply === "overdue") {
       replyFilterRef.current = urlReply;
       setReplyFilter(urlReply);
+    }
+    if ((urlFilters.get("sort") || "") === "oldest") {
+      oldestRef.current = true;
+      setOldestFirst(true);
     }
     void refresh();
     const timer = window.setInterval(() => {
@@ -178,6 +185,7 @@ export default function ConversationsPage() {
       if (channelRef.current !== "all") params.set("channel", channelRef.current);
       if (tagRef.current !== "all") params.set("tag", tagRef.current);
       if (replyFilterRef.current) params.set("needs_reply", replyFilterRef.current);
+      if (oldestRef.current) params.set("sort", "oldest");
       const qs = params.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations/export" + (qs ? "?" + qs : ""),
@@ -465,6 +473,21 @@ export default function ConversationsPage() {
           }`}
         >
           Overdue
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            oldestRef.current = !oldestRef.current;
+            setOldestFirst(oldestRef.current);
+            void refresh();
+          }}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            oldestFirst
+              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
+              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+          }`}
+        >
+          Oldest first
         </button>
       </div>
 
