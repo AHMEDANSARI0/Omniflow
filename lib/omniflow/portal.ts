@@ -1787,6 +1787,104 @@ export async function addConversationNote(
 }
 
 // ---------------------------------------------------------------------------
+// Team: agent performance (last N days, deterministic)
+// ---------------------------------------------------------------------------
+
+export interface TeamPerformanceMember {
+  id: number;
+  email: string;
+  name: string;
+  role: TeamRole;
+  status: string;
+  repliesSent: number;
+  conversationsTouched: number;
+  notesAdded: number;
+  assignedOpen: number;
+}
+
+export interface TeamPerformanceBoard {
+  openConversations: number;
+  unassignedOpen: number;
+  repliesSent: number;
+  csatAvg: number | null;
+  csatAnswered: number;
+}
+
+export interface TeamPerformanceData {
+  windowDays: number;
+  members: TeamPerformanceMember[];
+  board: TeamPerformanceBoard;
+}
+
+function normalizePerformanceMember(value: unknown): TeamPerformanceMember | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  const email = typeof p.email === "string" ? p.email : "";
+  if (id === null || !email) return null;
+  const role: TeamRole = p.role === "owner" || p.role === "admin" ? p.role : "agent";
+  return {
+    id,
+    email,
+    name: typeof p.name === "string" ? p.name : "",
+    role,
+    status: p.status === "disabled" ? "disabled" : "active",
+    repliesSent: typeof p.replies_sent === "number" ? p.replies_sent : 0,
+    conversationsTouched:
+      typeof p.conversations_touched === "number" ? p.conversations_touched : 0,
+    notesAdded: typeof p.notes_added === "number" ? p.notes_added : 0,
+    assignedOpen: typeof p.assigned_open === "number" ? p.assigned_open : 0,
+  };
+}
+
+export async function getTeamPerformance(
+  accessToken: string
+): Promise<TeamPerformanceData | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/team/performance");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const rawMembers = p.members;
+  const members: TeamPerformanceMember[] = [];
+  if (Array.isArray(rawMembers)) {
+    for (const raw of rawMembers) {
+      const row = normalizePerformanceMember(raw);
+      if (row) members.push(row);
+    }
+  }
+  const boardRaw =
+    p.board !== null && typeof p.board === "object"
+      ? (p.board as Record<string, unknown>)
+      : {};
+  return {
+    windowDays: typeof p.window_days === "number" ? p.window_days : 7,
+    members,
+    board: {
+      openConversations:
+        typeof boardRaw.open_conversations === "number"
+          ? boardRaw.open_conversations
+          : 0,
+      unassignedOpen:
+        typeof boardRaw.unassigned_open === "number" ? boardRaw.unassigned_open : 0,
+      repliesSent: typeof boardRaw.replies_sent === "number" ? boardRaw.replies_sent : 0,
+      csatAvg: typeof boardRaw.csat_avg === "number" ? boardRaw.csat_avg : null,
+      csatAnswered:
+        typeof boardRaw.csat_answered === "number" ? boardRaw.csat_answered : 0,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Growth: broadcasts, KB gap report, CSAT ratings
 // ---------------------------------------------------------------------------
 

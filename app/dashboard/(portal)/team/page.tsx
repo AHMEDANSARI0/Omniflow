@@ -10,6 +10,33 @@ interface TeamMember {
   status: string;
 }
 
+interface PerfMember {
+  id: number;
+  name: string;
+  email: string;
+  role: "owner" | "admin" | "agent";
+  repliesSent: number;
+  conversationsTouched: number;
+  notesAdded: number;
+  assignedOpen: number;
+}
+
+interface PerfData {
+  windowDays: number;
+  members: PerfMember[];
+  board: {
+    openConversations: number;
+    unassignedOpen: number;
+    repliesSent: number;
+    csatAvg: number | null;
+    csatAnswered: number;
+  };
+}
+
+function perfStatClass(value: number): string {
+  return value > 0 ? "text-white" : "text-slate-600";
+}
+
 const inputClass =
   "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
 
@@ -40,6 +67,7 @@ export default function TeamPage() {
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(
     null
   );
+  const [perf, setPerf] = useState<PerfData | null>(null);
 
   const canManage = myRole === "owner" || myRole === "admin";
 
@@ -78,9 +106,28 @@ export default function TeamPage() {
     }
   }, []);
 
+  const loadPerf = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/team/performance", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (response.status === 401) {
+        setExpired(true);
+        return;
+      }
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as PerfData | null;
+      if (payload && Array.isArray(payload.members)) setPerf(payload);
+    } catch {
+      // Performance is additive — never block the team page on it.
+    }
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadPerf();
+  }, [load, loadPerf]);
 
   async function addMember() {
     if (busy) return;
@@ -201,6 +248,115 @@ export default function TeamPage() {
           are never sent to customers.
         </p>
       </div>
+
+      {perf && (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Performance
+            </h2>
+            <span className="text-[10px] text-slate-600">
+              Last {perf.windowDays} {perf.windowDays === 1 ? "day" : "days"}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                Open chats
+              </p>
+              <p className={"mt-0.5 text-lg font-semibold " + perfStatClass(perf.board.openConversations)}>
+                {perf.board.openConversations}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                Unassigned
+              </p>
+              <p className={"mt-0.5 text-lg font-semibold " + perfStatClass(perf.board.unassignedOpen)}>
+                {perf.board.unassignedOpen}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                Team replies
+              </p>
+              <p className={"mt-0.5 text-lg font-semibold " + perfStatClass(perf.board.repliesSent)}>
+                {perf.board.repliesSent}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                CSAT avg
+              </p>
+              <p className="mt-0.5 text-lg font-semibold text-white">
+                {perf.board.csatAvg !== null ? perf.board.csatAvg.toFixed(1) : "—"}
+                <span className="ml-1 text-[10px] font-normal text-slate-600">
+                  {perf.board.csatAnswered > 0
+                    ? "(" + perf.board.csatAnswered + ")"
+                    : ""}
+                </span>
+              </p>
+            </div>
+          </div>
+          {perf.members.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {perf.members.map((member) => (
+                <li
+                  key={"perf-" + String(member.id)}
+                  className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-3"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-xs font-semibold text-slate-300">
+                        {(member.name || member.email).slice(0, 1).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-white">
+                          {member.name || member.email}
+                          {member.role === "owner" && (
+                            <span className="ml-1.5 text-[9px] font-semibold uppercase tracking-wider text-cyan-300">
+                              owner
+                            </span>
+                          )}
+                        </p>
+                        <p className="truncate text-[10px] text-slate-600">
+                          {member.email}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 sm:justify-end">
+                      <span>
+                        <span className={perfStatClass(member.repliesSent) + " font-semibold"}>
+                          {member.repliesSent}
+                        </span>{" "}
+                        replies
+                      </span>
+                      <span>
+                        <span className={perfStatClass(member.conversationsTouched) + " font-semibold"}>
+                          {member.conversationsTouched}
+                        </span>{" "}
+                        chats touched
+                      </span>
+                      <span>
+                        <span className={perfStatClass(member.notesAdded) + " font-semibold"}>
+                          {member.notesAdded}
+                        </span>{" "}
+                        notes
+                      </span>
+                      <span>
+                        <span className={perfStatClass(member.assignedOpen) + " font-semibold"}>
+                          {member.assignedOpen}
+                        </span>{" "}
+                        assigned
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {canManage && (
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
