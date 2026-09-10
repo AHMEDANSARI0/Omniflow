@@ -6,7 +6,6 @@ import CodCard from "./CodCard";
 import TeamCard from "./TeamCard";
 import TagsCard from "./TagsCard";
 import RatingCard from "./RatingCard";
-import CustomerCard from "./CustomerCard";
 import SavedRepliesPicker from "./SavedRepliesPicker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
@@ -213,9 +212,6 @@ export default function ConversationThreadPage() {
       )}
       {!expired && !notFound && (
         <TagsCard conversationId={Number(id)} initialTags={conversation?.tags ?? []} />
-      )}
-      {!expired && !notFound && (
-        <CustomerCard contactId={conversation?.contactId ?? null} />
       )}
       {!expired && !notFound && conversation?.channel !== "website" && (
         <RatingCard conversationId={Number(id)} />
