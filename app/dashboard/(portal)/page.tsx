@@ -1,56 +1,66 @@
+import Link from "next/link";
+
 import { requireOmniFlowPrincipal } from "../../../lib/omniflow/auth-dal";
-import { getRecentActivity } from "../../../lib/omniflow/portal";
+import { getOverview, getRecentActivity } from "../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
 
 
-interface ModuleCard {
+interface QuickLink {
   icon: string;
   title: string;
-  description: string;
-  status: "active" | "next" | "soon";
+  href: string;
 }
 
-const modules: ModuleCard[] = [
-  {
-    icon: "◉",
-    title: "Managed WhatsApp",
-    description:
-      "Authorize once from mobile, then OmniFlow-managed infrastructure keeps the session available.",
-    status: "active",
-  },
-  {
-    icon: "✦",
-    title: "AI agents",
-    description:
-      "Tone, greetings, fallbacks, working hours and handoff policies — live from the Control Plane.",
-    status: "active",
-  },
-  {
-    icon: "◎",
-    title: "Conversations",
-    description:
-      "Tenant-isolated customer conversations, AI outcomes and human handoffs across channels.",
-    status: "active",
-  },
-  {
-    icon: "◇",
-    title: "Business profile",
-    description:
-      "Products, services, prices, policies, FAQs, operating hours and language preferences.",
-    status: "active",
-  },
+const QUICK_LINKS: QuickLink[] = [
+  { icon: "◎", title: "Conversations", href: "/dashboard/conversations" },
+  { icon: "☻", title: "Customers", href: "/dashboard/customers" },
+  { icon: "⚡", title: "Automations", href: "/dashboard/automations" },
+  { icon: "➤", title: "Broadcasts", href: "/dashboard/broadcasts" },
+  { icon: "◢", title: "Analytics", href: "/dashboard/analytics" },
+  { icon: "⚑", title: "Team", href: "/dashboard/team" },
+  { icon: "▣", title: "Knowledge base", href: "/dashboard/knowledge-base" },
+  { icon: "◇", title: "Business profile", href: "/dashboard/profile" },
 ];
 
-const statusStyle = {
-  active: "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-300",
-  next: "border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-300",
-  soon: "border-white/[0.06] bg-white/[0.02] text-slate-500",
-};
+function StatTile({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: number;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] px-4 py-3.5">
+      <p className="text-[10px] uppercase tracking-wider text-slate-600">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
+      {sub ? <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p> : null}
+    </div>
+  );
+}
+
+function whenLabel(iso: string | null): string {
+  if (!iso) return "";
+  const stamp = Date.parse(iso);
+  if (Number.isNaN(stamp)) return "";
+  const minutes = Math.max(0, Math.round((Date.now() - stamp) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  return Math.floor(hours / 24) + "d ago";
+}
 
 export default async function ClientDashboardPage() {
   const principal = await requireOmniFlowPrincipal();
   const { accessToken } = await readSessionCookies();
-  const activity = accessToken ? await getRecentActivity(accessToken) : null;
+  const [activity, overview] = await Promise.all([
+    accessToken ? getRecentActivity(accessToken) : Promise.resolve(null),
+    accessToken ? getOverview(accessToken) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -66,35 +76,86 @@ export default async function ClientDashboardPage() {
         </p>
       </div>
 
-      <div className="mb-8 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.035] px-5 py-4">
-          <p className="text-[10px] uppercase tracking-wider text-emerald-300/70">Session</p>
-          <p className="mt-1 flex items-center gap-2 text-sm font-medium text-white">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" /> Secure
-          </p>
-        </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] px-5 py-4">
-          <p className="text-[10px] uppercase tracking-wider text-slate-600">Role</p>
-          <p className="mt-1 text-sm font-medium capitalize text-white">{principal.role}</p>
-        </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] px-5 py-4">
-          <p className="text-[10px] uppercase tracking-wider text-slate-600">Architecture</p>
-          <p className="mt-1 text-sm font-medium text-white">Managed connector</p>
-        </div>
-      </div>
-
-      <div className="mb-8 flex items-start gap-3 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.025] px-5 py-4">
-        <span className="relative mt-1 flex h-2 w-2 shrink-0">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
-        </span>
-        <div>
-          <p className="text-sm text-slate-300">Secure portal authentication is active.</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            All portal modules are live on the versioned Control Plane API. Link your WhatsApp connector and every message, AI reply and conversation lands here automatically.
-          </p>
-        </div>
-      </div>
+      {overview && (
+        <>
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile label="New chats · 24h" value={overview.newChats} />
+            <StatTile label="Inbound · 24h" value={overview.inboundMessages} />
+            <StatTile label="Team replies · 24h" value={overview.teamReplies} />
+            <StatTile
+              label="Open now"
+              value={overview.openNow}
+              sub={
+                overview.unassignedOpen > 0
+                  ? overview.unassignedOpen + " unassigned"
+                  : "all assigned"
+              }
+            />
+          </div>
+          {overview.unassignedOpen > 0 && (
+            <Link
+              href="/dashboard/conversations"
+              className="mb-8 flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] px-5 py-4 transition-colors duration-300 hover:bg-amber-400/[0.09]"
+            >
+              <span className="text-sm text-amber-200">
+                {overview.unassignedOpen} open{" "}
+                {overview.unassignedOpen === 1 ? "chat has" : "chats have"} no
+                assignee — pick it up before it waits any longer.
+              </span>
+              <span className="shrink-0 text-xs font-medium text-amber-300">
+                Open inbox →
+              </span>
+            </Link>
+          )}
+          {overview.hotLeads.length > 0 && (
+            <div className="mb-8 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+              <h2 className="text-sm font-semibold text-white">Hot leads</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Open chats flagged hot — reply before they cool down.
+              </p>
+              <ul className="mt-4 space-y-2">
+                {overview.hotLeads.map((lead) => (
+                  <li key={"hot-lead-" + String(lead.id)}>
+                    <Link
+                      href={
+                        "/dashboard/conversations?q=" +
+                        encodeURIComponent(lead.contactId)
+                      }
+                      className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-3.5 py-2.5 transition-colors duration-300 hover:border-amber-400/25"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-400/25 bg-amber-400/[0.08] text-sm">
+                          🔥
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-medium text-white">
+                            {lead.contactName || lead.contactId}
+                          </span>
+                          {lead.preview && (
+                            <span className="block truncate text-[10px] text-slate-500">
+                              {lead.preview}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+                          {lead.leadScore !== null
+                            ? "score " + lead.leadScore
+                            : "hot"}
+                        </span>
+                        <span className="block text-[10px] text-slate-600">
+                          {whenLabel(lead.lastMessageAt)}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
 
       {activity && activity.length > 0 && (
         <div className="mb-8 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
@@ -122,25 +183,18 @@ export default async function ClientDashboardPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {modules.map((module) => (
-          <div
-            key={module.title}
-            className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5"
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {QUICK_LINKS.map((link) => (
+          <Link
+            key={link.title}
+            href={link.href}
+            className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 transition-colors duration-300 hover:border-cyan-400/25 hover:bg-cyan-400/[0.04]"
           >
-            <div className="mb-4 flex items-start justify-between">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] text-sm text-cyan-300">
-                {module.icon}
-              </div>
-              <span className={`rounded-md border px-2 py-0.5 text-[10px] uppercase tracking-wider ${statusStyle[module.status]}`}>
-                {module.status === "active" ? "Active" : module.status === "next" ? "Next" : "Coming soon"}
-              </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] text-sm text-cyan-300">
+              {link.icon}
             </div>
-            <h2 className="text-sm font-semibold text-white">{module.title}</h2>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
-              {module.description}
-            </p>
-          </div>
+            <p className="mt-3 text-xs font-medium text-white">{link.title}</p>
+          </Link>
         ))}
       </div>
     </div>

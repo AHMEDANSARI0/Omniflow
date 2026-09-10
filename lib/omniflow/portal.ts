@@ -1885,6 +1885,86 @@ export async function getTeamPerformance(
 }
 
 // ---------------------------------------------------------------------------
+// Overview: live command center (deterministic, 24h window)
+// ---------------------------------------------------------------------------
+
+export interface OverviewHotLead {
+  id: number;
+  contactId: string;
+  contactName: string;
+  leadScore: number | null;
+  preview: string | null;
+  lastMessageAt: string | null;
+}
+
+export interface OverviewData {
+  newChats: number;
+  inboundMessages: number;
+  teamReplies: number;
+  openNow: number;
+  unassignedOpen: number;
+  hotLeads: OverviewHotLead[];
+}
+
+function normalizeOverviewHotLead(value: unknown): OverviewHotLead | null {
+  if (value === null || typeof value !== "object") return null;
+  const p = value as Record<string, unknown>;
+  const id = typeof p.id === "number" ? p.id : null;
+  const contactId = typeof p.contact_id === "string" ? p.contact_id : "";
+  if (id === null || !contactId) return null;
+  return {
+    id,
+    contactId,
+    contactName: typeof p.contact_name === "string" ? p.contact_name : "",
+    leadScore: typeof p.lead_score === "number" ? p.lead_score : null,
+    preview: typeof p.preview === "string" ? p.preview : null,
+    lastMessageAt:
+      typeof p.last_message_at === "string" ? p.last_message_at : null,
+  };
+}
+
+export async function getOverview(
+  accessToken: string
+): Promise<OverviewData | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/overview");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const stats =
+    p.stats !== null && typeof p.stats === "object"
+      ? (p.stats as Record<string, unknown>)
+      : {};
+  const rawLeads = p.hot_leads;
+  const hotLeads: OverviewHotLead[] = [];
+  if (Array.isArray(rawLeads)) {
+    for (const raw of rawLeads) {
+      const lead = normalizeOverviewHotLead(raw);
+      if (lead) hotLeads.push(lead);
+    }
+  }
+  return {
+    newChats: typeof stats.new_chats === "number" ? stats.new_chats : 0,
+    inboundMessages:
+      typeof stats.inbound_messages === "number" ? stats.inbound_messages : 0,
+    teamReplies: typeof stats.team_replies === "number" ? stats.team_replies : 0,
+    openNow: typeof stats.open_now === "number" ? stats.open_now : 0,
+    unassignedOpen:
+      typeof stats.unassigned_open === "number" ? stats.unassigned_open : 0,
+    hotLeads,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Growth: broadcasts, KB gap report, CSAT ratings
 // ---------------------------------------------------------------------------
 
