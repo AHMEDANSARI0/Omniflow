@@ -2104,6 +2104,65 @@ export async function saveAutoClose(
 }
 
 // ---------------------------------------------------------------------------
+// Automations: auto-assign new chats (least-loaded teammate)
+// ---------------------------------------------------------------------------
+
+export interface AutoAssignSettings {
+  enabled: boolean;
+}
+
+export type AutoAssignSaveResult =
+  | { kind: "ok"; enabled: boolean }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function getAutoAssign(
+  accessToken: string
+): Promise<AutoAssignSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/automations/autoassign");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  return { enabled: p.enabled === true };
+}
+
+export async function saveAutoAssign(
+  accessToken: string,
+  enabled: boolean
+): Promise<AutoAssignSaveResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/automations/autoassign", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  return { kind: "ok", enabled: p.enabled === true };
+}
+
+// ---------------------------------------------------------------------------
 // Growth: broadcasts, KB gap report, CSAT ratings
 // ---------------------------------------------------------------------------
 

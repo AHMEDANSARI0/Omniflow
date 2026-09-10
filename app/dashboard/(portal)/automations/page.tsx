@@ -35,6 +35,19 @@ export default function AutomationsPage() {
     kind: "ok" | "error";
     text: string;
   } | null>(null);
+  const [closeEnabled, setCloseEnabled] = useState(false);
+  const [closeHours, setCloseHours] = useState("48");
+  const [closeBusy, setCloseBusy] = useState(false);
+  const [closeMessage, setCloseMessage] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+  const [assignEnabled, setAssignEnabled] = useState(false);
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [assignMessage, setAssignMessage] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
   const mounted = useRef(true);
 
   const load = useCallback(async () => {
@@ -82,6 +95,64 @@ export default function AutomationsPage() {
     }
   }, []);
 
+  const loadAutoClose = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/autoclose", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (response.status === 401) {
+        setExpired(true);
+        return;
+      }
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        enabled?: boolean;
+        hours?: number;
+      } | null;
+      if (payload) {
+        setCloseEnabled(payload.enabled === true);
+        setCloseHours(
+          String(
+            typeof payload.hours === "number" && payload.hours > 0
+              ? payload.hours
+              : 48
+          )
+        );
+      }
+    } catch {
+      // Additive card — never block the page on it.
+    }
+  }, []);
+
+  const loadAutoAssign = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/autoassign", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (response.status === 401) {
+        setExpired(true);
+        return;
+      }
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        enabled?: boolean;
+      } | null;
+      if (payload) setAssignEnabled(payload.enabled === true);
+    } catch {
+      // Additive card — never block the page on it.
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAutoAssign();
+  }, [loadAutoAssign]);
+
+  useEffect(() => {
+    void loadAutoClose();
+  }, [loadAutoClose]);
+
   useEffect(() => {
     void loadWelcome();
   }, [loadWelcome]);
@@ -123,6 +194,74 @@ export default function AutomationsPage() {
       mounted.current = false;
     };
   }, [load]);
+
+  async function saveAutoAssign() {
+    if (assignBusy) return;
+    setAssignBusy(true);
+    setAssignMessage(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/autoassign", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ enabled: assignEnabled }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setAssignMessage({ kind: "ok", text: "Auto-assign saved." });
+      } else {
+        setAssignMessage({
+          kind: "error",
+          text: payload?.error?.message || "Could not save. Try again shortly.",
+        });
+      }
+    } catch {
+      setAssignMessage({ kind: "error", text: "Network error — try again." });
+    } finally {
+      setAssignBusy(false);
+    }
+  }
+
+  async function saveAutoClose() {
+    if (closeBusy) return;
+    const hours = Number.parseInt(closeHours, 10);
+    if (!Number.isFinite(hours) || hours < 1 || hours > 720) {
+      setCloseMessage({
+        kind: "error",
+        text: "Hours must be between 1 and 720.",
+      });
+      return;
+    }
+    setCloseBusy(true);
+    setCloseMessage(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/autoclose", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ enabled: closeEnabled, hours }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setCloseMessage({ kind: "ok", text: "Auto-close saved." });
+      } else {
+        setCloseMessage({
+          kind: "error",
+          text: payload?.error?.message || "Could not save. Try again shortly.",
+        });
+      }
+    } catch {
+      setCloseMessage({ kind: "error", text: "Network error — try again." });
+    } finally {
+      setCloseBusy(false);
+    }
+  }
 
   async function saveWelcome() {
     if (welcomeBusy) return;
@@ -311,6 +450,109 @@ export default function AutomationsPage() {
             }
           >
             {welcomeMessage.text}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-slate-300">
+              Auto-close idle chats
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
+              Open chats with no new messages for this many hours close
+              automatically, so the open count stays honest.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCloseEnabled(!closeEnabled)}
+            className={
+              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              (closeEnabled
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                : "border-white/[0.08] bg-white/[0.03] text-slate-500")
+            }
+          >
+            {closeEnabled ? "On" : "Off"}
+          </button>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="number"
+            min={1}
+            max={720}
+            value={closeHours}
+            onChange={(event) => setCloseHours(event.target.value)}
+            className="w-full sm:w-32 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-sm text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          />
+          <span className="text-[11px] text-slate-600">
+            hours of silence before closing (1–720)
+          </span>
+          <button
+            type="button"
+            onClick={() => void saveAutoClose()}
+            disabled={closeBusy}
+            className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50 sm:ml-auto"
+          >
+            {closeBusy ? "Saving…" : "Save auto-close"}
+          </button>
+        </div>
+        {closeMessage && (
+          <p
+            className={
+              "mt-2 text-xs " +
+              (closeMessage.kind === "ok" ? "text-emerald-300" : "text-red-300")
+            }
+          >
+            {closeMessage.text}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-slate-300">
+              Auto-assign new chats
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
+              Every new chat goes straight to the teammate with the fewest
+              open chats right now — fair spread, no manual triage.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAssignEnabled(!assignEnabled)}
+            className={
+              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              (assignEnabled
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                : "border-white/[0.08] bg-white/[0.03] text-slate-500")
+            }
+          >
+            {assignEnabled ? "On" : "Off"}
+          </button>
+        </div>
+        <div className="mt-3 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => void saveAutoAssign()}
+            disabled={assignBusy}
+            className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+          >
+            {assignBusy ? "Saving…" : "Save auto-assign"}
+          </button>
+        </div>
+        {assignMessage && (
+          <p
+            className={
+              "mt-2 text-xs " +
+              (assignMessage.kind === "ok" ? "text-emerald-300" : "text-red-300")
+            }
+          >
+            {assignMessage.text}
           </p>
         )}
       </div>
