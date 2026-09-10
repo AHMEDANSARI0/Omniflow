@@ -1829,12 +1829,25 @@ export interface TeamPerformanceMember {
   assignedOpen: number;
 }
 
+export interface CsatLowBucket {
+  score: number;
+  count: number;
+}
+
+export interface CsatRecentRating {
+  score: number;
+  at: string;
+}
+
 export interface TeamPerformanceBoard {
   openConversations: number;
   unassignedOpen: number;
   repliesSent: number;
   csatAvg: number | null;
   csatAnswered: number;
+  csatDist: number[];
+  csatLow: CsatLowBucket[];
+  csatRecent: CsatRecentRating[];
 }
 
 export interface TeamPerformanceData {
@@ -1907,6 +1920,26 @@ export async function getTeamPerformance(
       csatAvg: typeof boardRaw.csat_avg === "number" ? boardRaw.csat_avg : null,
       csatAnswered:
         typeof boardRaw.csat_answered === "number" ? boardRaw.csat_answered : 0,
+      csatDist:
+        Array.isArray(boardRaw.csat_dist) && boardRaw.csat_dist.length === 5
+          ? boardRaw.csat_dist.map((value) => (typeof value === "number" ? value : 0))
+          : [0, 0, 0, 0, 0],
+      csatLow: Array.isArray(boardRaw.csat_low)
+        ? boardRaw.csat_low
+            .map((bucket) => ({
+              score: typeof bucket.score === "number" ? bucket.score : 0,
+              count: typeof bucket.count === "number" ? bucket.count : 0,
+            }))
+            .filter((bucket) => bucket.score > 0 && bucket.count > 0)
+        : [],
+      csatRecent: Array.isArray(boardRaw.csat_recent)
+        ? boardRaw.csat_recent
+            .map((entry) => ({
+              score: typeof entry.score === "number" ? entry.score : 0,
+              at: typeof entry.at === "string" ? entry.at : "",
+            }))
+            .filter((entry) => entry.score > 0 && entry.at)
+        : [],
     },
   };
 }

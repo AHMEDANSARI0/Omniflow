@@ -30,6 +30,9 @@ interface PerfData {
     repliesSent: number;
     csatAvg: number | null;
     csatAnswered: number;
+    csatDist: number[];
+    csatLow: { score: number; count: number }[];
+    csatRecent: { score: number; at: string }[];
   };
 }
 
@@ -298,6 +301,56 @@ export default function TeamPage() {
               </p>
             </div>
           </div>
+          {perf.board.csatAnswered > 0 && (
+            <div className="mt-3">
+              <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/[0.04]">
+                {[0, 1, 2, 3, 4].map((index) => {
+                  const share =
+                    (perf.board.csatDist[index] / perf.board.csatAnswered) * 100;
+                  const colors = [
+                    "bg-red-400/70",
+                    "bg-orange-400/70",
+                    "bg-yellow-400/70",
+                    "bg-lime-400/70",
+                    "bg-emerald-400/70",
+                  ];
+                  return share > 0 ? (
+                    <div
+                      key={"star-" + String(index)}
+                      className={colors[index]}
+                      style={{ width: share + "%" }}
+                    />
+                  ) : null;
+                })}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-600">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span key={"star-label-" + String(star)}>
+                    {star}★ {perf.board.csatDist[star - 1]}
+                  </span>
+                ))}
+              </div>
+              {perf.board.csatLow.length > 0 && (
+                <p className="mt-2 text-[11px] text-red-300">
+                  {perf.board.csatLow
+                    .map((bucket) => bucket.count + "× " + bucket.score + "★")
+                    .join(", ")}
+                  {" "}— worth a personal follow-up.
+                </p>
+              )}
+              {perf.board.csatRecent.length > 0 && (
+                <p className="mt-1 text-[10px] text-slate-600">
+                  Latest:{" "}
+                  {perf.board.csatRecent
+                    .map(
+                      (entry) =>
+                        entry.score + "★ · " + entry.at.slice(0, 10)
+                    )
+                    .join("  ")}
+                </p>
+              )}
+            </div>
+          )}
           {perf.members.length > 0 && (
             <ul className="mt-3 space-y-2">
               {perf.members.map((member) => (
