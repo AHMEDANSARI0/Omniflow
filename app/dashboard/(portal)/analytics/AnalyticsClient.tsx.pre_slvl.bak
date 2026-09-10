@@ -16,19 +16,6 @@ function intentLabel(intent: string): string {
   return intent.charAt(0).toUpperCase() + intent.slice(1).replace(/_/g, " ");
 }
 
-function formatSeconds(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) {
-    return "—";
-  }
-  if (value < 90) return Math.round(value) + "s";
-  const minutes = Math.floor(value / 60);
-  const seconds = Math.round(value % 60);
-  if (minutes < 60) {
-    return seconds ? minutes + "m " + seconds + "s" : minutes + "m";
-  }
-  return Math.floor(minutes / 60) + "h " + (minutes % 60) + "m";
-}
-
 export default function AnalyticsClient({
   initial,
 }: {
@@ -202,46 +189,6 @@ export default function AnalyticsClient({
               <p className={statLabel}>Replies queued</p>
               <p className={statValue}>{window.repliesQueued}</p>
               <p className="text-[10px] text-slate-600">Manual team replies</p>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-            <h2 className="text-sm font-semibold text-white">Service level</h2>
-            <p className="mt-0.5 text-xs text-slate-600">
-              How fast the team responds and how many chats get resolved.
-            </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className={statClass}>
-                <p className={statLabel}>Resolution rate</p>
-                <p className={statValue}>
-                  {data.service?.resolutionRate != null
-                    ? data.service.resolutionRate.toFixed(1) + "%"
-                    : "—"}
-                </p>
-                <p className="text-[10px] text-slate-600">
-                  Chats created in this window that are now closed
-                </p>
-              </div>
-              <div className={statClass}>
-                <p className={statLabel}>Avg first response</p>
-                <p className={statValue}>
-                  {formatSeconds(data.service?.frtAvgSeconds)}
-                </p>
-                <p className="text-[10px] text-slate-600">
-                  First inbound message → first reply
-                </p>
-              </div>
-              <div className={statClass}>
-                <p className={statLabel}>Median first response</p>
-                <p className={statValue}>
-                  {formatSeconds(data.service?.frtMedianSeconds)}
-                </p>
-                <p className="text-[10px] text-slate-600">
-                  {data.service?.answeredConversations
-                    ? data.service.answeredConversations + " chats answered in this window"
-                    : "No replies yet in this window"}
-                </p>
-              </div>
             </div>
           </div>
 

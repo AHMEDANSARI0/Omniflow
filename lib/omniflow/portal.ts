@@ -1251,6 +1251,14 @@ export interface AnalyticsData {
   perDay: AnalyticsDayPoint[];
   intents: AnalyticsIntent[];
   topEntries: AnalyticsTopEntry[];
+  service: AnalyticsService;
+}
+
+export interface AnalyticsService {
+  resolutionRate: number | null;
+  frtAvgSeconds: number | null;
+  frtMedianSeconds: number | null;
+  answeredConversations: number;
 }
 
 export async function getAnalytics(
@@ -1286,6 +1294,12 @@ export async function getAnalytics(
   const t = rawTotals as Record<string, unknown>;
   const w = rawWindow as Record<string, unknown>;
   const num = (value: unknown): number => (typeof value === "number" ? value : 0);
+  const svc =
+    p.service !== null && typeof p.service === "object"
+      ? (p.service as Record<string, unknown>)
+      : {};
+  const svcNum = (value: unknown): number | null =>
+    typeof value === "number" ? value : null;
   return {
     days: num(p.days) || 7,
     totals: {
@@ -1335,6 +1349,12 @@ export async function getAnalytics(
             usageCount: num(raw.usage_count),
           }))
       : [],
+    service: {
+      resolutionRate: svcNum(svc.resolution_rate),
+      frtAvgSeconds: svcNum(svc.frt_avg_seconds),
+      frtMedianSeconds: svcNum(svc.frt_median_seconds),
+      answeredConversations: num(svc.answered_conversations),
+    },
   };
 }
 
