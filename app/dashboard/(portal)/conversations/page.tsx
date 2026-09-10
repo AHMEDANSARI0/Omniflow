@@ -14,6 +14,7 @@ interface ConversationSummary {
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   unread: boolean;
+  needsReply: boolean;
   lastIntent: string | null;
   leadTemp: string;
   leadScore: number;
@@ -59,6 +60,8 @@ export default function ConversationsPage() {
   const intentRef = useRef("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "website">("all");
   const channelRef = useRef<"all" | "whatsapp" | "website">("all");
+  const [needsReplyOnly, setNeedsReplyOnly] = useState(false);
+  const needsReplyRef = useRef(false);
   const [tagFilter, setTagFilter] = useState("all");
   const tagRef = useRef("all");
   const [tagOptions, setTagOptions] = useState<{ tag: string; count: number }[]>([]);
@@ -77,6 +80,7 @@ export default function ConversationsPage() {
       if (intentRef.current !== "all") listParams.set("intent", intentRef.current);
       if (channelRef.current !== "all") listParams.set("channel", channelRef.current);
       if (tagRef.current !== "all") listParams.set("tag", tagRef.current);
+      if (needsReplyRef.current) listParams.set("needs_reply", "1");
       const listQs = listParams.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
@@ -418,6 +422,22 @@ export default function ConversationsPage() {
             {value === "all" ? "All channels" : value}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !needsReplyRef.current;
+            needsReplyRef.current = next;
+            setNeedsReplyOnly(next);
+            void refresh();
+          }}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            needsReplyOnly
+              ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
+              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+          }`}
+        >
+          Needs reply
+        </button>
       </div>
 
       {tagOptions.length > 0 && (
@@ -528,6 +548,14 @@ export default function ConversationsPage() {
                             className="h-2 w-2 shrink-0 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"
                             title="Unread messages"
                           />
+                        )}
+                        {item.needsReply && (
+                          <span
+                            className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
+                            title="Customer sent the last message — waiting for a reply"
+                          >
+                            awaiting reply
+                          </span>
                         )}
                       </p>
                       <p className="truncate text-xs text-slate-500">

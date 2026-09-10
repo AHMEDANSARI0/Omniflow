@@ -36,13 +36,15 @@ export async function GET(request: Request) {
         : undefined;
     const tagParam = url.searchParams.get("tag");
     const tagFilter = tagParam ? tagParam.trim().slice(0, 24) : undefined;
+    const needsReplyOnly = url.searchParams.get("needs_reply") === "1";
     const conversations = await listConversations(
       accessToken,
       searchQuery,
       statusFilter,
       intentFilter,
       channelFilter,
-      tagFilter
+      tagFilter,
+      needsReplyOnly
     );
     if (conversations === null) {
       return safeJson(

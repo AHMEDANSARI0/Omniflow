@@ -501,6 +501,7 @@ export interface ConversationSummary {
   lastMessagePreview: string | null;
   createdAt: string | null;
   unread: boolean;
+  needsReply: boolean;
   lastIntent: string | null;
   leadScore: number;
   leadTemp: string;
@@ -534,6 +535,7 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
       typeof p.last_message_preview === "string" ? p.last_message_preview : null,
     createdAt: typeof p.created_at === "string" ? p.created_at : null,
     unread: p.unread === true,
+    needsReply: p.needs_reply === true,
     lastIntent: typeof p.last_intent === "string" ? p.last_intent : null,
     leadScore: typeof p.lead_score === "number" ? p.lead_score : 0,
     leadTemp: typeof p.lead_temp === "string" ? p.lead_temp : "cold",
@@ -551,7 +553,8 @@ export async function listConversations(
   statusFilter?: string,
   intentFilter?: string,
   channelFilter?: string,
-  tagFilter?: string
+  tagFilter?: string,
+  needsReplyOnly?: boolean
 ): Promise<ConversationSummary[] | null> {
   const searchPart =
     searchQuery && searchQuery.trim()
@@ -571,7 +574,8 @@ export async function listConversations(
       : "";
   const tagPart =
     tagFilter && tagFilter !== "all" ? "tag=" + encodeURIComponent(tagFilter) : "";
-  const parts = [searchPart, statusPart, intentPart, channelPart, tagPart].filter(
+  const replyPart = needsReplyOnly ? "needs_reply=1" : "";
+  const parts = [searchPart, statusPart, intentPart, channelPart, tagPart, replyPart].filter(
     Boolean
   );
   const query = parts.length ? "?" + parts.join("&") : "";
@@ -1903,6 +1907,7 @@ export interface OverviewData {
   teamReplies: number;
   openNow: number;
   unassignedOpen: number;
+  needsReplyOpen: number;
   hotLeads: OverviewHotLead[];
 }
 
@@ -1960,6 +1965,8 @@ export async function getOverview(
     openNow: typeof stats.open_now === "number" ? stats.open_now : 0,
     unassignedOpen:
       typeof stats.unassigned_open === "number" ? stats.unassigned_open : 0,
+    needsReplyOpen:
+      typeof stats.needs_reply_open === "number" ? stats.needs_reply_open : 0,
     hotLeads,
   };
 }
@@ -2026,6 +2033,74 @@ export async function saveWelcomeAutomation(
   if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
   const p = payload as Record<string, unknown>;
   return { kind: "ok", enabled: p.enabled === true, text: typeof p.text === "string" ? p.text : "" };
+}
+
+// ---------------------------------------------------------------------------
+// Automations: auto-close idle chats (deterministic sweep)
+// ---------------------------------------------------------------------------
+
+export interface AutoCloseSettings {
+  enabled: boolean;
+  hours: number;
+}
+
+export type AutoCloseSaveResult =
+  | { kind: "ok"; enabled: boolean; hours: number }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function getAutoClose(
+  accessToken: string
+): Promise<AutoCloseSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/automations/autoclose");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  return {
+    enabled: p.enabled === true,
+    hours: typeof p.hours === "number" && p.hours > 0 ? p.hours : 48,
+  };
+}
+
+export async function saveAutoClose(
+  accessToken: string,
+  enabled: boolean,
+  hours: number
+): Promise<AutoCloseSaveResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/automations/autoclose", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled, hours }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  return {
+    kind: "ok",
+    enabled: p.enabled === true,
+    hours: typeof p.hours === "number" && p.hours > 0 ? p.hours : 48,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -2977,6 +3052,133 @@ export async function deleteAutomation(
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (response.status === 404) return "missing";
   return response.ok ? "ok" : null;
+}
+
+export interface AnalyticsTotals {
+  conversations: number;
+  conversationsClosed: number;
+  customers: number;
+  messagesIn: number;
+  messagesOut: number;
+}
+
+export interface AnalyticsWindow {
+  conversations: number;
+  messagesIn: number;
+  messagesOut: number;
+  instantAnswers: number;
+  followupsDelivered: number;
+  repliesQueued: number;
+}
+
+export interface AnalyticsDayPoint {
+  day: string;
+  inbound: number;
+  outbound: number;
+}
+
+export interface AnalyticsIntent {
+  intent: string;
+  count: number;
+}
+
+export interface AnalyticsTopEntry {
+  title: string;
+  usageCount: number;
+}
+
+export interface AnalyticsData {
+  days: number;
+  totals: AnalyticsTotals;
+  window: AnalyticsWindow;
+  perDay: AnalyticsDayPoint[];
+  intents: AnalyticsIntent[];
+  topEntries: AnalyticsTopEntry[];
+}
+
+export async function getAnalytics(
+  accessToken: string,
+  path = "api/v1/portal/analytics"
+): Promise<AnalyticsData | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, path);
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const rawTotals = p.totals;
+  const rawWindow = p.window;
+  const rawPerDay = p.per_day;
+  const rawIntents = p.intents;
+  const rawTopEntries = p.top_entries;
+  if (
+    rawTotals === null || typeof rawTotals !== "object" ||
+    rawWindow === null || typeof rawWindow !== "object" ||
+    !Array.isArray(rawPerDay)
+  ) {
+    return null;
+  }
+  const t = rawTotals as Record<string, unknown>;
+  const w = rawWindow as Record<string, unknown>;
+  const num = (value: unknown): number => (typeof value === "number" ? value : 0);
+  return {
+    days: num(p.days) || 7,
+    totals: {
+      conversations: num(t.conversations),
+      conversationsClosed: num(t.conversations_closed),
+      customers: num(t.customers),
+      messagesIn: num(t.messages_in),
+      messagesOut: num(t.messages_out),
+    },
+    window: {
+      conversations: num(w.conversations),
+      messagesIn: num(w.messages_in),
+      messagesOut: num(w.messages_out),
+      instantAnswers: num(w.instant_answers),
+      followupsDelivered: num(w.followups_delivered),
+      repliesQueued: num(w.replies_queued),
+    },
+    perDay: rawPerDay
+      .filter(
+        (item): item is Record<string, unknown> =>
+          item !== null && typeof item === "object"
+      )
+      .map((raw) => ({
+        day: typeof raw.day === "string" ? raw.day : "",
+        inbound: num(raw.inbound),
+        outbound: num(raw.outbound),
+      })),
+    intents: Array.isArray(rawIntents)
+      ? rawIntents
+          .filter(
+            (item): item is Record<string, unknown> =>
+              item !== null && typeof item === "object"
+          )
+          .map((raw) => ({
+            intent: typeof raw.intent === "string" ? raw.intent : "",
+            count: num(raw.count),
+          }))
+      : [],
+    topEntries: Array.isArray(rawTopEntries)
+      ? rawTopEntries
+          .filter(
+            (item): item is Record<string, unknown> =>
+              item !== null && typeof item === "object"
+          )
+          .map((raw) => ({
+            title: typeof raw.title === "string" ? raw.title : "",
+            usageCount: num(raw.usage_count),
+          }))
+      : [],
+  };
 }
 
 export type ConversationStatusResult =

@@ -78,7 +78,7 @@ export default async function ClientDashboardPage() {
 
       {overview && (
         <>
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <StatTile label="New chats · 24h" value={overview.newChats} />
             <StatTile label="Inbound · 24h" value={overview.inboundMessages} />
             <StatTile label="Team replies · 24h" value={overview.teamReplies} />
@@ -90,6 +90,11 @@ export default async function ClientDashboardPage() {
                   ? overview.unassignedOpen + " unassigned"
                   : "all assigned"
               }
+            />
+            <StatTile
+              label="Needs reply"
+              value={overview.needsReplyOpen}
+              sub="customer sent the last message"
             />
           </div>
           {overview.unassignedOpen > 0 && (
