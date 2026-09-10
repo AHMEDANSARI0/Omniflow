@@ -1,5 +1,6 @@
 import { ControlPlaneRequestError } from "../../../../../../../lib/omniflow/control-plane";
 import {
+  getConversationMessages,
   requirePortalAccessToken,
   sendConversationMessage,
 } from "../../../../../../../lib/omniflow/portal";
@@ -11,6 +12,62 @@ import {
 
 interface RouteContext {
   params: Promise<{ id: string }>;
+}
+
+export async function GET(request: Request, context: RouteContext) {
+  const accessToken = await requirePortalAccessToken();
+  if (!accessToken) {
+    return safeJson(
+      { error: { code: "unauthorized", message: "Sign in required." } },
+      401
+    );
+  }
+
+  const { id } = await context.params;
+  const conversationId = Number(id);
+  if (!Number.isInteger(conversationId) || conversationId <= 0) {
+    return safeJson(
+      { error: { code: "bad_request", message: "Invalid conversation id." } },
+      400
+    );
+  }
+
+  const beforeRaw = new URL(request.url).searchParams.get("before_id") || "";
+  const beforeId = Number(beforeRaw);
+  if (beforeRaw && (!Number.isInteger(beforeId) || beforeId <= 0)) {
+    return safeJson(
+      { error: { code: "bad_request", message: "Invalid before_id." } },
+      400
+    );
+  }
+
+  try {
+    const result = await getConversationMessages(accessToken, conversationId, beforeId);
+    if (result.kind === "not_found") {
+      return safeJson(
+        { error: { code: "not_found", message: "Conversation not found." } },
+        404
+      );
+    }
+    if (result.kind === "unavailable") {
+      return safeJson(
+        { error: { code: "portal_unavailable", message: "Try again shortly." } },
+        503
+      );
+    }
+    return safeJson({ messages: result.messages, has_more: result.hasMore }, 200);
+  } catch (error) {
+    if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
+      return safeJson(
+        { error: { code: "unauthorized", message: "Session expired." } },
+        401
+      );
+    }
+    return safeJson(
+      { error: { code: "portal_unavailable", message: "Try again shortly." } },
+      503
+    );
+  }
 }
 
 export async function POST(request: Request, context: RouteContext) {

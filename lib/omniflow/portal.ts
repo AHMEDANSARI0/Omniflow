@@ -495,6 +495,7 @@ export type ConversationChipCounts = {
   needsReply: number;
   overdue: number;
   unassigned: number;
+  unread: number;
 };
 
 export interface ConversationSummary {
@@ -563,7 +564,8 @@ export async function listConversations(
   needsReplyFilter?: string,
   sortOrder?: string,
   assignedFilter?: string,
-  includeCounts?: boolean
+  includeCounts?: boolean,
+  limit?: number
 ): Promise<
   { conversations: ConversationSummary[]; counts: ConversationChipCounts | null } | null
 > {
@@ -595,6 +597,8 @@ export async function listConversations(
       ? "assigned=" + assignedFilter
       : "";
   const countsPart = includeCounts ? "include=counts" : "";
+  const limitPart =
+    limit && limit >= 1 && limit <= 50 ? "limit=" + Math.floor(limit) : "";
   const parts = [
     searchPart,
     statusPart,
@@ -605,6 +609,7 @@ export async function listConversations(
     sortPart,
     assignedPart,
     countsPart,
+    limitPart,
   ].filter(Boolean);
   const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;
@@ -639,15 +644,70 @@ export async function listConversations(
       needsReply: Number(record.needs_reply) || 0,
       overdue: Number(record.overdue) || 0,
       unassigned: Number(record.unassigned) || 0,
+      unread: Number(record.unread) || 0,
     };
   }
   return { conversations, counts };
 }
 
+export async function bulkConversations(
+  accessToken: string,
+  action: string,
+  ids: number[],
+  assigneeEmail?: string
+): Promise<{ updated: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/conversations/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        action === "assign"
+          ? { action, ids, assignee_email: assigneeEmail || "" }
+          : { action, ids }
+      ),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const updated = (payload as Record<string, unknown>).updated;
+  return { updated: typeof updated === "number" ? updated : 0 };
+}
+
 export type ConversationDetailResult =
-  | { kind: "ok"; conversation: ConversationSummary; messages: ConversationMessage[] }
+  | {
+      kind: "ok";
+      conversation: ConversationSummary;
+      messages: ConversationMessage[];
+      hasMore: boolean;
+    }
   | { kind: "not_found" }
   | { kind: "unavailable" };
+
+function normalizeConversationMessages(raw: unknown): ConversationMessage[] {
+  const rawMessages = Array.isArray(raw) ? raw : [];
+  const messages: ConversationMessage[] = [];
+  for (const item of rawMessages) {
+    if (item === null || typeof item !== "object") continue;
+    const m = item as Record<string, unknown>;
+    messages.push({
+      id: typeof m.id === "number" ? m.id : 0,
+      direction: m.direction === "out" ? "out" : "in",
+      body: typeof m.body === "string" ? m.body : "",
+      status: typeof m.status === "string" ? m.status : "delivered",
+      intent: typeof m.intent === "string" ? m.intent : null,
+      createdAt: typeof m.created_at === "string" ? m.created_at : null,
+    });
+  }
+  return messages;
+}
 
 export async function getConversation(
   accessToken: string,
@@ -673,21 +733,50 @@ export async function getConversation(
   const p = payload as Record<string, unknown>;
   const conversation = normalizeConversation(p.conversation);
   if (!conversation) return { kind: "unavailable" };
-  const rawMessages = Array.isArray(p.messages) ? p.messages : [];
-  const messages: ConversationMessage[] = [];
-  for (const item of rawMessages) {
-    if (item === null || typeof item !== "object") continue;
-    const m = item as Record<string, unknown>;
-    messages.push({
-      id: typeof m.id === "number" ? m.id : 0,
-      direction: m.direction === "out" ? "out" : "in",
-      body: typeof m.body === "string" ? m.body : "",
-      status: typeof m.status === "string" ? m.status : "delivered",
-      intent: typeof m.intent === "string" ? m.intent : null,
-      createdAt: typeof m.created_at === "string" ? m.created_at : null,
-    });
+  return {
+    kind: "ok",
+    conversation,
+    messages: normalizeConversationMessages(p.messages),
+    hasMore: p.has_more === true,
+  };
+}
+
+export type ConversationMessagesResult =
+  | { kind: "ok"; messages: ConversationMessage[]; hasMore: boolean }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function getConversationMessages(
+  accessToken: string,
+  conversationId: number,
+  beforeId: number
+): Promise<ConversationMessagesResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        encodeURIComponent(String(conversationId)) +
+        "/messages?before_id=" +
+        encodeURIComponent(String(beforeId))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
   }
-  return { kind: "ok", conversation, messages };
+
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  return {
+    kind: "ok",
+    messages: normalizeConversationMessages(p.messages),
+    hasMore: p.has_more === true,
+  };
 }
 
 export interface IntentSummaryEntry {

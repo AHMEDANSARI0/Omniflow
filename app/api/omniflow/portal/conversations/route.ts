@@ -1,5 +1,6 @@
 import { ControlPlaneRequestError } from "../../../../../lib/omniflow/control-plane";
 import {
+  bulkConversations,
   listConversations,
   requirePortalAccessToken,
 } from "../../../../../lib/omniflow/portal";
@@ -44,6 +45,12 @@ export async function GET(request: Request) {
     const assignedRaw = url.searchParams.get("assigned") || "";
     const assignedFilter =
       assignedRaw === "unassigned" || assignedRaw === "me" ? assignedRaw : "";
+    const limitRaw = url.searchParams.get("limit") || "";
+    const limitNumber = Number(limitRaw);
+    const limitFilter =
+      limitRaw && Number.isInteger(limitNumber) && limitNumber >= 1 && limitNumber <= 50
+        ? limitNumber
+        : undefined;
     const result = await listConversations(
       accessToken,
       searchQuery,
@@ -54,7 +61,8 @@ export async function GET(request: Request) {
       needsReplyFilter,
       sortOrder,
       assignedFilter,
-      true
+      true,
+      limitFilter
     );
     if (result === null) {
       return safeJson(
@@ -71,6 +79,85 @@ export async function GET(request: Request) {
       { conversations: result.conversations, counts: result.counts },
       200
     );
+  } catch (error) {
+    if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
+      return safeJson(
+        { error: { code: "unauthorized", message: "Session expired." } },
+        401
+      );
+    }
+    return safeJson(
+      { error: { code: "portal_unavailable", message: "Try again shortly." } },
+      503
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  const accessToken = await requirePortalAccessToken();
+  if (!accessToken) {
+    return safeJson(
+      { error: { code: "unauthorized", message: "Sign in required." } },
+      401
+    );
+  }
+
+  const payload = (await request.json().catch(() => null)) as {
+    action?: unknown;
+    ids?: unknown;
+    assignee_email?: unknown;
+  } | null;
+  const action =
+    typeof payload?.action === "string" ? payload.action.trim().toLowerCase() : "";
+  if (
+    action !== "close" &&
+    action !== "reopen" &&
+    action !== "assign" &&
+    action !== "unassign"
+  ) {
+    return safeJson(
+      { error: { code: "bad_request", message: "Invalid action." } },
+      400
+    );
+  }
+  const rawIds = Array.isArray(payload?.ids) ? payload.ids : [];
+  const ids: number[] = [];
+  for (const value of rawIds.slice(0, 50)) {
+    if (
+      typeof value === "number" &&
+      Number.isInteger(value) &&
+      value > 0 &&
+      !ids.includes(value)
+    ) {
+      ids.push(value);
+    }
+  }
+  if (ids.length === 0) {
+    return safeJson(
+      { error: { code: "bad_request", message: "Select at least one conversation." } },
+      400
+    );
+  }
+  const assigneeEmail =
+    action === "assign" && typeof payload?.assignee_email === "string"
+      ? payload.assignee_email.trim().toLowerCase().slice(0, 120)
+      : "";
+  if (action === "assign" && !assigneeEmail) {
+    return safeJson(
+      { error: { code: "bad_request", message: "Assignee is required." } },
+      400
+    );
+  }
+
+  try {
+    const result = await bulkConversations(accessToken, action, ids, assigneeEmail);
+    if (result === null) {
+      return safeJson(
+        { error: { code: "portal_unavailable", message: "Try again shortly." } },
+        503
+      );
+    }
+    return safeJson(result, 200);
   } catch (error) {
     if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
       return safeJson(

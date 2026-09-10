@@ -17,45 +17,45 @@ const navItems: NavItem[] = [
   {
     label: "Knowledge base",
     href: "/dashboard/knowledge-base",
-    icon: "▣",
+    icon: "",
     enabled: true,
   },
-  { label: "Overview", href: "/dashboard", icon: "◈", enabled: true },
+  { label: "Overview", href: "/dashboard", icon: "", enabled: true },
   {
     label: "WhatsApp setup",
     href: "/dashboard/channels/whatsapp",
-    icon: "◉",
+    icon: "",
     enabled: true,
   },
-  { label: "Configure AI", href: "/dashboard/bot", icon: "✦", enabled: true },
+  { label: "Configure AI", href: "/dashboard/bot", icon: "", enabled: true },
   {
     label: "Conversations",
     href: "/dashboard/conversations",
-    icon: "◎",
+    icon: "",
     enabled: true,
   },
   {
     label: "Customers",
     href: "/dashboard/customers",
-    icon: "☻",
+    icon: "",
     enabled: true,
   },
   {
     label: "Automations",
     href: "/dashboard/automations",
-    icon: "⚡",
+    icon: "",
     enabled: true,
   },
   {
     label: "Analytics",
     href: "/dashboard/analytics",
-    icon: "◢",
+    icon: "",
     enabled: true,
   },
   {
     label: "Business profile",
     href: "/dashboard/profile",
-    icon: "◇",
+    icon: "",
     enabled: true,
   },
   { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "➤", enabled: true },
@@ -102,24 +102,19 @@ function NavLinks({
 
     async function loadUnread() {
       try {
-        const response = await fetch("/api/omniflow/portal/conversations", {
-          credentials: "same-origin",
-          cache: "no-store",
-        });
+        const response = await fetch(
+          "/api/omniflow/portal/conversations?include=counts&limit=1",
+          {
+            credentials: "same-origin",
+            cache: "no-store",
+          }
+        );
         if (response.status !== 200 || !alive) return;
         const payload = (await response.json().catch(() => null)) as {
-          conversations?: { unread?: boolean }[];
+          counts?: { unread?: number };
         } | null;
-        if (
-          alive &&
-          payload &&
-          Array.isArray(payload.conversations)
-        ) {
-          setUnreadCount(
-            payload.conversations.filter(
-              (conversation) => conversation.unread === true
-            ).length
-          );
+        if (alive && payload) {
+          setUnreadCount(payload.counts?.unread || 0);
         }
       } catch {
         // Transient network issue — the next poll retries.

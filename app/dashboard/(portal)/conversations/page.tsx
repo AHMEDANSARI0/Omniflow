@@ -71,6 +71,9 @@ export default function ConversationsPage() {
     overdue: 0,
     unassigned: 0,
   });
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [assignTarget, setAssignTarget] = useState("");
   const [tagFilter, setTagFilter] = useState("all");
   const tagRef = useRef("all");
   const [tagOptions, setTagOptions] = useState<{ tag: string; count: number }[]>([]);
@@ -192,6 +195,39 @@ export default function ConversationsPage() {
       if (!response.ok) setItems(previous);
     } catch {
       setItems(previous);
+    }
+  }
+
+  function toggleSelected(conversationId: number) {
+    setSelectedIds((current) =>
+      current.includes(conversationId)
+        ? current.filter((value) => value !== conversationId)
+        : [...current, conversationId]
+    );
+  }
+
+  async function bulkAction(action: string, assigneeEmail?: string) {
+    if (bulkBusy || selectedIds.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const response = await fetch("/api/omniflow/portal/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(
+          action === "assign"
+            ? { action, ids: selectedIds, assignee_email: assigneeEmail || "" }
+            : { action, ids: selectedIds }
+        ),
+      });
+      if (response.ok) {
+        setSelectedIds([]);
+        void refresh();
+      }
+    } catch {
+      // Transient network issue, the user can retry.
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -611,6 +647,62 @@ export default function ConversationsPage() {
         </button>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] px-3 py-2">
+          <span className="text-xs font-medium text-cyan-200">
+            {selectedIds.length} selected
+          </span>
+          <button
+            type="button"
+            onClick={() => void bulkAction("close")}
+            disabled={bulkBusy}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={() => void bulkAction("reopen")}
+            disabled={bulkBusy}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+          >
+            Reopen
+          </button>
+          <select
+            value={assignTarget}
+            disabled={bulkBusy || teamMembers.length === 0}
+            onChange={(event) => {
+              const email = event.target.value;
+              setAssignTarget("");
+              if (email) void bulkAction("assign", email);
+            }}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 disabled:opacity-40"
+          >
+            <option value="">Assign to...</option>
+            {teamMembers.map((member) => (
+              <option key={member.email} value={member.email}>
+                {member.name || member.email}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => void bulkAction("unassign")}
+            disabled={bulkBusy}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+          >
+            Unassign
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds([])}
+            className="ml-auto rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-400 transition-colors hover:text-white"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       {!items ? (
         <div className="animate-pulse space-y-3">
           {[0, 1, 2].map((index) => (
@@ -648,10 +740,19 @@ export default function ConversationsPage() {
           className="space-y-3"
         >
           {items.map((item) => (
-            <li key={item.id}>
+            <li key={item.id} className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                aria-label={
+                  "Select conversation " + (item.contactName || item.contactId || "")
+                }
+                checked={selectedIds.includes(item.id)}
+                onChange={() => toggleSelected(item.id)}
+                className="mt-4 h-5 w-5 shrink-0 accent-cyan-400"
+              />
               <Link
                 href={`/dashboard/conversations/${item.id}`}
-                className="block rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 transition-colors duration-300 hover:border-cyan-400/30 hover:bg-white/[0.025]"
+                className="block min-w-0 flex-1 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 transition-colors duration-300 hover:border-cyan-400/30 hover:bg-white/[0.025]"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">

@@ -46,7 +46,11 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
     return safeJson(
-      { conversation: result.conversation, messages: result.messages },
+      {
+        conversation: result.conversation,
+        messages: result.messages,
+        has_more: result.hasMore,
+      },
       200
     );
   } catch (error) {

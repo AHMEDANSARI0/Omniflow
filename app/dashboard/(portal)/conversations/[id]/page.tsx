@@ -73,15 +73,43 @@ export default function ConversationThreadPage() {
       const payload = (await response.json().catch(() => null)) as {
         conversation?: ConversationSummary;
         messages?: ConversationMessage[];
+        has_more?: boolean;
       } | null;
       if (mounted.current && payload?.conversation && Array.isArray(payload.messages)) {
         setConversation(payload.conversation);
         setMessages(payload.messages);
+        setHasMore(payload.has_more === true);
       }
     } catch {
       // Transient network issue — next poll retries.
     }
   }, [id]);
+
+  async function loadOlder() {
+    if (loadingOlder || !messages || messages.length === 0) return;
+    const oldestId = messages[0].id;
+    if (!oldestId) return;
+    setLoadingOlder(true);
+    try {
+      const response = await fetch(
+        `/api/omniflow/portal/conversations/${encodeURIComponent(id)}/messages?before_id=${oldestId}`,
+        { credentials: "same-origin", cache: "no-store" }
+      );
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        messages?: ConversationMessage[];
+        has_more?: boolean;
+      } | null;
+      if (!mounted.current || !payload || !Array.isArray(payload.messages)) return;
+      const older = payload.messages;
+      setMessages((current) => (current ? [...older, ...current] : current));
+      setHasMore(payload.has_more === true);
+    } catch {
+      // Transient network issue, the next click retries.
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
 
   useEffect(() => {
     mounted.current = true;
@@ -97,6 +125,8 @@ export default function ConversationThreadPage() {
 
   const [statusBusy, setStatusBusy] = useState(false);
   const [draft, setDraft] = useState("");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [sending, setSending] = useState(false);
 
   async function toggleStatus() {
@@ -255,6 +285,18 @@ export default function ConversationThreadPage() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-3"
         >
+          {hasMore && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => void loadOlder()}
+                disabled={loadingOlder}
+                className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
+              >
+                {loadingOlder ? "Loading..." : "Load older messages"}
+              </button>
+            </div>
+          )}
           {messages.map((message) => (
             <div
               key={message.id}
