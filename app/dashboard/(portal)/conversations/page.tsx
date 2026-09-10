@@ -64,6 +64,13 @@ export default function ConversationsPage() {
   const replyFilterRef = useRef("");
   const [oldestFirst, setOldestFirst] = useState(false);
   const oldestRef = useRef(false);
+  const [assignedFilter, setAssignedFilter] = useState("");
+  const assignedRef = useRef("");
+  const [chipCounts, setChipCounts] = useState({
+    needsReply: 0,
+    overdue: 0,
+    unassigned: 0,
+  });
   const [tagFilter, setTagFilter] = useState("all");
   const tagRef = useRef("all");
   const [tagOptions, setTagOptions] = useState<{ tag: string; count: number }[]>([]);
@@ -84,6 +91,7 @@ export default function ConversationsPage() {
       if (tagRef.current !== "all") listParams.set("tag", tagRef.current);
       if (replyFilterRef.current) listParams.set("needs_reply", replyFilterRef.current);
       if (oldestRef.current) listParams.set("sort", "oldest");
+      if (assignedRef.current) listParams.set("assigned", assignedRef.current);
       const listQs = listParams.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
@@ -98,12 +106,20 @@ export default function ConversationsPage() {
       }
       const payload = (await response.json().catch(() => null)) as {
         conversations?: ConversationSummary[];
+        counts?: { needsReply?: number; overdue?: number; unassigned?: number };
         error?: { code?: string };
       } | null;
       if (!mounted.current || !payload) return;
       if (Array.isArray(payload.conversations)) {
         setItems(payload.conversations);
         setPending(false);
+        if (payload.counts) {
+          setChipCounts({
+            needsReply: payload.counts.needsReply || 0,
+            overdue: payload.counts.overdue || 0,
+            unassigned: payload.counts.unassigned || 0,
+          });
+        }
       } else if (payload.error?.code === "portal_pending") {
         setPending(true);
         setItems([]);
@@ -129,6 +145,11 @@ export default function ConversationsPage() {
     if ((urlFilters.get("sort") || "") === "oldest") {
       oldestRef.current = true;
       setOldestFirst(true);
+    }
+    const urlAssigned = urlFilters.get("assigned");
+    if (urlAssigned === "unassigned" || urlAssigned === "me") {
+      assignedRef.current = urlAssigned;
+      setAssignedFilter(urlAssigned);
     }
     void refresh();
     const timer = window.setInterval(() => {
@@ -186,6 +207,7 @@ export default function ConversationsPage() {
       if (tagRef.current !== "all") params.set("tag", tagRef.current);
       if (replyFilterRef.current) params.set("needs_reply", replyFilterRef.current);
       if (oldestRef.current) params.set("sort", "oldest");
+      if (assignedRef.current) params.set("assigned", assignedRef.current);
       const qs = params.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations/export" + (qs ? "?" + qs : ""),
@@ -457,6 +479,11 @@ export default function ConversationsPage() {
           }`}
         >
           Needs reply
+          {chipCounts.needsReply > 0 && (
+            <span className="ml-1.5 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
+              {chipCounts.needsReply}
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -473,6 +500,11 @@ export default function ConversationsPage() {
           }`}
         >
           Overdue
+          {chipCounts.overdue > 0 && (
+            <span className="ml-1.5 rounded-md bg-red-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-300">
+              {chipCounts.overdue}
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -488,6 +520,43 @@ export default function ConversationsPage() {
           }`}
         >
           Oldest first
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const next = assignedFilter === "unassigned" ? "" : "unassigned";
+            assignedRef.current = next;
+            setAssignedFilter(next);
+            void refresh();
+          }}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            assignedFilter === "unassigned"
+              ? "border-sky-400/30 bg-sky-400/[0.08] text-sky-200"
+              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+          }`}
+        >
+          Unassigned
+          {chipCounts.unassigned > 0 && (
+            <span className="ml-1.5 rounded-md bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300">
+              {chipCounts.unassigned}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const next = assignedFilter === "me" ? "" : "me";
+            assignedRef.current = next;
+            setAssignedFilter(next);
+            void refresh();
+          }}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            assignedFilter === "me"
+              ? "border-indigo-400/30 bg-indigo-400/[0.08] text-indigo-200"
+              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+          }`}
+        >
+          Mine
         </button>
       </div>
 

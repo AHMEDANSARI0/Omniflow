@@ -41,7 +41,10 @@ export async function GET(request: Request) {
       needsReplyRaw === "1" || needsReplyRaw === "overdue" ? needsReplyRaw : "";
     const sortRaw = url.searchParams.get("sort") || "";
     const sortOrder = sortRaw === "oldest" ? "oldest" : "";
-    const conversations = await listConversations(
+    const assignedRaw = url.searchParams.get("assigned") || "";
+    const assignedFilter =
+      assignedRaw === "unassigned" || assignedRaw === "me" ? assignedRaw : "";
+    const result = await listConversations(
       accessToken,
       searchQuery,
       statusFilter,
@@ -49,9 +52,11 @@ export async function GET(request: Request) {
       channelFilter,
       tagFilter,
       needsReplyFilter,
-      sortOrder
+      sortOrder,
+      assignedFilter,
+      true
     );
-    if (conversations === null) {
+    if (result === null) {
       return safeJson(
         {
           error: {
@@ -62,7 +67,10 @@ export async function GET(request: Request) {
         503
       );
     }
-    return safeJson({ conversations }, 200);
+    return safeJson(
+      { conversations: result.conversations, counts: result.counts },
+      200
+    );
   } catch (error) {
     if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
       return safeJson(

@@ -491,6 +491,12 @@ export async function revokeApiKey(
 // Conversations
 // ---------------------------------------------------------------------------
 
+export type ConversationChipCounts = {
+  needsReply: number;
+  overdue: number;
+  unassigned: number;
+};
+
 export interface ConversationSummary {
   id: number;
   channel: string;
@@ -555,8 +561,12 @@ export async function listConversations(
   channelFilter?: string,
   tagFilter?: string,
   needsReplyFilter?: string,
-  sortOrder?: string
-): Promise<ConversationSummary[] | null> {
+  sortOrder?: string,
+  assignedFilter?: string,
+  includeCounts?: boolean
+): Promise<
+  { conversations: ConversationSummary[]; counts: ConversationChipCounts | null } | null
+> {
   const searchPart =
     searchQuery && searchQuery.trim()
       ? "q=" + encodeURIComponent(searchQuery.trim().slice(0, 100))
@@ -580,6 +590,11 @@ export async function listConversations(
       ? "needs_reply=" + needsReplyFilter
       : "";
   const sortPart = sortOrder === "oldest" ? "sort=oldest" : "";
+  const assignedPart =
+    assignedFilter === "unassigned" || assignedFilter === "me"
+      ? "assigned=" + assignedFilter
+      : "";
+  const countsPart = includeCounts ? "include=counts" : "";
   const parts = [
     searchPart,
     statusPart,
@@ -588,6 +603,8 @@ export async function listConversations(
     tagPart,
     replyPart,
     sortPart,
+    assignedPart,
+    countsPart,
   ].filter(Boolean);
   const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;
@@ -614,7 +631,17 @@ export async function listConversations(
     const normalized = normalizeConversation(item);
     if (normalized) conversations.push(normalized);
   }
-  return conversations;
+  const rawCounts = (payload as Record<string, unknown>).counts;
+  let counts: ConversationChipCounts | null = null;
+  if (rawCounts && typeof rawCounts === "object") {
+    const record = rawCounts as Record<string, unknown>;
+    counts = {
+      needsReply: Number(record.needs_reply) || 0,
+      overdue: Number(record.overdue) || 0,
+      unassigned: Number(record.unassigned) || 0,
+    };
+  }
+  return { conversations, counts };
 }
 
 export type ConversationDetailResult =
