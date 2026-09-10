@@ -54,6 +54,10 @@ export default function CustomersPage() {
   const [noteDraft, setNoteDraft] = useState("");
   const [noteBusy, setNoteBusy] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
+  const [msgOpenFor, setMsgOpenFor] = useState<string | null>(null);
+  const [msgDraft, setMsgDraft] = useState("");
+  const [msgBusy, setMsgBusy] = useState(false);
+  const [msgStatus, setMsgStatus] = useState<string | null>(null);
   const searchRef = useRef("");
   const debounceRef = useRef<number | null>(null);
   const [channelFilter, setChannelFilter] = useState<
@@ -232,6 +236,35 @@ export default function CustomersPage() {
     }
   }
 
+  async function sendMessage(contactId: string) {
+    const text = msgDraft.trim();
+    if (msgBusy || !text) return;
+    setMsgBusy(true);
+    setMsgStatus(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/customers/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ contact_id: contactId, body: text }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setMsgStatus("Message queued. It goes out from your connected number.");
+        setMsgDraft("");
+      } else {
+        setMsgStatus(payload?.error?.message || "Could not send. Try again shortly.");
+      }
+    } catch {
+      setMsgStatus("Network error, try again.");
+    } finally {
+      setMsgBusy(false);
+    }
+  }
+
   if (expired) {
     return (
       <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
@@ -389,18 +422,34 @@ export default function CustomersPage() {
                   </div>
                 )}
               </Link>
-                <div className="flex w-14 shrink-0 items-stretch border-l border-white/[0.05] sm:w-16">
+                <div className="flex w-14 shrink-0 flex-col border-l border-white/[0.05] sm:w-16">
                   <button
                     type="button"
                     onClick={() => void toggleNotes(customer.contactId)}
                     className={
-                      "h-full w-full text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+                      "flex-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
                       (notesOpenFor === customer.contactId
                         ? "bg-cyan-400/[0.08] text-cyan-200"
                         : "text-slate-500 hover:text-white")
                     }
                   >
                     Notes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotesOpenFor(null);
+                      setMsgStatus(null);
+                      setMsgOpenFor(msgOpenFor === customer.contactId ? null : customer.contactId);
+                    }}
+                    className={
+                      "flex-1 border-t border-white/[0.05] text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+                      (msgOpenFor === customer.contactId
+                        ? "bg-cyan-400/[0.08] text-cyan-200"
+                        : "text-slate-500 hover:text-white")
+                    }
+                  >
+                    Message
                   </button>
                 </div>
               </div>
@@ -459,6 +508,34 @@ export default function CustomersPage() {
                   </div>
                   {noteError && (
                     <p className="mt-2 text-[11px] text-red-300">{noteError}</p>
+                  )}
+                </div>
+              )}
+              {msgOpenFor === customer.contactId && (
+                <div className="border-t border-white/[0.05] p-4">
+                  <textarea
+                    value={msgDraft}
+                    onChange={(event) => setMsgDraft(event.target.value)}
+                    maxLength={1000}
+                    rows={3}
+                    placeholder="Type your message..."
+                    className="w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                  />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[10px] text-slate-600">
+                      {msgDraft.trim().length}/1000
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void sendMessage(customer.contactId)}
+                      disabled={msgBusy || !msgDraft.trim()}
+                      className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                    >
+                      {msgBusy ? "Sending..." : "Send message"}
+                    </button>
+                  </div>
+                  {msgStatus && (
+                    <p className="mt-2 text-[11px] text-slate-400">{msgStatus}</p>
                   )}
                 </div>
               )}

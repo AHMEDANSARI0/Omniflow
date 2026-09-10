@@ -2299,6 +2299,45 @@ export async function deleteCustomerNote(
   return response.ok ? { kind: "ok" } : { kind: "unavailable" };
 }
 
+export type CustomerMessageResult =
+  | { kind: "ok"; commandId: number | null }
+  | { kind: "not_found" }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function sendCustomerMessage(
+  accessToken: string,
+  contactId: string,
+  body: string
+): Promise<CustomerMessageResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/customers/message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact_id: contactId.slice(0, 120), body }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  const payload: unknown = await response.json().catch(() => null);
+  const p =
+    payload !== null && typeof payload === "object"
+      ? (payload as Record<string, unknown>)
+      : {};
+  return {
+    kind: "ok",
+    commandId: typeof p.command_id === "number" ? p.command_id : null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Growth: broadcasts, KB gap report, CSAT ratings
 // ---------------------------------------------------------------------------
