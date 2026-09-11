@@ -120,6 +120,56 @@ export default function CustomersPage() {
     }, 300);
   }
 
+  function copyContact(contactId: string) {
+    void navigator.clipboard.writeText(contactId);
+  }
+
+  function exportCustomers() {
+    if (!customers || customers.length === 0) return;
+    const headers = [
+      "contact_id",
+      "name",
+      "channels",
+      "chats",
+      "open",
+      "lead_temp",
+      "tags",
+      "last_message_at",
+      "last_message_preview",
+    ];
+    const csvCell = (value: unknown): string => {
+      const text = value === null || value === undefined ? "" : String(value);
+      return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    };
+    const lines = [headers.join(",")];
+    for (const customer of customers) {
+      lines.push(
+        [
+          customer.contactId,
+          customer.name,
+          customer.channels.join(" | "),
+          customer.conversationCount,
+          customer.openCount,
+          customer.leadTemp,
+          customer.tags.join(" | "),
+          customer.lastMessageAt,
+          customer.lastMessagePreview,
+        ]
+          .map(csvCell)
+          .join(",")
+      );
+    }
+    const blob = new Blob(["\ufeff" + lines.join("\n")], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "omniflow-customers.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function toggleNotes(contactId: string) {
     if (notesOpenFor === contactId) {
       setNotesOpenFor(null);
@@ -314,6 +364,14 @@ export default function CustomersPage() {
             {value === "all" ? "All channels" : value}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => exportCustomers()}
+          disabled={!customers || customers.length === 0}
+          className="ml-auto rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
+        >
+          Export CSV
+        </button>
       </div>
 
       {!customers ? (
@@ -363,9 +421,14 @@ export default function CustomersPage() {
                         {customer.name || customer.contactId}
                       </p>
                       {customer.name && (
-                        <p className="truncate text-[11px] text-slate-500">
+                        <button
+                          type="button"
+                          onClick={() => copyContact(customer.contactId)}
+                          title="Copy number"
+                          className="truncate text-left text-[11px] text-slate-500 transition-colors hover:text-slate-300"
+                        >
                           {customer.contactId}
-                        </p>
+                        </button>
                       )}
                       {customer.tags.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
@@ -423,6 +486,15 @@ export default function CustomersPage() {
                 )}
               </Link>
                 <div className="flex w-14 shrink-0 flex-col border-l border-white/[0.05] sm:w-16">
+                  <a
+                    href={`https://wa.me/${customer.contactId.replace(/[^0-9]/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Open in WhatsApp"
+                    className="flex-1 border-b border-white/[0.05] text-[10px] font-semibold uppercase tracking-wider text-emerald-300/90 transition-colors duration-300 hover:text-emerald-200"
+                  >
+                    Chat
+                  </a>
                   <button
                     type="button"
                     onClick={() => void toggleNotes(customer.contactId)}

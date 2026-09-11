@@ -54,6 +54,13 @@ export async function GET(request: Request) {
     const daysRaw = url.searchParams.get("days") || "";
     const daysFilter = daysRaw === "1" || daysRaw === "7" || daysRaw === "30" ? daysRaw : "";
     const unreadFilter = url.searchParams.get("unread") === "1" ? "1" : "";
+    const starredFilter = url.searchParams.get("starred") === "1" ? "1" : "";
+    const pageRaw = url.searchParams.get("page") || "";
+    const pageNumber = Number(pageRaw);
+    const pageFilter =
+      pageRaw && Number.isInteger(pageNumber) && pageNumber >= 2 && pageNumber <= 100
+        ? pageNumber
+        : undefined;
     const result = await listConversations(
       accessToken,
       searchQuery,
@@ -67,7 +74,9 @@ export async function GET(request: Request) {
       true,
       limitFilter,
       daysFilter,
-      unreadFilter
+      unreadFilter,
+      starredFilter,
+      pageFilter
     );
     if (result === null) {
       return safeJson(

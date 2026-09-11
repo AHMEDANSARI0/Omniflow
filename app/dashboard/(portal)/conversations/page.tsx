@@ -52,12 +52,24 @@ function formatTime(value: string | null): string {
   }
 }
 
+function waitingLabel(value: string): string {
+  const seconds = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(value).getTime()) / 1000)
+  );
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return Math.floor(seconds / 60) + "m";
+  if (seconds < 86400) return Math.floor(seconds / 3600) + "h";
+  return Math.floor(seconds / 86400) + "d";
+}
+
 export default function ConversationsPage() {
   const [items, setItems] = useState<ConversationSummary[] | null>(null);
   const [pending, setPending] = useState(false);
   const [expired, setExpired] = useState(false);
   const [search, setSearch] = useState("");
   const searchRef = useRef("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const debounceRef = useRef<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
   const statusRef = useRef<"all" | "open" | "closed">("all");
@@ -77,6 +89,9 @@ export default function ConversationsPage() {
   const unreadRef = useRef("");
   const [starredFilter, setStarredFilter] = useState("");
   const starredRef = useRef("");
+  const pageRef = useRef(1);
+  const appendRef = useRef(false);
+  const lastKeyRef = useRef("");
   const [alertEnabled, setAlertEnabled] = useState(false);
   const alertTotalRef = useRef(0);
   const pageRef = useRef(1);
@@ -375,6 +390,56 @@ export default function ConversationsPage() {
     }
   }
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (event.key === "/" && !typing) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (
+        event.key === "Escape" &&
+        typing &&
+        target === searchInputRef.current
+      ) {
+        searchInputRef.current?.blur();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  function resetFilters() {
+    searchRef.current = "";
+    setSearch("");
+    statusRef.current = "all";
+    setStatusFilter("all");
+    intentRef.current = "all";
+    setIntentFilter("all");
+    channelRef.current = "all";
+    setChannelFilter("all");
+    tagRef.current = "all";
+    setTagFilter("all");
+    replyFilterRef.current = "";
+    setReplyFilter("");
+    oldestRef.current = false;
+    setOldestFirst(false);
+    assignedRef.current = "";
+    setAssignedFilter("");
+    daysRef.current = "";
+    setDaysFilter("");
+    unreadRef.current = "";
+    setUnreadFilter("");
+    starredRef.current = "";
+    setStarredFilter("");
+    void refresh();
+  }
+
   async function exportCsv(selectedIds?: number[]) {
     if (exporting || (selectedIds && selectedIds.length === 0)) return;
     setExporting(true);
@@ -624,6 +689,7 @@ export default function ConversationsPage() {
 
       <div className="mb-5">
         <input
+          ref={searchInputRef}
           type="search"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -789,6 +855,14 @@ export default function ConversationsPage() {
           }`}
         >
           Starred
+        </button>
+        <button
+          type="button"
+          onClick={() => resetFilters()}
+          title="Clear every filter and sort back to the default view"
+          className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-white"
+        >
+          Reset
         </button>
       </div>
 
@@ -1036,8 +1110,16 @@ export default function ConversationsPage() {
                     >
                       {item.status}
                     </span>
-                    <p className="mt-1 text-[10px] text-slate-600">
-                      {formatTime(item.lastMessageAt)}
+                    <p
+                      className={`mt-1 text-[10px] ${
+                        item.needsReply && item.status === "open" && item.lastMessageAt
+                          ? "text-amber-300/80"
+                          : "text-slate-600"
+                      }`}
+                    >
+                      {item.needsReply && item.status === "open" && item.lastMessageAt
+                        ? "waiting " + waitingLabel(item.lastMessageAt)
+                        : formatTime(item.lastMessageAt)}
                     </p>
                     </div>
                   </div>
