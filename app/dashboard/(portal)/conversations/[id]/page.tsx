@@ -213,6 +213,7 @@ export default function ConversationThreadPage() {
   }, [refresh]);
 
   const [statusBusy, setStatusBusy] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
@@ -371,7 +372,12 @@ export default function ConversationThreadPage() {
       );
       if (response.ok) {
         setDraft("");
+        setSendError(null);
         void refresh();
+      } else {
+        setSendError(
+          "The reply did not go through. Check the connection and try again."
+        );
       }
     } catch {
       // Transient network issue — the reply can be retried.
@@ -626,6 +632,11 @@ export default function ConversationThreadPage() {
           >
             Jump to latest
           </button>
+        )}
+        {sendError && (
+          <p className="mb-2 text-[11px] font-medium text-amber-300">
+            {sendError}
+          </p>
         )}
       {!expired && !notFound && (
         <form

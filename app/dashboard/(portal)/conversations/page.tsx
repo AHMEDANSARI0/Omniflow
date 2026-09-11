@@ -130,7 +130,9 @@ export default function ConversationsPage() {
         event.key !== "Enter" &&
         event.key !== "r" &&
         event.key !== "a" &&
-        event.key !== "s"
+        event.key !== "s" &&
+        event.key !== "u" &&
+        event.key !== "x"
       ) {
         return;
       }
@@ -182,6 +184,19 @@ export default function ConversationsPage() {
         starredRef.current = next;
         setStarredFilter(next);
         void refresh();
+        return;
+      }
+      if (event.key === "u") {
+        const next = unreadRef.current ? "" : "1";
+        unreadRef.current = next;
+        setUnreadFilter(next);
+        void refresh();
+        return;
+      }
+      if (event.key === "x") {
+        if (activeRowIndex >= 0 && activeRowIndex < items.length) {
+          toggleSelected(items[activeRowIndex].id);
+        }
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -400,6 +415,10 @@ export default function ConversationsPage() {
       if (liveModeRef.current && document.visibilityState === "visible")
         void refresh();
     }, POLL_MS);
+    function onFocus() {
+      if (liveModeRef.current) void refresh();
+    }
+    window.addEventListener("focus", onFocus);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -427,6 +446,7 @@ export default function ConversationsPage() {
       mounted.current = false;
       window.clearInterval(timer);
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      window.removeEventListener("focus", onFocus);
     };
   }, [refresh]);
 
@@ -1360,6 +1380,25 @@ export default function ConversationsPage() {
               ? "It lights up automatically right after the backend deploy."
               : "Messages appear here as soon as your WhatsApp connector is linked and customers start chatting."}
           </p>
+          {!pending &&
+          (search ||
+            replyFilter ||
+            unreadFilter ||
+            starredFilter ||
+            assignedFilter ||
+            daysFilter ||
+            statusFilter !== "all" ||
+            channelFilter !== "all" ||
+            tagFilter !== "all" ||
+            oldestFirst) && (
+            <button
+              type="button"
+              onClick={() => resetFilters()}
+              className="mt-4 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:text-white"
+            >
+              Clear filters
+            </button>
+          )}
         </motion.div>
       ) : (
         <motion.ul
@@ -1611,6 +1650,14 @@ export default function ConversationsPage() {
               <li className="flex items-center justify-between gap-6">
                 <span>Toggle the starred view</span>
                 <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">s</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Toggle unread-only</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">u</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Select or deselect the highlighted chat</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">x</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Open or close this panel</span>
