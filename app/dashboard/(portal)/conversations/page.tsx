@@ -127,7 +127,9 @@ export default function ConversationsPage() {
       if (
         event.key !== "j" &&
         event.key !== "k" &&
-        event.key !== "Enter"
+        event.key !== "Enter" &&
+        event.key !== "r" &&
+        event.key !== "a"
       ) {
         return;
       }
@@ -158,6 +160,20 @@ export default function ConversationsPage() {
       }
       if (activeRowIndex >= 0 && activeRowIndex < items.length) {
         void router.push("/dashboard/conversations/" + items[activeRowIndex].id);
+        return;
+      }
+      if (event.key === "r") {
+        const next = replyFilterRef.current ? "" : "1";
+        replyFilterRef.current = next;
+        setReplyFilter(next);
+        void refresh();
+        return;
+      }
+      if (event.key === "a") {
+        const next = assignedRef.current === "me" ? "" : "me";
+        assignedRef.current = next;
+        setAssignedFilter(next);
+        void refresh();
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -1380,9 +1396,20 @@ export default function ConversationsPage() {
                           </span>
                         )}
                       </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {item.contactId ?? "—"}
-                      </p>
+                      {item.contactId ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void navigator.clipboard.writeText(item.contactId ?? "")
+                          }
+                          title="Copy number"
+                          className="truncate text-left text-xs text-slate-500 transition-colors hover:text-slate-300"
+                        >
+                          {item.contactId}
+                        </button>
+                      ) : (
+                        <p className="truncate text-xs text-slate-500">—</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -1420,6 +1447,17 @@ export default function ConversationsPage() {
                     >
                       {item.status}
                     </span>
+                    <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-600">
+                      <span
+                        className={
+                          "inline-block h-1.5 w-1.5 rounded-full " +
+                          (item.channel === "whatsapp"
+                            ? "bg-emerald-400"
+                            : "bg-cyan-400")
+                        }
+                      />
+                      {item.channel}
+                    </p>
                     <p
                       className={`mt-1 text-[10px] ${
                         item.needsReply && item.status === "open" && item.lastMessageAt
@@ -1537,6 +1575,14 @@ export default function ConversationsPage() {
               <li className="flex items-center justify-between gap-6">
                 <span>Back to the inbox (inside a chat)</span>
                 <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">Esc</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Toggle the needs-reply view</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">r</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Toggle assigned-to-me</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">a</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Open or close this panel</span>

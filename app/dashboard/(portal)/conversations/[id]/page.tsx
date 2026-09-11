@@ -534,6 +534,12 @@ export default function ConversationThreadPage() {
                 placeholder="Search in this conversation"
                 className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-xs text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
               />
+              {threadQuery.trim() && (
+                <p className="mt-1 text-right text-[10px] text-slate-600">
+                  {threadMessages.length}{" "}
+                  {threadMessages.length === 1 ? "match" : "matches"}
+                </p>
+              )}
             </div>
           )}
           {hasMore && (
@@ -648,6 +654,9 @@ export default function ConversationThreadPage() {
             placeholder="Reply as a human agent — Enter to send, Shift+Enter for a new line"
             className="flex-1 resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
           />
+          <div className="hidden shrink-0 flex-col items-end text-[10px] text-slate-600 sm:flex">
+            {draft.length} / 4096
+          </div>
           <button
             type="submit"
             disabled={sending || !draft.trim()}
