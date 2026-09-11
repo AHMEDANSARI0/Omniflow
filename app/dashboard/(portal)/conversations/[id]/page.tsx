@@ -373,6 +373,13 @@ export default function ConversationThreadPage() {
 
   const title = conversation?.contactName || conversation?.contactId || "Conversation";
 
+  useEffect(() => {
+    document.title = title + " \u00b7 OmniFlow";
+    return () => {
+      document.title = "OmniFlow";
+    };
+  }, [title]);
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
@@ -613,6 +620,20 @@ export default function ConversationThreadPage() {
           }}
           className="sticky bottom-0 z-10 -mx-2 mt-6 flex items-end gap-3 border-t border-white/[0.06] bg-[#06101d]/95 px-2 py-3 backdrop-blur"
         >
+          <div className="hidden max-w-[176px] flex-wrap items-end gap-0.5 sm:flex">
+            {["\u{1F44D}", "\u{1F64F}", "\u{1F600}", "\u{1F622}", "\u{1F621}", "\u{1F44C}", "\u{1F91D}", "\u{1F4B0}", "\u{1F4E6}", "\u{1F69A}", "\u2705", "\u274C", "\u23F0", "\u{1F4DE}", "\u{1F60A}", "\u{1F44B}"].map(
+              (emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setDraft((current) => current + emoji)}
+                  className="rounded px-1 text-base leading-6 transition-colors hover:bg-white/[0.06]"
+                >
+                  {emoji}
+                </button>
+              )
+            )}
+          </div>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

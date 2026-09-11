@@ -95,6 +95,8 @@ export default function ConversationsPage() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [liveMode, setLiveMode] = useState(true);
   const liveModeRef = useRef(true);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<Date | null>(null);
   const pageRef = useRef(1);
   const appendRef = useRef(false);
   const lastKeyRef = useRef("");
@@ -269,6 +271,7 @@ export default function ConversationsPage() {
         });
         appendRef.current = false;
         setPending(false);
+        setSyncedAt(new Date());
         if (payload.counts) {
           setChipCounts({
             needsReply: payload.counts.needsReply || 0,
@@ -373,6 +376,25 @@ export default function ConversationsPage() {
       if (liveModeRef.current && document.visibilityState === "visible")
         void refresh();
     }, POLL_MS);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "?") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      setHelpOpen((open) => !open);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
     return () => {
       mounted.current = false;
       window.clearInterval(timer);
@@ -419,6 +441,27 @@ export default function ConversationsPage() {
         ? current.filter((value) => value !== conversationId)
         : [...current, conversationId]
     );
+  }
+
+  async function toggleConversationStatus(id: number, status: string) {
+    if (bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const response = await fetch("/api/omniflow/portal/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          action: status === "open" ? "close" : "reopen",
+          ids: [id],
+        }),
+      });
+      if (response.ok) void refresh();
+    } catch {
+      // Transient network issue, the list updates on the next poll.
+    } finally {
+      setBulkBusy(false);
+    }
   }
 
   async function bulkAction(action: string, assigneeEmail?: string) {
@@ -1125,6 +1168,17 @@ export default function ConversationsPage() {
         >
           {liveMode ? "Live" : "Paused"}
         </button>
+        <span className="text-[10px] text-slate-600">
+          {syncedAt ? "Updated " + syncedAt.toLocaleTimeString() : ""}
+        </span>
+        <button
+          type="button"
+          onClick={() => setHelpOpen((open) => !open)}
+          title="Keyboard shortcuts"
+          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:text-white"
+        >
+          ?
+        </button>
         <button
           type="button"
           onClick={() => void toggleAlert()}
@@ -1344,6 +1398,18 @@ export default function ConversationsPage() {
                     >
                       {item.starred ? "\u2605" : "\u2606"}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => void toggleConversationStatus(item.id, item.status)}
+                      title={
+                        item.status === "open"
+                          ? "Close this conversation"
+                          : "Reopen this conversation"
+                      }
+                      className="rounded-md border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400 transition-colors hover:text-white"
+                    >
+                      {item.status === "open" ? "Close" : "Reopen"}
+                    </button>
                     <div className="text-right">
                     <span
                       className={`rounded-md border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
@@ -1442,6 +1508,50 @@ export default function ConversationsPage() {
             </li>
           ))}
         </motion.ul>
+      )}
+      {helpOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setHelpOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0b1829] p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className="text-sm font-semibold text-white">
+              Keyboard shortcuts
+            </h2>
+            <ul className="mt-3 space-y-2 text-xs text-slate-300">
+              <li className="flex items-center justify-between gap-6">
+                <span>Focus search</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">/</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Move down / up the list</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">j / k</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Open the highlighted chat</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">Enter</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Back to the inbox (inside a chat)</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">Esc</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Open or close this panel</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">?</kbd>
+              </li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => setHelpOpen(false)}
+              className="mt-4 w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs font-medium text-slate-300 transition-colors hover:text-white"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
       {items && items.length >= 50 && (
         <div className="mt-4 flex justify-center">
