@@ -127,6 +127,14 @@ export default function ConversationThreadPage() {
   const [draft, setDraft] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [threadQuery, setThreadQuery] = useState("");
+
+  const visibleMessages =
+    threadQuery.trim() && messages
+      ? messages.filter((message) =>
+          message.body.toLowerCase().includes(threadQuery.trim().toLowerCase())
+        )
+      : messages;
   const [sending, setSending] = useState(false);
 
   async function toggleStatus() {
@@ -278,6 +286,10 @@ export default function ConversationThreadPage() {
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
           <p className="text-sm text-slate-300">No messages in this conversation yet.</p>
         </div>
+      ) : visibleMessages && visibleMessages.length === 0 ? (
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
+          <p className="text-sm text-slate-300">No messages match your search.</p>
+        </div>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -285,6 +297,17 @@ export default function ConversationThreadPage() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-3"
         >
+          {messages.length > 3 && (
+            <div className="sticky top-0 z-10 -mx-1 bg-[#06101d]/90 px-1 py-2 backdrop-blur">
+              <input
+                type="search"
+                value={threadQuery}
+                onChange={(event) => setThreadQuery(event.target.value)}
+                placeholder="Search in this conversation"
+                className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-xs text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+              />
+            </div>
+          )}
           {hasMore && (
             <div className="flex justify-center">
               <button
@@ -297,7 +320,7 @@ export default function ConversationThreadPage() {
               </button>
             </div>
           )}
-          {messages.map((message) => (
+          {(visibleMessages ?? messages).map((message) => (
             <div
               key={message.id}
               className={`flex ${message.direction === "out" ? "justify-end" : "justify-start"}`}

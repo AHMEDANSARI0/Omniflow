@@ -51,6 +51,9 @@ export async function GET(request: Request) {
       limitRaw && Number.isInteger(limitNumber) && limitNumber >= 1 && limitNumber <= 50
         ? limitNumber
         : undefined;
+    const daysRaw = url.searchParams.get("days") || "";
+    const daysFilter = daysRaw === "1" || daysRaw === "7" || daysRaw === "30" ? daysRaw : "";
+    const unreadFilter = url.searchParams.get("unread") === "1" ? "1" : "";
     const result = await listConversations(
       accessToken,
       searchQuery,
@@ -62,7 +65,9 @@ export async function GET(request: Request) {
       sortOrder,
       assignedFilter,
       true,
-      limitFilter
+      limitFilter,
+      daysFilter,
+      unreadFilter
     );
     if (result === null) {
       return safeJson(

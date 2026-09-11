@@ -565,7 +565,9 @@ export async function listConversations(
   sortOrder?: string,
   assignedFilter?: string,
   includeCounts?: boolean,
-  limit?: number
+  limit?: number,
+  daysFilter?: string,
+  unreadFilter?: string
 ): Promise<
   { conversations: ConversationSummary[]; counts: ConversationChipCounts | null } | null
 > {
@@ -599,6 +601,8 @@ export async function listConversations(
   const countsPart = includeCounts ? "include=counts" : "";
   const limitPart =
     limit && limit >= 1 && limit <= 50 ? "limit=" + Math.floor(limit) : "";
+  const daysPart = daysFilter ? "days=" + encodeURIComponent(daysFilter) : "";
+  const unreadPart = unreadFilter === "1" ? "unread=1" : "";
   const parts = [
     searchPart,
     statusPart,
@@ -610,6 +614,8 @@ export async function listConversations(
     assignedPart,
     countsPart,
     limitPart,
+    daysPart,
+    unreadPart,
   ].filter(Boolean);
   const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;

@@ -66,6 +66,10 @@ export default function ConversationsPage() {
   const oldestRef = useRef(false);
   const [assignedFilter, setAssignedFilter] = useState("");
   const assignedRef = useRef("");
+  const [daysFilter, setDaysFilter] = useState("");
+  const daysRef = useRef("");
+  const [unreadFilter, setUnreadFilter] = useState("");
+  const unreadRef = useRef("");
   const [chipCounts, setChipCounts] = useState({
     needsReply: 0,
     overdue: 0,
@@ -95,6 +99,8 @@ export default function ConversationsPage() {
       if (replyFilterRef.current) listParams.set("needs_reply", replyFilterRef.current);
       if (oldestRef.current) listParams.set("sort", "oldest");
       if (assignedRef.current) listParams.set("assigned", assignedRef.current);
+      if (daysRef.current) listParams.set("days", daysRef.current);
+      if (unreadRef.current) listParams.set("unread", unreadRef.current);
       const listQs = listParams.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
@@ -153,6 +159,15 @@ export default function ConversationsPage() {
     if (urlAssigned === "unassigned" || urlAssigned === "me") {
       assignedRef.current = urlAssigned;
       setAssignedFilter(urlAssigned);
+    }
+    const urlDays = urlFilters.get("days");
+    if (urlDays === "1" || urlDays === "7" || urlDays === "30") {
+      daysRef.current = urlDays;
+      setDaysFilter(urlDays);
+    }
+    if (urlFilters.get("unread") === "1") {
+      unreadRef.current = "1";
+      setUnreadFilter("1");
     }
     void refresh();
     const timer = window.setInterval(() => {
@@ -244,6 +259,8 @@ export default function ConversationsPage() {
       if (replyFilterRef.current) params.set("needs_reply", replyFilterRef.current);
       if (oldestRef.current) params.set("sort", "oldest");
       if (assignedRef.current) params.set("assigned", assignedRef.current);
+      if (daysRef.current) params.set("days", daysRef.current);
+      if (unreadRef.current) params.set("unread", unreadRef.current);
       const qs = params.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations/export" + (qs ? "?" + qs : ""),
@@ -593,6 +610,36 @@ export default function ConversationsPage() {
           }`}
         >
           Mine
+        </button>
+        <select
+          value={daysFilter}
+          onChange={(event) => {
+            daysRef.current = event.target.value;
+            setDaysFilter(event.target.value);
+            void refresh();
+          }}
+          className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-xs font-medium text-slate-300 outline-none transition-colors focus:border-cyan-400/40"
+        >
+          <option value="">Any time</option>
+          <option value="1">Last 24 hours</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => {
+            const next = unreadFilter === "1" ? "" : "1";
+            unreadRef.current = next;
+            setUnreadFilter(next);
+            void refresh();
+          }}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            unreadFilter === "1"
+              ? "border-violet-400/30 bg-violet-400/[0.08] text-violet-200"
+              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+          }`}
+        >
+          Unread
         </button>
       </div>
 
