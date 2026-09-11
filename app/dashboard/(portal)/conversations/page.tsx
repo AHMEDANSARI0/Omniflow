@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 
@@ -114,6 +115,50 @@ export default function ConversationsPage() {
   }, [chipCounts]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const router = useRouter();
+  const [activeRowIndex, setActiveRowIndex] = useState(-1);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (
+        event.key !== "j" &&
+        event.key !== "k" &&
+        event.key !== "Enter"
+      ) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!items || items.length === 0) return;
+      event.preventDefault();
+      if (event.key === "j" || event.key === "k") {
+        setActiveRowIndex((current) => {
+          const next =
+            event.key === "j"
+              ? Math.min(items.length - 1, current + 1)
+              : Math.max(0, current <= 0 ? 0 : current - 1);
+          const row = document.querySelector(
+            '[data-conv-row="' + items[next].id + '"]'
+          );
+          row?.scrollIntoView({ block: "nearest" });
+          return next;
+        });
+        return;
+      }
+      if (activeRowIndex >= 0 && activeRowIndex < items.length) {
+        void router.push("/dashboard/conversations/" + items[activeRowIndex].id);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [items, activeRowIndex, router]);
   const [assignTarget, setAssignTarget] = useState("");
   const [tagFilter, setTagFilter] = useState("all");
   const tagRef = useRef("all");
@@ -124,6 +169,39 @@ export default function ConversationsPage() {
     { intent: string; conversations: number }[]
   >([]);
   const mounted = useRef(true);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("q", search.trim());
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (channelFilter !== "all") params.set("channel", channelFilter);
+    if (tagFilter !== "all") params.set("tag", tagFilter);
+    if (replyFilter) params.set("needs_reply", replyFilter);
+    if (unreadFilter) params.set("unread", unreadFilter);
+    if (daysFilter) params.set("days", daysFilter);
+    if (assignedFilter) params.set("assigned", assignedFilter);
+    if (starredFilter) params.set("starred", starredFilter);
+    if (oldestFirst) params.set("sort", "oldest");
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      query
+        ? window.location.pathname + "?" + query
+        : window.location.pathname
+    );
+  }, [
+    search,
+    statusFilter,
+    channelFilter,
+    tagFilter,
+    replyFilter,
+    unreadFilter,
+    daysFilter,
+    assignedFilter,
+    starredFilter,
+    oldestFirst,
+  ]);
 
   const refresh = useCallback(async () => {
     try {
@@ -241,6 +319,43 @@ export default function ConversationsPage() {
       starredRef.current = "1";
       setStarredFilter("1");
     }
+    const statusParam = urlFilters.get("status");
+    if (statusParam === "open" || statusParam === "closed") {
+      statusRef.current = statusParam;
+      setStatusFilter(statusParam);
+    }
+    if (urlFilters.get("needs_reply") === "1") {
+      replyFilterRef.current = "1";
+      setReplyFilter("1");
+    }
+    if (urlFilters.get("unread") === "1") {
+      unreadRef.current = "1";
+      setUnreadFilter("1");
+    }
+    const daysParam = urlFilters.get("days");
+    if (daysParam === "1" || daysParam === "7" || daysParam === "30") {
+      daysRef.current = daysParam;
+      setDaysFilter(daysParam);
+    }
+    if (urlFilters.get("sort") === "oldest") {
+      oldestRef.current = true;
+      setOldestFirst(true);
+    }
+    const assignedParam = urlFilters.get("assigned");
+    if (assignedParam === "me" || assignedParam === "unassigned") {
+      assignedRef.current = assignedParam;
+      setAssignedFilter(assignedParam);
+    }
+    const channelParam = urlFilters.get("channel");
+    if (channelParam === "whatsapp" || channelParam === "website") {
+      channelRef.current = channelParam;
+      setChannelFilter(channelParam);
+    }
+    const tagParam = urlFilters.get("tag");
+    if (tagParam) {
+      tagRef.current = tagParam;
+      setTagFilter(tagParam);
+    }
     try {
       setAlertEnabled(window.localStorage.getItem("ofl_desktop_alert") === "1");
     } catch {
@@ -305,6 +420,19 @@ export default function ConversationsPage() {
 
   async function bulkAction(action: string, assigneeEmail?: string) {
     if (bulkBusy || selectedIds.length === 0) return;
+    if (
+      !window.confirm(
+        "This will " +
+          action +
+          " " +
+          selectedIds.length +
+          " conversation" +
+          (selectedIds.length === 1 ? "" : "s") +
+          ". Continue?"
+      )
+    ) {
+      return;
+    }
     setBulkBusy(true);
     try {
       const response = await fetch("/api/omniflow/portal/conversations", {
@@ -1110,7 +1238,16 @@ export default function ConversationsPage() {
           className="space-y-3"
         >
           {items.map((item) => (
-            <li key={item.id} className="flex items-start gap-2">
+            <li
+              key={item.id}
+              data-conv-row={item.id}
+              className={
+                "flex items-start gap-2 rounded-2xl " +
+                (activeRowIndex >= 0 && items[activeRowIndex]?.id === item.id
+                  ? "ring-1 ring-cyan-400/40"
+                  : "")
+              }
+            >
               <input
                 type="checkbox"
                 aria-label={

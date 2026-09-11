@@ -237,6 +237,27 @@ export default function ConversationThreadPage() {
       // Storage can be unavailable in private modes.
     }
   }, [draft, id]);
+
+  const threadBottomRef = useRef<HTMLDivElement | null>(null);
+  const [nearBottom, setNearBottom] = useState(true);
+
+  useEffect(() => {
+    function onScroll() {
+      const fromBottom =
+        document.documentElement.scrollHeight -
+        window.innerHeight -
+        window.scrollY;
+      setNearBottom(fromBottom < 160);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!nearBottom) return;
+    threadBottomRef.current?.scrollIntoView({ block: "end" });
+  }, [messages, nearBottom]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [threadQuery, setThreadQuery] = useState("");
@@ -534,12 +555,27 @@ export default function ConversationThreadPage() {
             </div>
             </Fragment>
           ))}
+          <div ref={threadBottomRef} className="h-px" />
         </motion.div>
       )}
 
       {!expired && !notFound && (
         <SavedRepliesPicker onPick={(text) => setDraft(text)} />
       )}
+        {!nearBottom && (
+          <button
+            type="button"
+            onClick={() =>
+              threadBottomRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "end",
+              })
+            }
+            className="fixed bottom-28 right-6 z-20 rounded-full border border-white/[0.1] bg-[#0b1829] px-4 py-2 text-xs font-medium text-slate-200 shadow-lg transition-colors hover:text-white"
+          >
+            Jump to latest
+          </button>
+        )}
       {!expired && !notFound && (
         <form
           onSubmit={(event) => {
