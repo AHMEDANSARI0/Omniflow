@@ -336,6 +336,15 @@ export default function ConversationThreadPage() {
     }
   }
 
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = "auto";
+    composer.style.height = Math.min(composer.scrollHeight, 160) + "px";
+  }, [draft]);
+
   useEffect(() => {
     if (!draft) return;
     function warnOnLeave(event: BeforeUnloadEvent) {
@@ -641,6 +650,7 @@ export default function ConversationThreadPage() {
             )}
           </div>
           <textarea
+            ref={composerRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {

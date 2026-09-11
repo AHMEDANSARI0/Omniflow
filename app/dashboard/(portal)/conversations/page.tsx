@@ -129,7 +129,8 @@ export default function ConversationsPage() {
         event.key !== "k" &&
         event.key !== "Enter" &&
         event.key !== "r" &&
-        event.key !== "a"
+        event.key !== "a" &&
+        event.key !== "s"
       ) {
         return;
       }
@@ -173,6 +174,13 @@ export default function ConversationsPage() {
         const next = assignedRef.current === "me" ? "" : "me";
         assignedRef.current = next;
         setAssignedFilter(next);
+        void refresh();
+        return;
+      }
+      if (event.key === "s") {
+        const next = starredRef.current ? "" : "1";
+        starredRef.current = next;
+        setStarredFilter(next);
         void refresh();
       }
     }
@@ -395,6 +403,10 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setHelpOpen(false);
+        return;
+      }
       if (event.key !== "?") return;
       const target = event.target as HTMLElement | null;
       if (
@@ -1184,6 +1196,15 @@ export default function ConversationsPage() {
         >
           {liveMode ? "Live" : "Paused"}
         </button>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={pending}
+          title="Refresh now"
+          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+        >
+          {pending ? "Refreshing" : "Refresh"}
+        </button>
         <span className="text-[10px] text-slate-600">
           {syncedAt ? "Updated " + syncedAt.toLocaleTimeString() : ""}
         </span>
@@ -1353,6 +1374,9 @@ export default function ConversationsPage() {
               data-conv-row={item.id}
               className={
                 "flex items-start gap-2 rounded-2xl " +
+                (item.needsReply && item.status === "open"
+                  ? "border-l-2 border-l-amber-400/60 "
+                  : "") +
                 (activeRowIndex >= 0 && items[activeRowIndex]?.id === item.id
                   ? "ring-1 ring-cyan-400/40"
                   : "")
@@ -1583,6 +1607,10 @@ export default function ConversationsPage() {
               <li className="flex items-center justify-between gap-6">
                 <span>Toggle assigned-to-me</span>
                 <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">a</kbd>
+              </li>
+              <li className="flex items-center justify-between gap-6">
+                <span>Toggle the starred view</span>
+                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">s</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Open or close this panel</span>
