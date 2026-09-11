@@ -89,9 +89,6 @@ export default function ConversationsPage() {
   const unreadRef = useRef("");
   const [starredFilter, setStarredFilter] = useState("");
   const starredRef = useRef("");
-  const pageRef = useRef(1);
-  const appendRef = useRef(false);
-  const lastKeyRef = useRef("");
   const [alertEnabled, setAlertEnabled] = useState(false);
   const alertTotalRef = useRef(0);
   const pageRef = useRef(1);
