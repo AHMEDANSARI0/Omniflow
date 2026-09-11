@@ -93,6 +93,8 @@ export default function ConversationsPage() {
   const [alertEnabled, setAlertEnabled] = useState(false);
   const alertTotalRef = useRef(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [liveMode, setLiveMode] = useState(true);
+  const liveModeRef = useRef(true);
   const pageRef = useRef(1);
   const appendRef = useRef(false);
   const lastKeyRef = useRef("");
@@ -368,7 +370,8 @@ export default function ConversationsPage() {
     }
     void refresh();
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void refresh();
+      if (liveModeRef.current && document.visibilityState === "visible")
+        void refresh();
     }, POLL_MS);
     return () => {
       mounted.current = false;
@@ -1104,6 +1107,26 @@ export default function ConversationsPage() {
         </button>
         <button
           type="button"
+          onClick={() => {
+            const next = !liveMode;
+            setLiveMode(next);
+            liveModeRef.current = next;
+          }}
+          title={
+            liveMode
+              ? "The inbox refreshes itself"
+              : "Auto-refresh is paused - click Resume to go live again"
+          }
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
+            liveMode
+              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
+              : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:text-white"
+          }`}
+        >
+          {liveMode ? "Live" : "Paused"}
+        </button>
+        <button
+          type="button"
           onClick={() => void toggleAlert()}
           title={
             alertEnabled
@@ -1142,6 +1165,23 @@ export default function ConversationsPage() {
           <span className="text-xs font-medium text-cyan-200">
             {selectedIds.length} selected
           </span>
+          <button
+            type="button"
+            onClick={() => setSelectedIds((items ?? []).map((item) => item.id))}
+            disabled={bulkBusy}
+            title="Select every conversation in the current view"
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds([])}
+            disabled={bulkBusy}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+          >
+            Clear
+          </button>
           <button
             type="button"
             onClick={() => void exportCsv(selectedIds)}

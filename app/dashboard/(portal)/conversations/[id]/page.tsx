@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import CodCard from "./CodCard";
 import TeamCard from "./TeamCard";
 import TagsCard from "./TagsCard";
@@ -261,6 +261,25 @@ export default function ConversationThreadPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [threadQuery, setThreadQuery] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      void router.push("/dashboard/conversations");
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [router]);
 
   const visibleMessages =
     threadQuery.trim() && messages
@@ -415,6 +434,16 @@ export default function ConversationThreadPage() {
                     className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
                   >
                     Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void navigator.clipboard.writeText(window.location.href)
+                    }
+                    title="Copy a link to this conversation"
+                    className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
+                  >
+                    Link
                   </button>
                   <button
                     type="button"
