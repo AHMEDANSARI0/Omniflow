@@ -91,6 +91,7 @@ export default function ConversationsPage() {
   const starredRef = useRef("");
   const [alertEnabled, setAlertEnabled] = useState(false);
   const alertTotalRef = useRef(0);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const pageRef = useRef(1);
   const appendRef = useRef(false);
   const lastKeyRef = useRef("");
@@ -100,6 +101,17 @@ export default function ConversationsPage() {
     unassigned: 0,
     unread: 0,
   });
+
+  const baseTitleRef = useRef("");
+
+  useEffect(() => {
+    if (!baseTitleRef.current) baseTitleRef.current = document.title;
+    const total = chipCounts.unread + chipCounts.needsReply;
+    document.title =
+      total > 0
+        ? "(" + total + ") " + baseTitleRef.current
+        : baseTitleRef.current;
+  }, [chipCounts]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [assignTarget, setAssignTarget] = useState("");
@@ -234,6 +246,11 @@ export default function ConversationsPage() {
     } catch {
       // Storage unavailable.
     }
+    try {
+      setSoundEnabled(window.localStorage.getItem("ofl_sound") === "1");
+    } catch {
+      // Storage unavailable.
+    }
     void refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
@@ -330,6 +347,16 @@ export default function ConversationsPage() {
     }
   }
 
+  function toggleSound() {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    try {
+      window.localStorage.setItem("ofl_sound", next ? "1" : "0");
+    } catch {
+      // Storage can be unavailable in private modes.
+    }
+  }
+
   async function toggleAlert() {
     const next = !alertEnabled;
     setAlertEnabled(next);
@@ -353,23 +380,50 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     const total = chipCounts.unread + chipCounts.needsReply;
-    if (
-      alertEnabled &&
-      total > alertTotalRef.current &&
-      document.hidden &&
-      typeof Notification !== "undefined" &&
-      Notification.permission === "granted"
-    ) {
-      try {
-        new Notification("New customer message", {
-          body: "Open the inbox to reply.",
-        });
-      } catch {
-        // Notifications unavailable in this browser.
+    if (total > alertTotalRef.current && document.hidden) {
+      if (
+        alertEnabled &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      ) {
+        try {
+          new Notification("New customer message", {
+            body: "Open the inbox to reply.",
+          });
+        } catch {
+          // Notifications unavailable in this browser.
+        }
+      }
+      if (soundEnabled) {
+        try {
+          const AudioContextCtor =
+            window.AudioContext ??
+            (window as unknown as { webkitAudioContext?: typeof AudioContext })
+              .webkitAudioContext;
+          if (AudioContextCtor) {
+            const chime = new AudioContextCtor();
+            const oscillator = chime.createOscillator();
+            const gain = chime.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.value = 880;
+            gain.gain.setValueAtTime(0.05, chime.currentTime);
+            gain.gain.exponentialRampToValueAtTime(
+              0.0001,
+              chime.currentTime + 0.4
+            );
+            oscillator.connect(gain);
+            gain.connect(chime.destination);
+            oscillator.start();
+            oscillator.stop(chime.currentTime + 0.4);
+            oscillator.onended = () => void chime.close();
+          }
+        } catch {
+          // Audio playback unavailable.
+        }
       }
     }
     alertTotalRef.current = total;
-  }, [chipCounts, alertEnabled]);
+  }, [chipCounts, alertEnabled, soundEnabled]);
 
   async function markAllRead() {
     if (bulkBusy) return;
@@ -904,6 +958,22 @@ export default function ConversationsPage() {
             {value}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => toggleSound()}
+          title={
+            soundEnabled
+              ? "Notification sound is on"
+              : "Play a sound when new customer messages arrive"
+          }
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
+            soundEnabled
+              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
+              : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:text-white"
+          }`}
+        >
+          {soundEnabled ? "Sound on" : "Sound off"}
+        </button>
         <button
           type="button"
           onClick={() => void toggleAlert()}

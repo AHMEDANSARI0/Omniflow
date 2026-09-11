@@ -425,6 +425,14 @@ export default function ConversationThreadPage() {
                     ? ` · ${message.intent.replace(/_/g, " ")}`
                     : ""}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(message.body)}
+                  title="Copy this message"
+                  className="text-[10px] font-medium uppercase tracking-wider text-slate-500 transition-colors hover:text-slate-300"
+                >
+                  Copy
+                </button>
               </div>
             </div>
             </Fragment>
