@@ -5,12 +5,75 @@ import { useParams } from "next/navigation";
 import CodCard from "./CodCard";
 import TeamCard from "./TeamCard";
 import TagsCard from "./TagsCard";
+import NotesCard from "./NotesCard";
 import RatingCard from "./RatingCard";
 import CustomerCard from "./CustomerCard";
 import SavedRepliesPicker from "./SavedRepliesPicker";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { motion } from "motion/react";
 
+
+const MESSAGE_URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+
+function linkifyText(text: string, keyPrefix: string): ReactNode[] {
+  const parts = text.split(MESSAGE_URL_PATTERN);
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <a
+        key={keyPrefix + "-url-" + index}
+        href={part}
+        target="_blank"
+        rel="noreferrer"
+        className="underline decoration-slate-500 underline-offset-2 transition-colors hover:text-cyan-200"
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    )
+  );
+}
+
+function renderMessageBody(body: string, query: string): ReactNode {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return linkifyText(body, "msg");
+  const lower = body.toLowerCase();
+  const pieces: ReactNode[] = [];
+  let cursor = 0;
+  let found = lower.indexOf(needle);
+  while (found !== -1) {
+    if (found > cursor) {
+      pieces.push(
+        <span key={"seg-" + cursor}>
+          {linkifyText(body.slice(cursor, found), "seg-" + cursor)}
+        </span>
+      );
+    }
+    pieces.push(
+      <mark
+        key={"hit-" + found}
+        className="rounded bg-amber-300/25 px-0.5 text-amber-100"
+      >
+        {body.slice(found, found + needle.length)}
+      </mark>
+    );
+    cursor = found + needle.length;
+    found = lower.indexOf(needle, cursor);
+  }
+  if (cursor < body.length) {
+    pieces.push(
+      <span key={"tail"}>{linkifyText(body.slice(cursor), "tail")}</span>
+    );
+  }
+  return pieces;
+}
 
 interface ConversationSummary {
   id: number;
@@ -151,6 +214,29 @@ export default function ConversationThreadPage() {
 
   const [statusBusy, setStatusBusy] = useState(false);
   const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem("ofl_draft_" + id);
+    } catch {
+      // Storage can be unavailable in private modes.
+    }
+    setDraft(stored ?? "");
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (draft) {
+        window.localStorage.setItem("ofl_draft_" + id, draft);
+      } else {
+        window.localStorage.removeItem("ofl_draft_" + id);
+      }
+    } catch {
+      // Storage can be unavailable in private modes.
+    }
+  }, [draft, id]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [threadQuery, setThreadQuery] = useState("");
@@ -209,6 +295,16 @@ export default function ConversationThreadPage() {
       if (mounted.current) setStatusBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!draft) return;
+    function warnOnLeave(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", warnOnLeave);
+    return () => window.removeEventListener("beforeunload", warnOnLeave);
+  }, [draft]);
 
   async function sendReply() {
     const body = draft.trim();
@@ -323,6 +419,7 @@ export default function ConversationThreadPage() {
           initialAssignedTo={conversation?.assignedTo ?? null}
         />
       )}
+      {!expired && !notFound && <NotesCard conversationId={Number(id)} />}
       {!expired && !notFound && (
         <TagsCard conversationId={Number(id)} initialTags={conversation?.tags ?? []} />
       )}
@@ -414,7 +511,7 @@ export default function ConversationThreadPage() {
                 }`}
               >
                 <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-100">
-                  {message.body}
+                  {renderMessageBody(message.body, threadQuery)}
                 </p>
                 <p className="mt-1 text-[10px] text-slate-500">
                   {message.direction === "out" ? "Bot / you" : "Customer"}
@@ -449,7 +546,7 @@ export default function ConversationThreadPage() {
             event.preventDefault();
             void sendReply();
           }}
-          className="mt-6 flex items-end gap-3"
+          className="sticky bottom-0 z-10 -mx-2 mt-6 flex items-end gap-3 border-t border-white/[0.06] bg-[#06101d]/95 px-2 py-3 backdrop-blur"
         >
           <textarea
             value={draft}
