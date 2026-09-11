@@ -514,6 +514,7 @@ export interface ConversationSummary {
   leadTemp: string;
   assignedTo: string | null;
   assigneeName: string | null;
+  starred: boolean;
   tags: string[];
 }
 
@@ -548,6 +549,7 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
     leadTemp: typeof p.lead_temp === "string" ? p.lead_temp : "cold",
     assignedTo: typeof p.assigned_to === "string" ? p.assigned_to : null,
     assigneeName: typeof p.assignee_name === "string" ? p.assignee_name : null,
+    starred: p.starred === true,
     tags: Array.isArray(p.tags)
       ? p.tags.filter((tag): tag is string => typeof tag === "string")
       : [],
@@ -567,7 +569,9 @@ export async function listConversations(
   includeCounts?: boolean,
   limit?: number,
   daysFilter?: string,
-  unreadFilter?: string
+  unreadFilter?: string,
+  starredFilter?: string,
+  page?: number
 ): Promise<
   { conversations: ConversationSummary[]; counts: ConversationChipCounts | null } | null
 > {
@@ -603,6 +607,8 @@ export async function listConversations(
     limit && limit >= 1 && limit <= 50 ? "limit=" + Math.floor(limit) : "";
   const daysPart = daysFilter ? "days=" + encodeURIComponent(daysFilter) : "";
   const unreadPart = unreadFilter === "1" ? "unread=1" : "";
+  const starredPart = starredFilter === "1" ? "starred=1" : "";
+  const pagePart = page && page >= 2 && page <= 100 ? "page=" + Math.floor(page) : "";
   const parts = [
     searchPart,
     statusPart,
@@ -616,6 +622,8 @@ export async function listConversations(
     limitPart,
     daysPart,
     unreadPart,
+    starredPart,
+    pagePart,
   ].filter(Boolean);
   const query = parts.length ? "?" + parts.join("&") : "";
   let response: Response;
@@ -685,6 +693,33 @@ export async function bulkConversations(
   if (payload === null || typeof payload !== "object") return null;
   const updated = (payload as Record<string, unknown>).updated;
   return { updated: typeof updated === "number" ? updated : 0 };
+}
+
+export async function toggleConversationStar(
+  accessToken: string,
+  conversationId: number
+): Promise<{ starred: boolean } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" +
+        encodeURIComponent(String(conversationId)) +
+        "/star",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { starred: false };
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  return { starred: (payload as Record<string, unknown>).starred === true };
 }
 
 export type ConversationDetailResult =
@@ -783,6 +818,28 @@ export async function getConversationMessages(
     messages: normalizeConversationMessages(p.messages),
     hasMore: p.has_more === true,
   };
+}
+
+export async function markAllConversationsRead(
+  accessToken: string
+): Promise<{ updated: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/conversations/read-all", {
+      method: "POST",
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const updated = (payload as Record<string, unknown>).updated;
+  return { updated: typeof updated === "number" ? updated : 0 };
 }
 
 export interface IntentSummaryEntry {
@@ -3162,6 +3219,7 @@ export async function deleteSavedReply(
 // ---------------------------------------------------------------------------
 
 export interface ConversationExportFilters {
+  ids?: number[];
   searchQuery?: string;
   statusFilter?: string;
   intentFilter?: string;
@@ -3174,6 +3232,9 @@ export async function exportConversations(
   filters: ConversationExportFilters = {}
 ): Promise<ConversationSummary[] | null> {
   const parts: string[] = [];
+  if (filters.ids && filters.ids.length) {
+    parts.push("ids=" + filters.ids.slice(0, 100).join(","));
+  }
   if (filters.searchQuery) {
     parts.push("q=" + encodeURIComponent(filters.searchQuery));
   }

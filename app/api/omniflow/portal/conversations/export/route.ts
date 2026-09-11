@@ -32,9 +32,18 @@ export async function GET(request: Request) {
   const tagFilter = tagParam ? tagParam.trim().slice(0, 24) : undefined;
   const rawSearch = (url.searchParams.get("q") || "").trim().slice(0, 100);
   const searchQuery = rawSearch || undefined;
+  const rawIds = (url.searchParams.get("ids") || "").split(",");
+  const ids: number[] = [];
+  for (const part of rawIds.slice(0, 100)) {
+    const value = Number(part.trim());
+    if (part.trim() && Number.isInteger(value) && value > 0 && !ids.includes(value)) {
+      ids.push(value);
+    }
+  }
 
   try {
     const data = await exportConversations(accessToken, {
+      ids: ids.length ? ids : undefined,
       searchQuery,
       statusFilter,
       intentFilter,

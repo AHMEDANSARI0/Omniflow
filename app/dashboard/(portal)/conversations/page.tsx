@@ -20,6 +20,7 @@ interface ConversationSummary {
   leadScore: number;
   assignedTo: string | null;
   assigneeName: string | null;
+  starred: boolean;
   tags: string[];
 }
 
@@ -36,6 +37,10 @@ const POLL_MS = 10_000;
 function formatTime(value: string | null): string {
   if (!value) return "—";
   try {
+    const seconds = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+    if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
     return new Date(value).toLocaleString(undefined, {
       day: "numeric",
       month: "short",
@@ -70,10 +75,18 @@ export default function ConversationsPage() {
   const daysRef = useRef("");
   const [unreadFilter, setUnreadFilter] = useState("");
   const unreadRef = useRef("");
+  const [starredFilter, setStarredFilter] = useState("");
+  const starredRef = useRef("");
+  const [alertEnabled, setAlertEnabled] = useState(false);
+  const alertTotalRef = useRef(0);
+  const pageRef = useRef(1);
+  const appendRef = useRef(false);
+  const lastKeyRef = useRef("");
   const [chipCounts, setChipCounts] = useState({
     needsReply: 0,
     overdue: 0,
     unassigned: 0,
+    unread: 0,
   });
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -90,6 +103,23 @@ export default function ConversationsPage() {
 
   const refresh = useCallback(async () => {
     try {
+      const filtersKey = [
+        searchRef.current,
+        statusRef.current,
+        intentRef.current,
+        channelRef.current,
+        tagRef.current,
+        replyFilterRef.current,
+        oldestRef.current ? "oldest" : "",
+        assignedRef.current,
+        daysRef.current,
+        unreadRef.current,
+        starredRef.current,
+      ].join("|");
+      if (filtersKey !== lastKeyRef.current) {
+        pageRef.current = 1;
+        lastKeyRef.current = filtersKey;
+      }
       const listParams = new URLSearchParams();
       if (searchRef.current) listParams.set("q", searchRef.current);
       if (statusRef.current !== "all") listParams.set("status", statusRef.current);
@@ -101,6 +131,8 @@ export default function ConversationsPage() {
       if (assignedRef.current) listParams.set("assigned", assignedRef.current);
       if (daysRef.current) listParams.set("days", daysRef.current);
       if (unreadRef.current) listParams.set("unread", unreadRef.current);
+      if (starredRef.current) listParams.set("starred", starredRef.current);
+      if (pageRef.current > 1) listParams.set("page", String(pageRef.current));
       const listQs = listParams.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations" + (listQs ? "?" + listQs : ""),
@@ -115,18 +147,30 @@ export default function ConversationsPage() {
       }
       const payload = (await response.json().catch(() => null)) as {
         conversations?: ConversationSummary[];
-        counts?: { needsReply?: number; overdue?: number; unassigned?: number };
+        counts?: {
+          needsReply?: number;
+          overdue?: number;
+          unassigned?: number;
+          unread?: number;
+        };
         error?: { code?: string };
       } | null;
       if (!mounted.current || !payload) return;
       if (Array.isArray(payload.conversations)) {
-        setItems(payload.conversations);
+        const incoming = payload.conversations;
+        setItems((current) => {
+          if (!appendRef.current || !current) return incoming;
+          const seen = new Set(current.map((item) => item.id));
+          return [...current, ...incoming.filter((item) => !seen.has(item.id))];
+        });
+        appendRef.current = false;
         setPending(false);
         if (payload.counts) {
           setChipCounts({
             needsReply: payload.counts.needsReply || 0,
             overdue: payload.counts.overdue || 0,
             unassigned: payload.counts.unassigned || 0,
+            unread: payload.counts.unread || 0,
           });
         }
       } else if (payload.error?.code === "portal_pending") {
@@ -168,6 +212,15 @@ export default function ConversationsPage() {
     if (urlFilters.get("unread") === "1") {
       unreadRef.current = "1";
       setUnreadFilter("1");
+    }
+    if (urlFilters.get("starred") === "1") {
+      starredRef.current = "1";
+      setStarredFilter("1");
+    }
+    try {
+      setAlertEnabled(window.localStorage.getItem("ofl_desktop_alert") === "1");
+    } catch {
+      // Storage unavailable.
     }
     void refresh();
     const timer = window.setInterval(() => {
@@ -246,8 +299,84 @@ export default function ConversationsPage() {
     }
   }
 
-  async function exportCsv() {
-    if (exporting) return;
+  async function toggleStar(conversationId: number) {
+    setItems((current) =>
+      current
+        ? current.map((item) =>
+            item.id === conversationId ? { ...item, starred: !item.starred } : item
+          )
+        : current
+    );
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/conversations/" + conversationId + "/star",
+        { method: "POST", credentials: "same-origin" }
+      );
+      if (!response.ok) void refresh();
+    } catch {
+      void refresh();
+    }
+  }
+
+  async function toggleAlert() {
+    const next = !alertEnabled;
+    setAlertEnabled(next);
+    try {
+      window.localStorage.setItem("ofl_desktop_alert", next ? "1" : "0");
+    } catch {
+      // Storage can be unavailable in private modes.
+    }
+    if (
+      next &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "default"
+    ) {
+      try {
+        await Notification.requestPermission();
+      } catch {
+        // Permission prompt unavailable.
+      }
+    }
+  }
+
+  useEffect(() => {
+    const total = chipCounts.unread + chipCounts.needsReply;
+    if (
+      alertEnabled &&
+      total > alertTotalRef.current &&
+      document.hidden &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "granted"
+    ) {
+      try {
+        new Notification("New customer message", {
+          body: "Open the inbox to reply.",
+        });
+      } catch {
+        // Notifications unavailable in this browser.
+      }
+    }
+    alertTotalRef.current = total;
+  }, [chipCounts, alertEnabled]);
+
+  async function markAllRead() {
+    if (bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const response = await fetch("/api/omniflow/portal/conversations/read-all", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      if (response.ok) void refresh();
+    } catch {
+      // Transient network issue, the user can retry.
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function exportCsv(selectedIds?: number[]) {
+    if (exporting || (selectedIds && selectedIds.length === 0)) return;
     setExporting(true);
     try {
       const params = new URLSearchParams();
@@ -261,6 +390,8 @@ export default function ConversationsPage() {
       if (assignedRef.current) params.set("assigned", assignedRef.current);
       if (daysRef.current) params.set("days", daysRef.current);
       if (unreadRef.current) params.set("unread", unreadRef.current);
+      if (starredRef.current) params.set("starred", starredRef.current);
+      if (selectedIds) params.set("ids", selectedIds.join(","));
       const qs = params.toString();
       const response = await fetch(
         "/api/omniflow/portal/conversations/export" + (qs ? "?" + qs : ""),
@@ -318,7 +449,9 @@ export default function ConversationsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "omniflow-conversations.csv";
+      link.download = selectedIds
+        ? "omniflow-conversations-selected.csv"
+        : "omniflow-conversations.csv";
       link.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -641,6 +774,22 @@ export default function ConversationsPage() {
         >
           Unread
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const next = starredFilter === "1" ? "" : "1";
+            starredRef.current = next;
+            setStarredFilter(next);
+            void refresh();
+          }}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            starredFilter === "1"
+              ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
+              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+          }`}
+        >
+          Starred
+        </button>
       </div>
 
       {tagOptions.length > 0 && (
@@ -686,6 +835,31 @@ export default function ConversationsPage() {
         ))}
         <button
           type="button"
+          onClick={() => void toggleAlert()}
+          title={
+            alertEnabled
+              ? "Desktop alerts are on"
+              : "Get a desktop alert when new customer messages arrive"
+          }
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
+            alertEnabled
+              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
+              : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:text-white"
+          }`}
+        >
+          {alertEnabled ? "Alerts on" : "Alerts off"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void markAllRead()}
+          disabled={bulkBusy || !chipCounts.unread}
+          title="Mark every open conversation as read"
+          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
+        >
+          Mark all read
+        </button>
+        <button
+          type="button"
           onClick={() => void exportCsv()}
           disabled={exporting || !items || items.length === 0}
           className="ml-auto rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
@@ -699,6 +873,14 @@ export default function ConversationsPage() {
           <span className="text-xs font-medium text-cyan-200">
             {selectedIds.length} selected
           </span>
+          <button
+            type="button"
+            onClick={() => void exportCsv(selectedIds)}
+            disabled={bulkBusy || exporting}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+          >
+            Export selected
+          </button>
           <button
             type="button"
             onClick={() => void bulkAction("close")}
@@ -831,7 +1013,20 @@ export default function ConversationsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label="Toggle star"
+                      onClick={() => void toggleStar(item.id)}
+                      className={`text-base leading-none transition-transform hover:scale-110 ${
+                        item.starred
+                          ? "text-amber-300"
+                          : "text-slate-600 hover:text-slate-400"
+                      }`}
+                    >
+                      {item.starred ? "\u2605" : "\u2606"}
+                    </button>
+                    <div className="text-right">
                     <span
                       className={`rounded-md border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
                         item.status === "open"
@@ -844,6 +1039,7 @@ export default function ConversationsPage() {
                     <p className="mt-1 text-[10px] text-slate-600">
                       {formatTime(item.lastMessageAt)}
                     </p>
+                    </div>
                   </div>
                 </div>
                 {item.lastMessagePreview && (
@@ -920,6 +1116,21 @@ export default function ConversationsPage() {
             </li>
           ))}
         </motion.ul>
+      )}
+      {items && items.length >= 50 && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              appendRef.current = true;
+              pageRef.current += 1;
+              void refresh();
+            }}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white"
+          >
+            Load more
+          </button>
+        </div>
       )}
     </div>
   );

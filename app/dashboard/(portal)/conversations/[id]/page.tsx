@@ -8,7 +8,7 @@ import TagsCard from "./TagsCard";
 import RatingCard from "./RatingCard";
 import CustomerCard from "./CustomerCard";
 import SavedRepliesPicker from "./SavedRepliesPicker";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 
 
@@ -85,6 +85,32 @@ export default function ConversationThreadPage() {
     }
   }, [id]);
 
+  function copyNumber() {
+    const value = conversation?.contactId || "";
+    if (value) void navigator.clipboard.writeText(value);
+  }
+
+  function downloadTranscript() {
+    if (!messages || !conversation) return;
+    const agentLabel = "Agent";
+    const customerLabel = conversation.contactName || conversation.contactId || "Customer";
+    const lines = messages.map((message) =>
+      "[" + (message.createdAt || "unknown") + "] " +
+      (message.direction === "out" ? agentLabel : customerLabel) +
+      ": " + message.body
+    );
+    const blob = new Blob(
+      ["Conversation with " + customerLabel + "\n\n" + lines.join("\n")],
+      { type: "text/plain;charset=utf-8" }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "conversation-" + conversation.id + ".txt";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function loadOlder() {
     if (loadingOlder || !messages || messages.length === 0) return;
     const oldestId = messages[0].id;
@@ -135,6 +161,26 @@ export default function ConversationThreadPage() {
           message.body.toLowerCase().includes(threadQuery.trim().toLowerCase())
         )
       : messages;
+
+  const threadMessages: ConversationMessage[] = visibleMessages ?? messages ?? [];
+
+  const threadDayLabel = (index: number): string | null => {
+    const current = threadMessages[index];
+    if (!current || !current.createdAt) return null;
+    const key = new Date(current.createdAt).toDateString();
+    const previous = index > 0 ? threadMessages[index - 1] : null;
+    if (previous && previous.createdAt &&
+      new Date(previous.createdAt).toDateString() === key
+    ) {
+      return null;
+    }
+    const date = new Date(current.createdAt);
+    if (date.toDateString() === new Date().toDateString()) return "Today";
+    if (date.toDateString() === new Date(Date.now() - 86400000).toDateString()) {
+      return "Yesterday";
+    }
+    return date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  };
   const [sending, setSending] = useState(false);
 
   async function toggleStatus() {
@@ -235,6 +281,34 @@ export default function ConversationThreadPage() {
                     ? "Close"
                     : "Reopen"}
               </button>
+              {conversation.contactId && (
+                <>
+                  <a
+                    href={`https://wa.me/${conversation.contactId.replace(/[^0-9]/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md border border-emerald-400/25 bg-emerald-400/[0.06] px-2.5 py-1 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-400/[0.12]"
+                  >
+                    WhatsApp
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => copyNumber()}
+                    title="Copy number"
+                    className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadTranscript()}
+                    title="Download the loaded messages as a text file"
+                    className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
+                  >
+                    Transcript
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -320,9 +394,16 @@ export default function ConversationThreadPage() {
               </button>
             </div>
           )}
-          {(visibleMessages ?? messages).map((message) => (
+          {threadMessages.map((message, index) => (
+            <Fragment key={message.id}>
+            {threadDayLabel(index) && (
+              <div className="flex justify-center">
+                <span className="rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                  {threadDayLabel(index)}
+                </span>
+              </div>
+            )}
             <div
-              key={message.id}
               className={`flex ${message.direction === "out" ? "justify-end" : "justify-start"}`}
             >
               <div
@@ -346,6 +427,7 @@ export default function ConversationThreadPage() {
                 </p>
               </div>
             </div>
+            </Fragment>
           ))}
         </motion.div>
       )}
