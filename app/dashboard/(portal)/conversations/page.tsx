@@ -97,6 +97,25 @@ export default function ConversationsPage() {
   const liveModeRef = useRef(true);
   const [helpOpen, setHelpOpen] = useState(false);
   const [syncedAt, setSyncedAt] = useState<Date | null>(null);
+  const [compactList, setCompactList] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("ofl_density") === "compact") {
+        setCompactList(true);
+      }
+    } catch {
+      // Storage can be unavailable in private modes.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("ofl_density", compactList ? "compact" : "cozy");
+    } catch {
+      // Storage can be unavailable in private modes.
+    }
+  }, [compactList]);
   const pageRef = useRef(1);
   const appendRef = useRef(false);
   const lastKeyRef = useRef("");
@@ -1230,6 +1249,22 @@ export default function ConversationsPage() {
         </span>
         <button
           type="button"
+          onClick={() => setCompactList((current) => !current)}
+          title={
+            compactList
+              ? "Roomy list"
+              : "Fit more conversations on the screen"
+          }
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
+            compactList
+              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
+              : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:text-white"
+          }`}
+        >
+          {compactList ? "Compact" : "Cozy"}
+        </button>
+        <button
+          type="button"
           onClick={() => setHelpOpen((open) => !open)}
           title="Keyboard shortcuts"
           className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:text-white"
@@ -1433,7 +1468,7 @@ export default function ConversationsPage() {
               />
               <Link
                 href={`/dashboard/conversations/${item.id}`}
-                className="block min-w-0 flex-1 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 transition-colors duration-300 hover:border-cyan-400/30 hover:bg-white/[0.025]"
+                className={`block min-w-0 flex-1 rounded-2xl border border-white/[0.06] bg-white/[0.015] ${compactList ? "p-2.5" : "p-4"} transition-colors duration-300 hover:border-cyan-400/30 hover:bg-white/[0.025]`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">

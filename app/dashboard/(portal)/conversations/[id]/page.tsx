@@ -356,6 +356,36 @@ export default function ConversationThreadPage() {
     return () => window.removeEventListener("beforeunload", warnOnLeave);
   }, [draft]);
 
+  function exportThreadCsv() {
+    if (!messages || messages.length === 0) return;
+    const csvCell = (value: unknown): string => {
+      const text = value === null || value === undefined ? "" : String(value);
+      return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    };
+    const lines = ["created_at,direction,intent,body"];
+    for (const message of messages) {
+      lines.push(
+        [
+          message.createdAt,
+          message.direction,
+          message.intent ?? "",
+          message.body,
+        ]
+          .map(csvCell)
+          .join(",")
+      );
+    }
+    const blob = new Blob(["\ufeff" + lines.join("\n")], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "omniflow-conversation-" + id + ".csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function sendReply() {
     const body = draft.trim();
     if (!body || sending) return;
@@ -478,6 +508,14 @@ export default function ConversationThreadPage() {
                   >
                     Transcript
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => exportThreadCsv()}
+                    title="Download the loaded messages as a CSV file"
+                    className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
+                  >
+                    CSV
+                  </button>
                 </>
               )}
             </div>
@@ -575,8 +613,8 @@ export default function ConversationThreadPage() {
           {threadMessages.map((message, index) => (
             <Fragment key={message.id}>
             {threadDayLabel(index) && (
-              <div className="flex justify-center">
-                <span className="rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+              <div className="sticky top-[4.25rem] z-10 flex justify-center">
+                <span className="rounded-full border border-white/[0.06] bg-[#06101d] px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-500 shadow-sm">
                   {threadDayLabel(index)}
                 </span>
               </div>
@@ -585,6 +623,17 @@ export default function ConversationThreadPage() {
               className={`flex ${message.direction === "out" ? "justify-end" : "justify-start"}`}
             >
               <div
+                onDoubleClick={() =>
+                  setDraft(
+                    (current) =>
+                      current +
+                      (current && !current.endsWith("\n") ? "\n" : "") +
+                      "> " +
+                      message.body.replace(/\n/g, "\n> ") +
+                      "\n\n"
+                  )
+                }
+                title="Double-click to quote this message in your reply"
                 className={`max-w-[85%] rounded-2xl border px-4 py-2.5 sm:max-w-[70%] ${
                   message.direction === "out"
                     ? "border-cyan-400/20 bg-cyan-400/[0.08]"
