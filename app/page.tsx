@@ -20,19 +20,35 @@ import {
 } from "../lib/content-defaults";
 
 export default async function Home() {
-  const heroContent = await getSectionContent("hero", HERO_DEFAULTS);
-  const aiIntelligenceContent = await getSectionContent("ai_intelligence", AI_INTELLIGENCE_DEFAULTS);
-  const howItWorksContent = await getSectionContent("how_it_works", HOW_IT_WORKS_DEFAULTS);
-  const finalCtaContent = await getSectionContent("final_cta", FINAL_CTA_DEFAULTS);
-  const useCasesContent = await getSectionContent("use_cases", USE_CASES_DEFAULTS);
-  const featuresContent = await getSectionContent("features", FEATURES_DEFAULTS);
-  const trustContent = await getSectionContent("trust", TRUST_DEFAULTS);
-  const whyOmniFlowContent = await getSectionContent("why_omniflow", WHY_OMNIFLOW_DEFAULTS);
-  const multiChannelContent = await getSectionContent("multi_channel", MULTI_CHANNEL_DEFAULTS);
-  const problemSolutionContent = await getSectionContent("problem_solution", PROBLEM_SOLUTION_DEFAULTS);
-  const customerMemoryContent = await getSectionContent("customer_memory", CUSTOMER_MEMORY_DEFAULTS);
-  const faqContent = await getSectionContent("faq", FAQ_DEFAULTS);
-  const footerContent = await getSectionContent("footer", FOOTER_DEFAULTS);
+  const [
+    heroContent,
+    aiIntelligenceContent,
+    howItWorksContent,
+    finalCtaContent,
+    useCasesContent,
+    featuresContent,
+    trustContent,
+    whyOmniFlowContent,
+    multiChannelContent,
+    problemSolutionContent,
+    customerMemoryContent,
+    faqContent,
+    footerContent,
+  ] = await Promise.all([
+    getSectionContent("hero", HERO_DEFAULTS),
+    getSectionContent("ai_intelligence", AI_INTELLIGENCE_DEFAULTS),
+    getSectionContent("how_it_works", HOW_IT_WORKS_DEFAULTS),
+    getSectionContent("final_cta", FINAL_CTA_DEFAULTS),
+    getSectionContent("use_cases", USE_CASES_DEFAULTS),
+    getSectionContent("features", FEATURES_DEFAULTS),
+    getSectionContent("trust", TRUST_DEFAULTS),
+    getSectionContent("why_omniflow", WHY_OMNIFLOW_DEFAULTS),
+    getSectionContent("multi_channel", MULTI_CHANNEL_DEFAULTS),
+    getSectionContent("problem_solution", PROBLEM_SOLUTION_DEFAULTS),
+    getSectionContent("customer_memory", CUSTOMER_MEMORY_DEFAULTS),
+    getSectionContent("faq", FAQ_DEFAULTS),
+    getSectionContent("footer", FOOTER_DEFAULTS),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#07111f]">
