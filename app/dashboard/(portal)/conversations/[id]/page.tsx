@@ -284,6 +284,49 @@ export default function ConversationThreadPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [router]);
 
+  const [awayActive, setAwayActive] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/omniflow/portal/business-hours", {
+          credentials: "same-origin",
+        });
+        const payload = (await response.json()) as {
+          business_hours?: {
+            enabled?: boolean;
+            timezone?: string;
+            days?: { enabled: boolean; start: string; end: string }[];
+          };
+        };
+        const config = payload.business_hours;
+        if (!config || !config.enabled || cancelled) return;
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const parts = new Intl.DateTimeFormat("en-US", {
+          timeZone: config.timezone,
+          hour12: false,
+          weekday: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).formatToParts(new Date());
+        const weekday = parts.find((part) => part.type === "weekday")?.value ?? "";
+        const hour = parts.find((part) => part.type === "hour")?.value ?? "00";
+        const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
+        const day = (config.days ?? [])[dayNames.indexOf(weekday)];
+        const now = hour.padStart(2, "0") + ":" + minute;
+        const openNow =
+          day && day.enabled && now >= day.start && now <= day.end;
+        if (!openNow && !cancelled) setAwayActive(true);
+      } catch {
+        // Transient network issue, the banner stays hidden.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const visibleMessages =
     threadQuery.trim() && messages
       ? messages.filter((message) =>
@@ -447,6 +490,12 @@ export default function ConversationThreadPage() {
             <p className="mt-0.5 text-[10px] text-slate-600">
               Press Esc to return to the inbox
             </p>
+            {awayActive && (
+              <p className="mt-0.5 text-[10px] font-medium text-amber-300">
+                Away message is active. Customers get an automatic reply until
+                business hours.
+              </p>
+            )}
           </div>
           {conversation && (
             <div className="flex shrink-0 items-center gap-2">

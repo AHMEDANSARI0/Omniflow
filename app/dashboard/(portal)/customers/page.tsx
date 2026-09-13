@@ -402,6 +402,7 @@ export default function CustomersPage() {
             >
               <div className="flex items-stretch">
               <Link
+                prefetch={false}
                 href={
                   "/dashboard/conversations?q=" +
                   encodeURIComponent(customer.contactId)

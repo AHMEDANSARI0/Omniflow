@@ -896,7 +896,7 @@ export default function ConversationsPage() {
     void loadIntentSummary();
     const summaryTimer = window.setInterval(() => {
       if (document.visibilityState === "visible") void loadIntentSummary();
-    }, 30_000);
+    }, 60_000);
     return () => window.clearInterval(summaryTimer);
   }, [loadIntentSummary]);
 
@@ -1468,6 +1468,7 @@ export default function ConversationsPage() {
               />
               <Link
                 href={`/dashboard/conversations/${item.id}`}
+                prefetch={false}
                 className={`block min-w-0 flex-1 rounded-2xl border border-white/[0.06] bg-white/[0.015] ${compactList ? "p-2.5" : "p-4"} transition-colors duration-300 hover:border-cyan-400/30 hover:bg-white/[0.025]`}
               >
                 <div className="flex items-center justify-between gap-3">
