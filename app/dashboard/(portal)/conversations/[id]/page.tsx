@@ -1,14 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import CodCard from "./CodCard";
-import TeamCard from "./TeamCard";
-import TagsCard from "./TagsCard";
-import NotesCard from "./NotesCard";
-import RatingCard from "./RatingCard";
-import CustomerCard from "./CustomerCard";
-import SavedRepliesPicker from "./SavedRepliesPicker";
+
+const CodCard = dynamic(() => import("./CodCard"));
+const TeamCard = dynamic(() => import("./TeamCard"));
+const TagsCard = dynamic(() => import("./TagsCard"));
+const NotesCard = dynamic(() => import("./NotesCard"));
+const RatingCard = dynamic(() => import("./RatingCard"));
+const CustomerCard = dynamic(() => import("./CustomerCard"));
+const SavedRepliesPicker = dynamic(() => import("./SavedRepliesPicker"));
 import {
   Fragment,
   useCallback,

@@ -820,6 +820,71 @@ export async function getConversationMessages(
   };
 }
 
+export interface BusinessHoursDay {
+  enabled: boolean;
+  start: string;
+  end: string;
+}
+
+export interface BusinessHoursConfig {
+  enabled: boolean;
+  timezone: string;
+  days: BusinessHoursDay[];
+  away_message: string;
+}
+
+export async function getBusinessHours(
+  accessToken: string
+): Promise<{ business_hours: BusinessHoursConfig } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/business-hours", {});
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    business_hours?: BusinessHoursConfig;
+  } | null;
+  if (!payload || !payload.business_hours) return null;
+  return { business_hours: payload.business_hours };
+}
+
+export async function updateBusinessHours(
+  accessToken: string,
+  config: unknown
+): Promise<
+  { kind: "ok"; business_hours: BusinessHoursConfig } | { kind: "rejected"; message: string } | null
+> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/business-hours", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ business_hours: config }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+    return {
+      kind: "rejected",
+      message: payload?.error?.message ?? "Invalid business hours.",
+    };
+  }
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    business_hours?: BusinessHoursConfig;
+  } | null;
+  if (!payload || !payload.business_hours) return null;
+  return { kind: "ok", business_hours: payload.business_hours };
+}
+
 export async function markAllConversationsRead(
   accessToken: string
 ): Promise<{ updated: number } | null> {

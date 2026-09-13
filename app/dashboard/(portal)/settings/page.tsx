@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import ApiKeyCard from "./ApiKeyCard";
+import BusinessHoursCard from "./BusinessHoursCard";
 import WidgetSettingsCard from "./WidgetSettingsCard";
 import {
   getApiKeyInfo,
@@ -46,6 +47,7 @@ export default async function ClientSettingsPage() {
       </div>
 
       <ApiKeyCard keyInfo={keyInfo} />
+      <BusinessHoursCard />
       <div className="mt-6">
         <WidgetSettingsCard />
       </div>

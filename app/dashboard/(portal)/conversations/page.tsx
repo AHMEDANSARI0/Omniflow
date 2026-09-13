@@ -33,7 +33,7 @@ function tagHue(tag: string): number {
   return hash;
 }
 
-const POLL_MS = 10_000;
+const POLL_MS = 15_000;
 
 function formatTime(value: string | null): string {
   if (!value) return "—";
