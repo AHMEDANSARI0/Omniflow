@@ -1413,6 +1413,7 @@ export default function ConversationsPage() {
               data-conv-row={item.id}
               className={
                 "flex items-start gap-2 rounded-2xl " +
+                (item.unread ? "bg-cyan-400/[0.03] " : "") +
                 (item.needsReply && item.status === "open"
                   ? "border-l-2 border-l-amber-400/60 "
                   : "") +

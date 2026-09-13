@@ -143,12 +143,24 @@ export default function CustomerCard({ contactId }: { contactId: string | null }
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xs font-semibold text-white">Customer</h2>
-        <Link
-          href={"/dashboard/conversations?q=" + encodeURIComponent(contactId)}
-          className="text-[10px] font-medium text-cyan-300 transition-colors hover:text-cyan-200"
-        >
-          All chats →
-        </Link>
+        <div className="flex items-center gap-3">
+          {contactId && (
+            <a
+              href={`https://wa.me/${contactId.replace(/[^0-9]/g, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[10px] font-medium text-emerald-300 transition-colors hover:text-emerald-200"
+            >
+              WhatsApp →
+            </a>
+          )}
+          <Link
+            href={"/dashboard/conversations?q=" + encodeURIComponent(contactId)}
+            className="text-[10px] font-medium text-cyan-300 transition-colors hover:text-cyan-200"
+          >
+            All chats →
+          </Link>
+        </div>
       </div>
       <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
         Notes follow this customer across every chat — {contactId}

@@ -396,7 +396,7 @@ export default function ConversationThreadPage() {
   }, [title]);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl 2xl:max-w-5xl">
       <div className="mb-6">
         <Link
           href="/dashboard/conversations"
@@ -411,6 +411,9 @@ export default function ConversationThreadPage() {
             </h1>
             <p className="mt-0.5 truncate text-xs text-slate-500">
               {conversation?.contactId ?? (id ? `#${id}` : "")}
+            </p>
+            <p className="mt-0.5 text-[10px] text-slate-600">
+              Press Esc to return to the inbox
             </p>
           </div>
           {conversation && (
@@ -664,6 +667,7 @@ export default function ConversationThreadPage() {
             ref={composerRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            title="Enter sends the reply, Shift+Enter inserts a new line"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -672,7 +676,7 @@ export default function ConversationThreadPage() {
             }}
             rows={2}
             maxLength={4096}
-            placeholder="Reply as a human agent — Enter to send, Shift+Enter for a new line"
+            placeholder="Reply as a human agent"
             className="flex-1 resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
           />
           <div className="hidden shrink-0 flex-col items-end text-[10px] text-slate-600 sm:flex">
