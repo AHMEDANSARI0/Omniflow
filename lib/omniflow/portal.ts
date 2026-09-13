@@ -3584,6 +3584,122 @@ export async function deleteAutomation(
   return response.ok ? "ok" : null;
 }
 
+export interface ScheduledBroadcast {
+  id: number;
+  audience: string;
+  body: string;
+  recipientCount: number;
+  sendAt: string;
+  createdAt: string;
+}
+
+function normalizeScheduledBroadcast(payload: unknown): ScheduledBroadcast | null {
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const id = typeof row.id === "number" ? row.id : 0;
+  if (!id) return null;
+  return {
+    id,
+    audience: typeof row.audience === "string" ? row.audience : "all",
+    body: typeof row.body === "string" ? row.body : "",
+    recipientCount: typeof row.recipient_count === "number" ? row.recipient_count : 0,
+    sendAt: typeof row.send_at === "string" ? row.send_at : "",
+    createdAt: typeof row.created_at === "string" ? row.created_at : "",
+  };
+}
+
+export async function listScheduledBroadcasts(
+  accessToken: string
+): Promise<ScheduledBroadcast[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/broadcasts/scheduled");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawList = (payload as Record<string, unknown>).scheduled;
+  if (!Array.isArray(rawList)) return null;
+  const scheduled: ScheduledBroadcast[] = [];
+  for (const item of rawList) {
+    const normalized = normalizeScheduledBroadcast(item);
+    if (normalized) scheduled.push(normalized);
+  }
+  return scheduled;
+}
+
+export type ScheduleBroadcastResult =
+  | { kind: "ok"; scheduled: ScheduledBroadcast }
+  | { kind: "no_recipients" }
+  | { kind: "too_many_recipients" }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function scheduleBroadcast(
+  accessToken: string,
+  audience: string,
+  body: string,
+  sendAtIso: string
+): Promise<ScheduleBroadcastResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/broadcasts/schedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audience, body, send_at: sendAtIso }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) {
+    const payload: unknown = await response.json().catch(() => null);
+    const code =
+      payload !== null && typeof payload === "object"
+        ? ((payload as Record<string, unknown>).error as Record<string, unknown> | undefined)
+            ?.code
+        : null;
+    if (code === "no_recipients") return { kind: "no_recipients" };
+    if (code === "too_many_recipients") return { kind: "too_many_recipients" };
+    return { kind: "invalid" };
+  }
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const scheduled = normalizeScheduledBroadcast(
+    (payload as Record<string, unknown>).scheduled
+  );
+  if (!scheduled) return { kind: "unavailable" };
+  return { kind: "ok", scheduled };
+}
+
+export async function cancelScheduledBroadcast(
+  accessToken: string,
+  id: number
+): Promise<{ kind: "ok" } | { kind: "not_found" } | { kind: "unavailable" }> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/broadcasts/scheduled/" + String(id),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

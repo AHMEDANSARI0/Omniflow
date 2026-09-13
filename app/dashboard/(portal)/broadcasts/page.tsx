@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import ScheduleCard from "./ScheduleCard";
 
 interface BroadcastPreview {
   audience: string;
@@ -184,6 +185,8 @@ export default function BroadcastsPage() {
           in the text and it becomes each customer&apos;s first name.
         </p>
       </div>
+
+      <ScheduleCard />
 
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
