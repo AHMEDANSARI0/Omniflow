@@ -14,6 +14,7 @@ interface Sequence {
   enabled: boolean;
   steps: Step[];
   activeEnrollments: number;
+  completedEnrollments: number;
   triggerKeyword: string | null;
 }
 
@@ -567,6 +568,8 @@ export default function SequencesPage() {
                     <p className="mt-0.5 text-[11px] text-slate-500">
                       {row.steps.length} step{row.steps.length === 1 ? "" : "s"} \u00b7{" "}
                       {row.activeEnrollments} active
+                      {" \u00b7 "}
+                      {row.completedEnrollments} done
                       {row.enabled ? " \u00b7 enrolling" : ""}
                     </p>
                   </div>
@@ -617,6 +620,22 @@ export default function SequencesPage() {
                 </div>
                 {openLog === row.id ? (
                   <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] uppercase tracking-wider text-slate-500">
+                        People in {row.name}
+                      </p>
+                      <a
+                        href={
+                          "/api/omniflow/portal/sequences/" +
+                          String(row.id) +
+                          "/enrollments/export"
+                        }
+                        className="text-[11px] text-cyan-300 transition hover:text-cyan-200"
+                      >
+                        Export CSV
+                      </a>
+                    </div>
+                    <div className="mt-2">
                     {enrollments.length === 0 ? (
                       <p className="text-xs text-slate-500">No enrollments yet.</p>
                     ) : (
@@ -653,6 +672,7 @@ export default function SequencesPage() {
                         ))}
                       </ul>
                     )}
+                    </div>
                   </div>
                 ) : null}
                 {triggerOpenFor === row.id ? (

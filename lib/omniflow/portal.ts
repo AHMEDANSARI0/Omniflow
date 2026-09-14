@@ -3874,6 +3874,33 @@ export async function exportCustomersCsv(accessToken: string): Promise<string | 
   return response.text();
 }
 
+export type EnrollmentExport =
+  | { kind: "ok"; csv: string }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function exportEnrollmentsCsv(
+  accessToken: string,
+  id: number
+): Promise<EnrollmentExport> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(id) + "/enrollments/export"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 404 || response.status === 501) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+  const csv = await response.text().catch(() => null);
+  if (csv === null) return { kind: "unavailable" };
+  return { kind: "ok", csv };
+}
+
 export interface SetupStatus {
   whatsapp: boolean;
   hours: boolean;
@@ -4116,6 +4143,7 @@ export interface SequenceRow {
   enabled: boolean;
   steps: SequenceStep[];
   activeEnrollments: number;
+  completedEnrollments: number;
   triggerKeyword: string | null;
 }
 
@@ -4148,6 +4176,8 @@ export async function listSequences(
       enabled: row.enabled === true,
       steps,
       activeEnrollments: typeof row.active_enrollments === "number" ? row.active_enrollments : 0,
+      completedEnrollments:
+        typeof row.completed_enrollments === "number" ? row.completed_enrollments : 0,
       triggerKeyword: typeof row.trigger_keyword === "string" ? row.trigger_keyword : null,
     });
   }
