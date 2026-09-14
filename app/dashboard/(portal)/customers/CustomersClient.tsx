@@ -42,15 +42,17 @@ function tagHue(tag: string): number {
 
 export default function CustomersClient({
   initialCustomers,
+  initialQuery,
 }: {
   initialCustomers?: CustomerSummary[] | null;
+  initialQuery?: string | null;
 }) {
   const [customers, setCustomers] = useState<CustomerSummary[] | null>(
     initialCustomers ?? null
   );
   const [expired, setExpired] = useState(false);
   const [pending, setPending] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialQuery ?? "");
   const [notesOpenFor, setNotesOpenFor] = useState<string | null>(null);
   const [notesByContact, setNotesByContact] = useState<
     Record<
@@ -65,7 +67,7 @@ export default function CustomersClient({
   const [msgDraft, setMsgDraft] = useState("");
   const [msgBusy, setMsgBusy] = useState(false);
   const [msgStatus, setMsgStatus] = useState<string | null>(null);
-  const searchRef = useRef("");
+  const searchRef = useRef(initialQuery ?? "");
   const debounceRef = useRef<number | null>(null);
   const [channelFilter, setChannelFilter] = useState<
     "all" | "whatsapp" | "website"

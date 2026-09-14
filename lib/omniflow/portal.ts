@@ -1215,6 +1215,7 @@ export interface ActivityItem {
   action: string;
   label: string;
   note: string;
+  conversationId: number | null;
   createdAt: string;
   timeAgo: string;
 }
@@ -1460,6 +1461,8 @@ export async function getRecentActivity(
         action,
         label: ACTION_LABELS[action] || action,
         note: typeof raw.note === "string" ? raw.note : "",
+        conversationId:
+          typeof raw.conversation_id === "number" ? raw.conversation_id : null,
         createdAt,
         timeAgo: timeAgoLabel(createdAt),
       };

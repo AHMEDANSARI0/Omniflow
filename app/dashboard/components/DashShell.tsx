@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CommandPalette from "./CommandPalette";
 import DashSidebar from "./DashSidebar";
 import MobileTabBar from "./MobileTabBar";
 
@@ -34,6 +35,7 @@ export default function DashShell({
         </main>
       </div>
       <MobileTabBar />
+      <CommandPalette />
     </div>
   );
 }

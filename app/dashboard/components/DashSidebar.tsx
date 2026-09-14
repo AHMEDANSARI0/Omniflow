@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
+import { openCommandPalette } from "./CommandPalette";
 import SignOutButton from "./SignOutButton";
 import { useUnreadCount } from "./useUnreadCount";
 
@@ -63,6 +64,7 @@ const navItems: NavItem[] = [
   { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
   { label: "Integrations", href: "/dashboard/integrations", icon: "\u21c4", enabled: true },
   { label: "Sequences", href: "/dashboard/sequences", icon: "\u2192", enabled: true },
+  { label: "Activity", href: "/dashboard/activity", icon: "\u2261", enabled: true },
   { label: "Team", href: "/dashboard/team", icon: "⚑", enabled: true },
   { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: true },
 ];
@@ -203,6 +205,18 @@ function SidebarFooter({
         rel="noopener noreferrer"
         className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-500 transition-colors duration-200 hover:bg-white/[0.03] hover:text-slate-300"
       >
+      <button
+        type="button"
+        onClick={() => openCommandPalette()}
+        className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-slate-500 transition-colors duration-200 hover:bg-white/[0.03] hover:text-slate-300"
+      >
+        <span className="flex items-center gap-2">
+          <span>⌕</span> Search
+        </span>
+        <span className="rounded-md border border-white/[0.08] px-1.5 py-0.5 text-[10px] text-slate-600">
+          Ctrl K
+        </span>
+      </button>
         <span>↗</span> Visit website
       </a>
       <div className="px-3">
