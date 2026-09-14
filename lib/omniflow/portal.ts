@@ -3814,6 +3814,63 @@ export async function listCodRequests(
   return { requests, counts: safeCounts };
 }
 
+export interface ImportedCustomerRow {
+  name?: string;
+  phone: string;
+}
+
+export interface CustomerImportResult {
+  created: number;
+  merged: number;
+  invalid: { row: number; reason: string }[];
+  invalid_count: number;
+}
+
+export async function importCustomers(
+  accessToken: string,
+  customers: ImportedCustomerRow[]
+): Promise<CustomerImportResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/customers/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customers }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  return {
+    created: typeof p.created === "number" ? p.created : 0,
+    merged: typeof p.merged === "number" ? p.merged : 0,
+    invalid: Array.isArray(p.invalid)
+      ? (p.invalid as { row: number; reason: string }[])
+      : [],
+    invalid_count: typeof p.invalid_count === "number" ? p.invalid_count : 0,
+  };
+}
+
+export async function exportCustomersCsv(accessToken: string): Promise<string | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/customers/export");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return response.text();
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

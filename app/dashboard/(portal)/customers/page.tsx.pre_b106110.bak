@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import CustomersImport from "./CustomersImport";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface CustomerSummary {
@@ -365,7 +364,6 @@ export default function CustomersPage() {
             {value === "all" ? "All channels" : value}
           </button>
         ))}
-        <CustomersImport onImported={() => void refresh()} />
         <button
           type="button"
           onClick={() => exportCustomers()}
@@ -404,7 +402,6 @@ export default function CustomersPage() {
             >
               <div className="flex items-stretch">
               <Link
-                prefetch={false}
                 href={
                   "/dashboard/conversations?q=" +
                   encodeURIComponent(customer.contactId)
