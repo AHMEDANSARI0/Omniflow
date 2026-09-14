@@ -1,6 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#07111f",
+  viewportFit: "cover",
+};
 import { getSiteSettings } from "../lib/settings";
 import WebsiteChatWidget from "./components/WebsiteChatWidget";
 
