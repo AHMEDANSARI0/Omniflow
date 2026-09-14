@@ -211,3 +211,12 @@ a {
 }
 
 .of-borderpulse { animation: of-borderpulse 3s ease-in-out infinite; }
+
+
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

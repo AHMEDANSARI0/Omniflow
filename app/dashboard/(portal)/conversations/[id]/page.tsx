@@ -475,7 +475,7 @@ export default function ConversationThreadPage() {
       <div className="mb-6">
         <Link
           href="/dashboard/conversations"
-          className="text-xs text-slate-500 transition-colors hover:text-cyan-300"
+          className="-ml-2 inline-block rounded-lg px-2 py-1.5 text-sm text-slate-500 transition-colors hover:bg-white/[0.03] hover:text-cyan-300"
         >
           ← Conversations
         </Link>
