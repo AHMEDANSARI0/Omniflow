@@ -22,6 +22,66 @@ interface DraftStep {
   body: string;
 }
 
+const TEMPLATES: {
+  label: string;
+  name: string;
+  keyword: string;
+  steps: DraftStep[];
+}[] = [
+  {
+    label: "Welcome flow",
+    name: "Welcome flow",
+    keyword: "",
+    steps: [
+      {
+        delay_hours: 0,
+        body: "Welcome {name}! Thanks for reaching out \u2014 reply here anytime and we'll help you out.",
+      },
+    ],
+  },
+  {
+    label: "Order follow-up",
+    name: "Order follow-up",
+    keyword: "",
+    steps: [
+      {
+        delay_hours: 0,
+        body: "Thank you {name}! Your order is confirmed. We'll share delivery updates right here.",
+      },
+      {
+        delay_hours: 24,
+        body: "Hi {name}, did your order arrive safely? Reply if you need anything.",
+      },
+    ],
+  },
+  {
+    label: "Reorder nudge",
+    name: "Reorder nudge",
+    keyword: "reorder",
+    steps: [
+      {
+        delay_hours: 72,
+        body: "Hi {name}! Time for a refill? Send REORDER and we'll set you up.",
+      },
+      {
+        delay_hours: 96,
+        body: "{name}, your favourites are back in stock. Reply REORDER and we'll reserve them for you.",
+      },
+    ],
+  },
+  {
+    label: "Review request",
+    name: "Review request",
+    keyword: "",
+    steps: [
+      {
+        delay_hours: 48,
+        body: "Hi {name}! Glad you shopped with us. Could you spare a minute to share your experience?",
+      },
+    ],
+  },
+];
+
 export default function SequencesPage() {
   const [sequences, setSequences] = useState<Sequence[] | null>(null);
   const [name, setName] = useState("");
@@ -43,6 +103,10 @@ export default function SequencesPage() {
   const [addDraft, setAddDraft] = useState("");
   const [addBusy, setAddBusy] = useState(false);
   const [addNote, setAddNote] = useState<string | null>(null);
+  const [editOpenFor, setEditOpenFor] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<DraftStep[]>([]);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editNote, setEditNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -75,6 +139,14 @@ export default function SequencesPage() {
     setDraft((current) =>
       current.map((step, i) => (i === index ? { ...step, ...changes } : step))
     );
+  };
+
+  const applyTemplate = (template: (typeof TEMPLATES)[number]) => {
+    setName(template.name);
+    setKeyword(template.keyword);
+    setDraft(template.steps.map((step) => ({ ...step })));
+    setNoteTone("neutral");
+    setNote("Template loaded \u2014 edit anything, then Create series.");
   };
 
   const create = useCallback(async () => {
@@ -190,6 +262,73 @@ export default function SequencesPage() {
     setTriggerDraft(row.triggerKeyword ?? "");
   }, []);
 
+  const openEdit = useCallback((row: Sequence) => {
+    setEditOpenFor(row.id);
+    setEditDraft(
+      row.steps.map((step) => ({ delay_hours: step.delay_hours, body: step.body }))
+    );
+    setEditNote(null);
+  }, []);
+
+  const patchEditStep = (index: number, changes: Partial<DraftStep>) => {
+    setEditDraft((current) =>
+      current.map((step, i) => (i === index ? { ...step, ...changes } : step))
+    );
+  };
+
+  const saveEdit = useCallback(
+    async (row: Sequence, asCopy: boolean) => {
+      if (editBusy) return;
+      const steps = editDraft.map((step) => ({
+        delay_hours: step.delay_hours,
+        body: step.body,
+      }));
+      if (steps.length === 0 || steps.some((step) => !step.body.trim())) {
+        setEditNote("Fill every step's message.");
+        return;
+      }
+      setEditBusy(true);
+      setEditNote(null);
+      try {
+        if (asCopy) {
+          const response = await fetch("/api/omniflow/portal/sequences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: row.name + " copy", steps }),
+          });
+          if (!response.ok) {
+            setEditNote("Could not save the copy. Check steps (1-5, 0-168h each).");
+            return;
+          }
+        } else {
+          const response = await fetch(
+            "/api/omniflow/portal/sequences/" + String(row.id) + "/steps",
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ steps }),
+            }
+          );
+          if (!response.ok) {
+            setEditNote(
+              response.status === 404
+                ? "Series not found."
+                : "Could not save. Check steps (1-5, 0-168h each)."
+            );
+            return;
+          }
+        }
+        setEditOpenFor(null);
+        void load();
+      } catch {
+        setEditNote("Could not save. Try again.");
+      } finally {
+        setEditBusy(false);
+      }
+    },
+    [editBusy, editDraft, load]
+  );
+
   const saveTrigger = useCallback(
     async (row: Sequence) => {
       if (triggerBusy) return;
@@ -287,6 +426,21 @@ export default function SequencesPage() {
 
         <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-white">New series</h2>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500">
+              Start from:
+            </span>
+            {TEMPLATES.map((template) => (
+              <button
+                key={template.label}
+                type="button"
+                onClick={() => applyTemplate(template)}
+                className="rounded-full border border-white/[0.08] px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
+              >
+                {template.label}
+              </button>
+            ))}
+          </div>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -447,6 +601,13 @@ export default function SequencesPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => openEdit(row)}
+                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void remove(row)}
                       className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:border-rose-400/40 hover:text-rose-300"
                     >
@@ -525,6 +686,114 @@ export default function SequencesPage() {
                     <p className="mt-2 text-[10px] text-slate-600">
                       When a customer sends exactly this word, the series starts for
                       them. Leave empty to turn the trigger off.
+                    </p>
+                  </div>
+                ) : null}
+                {editOpenFor === row.id ? (
+                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-500">
+                      Edit steps \u2014 {row.name}
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {editDraft.map((step, index) => (
+                        <div
+                          key={index}
+                          className="rounded-lg border border-white/[0.06] bg-white/[0.015] p-2.5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                              Step {index + 1}
+                            </p>
+                            {editDraft.length > 1 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditDraft((current) =>
+                                    current.filter((_, i) => i !== index)
+                                  )
+                                }
+                                className="text-[11px] text-slate-500 transition hover:text-rose-300"
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={168}
+                              value={step.delay_hours}
+                              onChange={(event) =>
+                                patchEditStep(index, {
+                                  delay_hours: Math.max(
+                                    0,
+                                    Math.min(168, Number(event.target.value) || 0)
+                                  ),
+                                })
+                              }
+                              className="w-20 shrink-0 rounded-lg border border-white/[0.07] bg-white/[0.02] px-2.5 py-1.5 text-sm text-white outline-none focus:border-cyan-400/40"
+                            />
+                            <span className="shrink-0 text-xs text-slate-500">hours</span>
+                          </div>
+                          <textarea
+                            value={step.body}
+                            onChange={(event) =>
+                              patchEditStep(index, { body: event.target.value })
+                            }
+                            rows={2}
+                            maxLength={1000}
+                            placeholder="Use {name} for the customer's first name."
+                            className="mt-2 w-full rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-cyan-400/40"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {editDraft.length < 5 ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditDraft((current) => [
+                              ...current,
+                              { delay_hours: 24, body: "" },
+                            ])
+                          }
+                          className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                        >
+                          + Add step
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void saveEdit(row, false)}
+                        disabled={editBusy}
+                        className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                      >
+                        {editBusy ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void saveEdit(row, true)}
+                        disabled={editBusy}
+                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white disabled:opacity-50"
+                      >
+                        Save as copy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditOpenFor(null)}
+                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                      >
+                        Close
+                      </button>
+                      {editNote ? (
+                        <p className="text-xs text-amber-300">{editNote}</p>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-[10px] text-slate-600">
+                      People already in the series continue with the new steps. Save as
+                      copy keeps this series untouched.
                     </p>
                   </div>
                 ) : null}

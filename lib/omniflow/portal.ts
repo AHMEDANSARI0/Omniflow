@@ -4216,6 +4216,33 @@ export async function updateSequence(
   return { kind: "ok" };
 }
 
+export async function updateSequenceSteps(
+  accessToken: string,
+  id: number,
+  steps: { delay_hours: number; body: string }[]
+): Promise<SequenceMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(id) + "/steps",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ steps }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
 export async function deleteSequence(
   accessToken: string,
   id: number
