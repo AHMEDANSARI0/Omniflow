@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import SignOutButton from "./SignOutButton";
+import { useUnreadCount } from "./useUnreadCount";
 
 interface NavItem {
   label: string;
@@ -61,6 +62,7 @@ const navItems: NavItem[] = [
   { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "➤", enabled: true },
   { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
   { label: "Integrations", href: "/dashboard/integrations", icon: "\u21c4", enabled: true },
+  { label: "Sequences", href: "/dashboard/sequences", icon: "\u2192", enabled: true },
   { label: "Team", href: "/dashboard/team", icon: "⚑", enabled: true },
   { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: true },
 ];
@@ -97,42 +99,7 @@ function NavLinks({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    let alive = true;
-
-    async function loadUnread() {
-      try {
-        const response = await fetch(
-          "/api/omniflow/portal/conversations?include=counts&limit=1",
-          {
-            credentials: "same-origin",
-            cache: "no-store",
-          }
-        );
-        if (response.status !== 200 || !alive) return;
-        const payload = (await response.json().catch(() => null)) as {
-          counts?: { unread?: number };
-        } | null;
-        if (alive && payload) {
-          setUnreadCount(payload.counts?.unread || 0);
-        }
-      } catch {
-        // Transient network issue — the next poll retries.
-      }
-    }
-
-    void loadUnread();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void loadUnread();
-    }, 10_000);
-
-    return () => {
-      alive = false;
-      window.clearInterval(timer);
-    };
-  }, []);
+  const unreadCount = useUnreadCount();
 
   return (
     <nav className="space-y-1">

@@ -49,6 +49,18 @@ function formatWhen(value: string | null): string {
 }
 
 export default function WebsiteChatWidget() {
+  const [widgetReady, setWidgetReady] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setWidgetReady(true), 1_500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  if (!widgetReady) return null;
+  return <WebsiteChatWidgetSurface />;
+}
+
+function WebsiteChatWidgetSurface() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [config, setConfig] = useState<WidgetConfig | null>(null);

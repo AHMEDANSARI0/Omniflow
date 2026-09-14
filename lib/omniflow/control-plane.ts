@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 
 
 const REQUEST_TIMEOUT_MS = 8_000;
@@ -259,14 +259,33 @@ export async function refreshControlPlaneSession(
   return parseTokens(await jsonResponse(response));
 }
 
+const PRINCIPAL_CACHE_TTL_MS = 30_000;
+const PRINCIPAL_CACHE_MAX = 256;
+const principalCache = new Map<
+  string,
+  { principal: OmniFlowPrincipal; at: number }
+>();
+
 export async function getControlPlanePrincipal(
   accessToken: string
 ): Promise<OmniFlowPrincipal> {
+  const cacheKey = createHash("sha256").update(accessToken).digest("hex");
+  const now = Date.now();
+  const cached = principalCache.get(cacheKey);
+  if (cached && now - cached.at < PRINCIPAL_CACHE_TTL_MS) {
+    return cached.principal;
+  }
   const response = await controlPlaneRequest("api/v1/auth/me", {
     method: "GET",
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  return parsePrincipal(await jsonResponse(response));
+  const principal = parsePrincipal(await jsonResponse(response));
+  if (principalCache.size >= PRINCIPAL_CACHE_MAX) {
+    const oldest = principalCache.keys().next();
+    if (!oldest.done) principalCache.delete(oldest.value);
+  }
+  principalCache.set(cacheKey, { principal, at: now });
+  return principal;
 }
 
 export async function logoutControlPlaneSession(

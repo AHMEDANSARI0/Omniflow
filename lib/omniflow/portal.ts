@@ -4101,6 +4101,179 @@ export async function listWebhookDeliveries(
   return deliveries;
 }
 
+export interface SequenceStep {
+  step_no: number;
+  delay_hours: number;
+  body: string;
+}
+
+export interface SequenceRow {
+  id: number;
+  name: string;
+  enabled: boolean;
+  steps: SequenceStep[];
+  activeEnrollments: number;
+}
+
+export async function listSequences(
+  accessToken: string
+): Promise<SequenceRow[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/sequences");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawList = (payload as Record<string, unknown>).sequences;
+  if (!Array.isArray(rawList)) return null;
+  const sequences: SequenceRow[] = [];
+  for (const item of rawList) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "number") continue;
+    const steps = Array.isArray(row.steps) ? (row.steps as SequenceStep[]) : [];
+    sequences.push({
+      id: row.id,
+      name: typeof row.name === "string" ? row.name : "",
+      enabled: row.enabled === true,
+      steps,
+      activeEnrollments: typeof row.active_enrollments === "number" ? row.active_enrollments : 0,
+    });
+  }
+  return sequences;
+}
+
+export type SequenceMutation =
+  | { kind: "ok" }
+  | { kind: "invalid" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function createSequence(
+  accessToken: string,
+  name: string,
+  steps: { delay_hours: number; body: string }[]
+): Promise<SequenceMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/sequences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, steps }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export async function updateSequence(
+  accessToken: string,
+  id: number,
+  changes: { name?: string; enabled?: boolean }
+): Promise<SequenceMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(id),
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export async function deleteSequence(
+  accessToken: string,
+  id: number
+): Promise<{ kind: "ok" } | { kind: "not_found" } | { kind: "unavailable" }> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(id),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export interface SequenceEnrollmentRow {
+  id: number;
+  contact_name: string | null;
+  contact_id: string;
+  current_step: number;
+  status: string;
+  next_at: string | null;
+  enrolled_at: string | null;
+}
+
+export async function listSequenceEnrollments(
+  accessToken: string,
+  sequenceId: number
+): Promise<SequenceEnrollmentRow[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(sequenceId) + "/enrollments"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawList = (payload as Record<string, unknown>).enrollments;
+  if (!Array.isArray(rawList)) return null;
+  const enrollments: SequenceEnrollmentRow[] = [];
+  for (const item of rawList) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "number") continue;
+    enrollments.push({
+      id: row.id,
+      contact_name: typeof row.contact_name === "string" ? row.contact_name : null,
+      contact_id: typeof row.contact_id === "string" ? row.contact_id : "",
+      current_step: typeof row.current_step === "number" ? row.current_step : 0,
+      status: typeof row.status === "string" ? row.status : "active",
+      next_at: typeof row.next_at === "string" ? row.next_at : null,
+      enrolled_at: typeof row.enrolled_at === "string" ? row.enrolled_at : null,
+    });
+  }
+  return enrollments;
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

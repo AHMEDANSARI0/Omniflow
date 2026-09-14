@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useUnreadCount } from "./useUnreadCount";
 
 const TABS = [
   { href: "/dashboard", label: "Home", icon: "\u2302", exact: true },
@@ -13,40 +13,7 @@ const TABS = [
 
 export default function MobileTabBar() {
   const pathname = usePathname();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    if (pathname.startsWith("/dashboard/conversations/")) return;
-    let alive = true;
-
-    async function loadUnread() {
-      try {
-        const response = await fetch(
-          "/api/omniflow/portal/conversations?include=counts&limit=1",
-          { credentials: "same-origin", cache: "no-store" }
-        );
-        if (response.status !== 200 || !alive) return;
-        const payload = (await response.json().catch(() => null)) as {
-          counts?: { unread?: number };
-        } | null;
-        if (alive && payload) {
-          setUnreadCount(payload.counts?.unread || 0);
-        }
-      } catch {
-        /* the next poll retries */
-      }
-    }
-
-    void loadUnread();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void loadUnread();
-    }, 10_000);
-
-    return () => {
-      alive = false;
-      window.clearInterval(timer);
-    };
-  }, [pathname]);
+  const unreadCount = useUnreadCount();
 
   if (pathname.startsWith("/dashboard/conversations/")) return null;
 
