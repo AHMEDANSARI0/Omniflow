@@ -36,9 +36,19 @@ export async function PUT(
     payload !== null && typeof payload === "object"
       ? (payload as Record<string, unknown>)
       : {};
-  const changes: { name?: string; enabled?: boolean } = {};
+  const changes: {
+    name?: string;
+    enabled?: boolean;
+    triggerKeyword?: string | null;
+  } = {};
   if (typeof input.name === "string") changes.name = input.name;
   if (typeof input.enabled === "boolean") changes.enabled = input.enabled;
+  if ("triggerKeyword" in input) {
+    changes.triggerKeyword =
+      typeof input.triggerKeyword === "string" && input.triggerKeyword.trim()
+        ? input.triggerKeyword.trim()
+        : null;
+  }
   if (Object.keys(changes).length === 0) {
     return safeJson(
       { error: { code: "bad_request", message: "Nothing to update." } },

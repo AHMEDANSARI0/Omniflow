@@ -76,9 +76,13 @@ export async function POST(request: Request) {
       400
     );
   }
+  const triggerKeyword =
+    typeof input.trigger_keyword === "string" && input.trigger_keyword.trim()
+      ? input.trigger_keyword.trim()
+      : null;
 
   try {
-    const result = await createSequence(accessToken, name, steps);
+    const result = await createSequence(accessToken, name, steps, triggerKeyword);
     if (result.kind === "ok") {
       return safeJson({ ok: true }, 200);
     }

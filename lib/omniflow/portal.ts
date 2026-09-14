@@ -4116,6 +4116,7 @@ export interface SequenceRow {
   enabled: boolean;
   steps: SequenceStep[];
   activeEnrollments: number;
+  triggerKeyword: string | null;
 }
 
 export async function listSequences(
@@ -4147,6 +4148,7 @@ export async function listSequences(
       enabled: row.enabled === true,
       steps,
       activeEnrollments: typeof row.active_enrollments === "number" ? row.active_enrollments : 0,
+      triggerKeyword: typeof row.trigger_keyword === "string" ? row.trigger_keyword : null,
     });
   }
   return sequences;
@@ -4161,14 +4163,17 @@ export type SequenceMutation =
 export async function createSequence(
   accessToken: string,
   name: string,
-  steps: { delay_hours: number; body: string }[]
+  steps: { delay_hours: number; body: string }[],
+  triggerKeyword?: string | null
 ): Promise<SequenceMutation> {
   let response: Response;
   try {
     response = await portalRequest(accessToken, "api/v1/portal/sequences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, steps }),
+      body: JSON.stringify(
+        triggerKeyword ? { name, steps, trigger_keyword: triggerKeyword } : { name, steps }
+      ),
     });
   } catch (error) {
     assertNotAuthError(error);
@@ -4183,7 +4188,7 @@ export async function createSequence(
 export async function updateSequence(
   accessToken: string,
   id: number,
-  changes: { name?: string; enabled?: boolean }
+  changes: { name?: string; enabled?: boolean; triggerKeyword?: string | null }
 ): Promise<SequenceMutation> {
   let response: Response;
   try {
@@ -4193,7 +4198,11 @@ export async function updateSequence(
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(changes),
+        body: JSON.stringify(
+          "triggerKeyword" in changes
+            ? { ...changes, trigger_keyword: changes.triggerKeyword ?? null }
+            : changes
+        ),
       }
     );
   } catch (error) {

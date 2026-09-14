@@ -14,6 +14,7 @@ interface Sequence {
   enabled: boolean;
   steps: Step[];
   activeEnrollments: number;
+  triggerKeyword: string | null;
 }
 
 interface DraftStep {
@@ -34,6 +35,14 @@ export default function SequencesPage() {
   const [enrollments, setEnrollments] = useState<
     { id: number; contact_name: string | null; current_step: number; status: string }[]
   >([]);
+  const [keyword, setKeyword] = useState("");
+  const [triggerOpenFor, setTriggerOpenFor] = useState<number | null>(null);
+  const [triggerDraft, setTriggerDraft] = useState("");
+  const [triggerBusy, setTriggerBusy] = useState(false);
+  const [addOpenFor, setAddOpenFor] = useState<number | null>(null);
+  const [addDraft, setAddDraft] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+  const [addNote, setAddNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -80,12 +89,21 @@ export default function SequencesPage() {
       const response = await fetch("/api/omniflow/portal/sequences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, steps: draft }),
+        body: JSON.stringify(
+          keyword.trim()
+            ? { name, steps: draft, trigger_keyword: keyword.trim() }
+            : { name, steps: draft }
+        ),
       });
       if (response.ok) {
         setNoteTone("emerald");
-        setNote("Series created. Toggle it on to enroll new contacts.");
+        setNote(
+          keyword.trim()
+            ? "Series created. Send the keyword in a chat to start it."
+            : "Series created. Toggle it on to enroll new contacts."
+        );
         setName("");
+        setKeyword("");
         setDraft([{ delay_hours: 0, body: "" }]);
         void load();
         return;
@@ -98,7 +116,7 @@ export default function SequencesPage() {
     } finally {
       setBusy(false);
     }
-  }, [name, draft, load]);
+  }, [name, draft, keyword, load]);
 
   const setEnabled = useCallback(
     async (row: Sequence, enabled: boolean) => {
@@ -161,6 +179,98 @@ export default function SequencesPage() {
     [openLog]
   );
 
+  const openAdd = useCallback((id: number) => {
+    setAddOpenFor(id);
+    setAddDraft("");
+    setAddNote(null);
+  }, []);
+
+  const openTrigger = useCallback((row: Sequence) => {
+    setTriggerOpenFor(row.id);
+    setTriggerDraft(row.triggerKeyword ?? "");
+  }, []);
+
+  const saveTrigger = useCallback(
+    async (row: Sequence) => {
+      if (triggerBusy) return;
+      setTriggerBusy(true);
+      try {
+        await fetch("/api/omniflow/portal/sequences/" + String(row.id), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            triggerKeyword: triggerDraft.trim() ? triggerDraft.trim() : null,
+          }),
+        });
+        setTriggerOpenFor(null);
+        void load();
+      } catch {
+        setTriggerOpenFor(null);
+      } finally {
+        setTriggerBusy(false);
+      }
+    },
+    [triggerBusy, triggerDraft, load]
+  );
+
+  const submitAdd = useCallback(
+    async (id: number) => {
+      const contacts = addDraft
+        .split(/[,;\n]+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (addBusy || contacts.length === 0) return;
+      setAddBusy(true);
+      setAddNote(null);
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/sequences/" + String(id) + "/enrollments",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contacts }),
+          }
+        );
+        const payload = (await response.json().catch(() => null)) as {
+          enrolled?: number;
+          skipped?: string[];
+        } | null;
+        if (response.ok && payload && typeof payload.enrolled === "number") {
+          const skipped = Array.isArray(payload.skipped) ? payload.skipped.length : 0;
+          setAddNote(
+            "Enrolled " + String(payload.enrolled) +
+              (skipped > 0 ? " \u00b7 " + String(skipped) + " skipped (no chat yet)" : "")
+          );
+          setAddDraft("");
+          void load();
+        } else {
+          setAddNote("Could not add people. Try again.");
+        }
+      } catch {
+        setAddNote("Could not add people. Try again.");
+      } finally {
+        setAddBusy(false);
+      }
+    },
+    [addBusy, addDraft, load]
+  );
+
+  const cancelEnrollment = useCallback(
+    async (sequenceId: number, enrollmentId: number) => {
+      try {
+        await fetch(
+          "/api/omniflow/portal/sequences/" + String(sequenceId) +
+            "/enrollments/" + String(enrollmentId),
+          { method: "DELETE" }
+        );
+      } catch {
+        // Transient network issue — reopening the log refreshes it.
+      }
+      void showLog(sequenceId);
+    },
+    [showLog]
+  );
+
   return (
     <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
@@ -182,6 +292,12 @@ export default function SequencesPage() {
             onChange={(event) => setName(event.target.value)}
             placeholder="Series name, e.g. Welcome flow"
             className="mt-3 w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          />
+          <input
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="Trigger keyword (optional), e.g. CATALOG"
+            className="mt-2 w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
           />
           <div className="mt-3 space-y-2">
             {draft.map((step, index) => (
@@ -286,7 +402,14 @@ export default function SequencesPage() {
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-200">{row.name}</p>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <p className="truncate text-sm font-medium text-slate-200">{row.name}</p>
+                      {row.triggerKeyword ? (
+                        <span className="shrink-0 rounded-md border border-cyan-400/25 bg-cyan-400/[0.08] px-1.5 py-0.5 text-[10px] text-cyan-300">
+                          {row.triggerKeyword}
+                        </span>
+                      ) : null}
+                    </span>
                     <p className="mt-0.5 text-[11px] text-slate-500">
                       {row.steps.length} step{row.steps.length === 1 ? "" : "s"} \u00b7{" "}
                       {row.activeEnrollments} active
@@ -307,6 +430,20 @@ export default function SequencesPage() {
                       className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
                     >
                       {openLog === row.id ? "Hide people" : "People"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAdd(row.id)}
+                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                    >
+                      Add people
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openTrigger(row)}
+                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                    >
+                      Trigger
                     </button>
                     <button
                       type="button"
@@ -342,10 +479,91 @@ export default function SequencesPage() {
                                 ? "completed"
                                 : "step " + String(enrollment.current_step + 1) + " pending"}
                             </span>
+                            {enrollment.status === "active" ? (
+                              <button
+                                type="button"
+                                onClick={() => void cancelEnrollment(row.id, enrollment.id)}
+                                className="text-[11px] text-slate-500 transition hover:text-rose-300"
+                              >
+                                Cancel
+                              </button>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
                     )}
+                  </div>
+                ) : null}
+                {triggerOpenFor === row.id ? (
+                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-500">
+                      Keyword trigger for {row.name}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        value={triggerDraft}
+                        onChange={(event) => setTriggerDraft(event.target.value)}
+                        placeholder="e.g. CATALOG"
+                        className="w-44 rounded-lg border border-white/[0.07] bg-white/[0.02] px-2.5 py-1.5 text-sm text-white placeholder:text-slate-600 outline-none focus:border-cyan-400/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void saveTrigger(row)}
+                        disabled={triggerBusy}
+                        className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                      >
+                        {triggerBusy ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTriggerOpenFor(null)}
+                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] text-slate-600">
+                      When a customer sends exactly this word, the series starts for
+                      them. Leave empty to turn the trigger off.
+                    </p>
+                  </div>
+                ) : null}
+                {addOpenFor === row.id ? (
+                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-500">
+                      Add people to {row.name}
+                    </p>
+                    <textarea
+                      value={addDraft}
+                      onChange={(event) => setAddDraft(event.target.value)}
+                      rows={3}
+                      placeholder={"One number per line\n+92 300 1234567"}
+                      className="mt-2 w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void submitAdd(row.id)}
+                        disabled={addBusy || !addDraft.trim()}
+                        className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                      >
+                        {addBusy ? "Adding..." : "Add to sequence"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddOpenFor(null)}
+                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                      >
+                        Close
+                      </button>
+                      {addNote ? (
+                        <span className="text-[11px] text-slate-400">{addNote}</span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-[10px] text-slate-600">
+                      Only customers who already have a chat are added. Everyone keeps
+                      their own step position.
+                    </p>
                   </div>
                 ) : null}
               </li>
