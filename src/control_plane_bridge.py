@@ -339,6 +339,11 @@ class ControlPlaneBridge:
         except Exception as followup_error:
             print(f"CP bridge followups warning: {followup_error}")
 
+        try:
+            self.process_due_away(adapter)
+        except Exception as away_error:
+            print(f"CP bridge away warning: {away_error}")
+
         commands = self.fetch_commands()
 
         for command in commands:
@@ -570,6 +575,114 @@ class ControlPlaneBridge:
             print(
                 "CP bridge follow-up "
                 f"{followup_id}: "
+                + ("sent" if success else "failed/deferred")
+                + (
+                    " — " + note
+                    if note
+                    else ""
+                )
+            )
+
+    # ---------- away replies ----------
+
+    def fetch_due_away(self, limit=5):
+        status, data = self._request(
+            "GET",
+            "/api/v1/connector/away-replies?client_id="
+            + str(self.client_id)
+            + "&limit="
+            + str(int(limit)),
+        )
+        if status != 200:
+            return []
+        rows = data.get("away_replies") if isinstance(data, dict) else None
+        if not isinstance(rows, list):
+            return []
+        return rows
+
+    def acknowledge_away(self, away_id, ok, note=None):
+        self._request(
+            "POST",
+            "/api/v1/connector/away-replies/ack",
+            {
+                "away_id": away_id,
+                "ok": bool(ok),
+                "note": note,
+            },
+        )
+
+    def process_due_away(self, adapter):
+        try:
+            replies = self.fetch_due_away()
+        except Exception as error:
+            print(f"CP bridge away warning: {error}")
+            return
+        if not replies:
+            return
+
+        try:
+            from channels.contracts import OutboundMessage
+        except ImportError:
+            from src.channels.contracts import OutboundMessage
+
+        account_id = getattr(
+            getattr(adapter, "account", None), "id", 0
+        )
+
+        for reply in replies:
+            away_id = reply.get("id")
+            if not isinstance(away_id, int):
+                continue
+
+            target_user = str(
+                reply.get("external_user_id") or ""
+            ).strip()
+            body_text = str(reply.get("body") or "").strip()
+
+            if not target_user or not body_text:
+                self.acknowledge_away(away_id, False, "Invalid away payload.")
+                continue
+
+            send_result = None
+            note = None
+            try:
+                send_result = adapter.send(
+                    OutboundMessage(
+                        channel_account_id=int(account_id or 0),
+                        external_user_id=target_user,
+                        content=body_text,
+                        message_type="text",
+                        metadata={},
+                    )
+                )
+            except Exception as error:
+                note = f"Away send error: {error}"
+
+            success = (
+                send_result is not None
+                and send_result.success
+            )
+
+            if success:
+                try:
+                    self.ingest_message(
+                        external_user_id=target_user,
+                        body=body_text,
+                        direction="out",
+                    )
+                except Exception:
+                    pass
+                note = "Away reply sent."
+            elif send_result is not None:
+                note = "Away send failed: " + str(
+                    send_result.error or "unknown error"
+                )
+
+            self.acknowledge_away(away_id, success, note)
+
+            print(
+                "CP bridge away reply "
+                f"{away_id}: "
                 + ("sent" if success else "failed/deferred")
                 + (
                     " — " + note
