@@ -4277,6 +4277,77 @@ export async function listSequenceEnrollments(
   return enrollments;
 }
 
+export type WebhookTestResult =
+  | { kind: "ok"; delivered: boolean; statusCode: number | null; error: string | null }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function testWebhook(
+  accessToken: string,
+  id: number
+): Promise<WebhookTestResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/webhooks/" + String(id) + "/test",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  if (typeof p.delivered !== "boolean") return { kind: "unavailable" };
+  return {
+    kind: "ok",
+    delivered: p.delivered,
+    statusCode: typeof p.status_code === "number" ? p.status_code : null,
+    error: typeof p.error === "string" ? p.error : null,
+  };
+}
+
+export type WebhookRetryResult =
+  | { kind: "ok"; delivered: boolean; statusCode: number | null }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function retryWebhookDelivery(
+  accessToken: string,
+  id: number,
+  deliveryId: number
+): Promise<WebhookRetryResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/webhooks/" + String(id) +
+        "/deliveries/" + String(deliveryId) + "/retry",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  if (typeof p.delivered !== "boolean") return { kind: "unavailable" };
+  return {
+    kind: "ok",
+    delivered: p.delivered,
+    statusCode: typeof p.status_code === "number" ? p.status_code : null,
+  };
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

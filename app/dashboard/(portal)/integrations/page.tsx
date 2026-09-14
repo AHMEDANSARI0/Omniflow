@@ -39,6 +39,8 @@ export default function IntegrationsPage() {
   const [newSecret, setNewSecret] = useState("");
   const [openLog, setOpenLog] = useState<number | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [testBusy, setTestBusy] = useState(false);
+  const [testNote, setTestNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -167,6 +169,59 @@ export default function IntegrationsPage() {
     }
   }, [openLog]);
 
+  const runTest = useCallback(
+    async (row: Webhook) => {
+      if (testBusy) return;
+      setTestBusy(true);
+      setTestNote(null);
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/webhooks/" + String(row.id) + "/test",
+          { method: "POST" }
+        );
+        const payload = (await response.json().catch(() => null)) as {
+          delivered?: boolean;
+          status_code?: number | null;
+          error?: string | null;
+        } | null;
+        if (response.ok && payload && typeof payload.delivered === "boolean") {
+          const status = payload.status_code
+            ? " (status " + String(payload.status_code) + ")"
+            : "";
+          setTestNote(
+            payload.delivered
+              ? "Test delivered" + status
+              : "Test failed" + status + (payload.error ? ": " + payload.error : "")
+          );
+          if (openLog === row.id) void showLog(row.id);
+        } else {
+          setTestNote("Test could not run.");
+        }
+      } catch {
+        setTestNote("Test could not run.");
+      } finally {
+        setTestBusy(false);
+      }
+    },
+    [testBusy, openLog, showLog]
+  );
+
+  const retryDelivery = useCallback(
+    async (webhookId: number, deliveryId: number) => {
+      try {
+        await fetch(
+          "/api/omniflow/portal/webhooks/" + String(webhookId) +
+            "/deliveries/" + String(deliveryId) + "/retry",
+          { method: "POST" }
+        );
+      } catch {
+        // Transient network issue — the log refresh shows the outcome.
+      }
+      void showLog(webhookId);
+    },
+    [showLog]
+  );
+
   return (
     <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
@@ -268,6 +323,14 @@ export default function IntegrationsPage() {
                   <div className="flex shrink-0 items-center gap-2">
                     <button
                       type="button"
+                      onClick={() => void runTest(row)}
+                      disabled={testBusy}
+                      className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                    >
+                      {testBusy ? "Testing..." : "Send test"}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void setEnabled(row, !row.enabled)}
                       className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
                     >
@@ -289,6 +352,9 @@ export default function IntegrationsPage() {
                     </button>
                   </div>
                 </div>
+                {testNote ? (
+                  <p className="mt-2 text-[11px] text-slate-400">{testNote}</p>
+                ) : null}
                 {openLog === row.id ? (
                   <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
                     {deliveries.length === 0 ? (
@@ -315,6 +381,17 @@ export default function IntegrationsPage() {
                                 ? " \u00b7 " + String(delivery.statusCode)
                                 : ""}
                             </span>
+                            {delivery.deliveredAt ? null : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void retryDelivery(row.id, delivery.id)
+                                }
+                                className="text-[11px] text-slate-500 transition hover:text-cyan-300"
+                              >
+                                Retry now
+                              </button>
+                            )}
                           </li>
                         ))}
                       </ul>
