@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireOmniFlowPrincipal } from "../../../lib/omniflow/auth-dal";
 import { getOverview, getRecentActivity } from "../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
+import SetupChecklist from "../components/SetupChecklist";
 
 
 interface QuickLink {
@@ -75,6 +76,8 @@ export default async function ClientDashboardPage() {
           Your tenant-isolated OmniFlow workspace is authenticated and ready.
         </p>
       </div>
+
+      <SetupChecklist />
 
       {overview && (
         <>

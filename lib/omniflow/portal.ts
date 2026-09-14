@@ -3871,6 +3871,46 @@ export async function exportCustomersCsv(accessToken: string): Promise<string | 
   return response.text();
 }
 
+export interface SetupStatus {
+  whatsapp: boolean;
+  hours: boolean;
+  away: boolean;
+  kb: boolean;
+  customers: boolean;
+  broadcast: boolean;
+  cod: boolean;
+}
+
+export async function getSetupStatus(
+  accessToken: string
+): Promise<SetupStatus | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/setup/status");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const raw = (payload as Record<string, unknown>).setup;
+  if (raw === null || typeof raw !== "object") return null;
+  const checks = ((raw as Record<string, unknown>).checks ?? {}) as Record<string, unknown>;
+  const flag = (key: string) => checks[key] === true;
+  return {
+    whatsapp: flag("whatsapp"),
+    hours: flag("hours"),
+    away: flag("away"),
+    kb: flag("kb"),
+    customers: flag("customers"),
+    broadcast: flag("broadcast"),
+    cod: flag("cod"),
+  };
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }
