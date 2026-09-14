@@ -1,6 +1,4 @@
-"use client";
-
-import { motion } from "motion/react";
+import Reveal from "./Reveal";
 import type { WhyOmniFlowContent } from "../../lib/content-defaults";
 
 /* ============================================================
@@ -78,13 +76,7 @@ function BenefitRow({ benefit, index }: { benefit: Benefit; index: number }) {
   const accent = accentStyles[benefit.accent];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.55, ease: "easeOut", delay: index * 0.1 }}
-      className={`group border-b border-white/[0.06] py-6 transition-colors duration-300 first:pt-0 last:border-b-0 sm:py-7 ${accent.hoverBorder}`}
-    >
+    <Reveal className={`group border-b border-white/[0.06] py-6 transition-colors duration-300 first:pt-0 last:border-b-0 sm:py-7 ${accent.hoverBorder}`}>
       <div className="flex gap-5 sm:gap-6">
         <span
           className={`font-mono text-sm tracking-widest text-slate-600 transition-colors duration-300 ${accent.numberText}`}
@@ -100,7 +92,7 @@ function BenefitRow({ benefit, index }: { benefit: Benefit; index: number }) {
           </p>
         </div>
       </div>
-    </motion.div>
+    </Reveal>
   );
 }
 
@@ -114,13 +106,7 @@ function ActivityFeed() {
       {/* Soft glow behind the card */}
       <div className="pointer-events-none absolute -inset-8 rounded-full bg-blue-500/[0.05] blur-3xl" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-60px" }}
-        transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
-        className="relative rounded-2xl border border-white/[0.07] bg-[#081522]/95 p-5 sm:p-6"
-      >
+      <Reveal className="relative rounded-2xl border border-white/[0.07] bg-[#081522]/95 p-5 sm:p-6">
         {/* Card header */}
         <div className="mb-5 flex items-center justify-between border-b border-white/[0.05] pb-4">
           <div className="flex items-center gap-2.5">
@@ -142,14 +128,7 @@ function ActivityFeed() {
           {activityEvents.map((event, i) => {
             const accent = accentStyles[event.accent];
             return (
-              <motion.div
-                key={event.text}
-                initial={{ opacity: 0, x: 14 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.45, ease: "easeOut", delay: 0.3 + i * 0.12 }}
-                className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.015] px-3.5 py-3"
-              >
+              <Reveal className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.015] px-3.5 py-3">
                 <span
                   className={`of-pulse flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-xs ${accent.text}`}
                   style={{ animationDelay: `${i * 0.6}s`, animationDuration: "3s" }}
@@ -162,19 +141,13 @@ function ActivityFeed() {
                 <span className="shrink-0 text-[10px] text-slate-600">
                   {event.time}
                 </span>
-              </motion.div>
+              </Reveal>
             );
           })}
         </div>
 
         {/* Card footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 1 }}
-          className="mt-5 flex items-center justify-between rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3"
-        >
+        <Reveal className="mt-5 flex items-center justify-between rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3">
           <span className="text-[11px] text-slate-500">
             AI handling conversations while your team is offline
           </span>
@@ -182,24 +155,18 @@ function ActivityFeed() {
             <span className="of-pulse h-1 w-1 rounded-full bg-cyan-400" />
             Active
           </span>
-        </motion.div>
-      </motion.div>
+        </Reveal>
+      </Reveal>
 
       {/* Floating chip */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6, delay: 1.1 }}
-        className="absolute -right-3 -top-4 sm:-right-5"
-      >
+      <Reveal className="absolute -right-3 -top-4 sm:-right-5">
         <div className="of-float flex items-center gap-2 rounded-xl border border-violet-400/20 bg-[#0a1727] px-3 py-2 shadow-lg shadow-black/30">
           <span className="text-xs text-violet-300">✦</span>
           <span className="text-[11px] font-medium text-slate-300">
             No conversation missed
           </span>
         </div>
-      </motion.div>
+      </Reveal>
     </div>
   );
 }
@@ -228,12 +195,7 @@ export default function WhyOmniFlow({
         <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
           {/* Left: heading + benefit rows */}
           <div>
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            >
+            <Reveal>
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.02] px-3.5 py-1.5">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-60" />
@@ -253,7 +215,7 @@ export default function WhyOmniFlow({
               <p className="mt-4 max-w-lg text-base leading-relaxed text-slate-400 sm:text-lg">
                 {content.description}
               </p>
-            </motion.div>
+            </Reveal>
 
             <div className="mt-10">
               {benefits.map((benefit, index) => (

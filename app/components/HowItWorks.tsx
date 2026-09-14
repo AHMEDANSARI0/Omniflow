@@ -1,6 +1,4 @@
-"use client";
-
-import { motion } from "motion/react";
+import Reveal from "./Reveal";
 import type { HowItWorksContent } from "../../lib/content-defaults";
 import HexGrid from "./HexGrid";
 
@@ -45,48 +43,26 @@ export default function HowItWorks({
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
         {/* Heading */}
         <div className="mx-auto max-w-3xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7 }}
-            className="inline-flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2"
-          >
+          <Reveal className="inline-flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2">
             <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
 
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
               {content.badge}
             </span>
-          </motion.div>
+          </Reveal>
 
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{
-              duration: 0.8,
-              delay: 0.08,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl"
-          >
+          <Reveal as="h2" className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
             {content.heading_line1}
             <br />
 
             <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-300 bg-clip-text text-transparent">
               {content.heading_line2}
             </span>
-          </motion.h2>
+          </Reveal>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7, delay: 0.18 }}
-            className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base"
-          >
+          <Reveal as="p" className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
             {content.description}
-          </motion.p>
+          </Reveal>
         </div>
 
         {/* Workflow */}
@@ -102,13 +78,7 @@ export default function HowItWorks({
         </div>
 
         {/* Mini builder preview */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.8, delay: 0.25 }}
-          className="mx-auto mt-20 max-w-5xl"
-        >
+        <Reveal className="mx-auto mt-20 max-w-5xl">
           <div className="overflow-hidden rounded-[26px] border border-white/[0.07] bg-[#081522] shadow-2xl">
             {/* Builder header */}
             <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4 sm:px-6">
@@ -197,18 +167,12 @@ export default function HowItWorks({
               </div>
             </div>
           </div>
-        </motion.div>
+        </Reveal>
 
         {/* Bottom CTA statement */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.35 }}
-          className="mt-14 text-center"
-        >
+        <Reveal className="mt-14 text-center">
           <p className="text-xs text-slate-700">{content.bottom_note}</p>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
@@ -222,18 +186,7 @@ function WorkflowStep({
   index: number;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 25 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{
-        duration: 0.7,
-        delay: index * 0.08,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      whileHover={{ x: 4 }}
-      className="group relative flex gap-4 md:gap-6"
-    >
+    <Reveal lift className="group relative flex gap-4 md:gap-6">
       {/* Number */}
       <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/[0.07] bg-[#081522] shadow-xl transition-colors duration-300 group-hover:border-cyan-400/15">
         <span className="text-[10px] font-medium tracking-[0.12em] text-cyan-400/60">
@@ -263,7 +216,7 @@ function WorkflowStep({
           </p>
         </div>
       </div>
-    </motion.div>
+    </Reveal>
   );
 }
 
@@ -287,14 +240,11 @@ function BuilderNode({
   active?: boolean;
 }) {
   return (
-    <motion.div
-      whileHover={{ y: -3 }}
-      className={`relative w-full max-w-xs rounded-xl border p-3 transition-colors duration-300 ${
+    <Reveal lift className={`relative w-full max-w-xs rounded-xl border p-3 transition-colors duration-300 ${
         active
           ? "border-cyan-400/15 bg-cyan-400/[0.025]"
           : "border-white/[0.06] bg-white/[0.015]"
-      }`}
-    >
+      }`}>
       <div className="flex items-center gap-3">
         <div
           className={`flex h-8 w-8 items-center justify-center rounded-lg border text-[11px] ${
@@ -320,6 +270,6 @@ function BuilderNode({
           <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyan-400" />
         )}
       </div>
-    </motion.div>
+    </Reveal>
   );
 }

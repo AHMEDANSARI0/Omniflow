@@ -1,6 +1,4 @@
-"use client";
-
-import { motion } from "motion/react";
+import Reveal from "./Reveal";
 import type { TrustContent } from "../../lib/content-defaults";
 
 /* ============================================================
@@ -75,13 +73,7 @@ export default function Trust({ content }: { content: TrustContent }) {
 
       <div className="relative mx-auto max-w-6xl px-5 sm:px-8">
         {/* Section header */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mx-auto max-w-2xl text-center"
-        >
+        <Reveal className="mx-auto max-w-2xl text-center">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.02] px-3.5 py-1.5">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
@@ -101,25 +93,14 @@ export default function Trust({ content }: { content: TrustContent }) {
           <p className="mt-4 text-base leading-relaxed text-slate-400 sm:text-lg">
             {content.description}
           </p>
-        </motion.div>
+        </Reveal>
 
         {/* Pillar cards */}
         <div className="mt-14 grid gap-4 sm:mt-16 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
           {pillars.map((pillar, index) => {
             const accent = accentStyles[pillar.accent];
             return (
-              <motion.div
-                key={pillar.title}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{
-                  duration: 0.55,
-                  ease: "easeOut",
-                  delay: index * 0.1,
-                }}
-                className={`rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-colors duration-300 ${accent.hoverBorder}`}
-              >
+              <Reveal className={`rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-colors duration-300 ${accent.hoverBorder}`}>
                 <div
                   className={`mb-5 flex h-10 w-10 items-center justify-center rounded-xl border text-base ${accent.iconBox}`}
                 >
@@ -131,19 +112,13 @@ export default function Trust({ content }: { content: TrustContent }) {
                 <p className="mt-2 text-sm leading-relaxed text-slate-400">
                   {pillar.description}
                 </p>
-              </motion.div>
+              </Reveal>
             );
           })}
         </div>
 
         {/* Principles strip */}
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-          className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:mt-12"
-        >
+        <Reveal className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:mt-12">
           {principles.map((principle, i) => (
             <div key={principle} className="flex items-center gap-2">
               <span
@@ -157,7 +132,7 @@ export default function Trust({ content }: { content: TrustContent }) {
               </span>
             </div>
           ))}
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );

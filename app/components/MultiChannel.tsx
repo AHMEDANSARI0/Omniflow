@@ -1,6 +1,4 @@
-"use client";
-
-import { motion } from "motion/react";
+import Reveal from "./Reveal";
 import type { MultiChannelContent } from "../../lib/content-defaults";
 import HexGrid from "./HexGrid";
 
@@ -55,48 +53,26 @@ export default function MultiChannel({
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
         {/* Heading */}
         <div className="mx-auto max-w-3xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7 }}
-            className="inline-flex items-center gap-2 rounded-full border border-blue-400/10 bg-blue-400/[0.035] px-4 py-2"
-          >
+          <Reveal className="inline-flex items-center gap-2 rounded-full border border-blue-400/10 bg-blue-400/[0.035] px-4 py-2">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
 
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-blue-300/80">
               {content.badge}
             </span>
-          </motion.div>
+          </Reveal>
 
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{
-              duration: 0.8,
-              delay: 0.08,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl"
-          >
+          <Reveal as="h2" className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
             {content.heading_line1}
             <br />
 
             <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-300 bg-clip-text text-transparent">
               {content.heading_line2}
             </span>
-          </motion.h2>
+          </Reveal>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7, delay: 0.18 }}
-            className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base"
-          >
+          <Reveal as="p" className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
             {content.description}
-          </motion.p>
+          </Reveal>
         </div>
 
         {/* Main visual */}
@@ -124,17 +100,7 @@ export default function MultiChannel({
             </div>
 
             {/* Center */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{
-                duration: 0.9,
-                delay: 0.25,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="relative mx-auto flex h-52 w-52 items-center justify-center"
-            >
+            <Reveal className="relative mx-auto flex h-52 w-52 items-center justify-center">
               {/* Rings — CSS spin */}
               <div
                 className="of-spin-slow absolute inset-0 rounded-full border border-cyan-400/10"
@@ -165,7 +131,7 @@ export default function MultiChannel({
 
               {/* Pulse ripple — CSS */}
               <span className="of-ripple absolute h-28 w-28 rounded-full border border-cyan-400/30" />
-            </motion.div>
+            </Reveal>
 
             {/* Right channels */}
             <div className="space-y-4">
@@ -184,13 +150,7 @@ export default function MultiChannel({
         </div>
 
         {/* Automation strip */}
-        <motion.div
-          initial={{ opacity: 0, y: 25 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.25 }}
-          transition={{ duration: 0.7, delay: 0.35 }}
-          className="mx-auto mt-16 max-w-4xl rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5"
-        >
+        <Reveal className="mx-auto mt-16 max-w-4xl rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
           <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/10 bg-cyan-400/[0.04]">
@@ -210,31 +170,18 @@ export default function MultiChannel({
 
             <div className="flex flex-wrap justify-center gap-2">
               {actions.map((action, index) => (
-                <motion.div
-                  key={action}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.45 + index * 0.08 }}
-                  className="rounded-full border border-white/[0.05] bg-white/[0.02] px-3 py-1.5 text-[9px] text-slate-500"
-                >
+                <Reveal className="rounded-full border border-white/[0.05] bg-white/[0.02] px-3 py-1.5 text-[9px] text-slate-500">
                   {action}
-                </motion.div>
+                </Reveal>
               ))}
             </div>
           </div>
-        </motion.div>
+        </Reveal>
 
         {/* Bottom statement */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.45 }}
-          className="mt-14 text-center"
-        >
+        <Reveal className="mt-14 text-center">
           <p className="text-xs text-slate-700">{content.bottom_note}</p>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
@@ -254,14 +201,7 @@ function ChannelCard({
   delay: number;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: direction === "left" ? -30 : 30 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, amount: 0.3 }}
-      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -3, x: direction === "left" ? 4 : -4 }}
-      className="group relative rounded-2xl border border-white/[0.06] bg-[#091624]/95 p-4 transition-colors duration-300 hover:border-cyan-400/10"
-    >
+    <Reveal lift className="group relative rounded-2xl border border-white/[0.06] bg-[#091624]/95 p-4 transition-colors duration-300 hover:border-cyan-400/10">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.025] text-xs font-semibold text-slate-400 transition-colors duration-300 group-hover:border-cyan-400/15 group-hover:text-cyan-300">
           {channel.short}
@@ -293,6 +233,6 @@ function ChannelCard({
             : "-left-8 bg-gradient-to-l from-violet-400/30 to-transparent"
         }`}
       />
-    </motion.div>
+    </Reveal>
   );
 }

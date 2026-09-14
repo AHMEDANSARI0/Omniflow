@@ -69,6 +69,11 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${inter.variable} ${sora.variable}`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "document.documentElement.classList.add('of-js');",
+          }}
+        />
         {children}
         <WebsiteChatWidget />
       </body>

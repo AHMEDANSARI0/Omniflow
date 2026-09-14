@@ -1,6 +1,4 @@
-"use client";
-
-import { motion } from "motion/react";
+import Reveal from "./Reveal";
 import type { AiIntelligenceContent } from "../../lib/content-defaults";
 import HexGrid from "./HexGrid";
 
@@ -35,62 +33,30 @@ export default function AIIntelligence({
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
         {/* Heading */}
         <div className="mx-auto max-w-3xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7 }}
-            className="inline-flex items-center gap-2 rounded-full border border-cyan-400/15 bg-cyan-400/[0.035] px-4 py-2"
-          >
+          <Reveal className="inline-flex items-center gap-2 rounded-full border border-cyan-400/15 bg-cyan-400/[0.035] px-4 py-2">
             <span className="of-pulse h-1.5 w-1.5 rounded-full bg-cyan-400" />
 
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-300/80">
               {content.badge}
             </span>
-          </motion.div>
+          </Reveal>
 
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{
-              duration: 0.8,
-              delay: 0.08,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl"
-          >
+          <Reveal as="h2" className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
             {content.heading_line1}
             <br />
 
             <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-300 bg-clip-text text-transparent">
               {content.heading_line2}
             </span>
-          </motion.h2>
+          </Reveal>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7, delay: 0.18 }}
-            className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base"
-          >
+          <Reveal as="p" className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
             {content.description}
-          </motion.p>
+          </Reveal>
         </div>
 
         {/* AI visual */}
-        <motion.div
-          initial={{ opacity: 0, y: 35, scale: 0.97 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{
-            duration: 0.9,
-            delay: 0.2,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          className="relative mx-auto mt-16 max-w-5xl"
-        >
+        <Reveal className="relative mx-auto mt-16 max-w-5xl">
           {/* Outer glow */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.075)_0%,transparent_70%)]" />
 
@@ -198,14 +164,7 @@ export default function AIIntelligence({
             <div className="mt-14 grid gap-3 border-t border-white/[0.06] pt-6 sm:grid-cols-3">
               {["Intent detected", "Context understood", "Action selected"].map(
                 (item, index) => (
-                  <motion.div
-                    key={item}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.45 + index * 0.1 }}
-                    className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3"
-                  >
+                  <Reveal className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-cyan-400/10 bg-cyan-400/[0.04] text-[9px] text-cyan-300">
                       0{index + 1}
                     </span>
@@ -213,25 +172,17 @@ export default function AIIntelligence({
                     <span className="text-[10px] text-slate-500">{item}</span>
 
                     <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  </motion.div>
+                  </Reveal>
                 ),
               )}
             </div>
           </div>
-        </motion.div>
+        </Reveal>
 
         {/* Three intelligence pillars */}
         <div className="mt-16 grid gap-4 md:grid-cols-3">
           {intelligenceItems.map((item, index) => (
-            <motion.div
-              key={item.number}
-              initial={{ opacity: 0, y: 25 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.7, delay: index * 0.1 }}
-              whileHover={{ y: -5 }}
-              className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-colors duration-500 hover:border-cyan-400/10 hover:bg-white/[0.025]"
-            >
+            <Reveal lift className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-colors duration-500 hover:border-cyan-400/10 hover:bg-white/[0.025]">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium tracking-[0.15em] text-cyan-400/60">
                   {item.number}
@@ -260,7 +211,7 @@ export default function AIIntelligence({
                   </span>
                 ))}
               </div>
-            </motion.div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -280,13 +231,7 @@ function IntelligencePanel({
   children: React.ReactNode;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: side === "left" ? -20 : 20 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, amount: 0.3 }}
-      transition={{ duration: 0.7, delay: side === "left" ? 0.25 : 0.35 }}
-      className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4"
-    >
+    <Reveal className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
       <div className="mb-4">
         <div className="text-xs font-medium text-slate-300">{title}</div>
 
@@ -294,7 +239,7 @@ function IntelligencePanel({
       </div>
 
       {children}
-    </motion.div>
+    </Reveal>
   );
 }
 

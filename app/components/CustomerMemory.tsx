@@ -1,6 +1,4 @@
-"use client";
-
-import { motion } from "motion/react";
+import Reveal from "./Reveal";
 import type { CustomerMemoryContent } from "../../lib/content-defaults";
 import HexGrid from "./HexGrid";
 
@@ -38,82 +36,43 @@ export default function CustomerMemory({
         <div className="grid items-center gap-16 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
           {/* Left content */}
           <div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.7 }}
-              className="inline-flex items-center gap-2 rounded-full border border-violet-400/10 bg-violet-400/[0.035] px-4 py-2"
-            >
+            <Reveal className="inline-flex items-center gap-2 rounded-full border border-violet-400/10 bg-violet-400/[0.035] px-4 py-2">
               <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
 
               <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-violet-300/80">
                 {content.badge}
               </span>
-            </motion.div>
+            </Reveal>
 
-            <motion.h2
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{
-                duration: 0.8,
-                delay: 0.08,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl"
-            >
+            <Reveal as="h2" className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
               {content.heading_line1}
               <br />
 
               <span className="bg-gradient-to-r from-violet-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
                 {content.heading_line2}
               </span>
-            </motion.h2>
+            </Reveal>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.7, delay: 0.18 }}
-              className="mt-6 max-w-xl text-sm leading-7 text-slate-500 sm:text-base"
-            >
+            <Reveal as="p" className="mt-6 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
               {content.description}
-            </motion.p>
+            </Reveal>
 
             {/* Context points */}
             <div className="mt-8 space-y-3">
               {contextItems.map((item, index) => (
-                <motion.div
-                  key={item}
-                  initial={{ opacity: 0, x: -15 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.3 + index * 0.08 }}
-                  className="flex items-center gap-3"
-                >
+                <Reveal className="flex items-center gap-3">
                   <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-violet-400/10 bg-violet-400/[0.035] text-[9px] text-violet-300">
                     ✓
                   </span>
 
                   <span className="text-xs text-slate-500">{item}</span>
-                </motion.div>
+                </Reveal>
               ))}
             </div>
           </div>
 
           {/* Memory visualization */}
-          <motion.div
-            initial={{ opacity: 0, x: 40, scale: 0.96 }}
-            whileInView={{ opacity: 1, x: 0, scale: 1 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{
-              duration: 0.9,
-              delay: 0.15,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="relative mx-auto w-full max-w-xl"
-          >
+          <Reveal className="relative mx-auto w-full max-w-xl">
             {/* Glow */}
             <div className="pointer-events-none absolute left-1/2 top-1/2 h-[350px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(167,139,250,0.065)_0%,transparent_70%)]" />
 
@@ -185,14 +144,7 @@ export default function CustomerMemory({
               {/* Memory data */}
               <div className="mt-6 grid grid-cols-2 gap-3">
                 {memoryItems.map((item, index) => (
-                  <motion.div
-                    key={item.label}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.4 + index * 0.08 }}
-                    className="rounded-xl border border-white/[0.05] bg-white/[0.018] p-3.5"
-                  >
+                  <Reveal className="rounded-xl border border-white/[0.05] bg-white/[0.018] p-3.5">
                     <div className="text-[9px] uppercase tracking-[0.12em] text-slate-700">
                       {item.label}
                     </div>
@@ -200,7 +152,7 @@ export default function CustomerMemory({
                     <div className="mt-2 text-[11px] font-medium text-slate-300">
                       {item.value}
                     </div>
-                  </motion.div>
+                  </Reveal>
                 ))}
               </div>
 
@@ -270,23 +222,17 @@ export default function CustomerMemory({
                 Personalized response
               </div>
             </div>
-          </motion.div>
+          </Reveal>
         </div>
 
         {/* Bottom statement */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7, delay: 0.25 }}
-          className="mx-auto mt-20 max-w-3xl text-center"
-        >
+        <Reveal className="mx-auto mt-20 max-w-3xl text-center">
           <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
 
           <p className="mt-8 text-xs leading-6 text-slate-700">
             {content.bottom_note}
           </p>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
