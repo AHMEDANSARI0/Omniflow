@@ -4400,6 +4400,117 @@ export async function listSequenceEnrollments(
   return enrollments;
 }
 
+export type EnrollmentPauseResult =
+  | { kind: "ok" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function pauseSequenceEnrollment(
+  accessToken: string,
+  sequenceId: number,
+  enrollmentId: number
+): Promise<EnrollmentPauseResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(sequenceId) +
+        "/enrollments/" + String(enrollmentId) + "/pause",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export async function resumeSequenceEnrollment(
+  accessToken: string,
+  sequenceId: number,
+  enrollmentId: number
+): Promise<EnrollmentPauseResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(sequenceId) +
+        "/enrollments/" + String(enrollmentId) + "/resume",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export type EnrollmentBulkResult =
+  | { kind: "ok"; count: number }
+  | { kind: "unavailable" };
+
+export async function pauseAllEnrollments(
+  accessToken: string,
+  sequenceId: number
+): Promise<EnrollmentBulkResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(sequenceId) + "/enrollments/pause-all",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  const count =
+    payload !== null && typeof payload === "object"
+      ? (payload as { paused?: unknown }).paused
+      : null;
+  return {
+    kind: "ok",
+    count: typeof count === "number" ? count : 0,
+  };
+}
+
+export async function resumeAllEnrollments(
+  accessToken: string,
+  sequenceId: number
+): Promise<EnrollmentBulkResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(sequenceId) + "/enrollments/resume-all",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  const count =
+    payload !== null && typeof payload === "object"
+      ? (payload as { resumed?: unknown }).resumed
+      : null;
+  return {
+    kind: "ok",
+    count: typeof count === "number" ? count : 0,
+  };
+}
+
 export type WebhookTestResult =
   | { kind: "ok"; delivered: boolean; statusCode: number | null; error: string | null }
   | { kind: "not_found" }

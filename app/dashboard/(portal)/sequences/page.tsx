@@ -297,6 +297,22 @@ export default function SequencesPage() {
     [load]
   );
 
+  const refreshLog = useCallback(async (id: number) => {
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/sequences/" + String(id) + "/enrollments",
+        { cache: "no-store" }
+      );
+      const payload: unknown = await response.json().catch(() => null);
+      if (payload !== null && typeof payload === "object") {
+        const list = (payload as { enrollments?: typeof enrollments }).enrollments;
+        setEnrollments(Array.isArray(list) ? list : []);
+      }
+    } catch {
+      setEnrollments([]);
+    }
+  }, []);
+
   const showLog = useCallback(
     async (id: number) => {
       if (openLog === id) {
@@ -305,21 +321,45 @@ export default function SequencesPage() {
       }
       setOpenLog(id);
       setEnrollments([]);
-      try {
-        const response = await fetch(
-          "/api/omniflow/portal/sequences/" + String(id) + "/enrollments",
-          { cache: "no-store" }
-        );
-        const payload: unknown = await response.json().catch(() => null);
-        if (payload !== null && typeof payload === "object") {
-          const list = (payload as { enrollments?: typeof enrollments }).enrollments;
-          setEnrollments(Array.isArray(list) ? list : []);
-        }
-      } catch {
-        setEnrollments([]);
-      }
+      await refreshLog(id);
     },
-    [openLog]
+    [openLog, refreshLog]
+  );
+
+  const setEnrollmentState = useCallback(
+    async (
+      sequenceId: number,
+      enrollmentId: number,
+      action: "pause" | "resume"
+    ) => {
+      try {
+        await fetch(
+          "/api/omniflow/portal/sequences/" + String(sequenceId) +
+            "/enrollments/" + String(enrollmentId) + "/" + action,
+          { method: "POST" }
+        );
+      } catch {
+        // Transient network issue — the refresh below still runs.
+      }
+      void refreshLog(sequenceId);
+    },
+    [refreshLog]
+  );
+
+  const bulkEnrollments = useCallback(
+    async (sequenceId: number, action: "pause-all" | "resume-all") => {
+      try {
+        await fetch(
+          "/api/omniflow/portal/sequences/" + String(sequenceId) +
+            "/enrollments/" + action,
+          { method: "POST" }
+        );
+      } catch {
+        // Transient network issue — the refresh below still runs.
+      }
+      void refreshLog(sequenceId);
+    },
+    [refreshLog]
   );
 
   const openAdd = useCallback((id: number) => {
@@ -474,11 +514,11 @@ export default function SequencesPage() {
           { method: "DELETE" }
         );
       } catch {
-        // Transient network issue — reopening the log refreshes it.
+        // Transient network issue — the refresh below still runs.
       }
-      void showLog(sequenceId);
+      void refreshLog(sequenceId);
     },
-    [showLog]
+    [refreshLog]
   );
 
   return (
@@ -794,6 +834,22 @@ export default function SequencesPage() {
                       >
                         Export CSV
                       </a>
+                      <span className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void bulkEnrollments(row.id, "pause-all")}
+                          className="text-[11px] text-slate-500 transition hover:text-amber-300"
+                        >
+                          Pause all
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void bulkEnrollments(row.id, "resume-all")}
+                          className="text-[11px] text-slate-500 transition hover:text-emerald-300"
+                        >
+                          Resume all
+                        </button>
+                      </span>
                     </div>
                     <div className="mt-2">
                     {enrollments.length === 0 ? (
@@ -817,17 +873,43 @@ export default function SequencesPage() {
                             >
                               {enrollment.status === "completed"
                                 ? "completed"
-                                : "step " + String(enrollment.current_step + 1) + " pending"}
+                                : enrollment.status === "paused"
+                                  ? "paused"
+                                  : "step " + String(enrollment.current_step + 1) + " pending"}
                             </span>
-                            {enrollment.status === "active" ? (
-                              <button
-                                type="button"
-                                onClick={() => void cancelEnrollment(row.id, enrollment.id)}
-                                className="text-[11px] text-slate-500 transition hover:text-rose-300"
-                              >
-                                Cancel
-                              </button>
-                            ) : null}
+                            <span className="flex shrink-0 items-center gap-2">
+                              {enrollment.status === "active" ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void setEnrollmentState(row.id, enrollment.id, "pause")
+                                  }
+                                  className="text-[11px] text-slate-500 transition hover:text-amber-300"
+                                >
+                                  Pause
+                                </button>
+                              ) : null}
+                              {enrollment.status === "paused" ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void setEnrollmentState(row.id, enrollment.id, "resume")
+                                  }
+                                  className="text-[11px] text-slate-500 transition hover:text-emerald-300"
+                                >
+                                  Resume
+                                </button>
+                              ) : null}
+                              {enrollment.status === "active" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void cancelEnrollment(row.id, enrollment.id)}
+                                  className="text-[11px] text-slate-500 transition hover:text-rose-300"
+                                >
+                                  Cancel
+                                </button>
+                              ) : null}
+                            </span>
                           </li>
                         ))}
                       </ul>
