@@ -108,6 +108,20 @@ export default function SequencesPage() {
   const [editDraft, setEditDraft] = useState<DraftStep[]>([]);
   const [editBusy, setEditBusy] = useState(false);
   const [editNote, setEditNote] = useState<string | null>(null);
+  const [quiet, setQuiet] = useState<{
+    enabled: boolean;
+    start: number;
+    end: number;
+    offset: number;
+  } | null>(null);
+  const [quietBusy, setQuietBusy] = useState(false);
+  const [quietNote, setQuietNote] = useState<string | null>(null);
+
+  const hourLabel = (hour: number) => {
+    const period = hour < 12 ? "AM" : "PM";
+    const display = hour % 12 === 0 ? 12 : hour % 12;
+    return display + ":00 " + period;
+  };
 
   const load = useCallback(async () => {
     try {
@@ -122,6 +136,35 @@ export default function SequencesPage() {
     } catch {
       setSequences([]);
     }
+    fetch("/api/omniflow/portal/sequences/settings", { cache: "no-store" })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        const row =
+          payload !== null && typeof payload === "object"
+            ? (payload as {
+                settings?: {
+                  quiet_enabled?: boolean;
+                  quiet_start?: number;
+                  quiet_end?: number;
+                  utc_offset?: number;
+                } | null;
+              })
+            : null;
+        if (row && row.settings) {
+          setQuiet({
+            enabled: row.settings.quiet_enabled === true,
+            start:
+              typeof row.settings.quiet_start === "number"
+                ? row.settings.quiet_start
+                : 22,
+            end:
+              typeof row.settings.quiet_end === "number" ? row.settings.quiet_end : 8,
+            offset:
+              typeof row.settings.utc_offset === "number" ? row.settings.utc_offset : 5,
+          });
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -149,6 +192,33 @@ export default function SequencesPage() {
     setNoteTone("neutral");
     setNote("Template loaded \u2014 edit anything, then Create series.");
   };
+
+  const saveQuiet = useCallback(async () => {
+    if (quietBusy || !quiet) return;
+    setQuietBusy(true);
+    setQuietNote(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/sequences/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quietEnabled: quiet.enabled,
+          quietStart: quiet.start,
+          quietEnd: quiet.end,
+          utcOffset: quiet.offset,
+        }),
+      });
+      setQuietNote(
+        response.ok
+          ? "Send window saved."
+          : "Could not save. Check the hours and offset."
+      );
+    } catch {
+      setQuietNote("Could not save. Try again.");
+    } finally {
+      setQuietBusy(false);
+    }
+  }, [quietBusy, quiet]);
 
   const create = useCallback(async () => {
     if (!name.trim() || draft.some((step) => !step.body.trim())) {
@@ -537,6 +607,96 @@ export default function SequencesPage() {
               </p>
             ) : null}
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-200">Night guard</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Pause automatic series messages during these hours so nobody gets woken
+                up. Replies you send by hand are never blocked.
+              </p>
+            </div>
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={quiet ? quiet.enabled : false}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, enabled: event.target.checked } : current
+                  )
+                }
+                className="h-4 w-4 accent-cyan-400"
+              />
+              {quiet && quiet.enabled ? "On" : "Off"}
+            </label>
+          </div>
+          {quiet ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300">
+              <span className="text-slate-500">Pause from</span>
+              <select
+                value={quiet.start}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, start: Number(event.target.value) } : current
+                  )
+                }
+                className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-xs text-white outline-none focus:border-cyan-400/40"
+              >
+                {Array.from({ length: 24 }, (_, hour) => (
+                  <option key={hour} value={hour} className="bg-slate-900">
+                    {hourLabel(hour)}
+                  </option>
+                ))}
+              </select>
+              <span className="text-slate-500">to</span>
+              <select
+                value={quiet.end}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, end: Number(event.target.value) } : current
+                  )
+                }
+                className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-xs text-white outline-none focus:border-cyan-400/40"
+              >
+                {Array.from({ length: 24 }, (_, hour) => (
+                  <option key={hour} value={hour} className="bg-slate-900">
+                    {hourLabel(hour)}
+                  </option>
+                ))}
+              </select>
+              <span className="text-slate-500">\u00b7 your time zone</span>
+              <select
+                value={quiet.offset}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, offset: Number(event.target.value) } : current
+                  )
+                }
+                className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-xs text-white outline-none focus:border-cyan-400/40"
+              >
+                {Array.from({ length: 27 }, (_, index) => index - 12).map((offset) => (
+                  <option key={offset} value={offset} className="bg-slate-900">
+                    UTC{offset >= 0 ? "+" : ""}
+                    {offset}
+                    {offset === 5 ? " (Pakistan)" : ""}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void saveQuiet()}
+                disabled={quietBusy}
+                className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-50"
+              >
+                {quietBusy ? "Saving..." : "Save"}
+              </button>
+              {quietNote ? <p className="text-xs text-amber-300">{quietNote}</p> : null}
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-slate-600">Loading window\u2026</p>
+          )}
         </div>
 
         {sequences === null ? (

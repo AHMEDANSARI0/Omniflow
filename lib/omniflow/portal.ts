@@ -4273,6 +4273,63 @@ export async function updateSequenceSteps(
   return { kind: "ok" };
 }
 
+export interface SequenceSettings {
+  quietEnabled: boolean;
+  quietStart: number;
+  quietEnd: number;
+  utcOffset: number;
+}
+
+export async function getSequenceSettings(
+  accessToken: string
+): Promise<SequenceSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/sequences/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    quietEnabled: row.quiet_enabled === true,
+    quietStart: typeof row.quiet_start === "number" ? row.quiet_start : 22,
+    quietEnd: typeof row.quiet_end === "number" ? row.quiet_end : 8,
+    utcOffset: typeof row.utc_offset === "number" ? row.utc_offset : 5,
+  };
+}
+
+export async function saveSequenceSettings(
+  accessToken: string,
+  settings: SequenceSettings
+): Promise<SequenceMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/sequences/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quiet_enabled: settings.quietEnabled,
+        quiet_start: settings.quietStart,
+        quiet_end: settings.quietEnd,
+        utc_offset: settings.utcOffset,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
 export async function deleteSequence(
   accessToken: string,
   id: number
