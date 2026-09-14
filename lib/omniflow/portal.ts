@@ -3911,6 +3911,196 @@ export async function getSetupStatus(
   };
 }
 
+export interface WebhookRow {
+  id: number;
+  url: string;
+  events: string;
+  enabled: boolean;
+  createdAt: string | null;
+  lastDeliveryAt: string | null;
+  lastStatusCode: number | null;
+}
+
+export interface WebhookDelivery {
+  id: number;
+  event: string;
+  statusCode: number | null;
+  error: string | null;
+  attempts: number;
+  createdAt: string | null;
+  deliveredAt: string | null;
+}
+
+export async function listWebhooks(
+  accessToken: string
+): Promise<WebhookRow[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/webhooks");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawList = (payload as Record<string, unknown>).webhooks;
+  if (!Array.isArray(rawList)) return null;
+  const webhooks: WebhookRow[] = [];
+  for (const item of rawList) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "number") continue;
+    webhooks.push({
+      id: row.id,
+      url: typeof row.url === "string" ? row.url : "",
+      events: typeof row.events === "string" ? row.events : "all",
+      enabled: row.enabled === true,
+      createdAt: typeof row.created_at === "string" ? row.created_at : null,
+      lastDeliveryAt: typeof row.last_delivery_at === "string" ? row.last_delivery_at : null,
+      lastStatusCode: typeof row.last_status_code === "number" ? row.last_status_code : null,
+    });
+  }
+  return webhooks;
+}
+
+export type WebhookMutation =
+  | { kind: "ok"; webhook?: WebhookRow; secret?: string }
+  | { kind: "invalid" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function createWebhook(
+  accessToken: string,
+  url: string,
+  events: string
+): Promise<WebhookMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/webhooks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, events }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const raw = (payload as Record<string, unknown>).webhook;
+  const secret = (payload as Record<string, unknown>).secret;
+  const webhook =
+    raw !== null && typeof raw === "object"
+      ? ({
+          id: (raw as Record<string, unknown>).id as number,
+          url: (raw as Record<string, unknown>).url as string,
+          events: (raw as Record<string, unknown>).events as string,
+          enabled: true,
+          createdAt: null,
+          lastDeliveryAt: null,
+          lastStatusCode: null,
+        } as WebhookRow)
+      : undefined;
+  return {
+    kind: "ok",
+    webhook,
+    secret: typeof secret === "string" ? secret : undefined,
+  };
+}
+
+export async function updateWebhook(
+  accessToken: string,
+  id: number,
+  changes: { url?: string; events?: string; enabled?: boolean }
+): Promise<WebhookMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/webhooks/" + String(id),
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export async function deleteWebhook(
+  accessToken: string,
+  id: number
+): Promise<{ kind: "ok" } | { kind: "not_found" } | { kind: "unavailable" }> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/webhooks/" + String(id),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export async function listWebhookDeliveries(
+  accessToken: string,
+  id: number
+): Promise<WebhookDelivery[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/webhooks/" + String(id) + "/deliveries"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawList = (payload as Record<string, unknown>).deliveries;
+  if (!Array.isArray(rawList)) return null;
+  const deliveries: WebhookDelivery[] = [];
+  for (const item of rawList) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "number") continue;
+    deliveries.push({
+      id: row.id,
+      event: typeof row.event === "string" ? row.event : "",
+      statusCode: typeof row.status_code === "number" ? row.status_code : null,
+      error: typeof row.error === "string" ? row.error : null,
+      attempts: typeof row.attempts === "number" ? row.attempts : 0,
+      createdAt: typeof row.created_at === "string" ? row.created_at : null,
+      deliveredAt: typeof row.delivered_at === "string" ? row.delivered_at : null,
+    });
+  }
+  return deliveries;
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }
