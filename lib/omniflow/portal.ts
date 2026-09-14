@@ -3700,6 +3700,120 @@ export async function cancelScheduledBroadcast(
   return { kind: "ok" };
 }
 
+export interface CodSettings {
+  enabled: boolean;
+  template: string;
+}
+
+export interface CodRequest {
+  id: number;
+  conversationId: number | null;
+  contactId: string;
+  contactName: string | null;
+  status: "pending" | "confirmed" | "declined";
+  createdAt: string;
+  answeredAt: string | null;
+}
+
+export async function getCodSettings(
+  accessToken: string
+): Promise<CodSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/cod/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const raw = (payload as Record<string, unknown>).settings;
+  if (raw === null || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  return {
+    enabled: row.enabled === true,
+    template: typeof row.template === "string" ? row.template : "",
+  };
+}
+
+export async function saveCodSettings(
+  accessToken: string,
+  settings: CodSettings
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/cod/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: settings.enabled, template: settings.template }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+function normalizeCodRequest(payload: unknown): CodRequest | null {
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const id = typeof row.id === "number" ? row.id : 0;
+  if (!id) return null;
+  const status =
+    row.status === "confirmed" || row.status === "declined" ? row.status : "pending";
+  return {
+    id,
+    conversationId: typeof row.conversation_id === "number" ? row.conversation_id : null,
+    contactId: typeof row.contact_id === "string" ? row.contact_id : "",
+    contactName: typeof row.contact_name === "string" ? row.contact_name : null,
+    status,
+    createdAt: typeof row.created_at === "string" ? row.created_at : "",
+    answeredAt: typeof row.answered_at === "string" ? row.answered_at : null,
+  };
+}
+
+export async function listCodRequests(
+  accessToken: string,
+  status: "all" | "pending" | "confirmed" | "declined"
+): Promise<{ requests: CodRequest[]; counts: Record<string, number> } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/cod/requests?status=" + encodeURIComponent(status)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const rawList = p.requests;
+  if (!Array.isArray(rawList)) return null;
+  const requests: CodRequest[] = [];
+  for (const item of rawList) {
+    const normalized = normalizeCodRequest(item);
+    if (normalized) requests.push(normalized);
+  }
+  const counts =
+    p.counts !== null && typeof p.counts === "object"
+      ? (p.counts as Record<string, unknown>)
+      : {};
+  const safeCounts: Record<string, number> = {};
+  for (const [key, value] of Object.entries(counts)) {
+    if (typeof value === "number") safeCounts[key] = value;
+  }
+  return { requests, counts: safeCounts };
+}
+
 export type ConversationStatusResult =
   | { kind: "ok"; conversation: ConversationSummary }
   | { kind: "not_found" }

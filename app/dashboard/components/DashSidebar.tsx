@@ -59,6 +59,7 @@ const navItems: NavItem[] = [
     enabled: true,
   },
   { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "➤", enabled: true },
+  { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
   { label: "Team", href: "/dashboard/team", icon: "⚑", enabled: true },
   { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: true },
 ];
