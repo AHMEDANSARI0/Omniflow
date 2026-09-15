@@ -67,6 +67,15 @@ export async function POST(request: Request) {
     filters.status = rawFilters.status;
   }
   if (
+    rawFilters.stage === "new" ||
+    rawFilters.stage === "interested" ||
+    rawFilters.stage === "negotiating" ||
+    rawFilters.stage === "won" ||
+    rawFilters.stage === "lost"
+  ) {
+    filters.stage = rawFilters.stage;
+  }
+  if (
     typeof rawFilters.idle_days === "number" &&
     Number.isInteger(rawFilters.idle_days) &&
     rawFilters.idle_days >= 1 &&

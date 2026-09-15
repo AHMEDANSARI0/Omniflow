@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 interface SegmentFilters {
   lead_temp?: string;
   status?: string;
+  stage?: string;
   idle_days?: number;
   tag?: string;
 }
@@ -36,11 +37,21 @@ const STATUS_OPTIONS = [
   { value: "closed", label: "Only closed chats" },
 ];
 
+const STAGE_OPTIONS = [
+  { value: "", label: "Any pipeline stage" },
+  { value: "new", label: "Stage: New" },
+  { value: "interested", label: "Stage: Interested" },
+  { value: "negotiating", label: "Stage: Negotiating" },
+  { value: "won", label: "Stage: Won" },
+  { value: "lost", label: "Stage: Lost" },
+];
+
 function describe(filters: SegmentFilters): string {
   const parts: string[] = [];
   if (filters.lead_temp) parts.push(filters.lead_temp + " leads");
   if (filters.status === "open") parts.push("open chat");
   if (filters.status === "closed") parts.push("closed chats");
+  if (filters.stage) parts.push("stage: " + filters.stage);
   if (filters.idle_days) parts.push("quiet for " + filters.idle_days + "d");
   if (filters.tag) parts.push("tagged " + filters.tag);
   return parts.join(" \u00b7 ");
@@ -51,6 +62,7 @@ export default function SegmentsPage() {
   const [name, setName] = useState("");
   const [leadTemp, setLeadTemp] = useState("");
   const [status, setStatus] = useState("");
+  const [stage, setStage] = useState("");
   const [idleDays, setIdleDays] = useState("");
   const [tag, setTag] = useState("");
   const [busy, setBusy] = useState(false);
@@ -87,6 +99,7 @@ export default function SegmentsPage() {
     const filters: SegmentFilters = {};
     if (leadTemp) filters.lead_temp = leadTemp;
     if (status) filters.status = status;
+    if (stage) filters.stage = stage;
     if (idleDays) {
       const days = Number(idleDays);
       if (!Number.isInteger(days) || days < 1 || days > 365) {
@@ -257,6 +270,17 @@ export default function SegmentsPage() {
               className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/40"
             >
               {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-slate-900">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={stage}
+              onChange={(event) => setStage(event.target.value)}
+              className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/40"
+            >
+              {STAGE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value} className="bg-slate-900">
                   {option.label}
                 </option>

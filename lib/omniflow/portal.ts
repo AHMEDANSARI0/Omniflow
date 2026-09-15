@@ -4408,6 +4408,7 @@ export async function getSequenceStats(
 export interface SegmentFilters {
   lead_temp?: "hot" | "warm" | "cold";
   status?: "open" | "closed";
+  stage?: PipelineStage;
   idle_days?: number;
   tag?: string;
 }
@@ -4433,6 +4434,15 @@ function normalizeSegmentFilters(raw: unknown): SegmentFilters {
   }
   if (input.status === "open" || input.status === "closed") {
     out.status = input.status;
+  }
+  if (
+    input.stage === "new" ||
+    input.stage === "interested" ||
+    input.stage === "negotiating" ||
+    input.stage === "won" ||
+    input.stage === "lost"
+  ) {
+    out.stage = input.stage;
   }
   if (typeof input.idle_days === "number" && input.idle_days >= 1) {
     out.idle_days = Math.round(input.idle_days);
@@ -4732,6 +4742,107 @@ export async function getCustomerProfile(
     sequences,
     notes,
   };
+}
+
+export type PipelineStage =
+  | "new"
+  | "interested"
+  | "negotiating"
+  | "won"
+  | "lost";
+
+export const PIPELINE_STAGES: PipelineStage[] = [
+  "new",
+  "interested",
+  "negotiating",
+  "won",
+  "lost",
+];
+
+export interface PipelineContact {
+  contactId: string;
+  name: string;
+  leadTemp: string;
+  chats: number;
+  lastAt: string | null;
+}
+
+export interface PipelineColumn {
+  stage: PipelineStage;
+  count: number;
+  contacts: PipelineContact[];
+}
+
+export async function getPipelineBoard(
+  accessToken: string
+): Promise<PipelineColumn[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/pipeline");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawStages = (payload as Record<string, unknown>).stages;
+  if (!Array.isArray(rawStages)) return null;
+  const columns: PipelineColumn[] = [];
+  for (const item of rawStages) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.stage !== "string") continue;
+    const rawContacts = Array.isArray(row.contacts) ? row.contacts : [];
+    const contacts: PipelineContact[] = [];
+    for (const entry of rawContacts) {
+      if (entry === null || typeof entry !== "object") continue;
+      const contact = entry as Record<string, unknown>;
+      if (typeof contact.contact_id !== "string") continue;
+      contacts.push({
+        contactId: contact.contact_id,
+        name: typeof contact.name === "string" ? contact.name : "",
+        leadTemp: typeof contact.lead_temp === "string" ? contact.lead_temp : "cold",
+        chats: typeof contact.chats === "number" ? contact.chats : 0,
+        lastAt: typeof contact.last_at === "string" ? contact.last_at : null,
+      });
+    }
+    columns.push({
+      stage: row.stage as PipelineStage,
+      count: typeof row.count === "number" ? row.count : contacts.length,
+      contacts,
+    });
+  }
+  return columns;
+}
+
+export type StageMutation =
+  | { kind: "ok" }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function setContactStage(
+  accessToken: string,
+  contact: string,
+  stage: PipelineStage
+): Promise<StageMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/pipeline/stage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact, stage }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
 }
 
 export async function deleteSequence(
