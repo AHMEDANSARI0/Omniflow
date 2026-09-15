@@ -498,6 +498,13 @@ export default function CustomersClient({
               </Link>
                 <div className="flex w-14 shrink-0 flex-col border-l border-white/[0.05] sm:w-16">
                   <a
+                    href={`/dashboard/customers/profile?contact=${encodeURIComponent(customer.contactId)}`}
+                    title="Open customer 360"
+                    className="border-b border-white/[0.05] py-2 text-[10px] font-semibold uppercase tracking-wider text-cyan-300/90 transition-colors duration-300 hover:text-cyan-200"
+                  >
+                    360
+                  </a>
+                  <a
                     href={`https://wa.me/${customer.contactId.replace(/[^0-9]/g, "")}`}
                     target="_blank"
                     rel="noreferrer"

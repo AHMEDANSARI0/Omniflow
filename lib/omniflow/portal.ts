@@ -4622,6 +4622,118 @@ export async function broadcastToSegment(
   return { kind: "ok", sent: typeof sent === "number" ? sent : 0 };
 }
 
+export interface CustomerConversationRef {
+  id: number;
+  status: string;
+  channel: string;
+  lastMessageAt: string | null;
+}
+
+export interface CustomerProfile {
+  contactId: string;
+  name: string;
+  leadTemp: string;
+  chats: number;
+  openChats: number;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  tags: string[];
+  conversations: CustomerConversationRef[];
+  codRequests: {
+    id: number;
+    status: string;
+    createdAt: string | null;
+    answeredAt: string | null;
+  }[];
+  sequences: {
+    name: string;
+    status: string;
+    currentStep: number;
+    enrolledAt: string | null;
+  }[];
+  notes: {
+    body: string;
+    authorEmail: string;
+    createdAt: string | null;
+  }[];
+}
+
+export async function getCustomerProfile(
+  accessToken: string,
+  contact: string
+): Promise<CustomerProfile | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/customers/profile?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const conversations = Array.isArray(row.conversations)
+    ? (row.conversations as Record<string, unknown>[]).map((item) => ({
+        id: typeof item.id === "number" ? item.id : 0,
+        status: typeof item.status === "string" ? item.status : "open",
+        channel: typeof item.channel === "string" ? item.channel : "whatsapp",
+        lastMessageAt:
+          typeof item.last_message_at === "string"
+            ? item.last_message_at
+            : null,
+      }))
+    : [];
+  const codRequests = Array.isArray(row.cod_requests)
+    ? (row.cod_requests as Record<string, unknown>[]).map((item) => ({
+        id: typeof item.id === "number" ? item.id : 0,
+        status: typeof item.status === "string" ? item.status : "pending",
+        createdAt: typeof item.created_at === "string" ? item.created_at : null,
+        answeredAt:
+          typeof item.answered_at === "string" ? item.answered_at : null,
+      }))
+    : [];
+  const sequences = Array.isArray(row.sequences)
+    ? (row.sequences as Record<string, unknown>[]).map((item) => ({
+        name: typeof item.name === "string" ? item.name : "",
+        status: typeof item.status === "string" ? item.status : "active",
+        currentStep: typeof item.current_step === "number" ? item.current_step : 0,
+        enrolledAt:
+          typeof item.enrolled_at === "string" ? item.enrolled_at : null,
+      }))
+    : [];
+  const notes = Array.isArray(row.notes)
+    ? (row.notes as Record<string, unknown>[]).map((item) => ({
+        body: typeof item.body === "string" ? item.body : "",
+        authorEmail: typeof item.author_email === "string" ? item.author_email : "",
+        createdAt: typeof item.created_at === "string" ? item.created_at : null,
+      }))
+    : [];
+  return {
+    contactId: typeof row.contact_id === "string" ? row.contact_id : "",
+    name: typeof row.name === "string" ? row.name : "",
+    leadTemp: typeof row.lead_temp === "string" ? row.lead_temp : "cold",
+    chats: typeof row.chats === "number" ? row.chats : 0,
+    openChats: typeof row.open_chats === "number" ? row.open_chats : 0,
+    firstSeen: typeof row.first_seen === "string" ? row.first_seen : null,
+    lastSeen: typeof row.last_seen === "string" ? row.last_seen : null,
+    tags: Array.isArray(row.tags)
+      ? (row.tags as unknown[]).filter(
+          (tag): tag is string => typeof tag === "string"
+        )
+      : [],
+    conversations,
+    codRequests,
+    sequences,
+    notes,
+  };
+}
+
 export async function deleteSequence(
   accessToken: string,
   id: number
