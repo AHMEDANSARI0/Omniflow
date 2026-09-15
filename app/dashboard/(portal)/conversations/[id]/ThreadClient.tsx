@@ -10,6 +10,7 @@ const TagsCard = dynamic(() => import("./TagsCard"));
 const NotesCard = dynamic(() => import("./NotesCard"));
 const RatingCard = dynamic(() => import("./RatingCard"));
 const CustomerCard = dynamic(() => import("./CustomerCard"));
+const AddToSequenceCard = dynamic(() => import("./AddToSequenceCard"));
 const SavedRepliesPicker = dynamic(() => import("./SavedRepliesPicker"));
 import {
   Fragment,
@@ -597,6 +598,9 @@ export default function ThreadClient({
       )}
       {!expired && !notFound && (
         <CustomerCard contactId={conversation?.contactId ?? null} />
+      )}
+      {!expired && !notFound && (
+        <AddToSequenceCard contactId={conversation?.contactId ?? null} />
       )}
       {!expired && !notFound && conversation?.channel !== "website" && (
         <RatingCard conversationId={Number(id)} />
