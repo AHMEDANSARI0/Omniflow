@@ -63,12 +63,18 @@ export async function POST(request: Request) {
       : {};
   const name = typeof input.name === "string" ? input.name : "";
   const steps = Array.isArray(input.steps)
-    ? (input.steps as { delay_hours?: unknown; body?: unknown }[]).map(
-        (step) => ({
-          delay_hours: typeof step.delay_hours === "number" ? step.delay_hours : 0,
-          body: typeof step.body === "string" ? step.body : "",
-        })
-      )
+    ? (input.steps as {
+        delay_hours?: unknown;
+        body?: unknown;
+        only_if_idle_hours?: unknown;
+      }[]).map((step) => ({
+        delay_hours: typeof step.delay_hours === "number" ? step.delay_hours : 0,
+        body: typeof step.body === "string" ? step.body : "",
+        only_if_idle_hours:
+          typeof step.only_if_idle_hours === "number"
+            ? step.only_if_idle_hours
+            : null,
+      }))
     : [];
   if (!name || steps.length === 0) {
     return safeJson(

@@ -39,11 +39,17 @@ export async function PUT(
     .map((step) => {
       const item =
         step !== null && typeof step === "object"
-          ? (step as { delay_hours?: unknown; body?: unknown })
+          ? (step as {
+              delay_hours?: unknown;
+              body?: unknown;
+              onlyIfIdleHours?: unknown;
+            })
           : {};
       return {
         delay_hours: typeof item.delay_hours === "number" ? item.delay_hours : 0,
         body: typeof item.body === "string" ? item.body : "",
+        only_if_idle_hours:
+          typeof item.onlyIfIdleHours === "number" ? item.onlyIfIdleHours : null,
       };
     })
     .filter((step) => step.body.trim().length > 0);

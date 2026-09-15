@@ -4135,6 +4135,7 @@ export interface SequenceStep {
   step_no: number;
   delay_hours: number;
   body: string;
+  onlyIfIdleHours: number | null;
 }
 
 export interface SequenceRow {
@@ -4145,6 +4146,7 @@ export interface SequenceRow {
   activeEnrollments: number;
   completedEnrollments: number;
   triggerKeyword: string | null;
+  pauseOnReply: boolean;
 }
 
 export async function listSequences(
@@ -4169,7 +4171,17 @@ export async function listSequences(
     if (item === null || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
     if (typeof row.id !== "number") continue;
-    const steps = Array.isArray(row.steps) ? (row.steps as SequenceStep[]) : [];
+    const steps = Array.isArray(row.steps)
+      ? (row.steps as Record<string, unknown>[]).map((step) => ({
+          step_no: typeof step.step_no === "number" ? step.step_no : 0,
+          delay_hours: typeof step.delay_hours === "number" ? step.delay_hours : 0,
+          body: typeof step.body === "string" ? step.body : "",
+          onlyIfIdleHours:
+            typeof step.only_if_idle_hours === "number"
+              ? step.only_if_idle_hours
+              : null,
+        }))
+      : [];
     sequences.push({
       id: row.id,
       name: typeof row.name === "string" ? row.name : "",
@@ -4178,6 +4190,7 @@ export async function listSequences(
       activeEnrollments: typeof row.active_enrollments === "number" ? row.active_enrollments : 0,
       completedEnrollments:
         typeof row.completed_enrollments === "number" ? row.completed_enrollments : 0,
+      pauseOnReply: row.pause_on_reply !== false,
       triggerKeyword: typeof row.trigger_keyword === "string" ? row.trigger_keyword : null,
     });
   }
@@ -4193,7 +4206,11 @@ export type SequenceMutation =
 export async function createSequence(
   accessToken: string,
   name: string,
-  steps: { delay_hours: number; body: string }[],
+  steps: {
+    delay_hours: number;
+    body: string;
+    only_if_idle_hours?: number | null;
+  }[],
   triggerKeyword?: string | null
 ): Promise<SequenceMutation> {
   let response: Response;
@@ -4218,7 +4235,12 @@ export async function createSequence(
 export async function updateSequence(
   accessToken: string,
   id: number,
-  changes: { name?: string; enabled?: boolean; triggerKeyword?: string | null }
+  changes: {
+    name?: string;
+    enabled?: boolean;
+    triggerKeyword?: string | null;
+    pauseOnReply?: boolean;
+  }
 ): Promise<SequenceMutation> {
   let response: Response;
   try {
@@ -4228,11 +4250,18 @@ export async function updateSequence(
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          "triggerKeyword" in changes
-            ? { ...changes, trigger_keyword: changes.triggerKeyword ?? null }
-            : changes
-        ),
+        body: JSON.stringify((() => {
+          const wire: Record<string, unknown> = {};
+          if ("name" in changes) wire.name = changes.name;
+          if ("enabled" in changes) wire.enabled = changes.enabled;
+          if ("triggerKeyword" in changes) {
+            wire.trigger_keyword = changes.triggerKeyword ?? null;
+          }
+          if ("pauseOnReply" in changes) {
+            wire.pause_on_reply = changes.pauseOnReply === true;
+          }
+          return wire;
+        })()),
       }
     );
   } catch (error) {
@@ -4249,7 +4278,11 @@ export async function updateSequence(
 export async function updateSequenceSteps(
   accessToken: string,
   id: number,
-  steps: { delay_hours: number; body: string }[]
+  steps: {
+    delay_hours: number;
+    body: string;
+    only_if_idle_hours?: number | null;
+  }[]
 ): Promise<SequenceMutation> {
   let response: Response;
   try {
@@ -4328,6 +4361,48 @@ export async function saveSequenceSettings(
   if (response.status === 400) return { kind: "invalid" };
   if (!response.ok) return { kind: "unavailable" };
   return { kind: "ok" };
+}
+
+export interface SequenceStepStat {
+  stepNo: number;
+  sent: number;
+  skipped: number;
+}
+
+export async function getSequenceStats(
+  accessToken: string,
+  id: number
+): Promise<SequenceStepStat[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(id) + "/stats"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const list = (payload as { steps?: unknown }).steps;
+  if (!Array.isArray(list)) return null;
+  return list
+    .map((item) => {
+      const row =
+        item !== null && typeof item === "object"
+          ? (item as Record<string, unknown>)
+          : {};
+      return {
+        stepNo: typeof row.step_no === "number" ? row.step_no : 0,
+        sent: typeof row.sent === "number" ? row.sent : 0,
+        skipped: typeof row.skipped === "number" ? row.skipped : 0,
+      };
+    })
+    .filter((row) => row.stepNo > 0);
 }
 
 export async function deleteSequence(

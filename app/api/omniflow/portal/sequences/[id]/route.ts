@@ -40,9 +40,13 @@ export async function PUT(
     name?: string;
     enabled?: boolean;
     triggerKeyword?: string | null;
+    pauseOnReply?: boolean;
   } = {};
   if (typeof input.name === "string") changes.name = input.name;
   if (typeof input.enabled === "boolean") changes.enabled = input.enabled;
+  if (typeof input.pauseOnReply === "boolean") {
+    changes.pauseOnReply = input.pauseOnReply;
+  }
   if ("triggerKeyword" in input) {
     changes.triggerKeyword =
       typeof input.triggerKeyword === "string" && input.triggerKeyword.trim()

@@ -6,6 +6,7 @@ interface Step {
   step_no: number;
   delay_hours: number;
   body: string;
+  onlyIfIdleHours: number | null;
 }
 
 interface Sequence {
@@ -16,11 +17,13 @@ interface Sequence {
   activeEnrollments: number;
   completedEnrollments: number;
   triggerKeyword: string | null;
+  pauseOnReply: boolean;
 }
 
 interface DraftStep {
   delay_hours: number;
   body: string;
+  onlyIfIdleHours: number | null;
 }
 
 const TEMPLATES: {
@@ -37,6 +40,7 @@ const TEMPLATES: {
       {
         delay_hours: 0,
         body: "Welcome {name}! Thanks for reaching out \u2014 reply here anytime and we'll help you out.",
+        onlyIfIdleHours: null,
       },
     ],
   },
@@ -48,10 +52,12 @@ const TEMPLATES: {
       {
         delay_hours: 0,
         body: "Thank you {name}! Your order is confirmed. We'll share delivery updates right here.",
+        onlyIfIdleHours: null,
       },
       {
         delay_hours: 24,
         body: "Hi {name}, did your order arrive safely? Reply if you need anything.",
+        onlyIfIdleHours: null,
       },
     ],
   },
@@ -63,10 +69,12 @@ const TEMPLATES: {
       {
         delay_hours: 72,
         body: "Hi {name}! Time for a refill? Send REORDER and we'll set you up.",
+        onlyIfIdleHours: null,
       },
       {
         delay_hours: 96,
         body: "{name}, your favourites are back in stock. Reply REORDER and we'll reserve them for you.",
+        onlyIfIdleHours: null,
       },
     ],
   },
@@ -78,6 +86,7 @@ const TEMPLATES: {
       {
         delay_hours: 48,
         body: "Hi {name}! Glad you shopped with us. Could you spare a minute to share your experience?",
+        onlyIfIdleHours: null,
       },
     ],
   },
@@ -87,7 +96,7 @@ export default function SequencesPage() {
   const [sequences, setSequences] = useState<Sequence[] | null>(null);
   const [name, setName] = useState("");
   const [draft, setDraft] = useState<DraftStep[]>([
-    { delay_hours: 0, body: "" },
+    { delay_hours: 0, body: "", onlyIfIdleHours: null },
   ]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
@@ -108,6 +117,10 @@ export default function SequencesPage() {
   const [editDraft, setEditDraft] = useState<DraftStep[]>([]);
   const [editBusy, setEditBusy] = useState(false);
   const [editNote, setEditNote] = useState<string | null>(null);
+  const [openStats, setOpenStats] = useState<number | null>(null);
+  const [stats, setStats] = useState<
+    Record<number, { sent: number; skipped: number }>
+  >({});
   const [quiet, setQuiet] = useState<{
     enabled: boolean;
     start: number;
@@ -174,7 +187,7 @@ export default function SequencesPage() {
   const addStep = () => {
     setDraft((current) =>
       current.length < 5
-        ? [...current, { delay_hours: 24, body: "" }]
+        ? [...current, { delay_hours: 24, body: "", onlyIfIdleHours: null }]
         : current
     );
   };
@@ -232,11 +245,16 @@ export default function SequencesPage() {
       const response = await fetch("/api/omniflow/portal/sequences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          keyword.trim()
-            ? { name, steps: draft, trigger_keyword: keyword.trim() }
-            : { name, steps: draft }
-        ),
+        body: JSON.stringify((() => {
+          const steps = draft.map((step) => ({
+            delay_hours: step.delay_hours,
+            body: step.body,
+            only_if_idle_hours: step.onlyIfIdleHours,
+          }));
+          return keyword.trim()
+            ? { name, steps, trigger_keyword: keyword.trim() }
+            : { name, steps };
+        })()),
       });
       if (response.ok) {
         setNoteTone("emerald");
@@ -247,7 +265,7 @@ export default function SequencesPage() {
         );
         setName("");
         setKeyword("");
-        setDraft([{ delay_hours: 0, body: "" }]);
+        setDraft([{ delay_hours: 0, body: "", onlyIfIdleHours: null }]);
         void load();
         return;
       }
@@ -269,6 +287,25 @@ export default function SequencesPage() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ enabled }),
+        });
+        void load();
+      } catch {
+        void load();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load]
+  );
+
+  const togglePauseReply = useCallback(
+    async (row: Sequence) => {
+      setBusy(true);
+      try {
+        await fetch("/api/omniflow/portal/sequences/" + String(row.id), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pauseOnReply: !row.pauseOnReply }),
         });
         void load();
       } catch {
@@ -362,6 +399,37 @@ export default function SequencesPage() {
     [refreshLog]
   );
 
+  const toggleStats = useCallback(
+    async (id: number) => {
+      if (openStats === id) {
+        setOpenStats(null);
+        return;
+      }
+      setOpenStats(id);
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/sequences/" + String(id) + "/stats",
+          { cache: "no-store" }
+        );
+        const payload: unknown = await response.json().catch(() => null);
+        const list =
+          payload !== null && typeof payload === "object"
+            ? (payload as {
+                steps?: { step_no: number; sent: number; skipped: number }[];
+              }).steps
+            : null;
+        const map: Record<number, { sent: number; skipped: number }> = {};
+        for (const row of Array.isArray(list) ? list : []) {
+          map[row.step_no] = { sent: row.sent, skipped: row.skipped };
+        }
+        setStats(map);
+      } catch {
+        setStats({});
+      }
+    },
+    [openStats]
+  );
+
   const openAdd = useCallback((id: number) => {
     setAddOpenFor(id);
     setAddDraft("");
@@ -376,7 +444,11 @@ export default function SequencesPage() {
   const openEdit = useCallback((row: Sequence) => {
     setEditOpenFor(row.id);
     setEditDraft(
-      row.steps.map((step) => ({ delay_hours: step.delay_hours, body: step.body }))
+      row.steps.map((step) => ({
+        delay_hours: step.delay_hours,
+        body: step.body,
+        onlyIfIdleHours: step.onlyIfIdleHours,
+      }))
     );
     setEditNote(null);
   }, []);
@@ -393,6 +465,7 @@ export default function SequencesPage() {
       const steps = editDraft.map((step) => ({
         delay_hours: step.delay_hours,
         body: step.body,
+        onlyIfIdleHours: step.onlyIfIdleHours,
       }));
       if (steps.length === 0 || steps.some((step) => !step.body.trim())) {
         setEditNote("Fill every step's message.");
@@ -607,6 +680,36 @@ export default function SequencesPage() {
                   />
                   <span className="shrink-0 text-xs text-slate-500">hours</span>
                 </div>
+                <label className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={step.onlyIfIdleHours !== null}
+                    onChange={(event) =>
+                      patchStep(index, {
+                        onlyIfIdleHours: event.target.checked ? 24 : null,
+                      })
+                    }
+                    className="h-3.5 w-3.5 accent-cyan-400"
+                  />
+                  Send only if no reply for
+                  <input
+                    type="number"
+                    min={1}
+                    max={168}
+                    value={step.onlyIfIdleHours ?? 24}
+                    disabled={step.onlyIfIdleHours === null}
+                    onChange={(event) =>
+                      patchStep(index, {
+                        onlyIfIdleHours: Math.max(
+                          1,
+                          Math.min(168, Number(event.target.value) || 24)
+                        ),
+                      })
+                    }
+                    className="w-14 rounded-md border border-white/[0.07] bg-white/[0.02] px-1.5 py-0.5 text-[11px] text-white outline-none focus:border-cyan-400/40 disabled:opacity-40"
+                  />
+                  hours
+                </label>
                 <textarea
                   value={step.body}
                   onChange={(event) => patchStep(index, { body: event.target.value })}
@@ -764,6 +867,19 @@ export default function SequencesPage() {
                           {row.triggerKeyword}
                         </span>
                       ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void togglePauseReply(row)}
+                        title="Pause this series automatically when the customer replies"
+                        className={
+                          "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] transition " +
+                          (row.pauseOnReply
+                            ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                            : "border-white/[0.08] bg-white/[0.02] text-slate-500")
+                        }
+                      >
+                        {row.pauseOnReply ? "pauses on reply" : "ignores replies"}
+                      </button>
                     </span>
                     <p className="mt-0.5 text-[11px] text-slate-500">
                       {row.steps.length} step{row.steps.length === 1 ? "" : "s"} \u00b7{" "}
@@ -787,6 +903,13 @@ export default function SequencesPage() {
                       className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
                     >
                       {openLog === row.id ? "Hide people" : "People"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void toggleStats(row.id)}
+                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                    >
+                      {openStats === row.id ? "Hide stats" : "Stats"}
                     </button>
                     <button
                       type="button"
@@ -818,6 +941,43 @@ export default function SequencesPage() {
                     </button>
                   </div>
                 </div>
+                {openStats === row.id ? (
+                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-500">
+                      Step delivery
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {row.steps.map((step) => {
+                        const stat = stats[step.step_no] ?? {
+                          sent: 0,
+                          skipped: 0,
+                        };
+                        const total = stat.sent + stat.skipped;
+                        const pct =
+                          total === 0
+                            ? 0
+                            : Math.round((stat.sent / total) * 100);
+                        return (
+                          <div key={step.step_no}>
+                            <div className="flex items-center justify-between text-[11px] text-slate-400">
+                              <span>Step {step.step_no}</span>
+                              <span>
+                                {stat.sent} sent \u00b7 {stat.skipped} skipped
+                                \u00b7 {pct}%
+                              </span>
+                            </div>
+                            <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/[0.05]">
+                              <div
+                                className="h-full rounded-full bg-cyan-400/50"
+                                style={{ width: pct + "%" }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 {openLog === row.id ? (
                   <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
                     <div className="flex items-center justify-between gap-2">
@@ -998,6 +1158,36 @@ export default function SequencesPage() {
                             />
                             <span className="shrink-0 text-xs text-slate-500">hours</span>
                           </div>
+                          <label className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                            <input
+                              type="checkbox"
+                              checked={step.onlyIfIdleHours !== null}
+                              onChange={(event) =>
+                                patchEditStep(index, {
+                                  onlyIfIdleHours: event.target.checked ? 24 : null,
+                                })
+                              }
+                              className="h-3.5 w-3.5 accent-cyan-400"
+                            />
+                            Send only if no reply for
+                            <input
+                              type="number"
+                              min={1}
+                              max={168}
+                              value={step.onlyIfIdleHours ?? 24}
+                              disabled={step.onlyIfIdleHours === null}
+                              onChange={(event) =>
+                                patchEditStep(index, {
+                                  onlyIfIdleHours: Math.max(
+                                    1,
+                                    Math.min(168, Number(event.target.value) || 24)
+                                  ),
+                                })
+                              }
+                              className="w-14 rounded-md border border-white/[0.07] bg-white/[0.02] px-1.5 py-0.5 text-[11px] text-white outline-none focus:border-cyan-400/40 disabled:opacity-40"
+                            />
+                            hours
+                          </label>
                           <textarea
                             value={step.body}
                             onChange={(event) =>
@@ -1018,7 +1208,7 @@ export default function SequencesPage() {
                           onClick={() =>
                             setEditDraft((current) => [
                               ...current,
-                              { delay_hours: 24, body: "" },
+                              { delay_hours: 24, body: "", onlyIfIdleHours: null },
                             ])
                           }
                           className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
