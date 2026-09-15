@@ -4405,6 +4405,223 @@ export async function getSequenceStats(
     .filter((row) => row.stepNo > 0);
 }
 
+export interface SegmentFilters {
+  lead_temp?: "hot" | "warm" | "cold";
+  status?: "open" | "closed";
+  idle_days?: number;
+  tag?: string;
+}
+
+export interface SegmentRow {
+  id: number;
+  name: string;
+  filters: SegmentFilters;
+  memberCount: number;
+  createdAt: string | null;
+}
+
+function normalizeSegmentFilters(raw: unknown): SegmentFilters {
+  const out: SegmentFilters = {};
+  if (raw === null || typeof raw !== "object") return out;
+  const input = raw as Record<string, unknown>;
+  if (
+    input.lead_temp === "hot" ||
+    input.lead_temp === "warm" ||
+    input.lead_temp === "cold"
+  ) {
+    out.lead_temp = input.lead_temp;
+  }
+  if (input.status === "open" || input.status === "closed") {
+    out.status = input.status;
+  }
+  if (typeof input.idle_days === "number" && input.idle_days >= 1) {
+    out.idle_days = Math.round(input.idle_days);
+  }
+  if (typeof input.tag === "string" && input.tag.trim()) {
+    out.tag = input.tag.trim();
+  }
+  return out;
+}
+
+export async function listSegments(
+  accessToken: string
+): Promise<SegmentRow[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/segments");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawList = (payload as Record<string, unknown>).segments;
+  if (!Array.isArray(rawList)) return null;
+  const segments: SegmentRow[] = [];
+  for (const item of rawList) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "number") continue;
+    segments.push({
+      id: row.id,
+      name: typeof row.name === "string" ? row.name : "",
+      filters: normalizeSegmentFilters(row.filters),
+      memberCount: typeof row.member_count === "number" ? row.member_count : 0,
+      createdAt:
+        typeof row.created_at === "string" ? row.created_at : null,
+    });
+  }
+  return segments;
+}
+
+export type SegmentMutation =
+  | { kind: "ok"; segment?: SegmentRow }
+  | { kind: "invalid" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function createSegment(
+  accessToken: string,
+  name: string,
+  filters: SegmentFilters
+): Promise<SegmentMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/segments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, filters }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  const segment =
+    payload !== null && typeof payload === "object"
+      ? (payload as { segment?: unknown }).segment
+      : null;
+  if (segment !== null && typeof segment === "object") {
+    const row = segment as Record<string, unknown>;
+    if (typeof row.id === "number") {
+      return {
+        kind: "ok",
+        segment: {
+          id: row.id,
+          name: typeof row.name === "string" ? row.name : "",
+          filters: normalizeSegmentFilters(row.filters),
+          memberCount:
+            typeof row.member_count === "number" ? row.member_count : 0,
+          createdAt:
+            typeof row.created_at === "string" ? row.created_at : null,
+        },
+      };
+    }
+  }
+  return { kind: "ok" };
+}
+
+export async function deleteSegment(
+  accessToken: string,
+  id: number
+): Promise<{ kind: "ok" } | { kind: "not_found" } | { kind: "unavailable" }> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/segments/" + String(id),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export interface SegmentMember {
+  contactId: string;
+  name: string;
+  chats: number;
+  lastAt: string | null;
+}
+
+export async function listSegmentMembers(
+  accessToken: string,
+  id: number
+): Promise<SegmentMember[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/segments/" + String(id) + "/members?limit=50"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const rawList = (payload as Record<string, unknown>).members;
+  if (!Array.isArray(rawList)) return null;
+  const members: SegmentMember[] = [];
+  for (const item of rawList) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.contact_id !== "string") continue;
+    members.push({
+      contactId: row.contact_id,
+      name: typeof row.name === "string" ? row.name : "",
+      chats: typeof row.chats === "number" ? row.chats : 0,
+      lastAt: typeof row.last_at === "string" ? row.last_at : null,
+    });
+  }
+  return members;
+}
+
+export async function broadcastToSegment(
+  accessToken: string,
+  id: number,
+  body: string
+): Promise<{ kind: "ok"; sent: number } | { kind: "invalid" } | { kind: "unavailable" }> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/segments/" + String(id) + "/broadcast",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  const sent =
+    payload !== null && typeof payload === "object"
+      ? (payload as { sent?: unknown }).sent
+      : null;
+  return { kind: "ok", sent: typeof sent === "number" ? sent : 0 };
+}
+
 export async function deleteSequence(
   accessToken: string,
   id: number
