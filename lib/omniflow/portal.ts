@@ -5424,6 +5424,254 @@ export async function classifyIntent(
   };
 }
 
+export interface FraudScore {
+  score: number;
+  level: string;
+  reasons: string[];
+  declined: number;
+  refunds: number;
+  chats: number;
+}
+
+export async function getFraudScore(
+  accessToken: string,
+  contact: string
+): Promise<FraudScore | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/fraud/score?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const reasons = Array.isArray(row.reasons)
+    ? row.reasons.filter((item): item is string => typeof item === "string")
+    : [];
+  return {
+    score: typeof row.score === "number" ? row.score : 0,
+    level: typeof row.level === "string" ? row.level : "clear",
+    reasons,
+    declined: typeof row.declined === "number" ? row.declined : 0,
+    refunds: typeof row.refunds === "number" ? row.refunds : 0,
+    chats: typeof row.chats === "number" ? row.chats : 0,
+  };
+}
+
+export interface FraudFlag {
+  contactId: string;
+  score: number;
+  level: string;
+  reasons: string;
+  updatedAt: string | null;
+}
+
+export async function listFraudFlags(
+  accessToken: string
+): Promise<FraudFlag[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/fraud/flags");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).flags
+    : null;
+  if (!Array.isArray(raw)) return [];
+  const flags: FraudFlag[] = [];
+  for (const item of raw) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.contact_id !== "string") continue;
+    flags.push({
+      contactId: row.contact_id,
+      score: typeof row.score === "number" ? row.score : 0,
+      level: typeof row.level === "string" ? row.level : "clear",
+      reasons: typeof row.reasons === "string" ? row.reasons : "",
+      updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
+    });
+  }
+  return flags;
+}
+
+export interface OptOutRow {
+  contactId: string;
+  reason: string;
+  createdAt: string | null;
+}
+
+export async function listOptOuts(
+  accessToken: string,
+  query: string
+): Promise<OptOutRow[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/compliance/optouts?q=" + encodeURIComponent(query)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).optouts
+    : null;
+  if (!Array.isArray(raw)) return [];
+  const rows: OptOutRow[] = [];
+  for (const item of raw) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.contact_id !== "string") continue;
+    rows.push({
+      contactId: row.contact_id,
+      reason: typeof row.reason === "string" ? row.reason : "customer",
+      createdAt: typeof row.created_at === "string" ? row.created_at : null,
+    });
+  }
+  return rows;
+}
+
+export interface OptOutMutation {
+  ok: boolean;
+  contactId: string;
+  reason: string;
+}
+
+export async function addOptOut(
+  accessToken: string,
+  contact: string,
+  reason: string
+): Promise<OptOutMutation | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/compliance/optouts",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contact, reason }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    ok: row.ok === true,
+    contactId: typeof row.contact_id === "string" ? row.contact_id : contact,
+    reason: typeof row.reason === "string" ? row.reason : reason,
+  };
+}
+
+export type OptOutRemoval = { ok: true } | "not_found" | null;
+
+export async function removeOptOut(
+  accessToken: string,
+  contact: string
+): Promise<OptOutRemoval> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/compliance/optouts?contact=" + encodeURIComponent(contact),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
+export interface KbSuggestion {
+  id: number;
+  question: string;
+  snippet: string;
+  matched: string[];
+}
+
+export interface AssistResult {
+  intent: string;
+  language: string | null;
+  linked: string[];
+  suggestions: KbSuggestion[];
+  basedOn: string;
+}
+
+export async function getConversationAssist(
+  accessToken: string,
+  conversationId: number
+): Promise<AssistResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" + conversationId + "/assist"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawSuggestions = Array.isArray(row.suggestions) ? row.suggestions : [];
+  const suggestions: KbSuggestion[] = [];
+  for (const item of rawSuggestions) {
+    if (item === null || typeof item !== "object") continue;
+    const entry = item as Record<string, unknown>;
+    suggestions.push({
+      id: typeof entry.id === "number" ? entry.id : 0,
+      question: typeof entry.question === "string" ? entry.question : "",
+      snippet: typeof entry.snippet === "string" ? entry.snippet : "",
+      matched: Array.isArray(entry.matched)
+        ? entry.matched.filter((m): m is string => typeof m === "string")
+        : [],
+    });
+  }
+  return {
+    intent: typeof row.intent === "string" ? row.intent : "other",
+    language: typeof row.language === "string" ? row.language : null,
+    linked: Array.isArray(row.linked)
+      ? row.linked.filter((m): m is string => typeof m === "string")
+      : [],
+    suggestions,
+    basedOn: typeof row.based_on === "string" ? row.based_on : "",
+  };
+}
+
 export async function deleteSequence(
   accessToken: string,
   id: number

@@ -73,6 +73,7 @@ const COD_STYLES: Record<string, string> = {
 export default function ProfileClient({ contact }: { contact: string }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [missing, setMissing] = useState(false);
+  const [risk, setRisk] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!contact) {
@@ -103,6 +104,43 @@ export default function ProfileClient({ contact }: { contact: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!profile?.contactId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/fraud/score?contact=" +
+            encodeURIComponent(profile.contactId),
+          { cache: "no-store" }
+        );
+        if (!response.ok) {
+          if (active) setRisk(null);
+          return;
+        }
+        const payload: unknown = await response.json().catch(() => null);
+        if (active && payload !== null && typeof payload === "object") {
+          const level = (payload as Record<string, unknown>).level;
+          const score = (payload as Record<string, unknown>).score;
+          if (level === "watch" || level === "high") {
+            setRisk(level);
+          } else if (typeof score === "number" && score > 0) {
+            setRisk("low");
+          } else {
+            setRisk(null);
+          }
+        } else if (active) {
+          setRisk(null);
+        }
+      } catch {
+        if (active) setRisk(null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [profile?.contactId]);
 
   if (missing || !contact) {
     return (
@@ -212,6 +250,17 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   Linked: {linked}
                 </span>
               ))}
+              {risk ? (
+                <span
+                  className={`rounded-md border px-1.5 py-0.5 ${
+                    risk === "high"
+                      ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                  }`}
+                >
+                  Risk: {risk}
+                </span>
+              ) : null}
             </div>
           ) : null}
           {profile && profile.tags.length > 0 ? (
