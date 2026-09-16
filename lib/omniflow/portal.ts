@@ -6392,6 +6392,365 @@ export async function deleteRoutingRule(
   return { ok: true };
 }
 
+export interface RecoSuggestion {
+  name: string;
+  priceText: string;
+  notes: string;
+  kind: string;
+  score: number;
+  reasons: string[];
+}
+
+export interface RecoSignals {
+  paidItems: number;
+  mentions: number;
+  bestsellers: number;
+  catalogItems: number;
+}
+
+export interface RecoResult {
+  contactId: string;
+  contactName: string | null;
+  conversationId: number | null;
+  suggestions: RecoSuggestion[];
+  signals: RecoSignals;
+}
+
+export async function getRecoSuggestions(
+  accessToken: string,
+  contact: string
+): Promise<RecoResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/reco/suggest?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawSuggestions = Array.isArray(row.suggestions) ? row.suggestions : [];
+  const signalsRaw =
+    row.signals !== null && typeof row.signals === "object"
+      ? (row.signals as Record<string, unknown>)
+      : {};
+  return {
+    contactId: typeof row.contact_id === "string" ? row.contact_id : contact,
+    contactName: null,
+    conversationId: null,
+    suggestions: rawSuggestions
+      .filter((item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object")
+      .map((item) => ({
+        name: typeof item.name === "string" ? item.name : "",
+        priceText: typeof item.price_text === "string" ? item.price_text : "",
+        notes: typeof item.notes === "string" ? item.notes : "",
+        kind: typeof item.kind === "string" ? item.kind : "product",
+        score: typeof item.score === "number" ? item.score : 0,
+        reasons: Array.isArray(item.reasons)
+          ? item.reasons.filter((r): r is string => typeof r === "string")
+          : [],
+      })),
+    signals: {
+      paidItems:
+        typeof signalsRaw.paid_items === "number" ? signalsRaw.paid_items : 0,
+      mentions:
+        typeof signalsRaw.mentions === "number" ? signalsRaw.mentions : 0,
+      bestsellers:
+        typeof signalsRaw.bestsellers === "number" ? signalsRaw.bestsellers : 0,
+      catalogItems:
+        typeof signalsRaw.catalog_items === "number"
+          ? signalsRaw.catalog_items
+          : 0,
+    },
+  };
+}
+
+export async function getConversationRecos(
+  accessToken: string,
+  conversationId: number
+): Promise<RecoResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/reco/surface?conversation_id=" + conversationId
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawSuggestions = Array.isArray(row.suggestions) ? row.suggestions : [];
+  return {
+    contactId: typeof row.contact_id === "string" ? row.contact_id : "",
+    contactName:
+      typeof row.contact_name === "string" ? row.contact_name : null,
+    conversationId:
+      typeof row.conversation_id === "number" ? row.conversation_id : null,
+    suggestions: rawSuggestions
+      .filter((item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object")
+      .map((item) => ({
+        name: typeof item.name === "string" ? item.name : "",
+        priceText: typeof item.price_text === "string" ? item.price_text : "",
+        notes: typeof item.notes === "string" ? item.notes : "",
+        kind: typeof item.kind === "string" ? item.kind : "product",
+        score: typeof item.score === "number" ? item.score : 0,
+        reasons: Array.isArray(item.reasons)
+          ? item.reasons.filter((r): r is string => typeof r === "string")
+          : [],
+      })),
+    signals: {
+      paidItems: 0,
+      mentions: 0,
+      bestsellers: 0,
+      catalogItems: 0,
+    },
+  };
+}
+
+export interface RecoBestseller {
+  name: string;
+  orders: number;
+  priceText: string;
+}
+
+export interface RecoReport {
+  bestsellers: RecoBestseller[];
+  paidLinks: number;
+  buyers: number;
+  catalogItems: number;
+}
+
+export async function getRecoReport(
+  accessToken: string
+): Promise<RecoReport | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/reco/report");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawBest = Array.isArray(row.bestsellers) ? row.bestsellers : [];
+  return {
+    bestsellers: rawBest
+      .filter((item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object")
+      .map((item) => ({
+        name: typeof item.name === "string" ? item.name : "",
+        orders: typeof item.orders === "number" ? item.orders : 0,
+        priceText: typeof item.price_text === "string" ? item.price_text : "",
+      })),
+    paidLinks: typeof row.paid_links === "number" ? row.paid_links : 0,
+    buyers: typeof row.buyers === "number" ? row.buyers : 0,
+    catalogItems: typeof row.catalog_items === "number" ? row.catalog_items : 0,
+  };
+}
+
+export interface ChurnSignals {
+  lastInboundDays: number | null;
+  unansweredDays: number | null;
+  openCartDays: number | null;
+  ordersLast30d: number;
+  ordersPrior30d: number;
+  paidOrders: number;
+  lastOrderDays: number | null;
+}
+
+export interface ChurnScore {
+  contactId: string;
+  score: number;
+  tier: string;
+  reasons: string[];
+  signals: ChurnSignals;
+}
+
+export interface ChurnRadarEntry {
+  contactId: string;
+  name: string;
+  score: number;
+  tier: string;
+  reasons: string[];
+}
+
+export interface ChurnRadar {
+  contacts: ChurnRadarEntry[];
+  scored: number;
+  counts: Record<string, number>;
+}
+
+export interface ChurnTopReason {
+  reason: string;
+  count: number;
+}
+
+export interface ChurnReport {
+  scored: number;
+  avgScore: number | null;
+  tiers: Record<string, number>;
+  topReasons: ChurnTopReason[];
+}
+
+function churnSignalsOf(row: Record<string, unknown>): ChurnSignals {
+  const raw =
+    row.signals !== null && typeof row.signals === "object"
+      ? (row.signals as Record<string, unknown>)
+      : {};
+  const num = (key: string): number =>
+    typeof raw[key] === "number" ? (raw[key] as number) : 0;
+  const opt = (key: string): number | null =>
+    typeof raw[key] === "number" ? (raw[key] as number) : null;
+  return {
+    lastInboundDays: opt("last_inbound_days"),
+    unansweredDays: opt("unanswered_days"),
+    openCartDays: opt("open_cart_days"),
+    ordersLast30d: num("orders_last_30d"),
+    ordersPrior30d: num("orders_prior_30d"),
+    paidOrders: num("paid_orders"),
+    lastOrderDays: opt("last_order_days"),
+  };
+}
+
+function churnReasonsOf(row: Record<string, unknown>): string[] {
+  const raw = row.reasons;
+  return Array.isArray(raw)
+    ? raw.filter((reason): reason is string => typeof reason === "string")
+    : [];
+}
+
+export async function getChurnScore(
+  accessToken: string,
+  contact: string
+): Promise<ChurnScore | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/churn/score?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    contactId: typeof row.contact_id === "string" ? row.contact_id : contact,
+    score: typeof row.score === "number" ? row.score : 0,
+    tier: typeof row.tier === "string" ? row.tier : "healthy",
+    reasons: churnReasonsOf(row),
+    signals: churnSignalsOf(row),
+  };
+}
+
+export async function getChurnRadar(
+  accessToken: string,
+  limit = 10
+): Promise<ChurnRadar | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/churn/radar?limit=" + encodeURIComponent(String(limit))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawContacts = Array.isArray(row.contacts) ? row.contacts : [];
+  const counts =
+    row.counts !== null && typeof row.counts === "object"
+      ? (row.counts as Record<string, unknown>)
+      : {};
+  const tierCounts: Record<string, number> = {};
+  for (const [key, value] of Object.entries(counts)) {
+    if (typeof value === "number") tierCounts[key] = value;
+  }
+  return {
+    contacts: rawContacts
+      .filter((item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object")
+      .map((item) => ({
+        contactId: typeof item.contact_id === "string" ? item.contact_id : "",
+        name: typeof item.name === "string" ? item.name : "",
+        score: typeof item.score === "number" ? item.score : 0,
+        tier: typeof item.tier === "string" ? item.tier : "healthy",
+        reasons: churnReasonsOf(item),
+      })),
+    scored: typeof row.scored === "number" ? row.scored : 0,
+    counts: tierCounts,
+  };
+}
+
+export async function getChurnReport(
+  accessToken: string
+): Promise<ChurnReport | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/churn/report");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawReasons = Array.isArray(row.top_reasons) ? row.top_reasons : [];
+  const tiers =
+    row.tiers !== null && typeof row.tiers === "object"
+      ? (row.tiers as Record<string, unknown>)
+      : {};
+  const tierCounts: Record<string, number> = {};
+  for (const [key, value] of Object.entries(tiers)) {
+    if (typeof value === "number") tierCounts[key] = value;
+  }
+  return {
+    scored: typeof row.scored === "number" ? row.scored : 0,
+    avgScore: typeof row.avg_score === "number" ? row.avg_score : null,
+    tiers: tierCounts,
+    topReasons: rawReasons
+      .filter((item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object")
+      .map((item) => ({
+        reason: typeof item.reason === "string" ? item.reason : "",
+        count: typeof item.count === "number" ? item.count : 0,
+      })),
+  };
+}
+
 export async function deleteSequence(
   accessToken: string,
   id: number
