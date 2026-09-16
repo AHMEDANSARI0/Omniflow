@@ -32,6 +32,7 @@ export default function AssistCard({ conversationId }: { conversationId: number 
   }, [load]);
 
   if (!assist) return null;
+  const sentiment = assist.sentiment?.label ?? null;
   const empty =
     assist.suggestions.length === 0 &&
     assist.intent === "other" &&
@@ -56,6 +57,19 @@ export default function AssistCard({ conversationId }: { conversationId: number 
         <span className="rounded-md border border-cyan-400/25 bg-cyan-400/[0.08] px-1.5 py-0.5 text-cyan-300">
           Intent: {assist.intent}
         </span>
+        {sentiment && sentiment !== "neutral" ? (
+          <span
+            className={`rounded-md border px-1.5 py-0.5 ${
+              sentiment === "negative"
+                ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
+                : sentiment === "mixed"
+                  ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                  : "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+            }`}
+          >
+            Sentiment: {sentiment}
+          </span>
+        ) : null}
         {assist.language ? (
           <span className="rounded-md border border-violet-400/25 bg-violet-400/[0.08] px-1.5 py-0.5 text-violet-300">
             Language: {assist.language}
@@ -70,6 +84,12 @@ export default function AssistCard({ conversationId }: { conversationId: number 
           </span>
         ))}
       </div>
+
+      {assist.sentiment && assist.sentiment.negative.length > 0 ? (
+        <p className="mt-2 text-[11px] text-amber-300/80">
+          Flagged: {assist.sentiment.negative.join(", ")}
+        </p>
+      ) : null}
 
       {assist.suggestions.length > 0 ? (
         <ul className="mt-3 space-y-2">

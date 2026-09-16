@@ -13,14 +13,27 @@ interface QuickLink {
 }
 
 const QUICK_LINKS: QuickLink[] = [
-  { icon: "◎", title: "Conversations", href: "/dashboard/conversations" },
-  { icon: "☻", title: "Customers", href: "/dashboard/customers" },
-  { icon: "⚡", title: "Automations", href: "/dashboard/automations" },
+  { icon: "\u270e", title: "Conversations", href: "/dashboard/conversations" },
+  { icon: "\u2606", title: "Customers", href: "/dashboard/customers" },
+  { icon: "\u2301", title: "Automations", href: "/dashboard/automations" },
+  { icon: "\u2192", title: "Sequences", href: "/dashboard/sequences" },
+  { icon: "\u2736", title: "Configure AI", href: "/dashboard/bot" },
+  { icon: "\u2706", title: "WhatsApp setup", href: "/dashboard/channels/whatsapp" },
+  { icon: "\u25a6", title: "Knowledge base", href: "/dashboard/knowledge-base" },
+  { icon: "\u25ad", title: "Business profile", href: "/dashboard/profile" },
+  { icon: "\u25c9", title: "Analytics", href: "/dashboard/analytics" },
+  { icon: "\u2248", title: "Weekly", href: "/dashboard/weekly" },
+  { icon: "\u25ce", title: "Segments", href: "/dashboard/segments" },
+  { icon: "\u25c8", title: "Pipeline", href: "/dashboard/pipeline" },
   { icon: "➤", title: "Broadcasts", href: "/dashboard/broadcasts" },
-  { icon: "◢", title: "Analytics", href: "/dashboard/analytics" },
+  { icon: "\u25a4", title: "COD confirmations", href: "/dashboard/cod" },
+  { icon: "\u21c4", title: "Integrations", href: "/dashboard/integrations" },
+  { icon: "\u26e8", title: "Compliance", href: "/dashboard/compliance" },
+  { icon: "\u25b2", title: "Growth", href: "/dashboard/growth" },
+  { icon: "/", title: "Quick replies", href: "/dashboard/saved-replies" },
+  { icon: "\u2261", title: "Activity", href: "/dashboard/activity" },
+  { icon: "\u2699", title: "Settings", href: "/dashboard/settings" },
   { icon: "⚑", title: "Team", href: "/dashboard/team" },
-  { icon: "▣", title: "Knowledge base", href: "/dashboard/knowledge-base" },
-  { icon: "◇", title: "Business profile", href: "/dashboard/profile" },
 ];
 
 function StatTile({

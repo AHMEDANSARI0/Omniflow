@@ -5619,8 +5619,16 @@ export interface KbSuggestion {
   matched: string[];
 }
 
+export interface AssistSentiment {
+  label: string;
+  score: number;
+  positive: string[];
+  negative: string[];
+}
+
 export interface AssistResult {
   intent: string;
+  sentiment: AssistSentiment | null;
   language: string | null;
   linked: string[];
   suggestions: KbSuggestion[];
@@ -5661,8 +5669,23 @@ export async function getConversationAssist(
         : [],
     });
   }
+  let sentiment: AssistSentiment | null = null;
+  if (row.sentiment !== null && typeof row.sentiment === "object") {
+    const entry = row.sentiment as Record<string, unknown>;
+    sentiment = {
+      label: typeof entry.label === "string" ? entry.label : "neutral",
+      score: typeof entry.score === "number" ? entry.score : 0,
+      positive: Array.isArray(entry.positive)
+        ? entry.positive.filter((w): w is string => typeof w === "string")
+        : [],
+      negative: Array.isArray(entry.negative)
+        ? entry.negative.filter((w): w is string => typeof w === "string")
+        : [],
+    };
+  }
   return {
     intent: typeof row.intent === "string" ? row.intent : "other",
+    sentiment,
     language: typeof row.language === "string" ? row.language : null,
     linked: Array.isArray(row.linked)
       ? row.linked.filter((m): m is string => typeof m === "string")
@@ -5670,6 +5693,703 @@ export async function getConversationAssist(
     suggestions,
     basedOn: typeof row.based_on === "string" ? row.based_on : "",
   };
+}
+
+async function controlPlanePublicRequest(path: string): Promise<Response | null> {
+  try {
+    const url = new URL(path.replace(/^\//, ""), controlPlaneBaseUrl());
+    return await fetch(url, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export interface PublicCheckoutView {
+  title: string;
+  items: { name: string; qty: number; price: number }[];
+  total: number;
+  status: string;
+  createdAt: string | null;
+}
+
+export async function getPublicCheckout(
+  token: string
+): Promise<PublicCheckoutView | null> {
+  const response = await controlPlanePublicRequest(
+    "api/v1/public/checkout/" + encodeURIComponent(token)
+  );
+  if (response === null || !response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawItems = Array.isArray(row.items) ? row.items : [];
+  return {
+    title: typeof row.title === "string" ? row.title : "",
+    items: rawItems
+      .filter((item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object")
+      .map((item) => ({
+        name: typeof item.name === "string" ? item.name : "",
+        qty: typeof item.qty === "number" ? item.qty : 1,
+        price: typeof item.price === "number" ? item.price : 0,
+      })),
+    total: typeof row.total === "number" ? row.total : 0,
+    status: typeof row.status === "string" ? row.status : "open",
+    createdAt: typeof row.created_at === "string" ? row.created_at : null,
+  };
+}
+
+export interface SentimentResult {
+  label: string;
+  score: number;
+  positive: string[];
+  negative: string[];
+}
+
+export async function getSentiment(
+  accessToken: string,
+  text: string
+): Promise<SentimentResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/insights/sentiment?text=" + encodeURIComponent(text)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    label: typeof row.label === "string" ? row.label : "neutral",
+    score: typeof row.score === "number" ? row.score : 0,
+    positive: Array.isArray(row.positive)
+      ? row.positive.filter((w): w is string => typeof w === "string")
+      : [],
+    negative: Array.isArray(row.negative)
+      ? row.negative.filter((w): w is string => typeof w === "string")
+      : [],
+  };
+}
+
+export interface ChurnContact {
+  contactId: string;
+  name: string;
+  chats: number;
+  lastAt: string | null;
+}
+
+export async function listChurnRisk(
+  accessToken: string,
+  days: number
+): Promise<ChurnContact[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/insights/churn?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).contacts
+    : null;
+  if (!Array.isArray(raw)) return [];
+  const contacts: ChurnContact[] = [];
+  for (const item of raw) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.contact_id !== "string") continue;
+    contacts.push({
+      contactId: row.contact_id,
+      name: typeof row.name === "string" ? row.name : "",
+      chats: typeof row.chats === "number" ? row.chats : 0,
+      lastAt: typeof row.last_at === "string" ? row.last_at : null,
+    });
+  }
+  return contacts;
+}
+
+export interface StaffingForecast {
+  hours: { hour: number; chats: number }[];
+  peakHour: number | null;
+  peakChats: number;
+  suggested: number[];
+}
+
+export async function getStaffingForecast(
+  accessToken: string
+): Promise<StaffingForecast | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/insights/staffing");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawHours = Array.isArray(row.hours) ? row.hours : [];
+  return {
+    hours: rawHours
+      .filter((h): h is Record<string, unknown> => h !== null && typeof h === "object")
+      .map((h) => ({
+        hour: typeof h.hour === "number" ? h.hour : 0,
+        chats: typeof h.chats === "number" ? h.chats : 0,
+      })),
+    peakHour: typeof row.peak_hour === "number" ? row.peak_hour : null,
+    peakChats: typeof row.peak_chats === "number" ? row.peak_chats : 0,
+    suggested: Array.isArray(row.suggested)
+      ? row.suggested.filter((h): h is number => typeof h === "number")
+      : [],
+  };
+}
+
+export interface BroadcastSuggestion {
+  audience: string;
+  count: number;
+  note: string;
+}
+
+export async function listBroadcastSuggestions(
+  accessToken: string
+): Promise<BroadcastSuggestion[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/insights/broadcast-suggestions"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).suggestions
+    : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object")
+    .map((item) => ({
+      audience: typeof item.audience === "string" ? item.audience : "",
+      count: typeof item.count === "number" ? item.count : 0,
+      note: typeof item.note === "string" ? item.note : "",
+    }));
+}
+
+export interface NegotiationSettings {
+  enabled: boolean;
+  floorPercent: number;
+  maxPercent: number;
+}
+
+export async function getNegotiationSettings(
+  accessToken: string
+): Promise<NegotiationSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/negotiation/settings"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).settings
+    : null;
+  if (raw === null || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  return {
+    enabled: row.enabled === true,
+    floorPercent: typeof row.floor_percent === "number" ? row.floor_percent : 0,
+    maxPercent: typeof row.max_percent === "number" ? row.max_percent : 25,
+  };
+}
+
+export async function saveNegotiationSettings(
+  accessToken: string,
+  enabled: boolean,
+  floorPercent: number,
+  maxPercent: number
+): Promise<NegotiationSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/negotiation/settings",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled,
+          floor_percent: floorPercent,
+          max_percent: maxPercent,
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).settings
+    : null;
+  if (raw === null || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  return {
+    enabled: row.enabled === true,
+    floorPercent: typeof row.floor_percent === "number" ? row.floor_percent : 0,
+    maxPercent: typeof row.max_percent === "number" ? row.max_percent : 25,
+  };
+}
+
+export interface NegotiationQuote {
+  ask: number;
+  price: number;
+  discountPercent: number;
+  verdict: string;
+  counter: number;
+  maxPercent: number;
+  enabled: boolean;
+}
+
+export async function getNegotiationQuote(
+  accessToken: string,
+  ask: number,
+  price: number
+): Promise<NegotiationQuote | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/negotiation/quote?ask=" +
+        encodeURIComponent(String(ask)) +
+        "&price=" +
+        encodeURIComponent(String(price))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    ask: typeof row.ask === "number" ? row.ask : 0,
+    price: typeof row.price === "number" ? row.price : 0,
+    discountPercent:
+      typeof row.discount_percent === "number" ? row.discount_percent : 0,
+    verdict: typeof row.verdict === "string" ? row.verdict : "counter",
+    counter: typeof row.counter === "number" ? row.counter : 0,
+    maxPercent: typeof row.max_percent === "number" ? row.max_percent : 25,
+    enabled: row.enabled === true,
+  };
+}
+
+export interface CheckoutLink {
+  id: number;
+  token: string;
+  contactId: string;
+  title: string;
+  items: { name: string; qty: number; price: number }[];
+  total: number;
+  status: string;
+  createdAt: string | null;
+}
+
+export async function createCheckoutLink(
+  accessToken: string,
+  contactId: string,
+  title: string,
+  items: { name: string; qty: number; price: number }[]
+): Promise<CheckoutLink | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/links",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contact_id: contactId,
+          title,
+          items: items.map((item) => ({
+            name: item.name,
+            qty: item.qty,
+            price: item.price,
+          })),
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).link
+    : null;
+  if (raw === null || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const rawItems = Array.isArray(row.items) ? row.items : [];
+  return {
+    id: typeof row.id === "number" ? row.id : 0,
+    token: typeof row.token === "string" ? row.token : "",
+    contactId: typeof row.contact_id === "string" ? row.contact_id : "",
+    title: typeof row.title === "string" ? row.title : "",
+    items: rawItems
+      .filter((item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object")
+      .map((item) => ({
+        name: typeof item.name === "string" ? item.name : "",
+        qty: typeof item.qty === "number" ? item.qty : 1,
+        price: typeof item.price === "number" ? item.price : 0,
+      })),
+    total: typeof row.total === "number" ? row.total : 0,
+    status: typeof row.status === "string" ? row.status : "open",
+    createdAt: typeof row.created_at === "string" ? row.created_at : null,
+  };
+}
+
+export async function listCheckoutLinks(
+  accessToken: string
+): Promise<CheckoutLink[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/checkout/links");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).links
+    : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object")
+    .map((item) => {
+      const rawItems = Array.isArray(item.items) ? item.items : [];
+      return {
+        id: typeof item.id === "number" ? item.id : 0,
+        token: typeof item.token === "string" ? item.token : "",
+        contactId: typeof item.contact_id === "string" ? item.contact_id : "",
+        title: typeof item.title === "string" ? item.title : "",
+        items: rawItems
+          .filter((entry): entry is Record<string, unknown> =>
+            entry !== null && typeof entry === "object")
+          .map((entry) => ({
+            name: typeof entry.name === "string" ? entry.name : "",
+            qty: typeof entry.qty === "number" ? entry.qty : 1,
+            price: typeof entry.price === "number" ? entry.price : 0,
+          })),
+        total: typeof item.total === "number" ? item.total : 0,
+        status: typeof item.status === "string" ? item.status : "open",
+        createdAt: typeof item.created_at === "string" ? item.created_at : null,
+      };
+    });
+}
+
+export type CheckoutStatusMutation = { ok: true } | "not_found" | null;
+
+export async function setCheckoutLinkStatus(
+  accessToken: string,
+  linkId: number,
+  status: string
+): Promise<CheckoutStatusMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/links/" + linkId,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
+export interface ListenRule {
+  id: number;
+  keyword: string;
+  note: string;
+}
+
+export async function listListenRules(
+  accessToken: string
+): Promise<ListenRule[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/listen/rules");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).rules
+    : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object")
+    .map((item) => ({
+      id: typeof item.id === "number" ? item.id : 0,
+      keyword: typeof item.keyword === "string" ? item.keyword : "",
+      note: typeof item.note === "string" ? item.note : "",
+    }));
+}
+
+export async function addListenRule(
+  accessToken: string,
+  keyword: string,
+  note: string
+): Promise<ListenRule | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/listen/rules",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keyword, note }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).rule
+    : null;
+  if (raw === null || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  return {
+    id: typeof row.id === "number" ? row.id : 0,
+    keyword: typeof row.keyword === "string" ? row.keyword : keyword,
+    note: typeof row.note === "string" ? row.note : note,
+  };
+}
+
+export type ListenRuleRemoval = { ok: true } | "not_found" | null;
+
+export async function deleteListenRule(
+  accessToken: string,
+  ruleId: number
+): Promise<ListenRuleRemoval> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/listen/rules/" + ruleId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
+export interface ListenHit {
+  id: number;
+  keyword: string;
+  conversationId: number | null;
+  contactId: string;
+  snippet: string;
+  createdAt: string | null;
+}
+
+export async function listListenHits(
+  accessToken: string
+): Promise<ListenHit[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/listen/hits");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).hits
+    : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object")
+    .map((item) => ({
+      id: typeof item.id === "number" ? item.id : 0,
+      keyword: typeof item.keyword === "string" ? item.keyword : "",
+      conversationId:
+        typeof item.conversation_id === "number" ? item.conversation_id : null,
+      contactId: typeof item.contact_id === "string" ? item.contact_id : "",
+      snippet: typeof item.snippet === "string" ? item.snippet : "",
+      createdAt: typeof item.created_at === "string" ? item.created_at : null,
+    }));
+}
+
+export interface RoutingRule {
+  id: number;
+  match: string;
+  userId: number;
+  priority: number;
+}
+
+export async function listRoutingRules(
+  accessToken: string
+): Promise<RoutingRule[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/routing/rules");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).rules
+    : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object")
+    .map((item) => ({
+      id: typeof item.id === "number" ? item.id : 0,
+      match: typeof item.match === "string" ? item.match : "",
+      userId: typeof item.user_id === "number" ? item.user_id : 0,
+      priority: typeof item.priority === "number" ? item.priority : 100,
+    }));
+}
+
+export async function addRoutingRule(
+  accessToken: string,
+  match: string,
+  userId: number,
+  priority: number
+): Promise<RoutingRule | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/routing/rules",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ match, user_id: userId, priority }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    id: typeof row.id === "number" ? row.id : 0,
+    match,
+    userId,
+    priority,
+  };
+}
+
+export type RoutingRuleRemoval = { ok: true } | "not_found" | null;
+
+export async function deleteRoutingRule(
+  accessToken: string,
+  ruleId: number
+): Promise<RoutingRuleRemoval> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/routing/rules/" + ruleId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
 }
 
 export async function deleteSequence(
