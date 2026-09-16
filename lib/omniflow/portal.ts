@@ -4736,10 +4736,21 @@ export interface CustomerConversationRef {
   lastMessageAt: string | null;
 }
 
+export interface CustomerProfileAction {
+  id: number;
+  kind: string;
+  status: string;
+  note: string;
+  createdAt: string | null;
+}
+
 export interface CustomerProfile {
   contactId: string;
   name: string;
   leadTemp: string;
+  language: string | null;
+  linkedChannels: string[];
+  actions: CustomerProfileAction[];
   chats: number;
   openChats: number;
   firstSeen: string | null;
@@ -4838,6 +4849,21 @@ export async function getCustomerProfile(
     codRequests,
     sequences,
     notes,
+    language: typeof row.language === "string" ? row.language : null,
+    linkedChannels: Array.isArray(row.linked_channels)
+      ? (row.linked_channels as unknown[]).filter(
+          (item): item is string => typeof item === "string"
+        )
+      : [],
+    actions: Array.isArray(row.actions)
+      ? (row.actions as Record<string, unknown>[]).map((item) => ({
+          id: typeof item.id === "number" ? item.id : 0,
+          kind: typeof item.kind === "string" ? item.kind : "",
+          status: typeof item.status === "string" ? item.status : "pending",
+          note: typeof item.note === "string" ? item.note : "",
+          createdAt: typeof item.created_at === "string" ? item.created_at : null,
+        }))
+      : [],
   };
 }
 
@@ -5094,6 +5120,308 @@ export async function mergeCustomers(
       ? (payload as Record<string, unknown>).moved
       : null;
   return { kind: "ok", moved: typeof moved === "number" ? moved : 0 };
+}
+
+export type ReplyLanguage = "auto" | "en" | "ur" | "roman";
+
+export async function getWorkspaceLanguage(
+  accessToken: string
+): Promise<ReplyLanguage | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/workspace/language");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const lang =
+    payload !== null && typeof payload === "object"
+      ? (payload as Record<string, unknown>).reply_language
+      : null;
+  return lang === "en" || lang === "ur" || lang === "roman" || lang === "auto"
+    ? lang
+    : "auto";
+}
+
+export type LanguageMutation =
+  | { kind: "ok" }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function saveWorkspaceLanguage(
+  accessToken: string,
+  language: ReplyLanguage
+): Promise<LanguageMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/workspace/language", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export async function getContactLanguage(
+  accessToken: string,
+  contact: string
+): Promise<{ lang: string | null; updatedAt: string | null } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/contacts/language?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    lang: typeof row.lang === "string" ? row.lang : null,
+    updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
+  };
+}
+
+export async function detectLanguage(
+  accessToken: string,
+  text: string
+): Promise<string | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/contacts/language/detect",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const lang =
+    payload !== null && typeof payload === "object"
+      ? (payload as Record<string, unknown>).lang
+      : null;
+  return typeof lang === "string" ? lang : null;
+}
+
+export async function linkContacts(
+  accessToken: string,
+  contactA: string,
+  contactB: string
+): Promise<LanguageMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/contacts/link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact_a: contactA, contact_b: contactB }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export type ActionMutation =
+  | { kind: "ok"; id: number }
+  | { kind: "invalid" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function createConversationAction(
+  accessToken: string,
+  conversationId: number,
+  kind: string,
+  note: string
+): Promise<ActionMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/conversations/" + String(conversationId) + "/actions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, note }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  const id =
+    payload !== null && typeof payload === "object"
+      ? (payload as Record<string, unknown>).id
+      : null;
+  return { kind: "ok", id: typeof id === "number" ? id : 0 };
+}
+
+export type ResolveMutation =
+  | { kind: "ok" }
+  | { kind: "invalid" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function resolveContactAction(
+  accessToken: string,
+  id: number,
+  status: "done" | "declined"
+): Promise<ResolveMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/contacts/actions/" + String(id),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
+}
+
+export interface ContactAction {
+  id: number;
+  conversationId: number | null;
+  contactId: string;
+  kind: string;
+  note: string;
+  status: string;
+  requestedBy: string | null;
+  createdAt: string | null;
+  resolvedAt: string | null;
+}
+
+export async function listContactActions(
+  accessToken: string,
+  contact: string,
+  status: string
+): Promise<ContactAction[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/contacts/actions?contact=" +
+        encodeURIComponent(contact) +
+        "&status=" +
+        encodeURIComponent(status)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).actions
+    : null;
+  if (!Array.isArray(raw)) return [];
+  const actions: ContactAction[] = [];
+  for (const item of raw) {
+    if (item === null || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "number") continue;
+    actions.push({
+      id: row.id,
+      conversationId:
+        typeof row.conversation_id === "number" ? row.conversation_id : null,
+      contactId: typeof row.contact_id === "string" ? row.contact_id : "",
+      kind: typeof row.kind === "string" ? row.kind : "",
+      note: typeof row.note === "string" ? row.note : "",
+      status: typeof row.status === "string" ? row.status : "pending",
+      requestedBy: typeof row.requested_by === "string" ? row.requested_by : null,
+      createdAt: typeof row.created_at === "string" ? row.created_at : null,
+      resolvedAt: typeof row.resolved_at === "string" ? row.resolved_at : null,
+    });
+  }
+  return actions;
+}
+
+export interface IntentResult {
+  intent: string;
+  entities: { phones: string[]; orderIds: string[]; emails: string[] };
+}
+
+export async function classifyIntent(
+  accessToken: string,
+  text: string
+): Promise<IntentResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/insights/intent?text=" + encodeURIComponent(text)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const raw = row.entities;
+  const entities =
+    raw !== null && typeof raw === "object"
+      ? (raw as Record<string, unknown>)
+      : {};
+  const list = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : [];
+  return {
+    intent: typeof row.intent === "string" ? row.intent : "other",
+    entities: {
+      phones: list(entities.phones),
+      orderIds: list(entities.order_ids),
+      emails: list(entities.emails),
+    },
+  };
 }
 
 export async function deleteSequence(

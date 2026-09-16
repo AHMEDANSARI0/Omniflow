@@ -145,6 +145,14 @@ export default function CustomerCard({ contactId }: { contactId: string | null }
         <h2 className="text-xs font-semibold text-white">Customer</h2>
         <div className="flex items-center gap-3">
           {contactId && (
+            <Link
+              prefetch={false}
+              href={`/dashboard/customers/profile?contact=${encodeURIComponent(contactId)}`}
+              className="text-[10px] font-semibold uppercase tracking-wider text-cyan-300/90 transition-colors duration-300 hover:text-cyan-200"
+            >
+              360
+            </Link>)}
+          {contactId && (
             <a
               href={`https://wa.me/${contactId.replace(/[^0-9]/g, "")}`}
               target="_blank"

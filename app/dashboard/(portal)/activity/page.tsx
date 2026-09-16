@@ -22,6 +22,7 @@ const FAMILIES: { key: string; label: string }[] = [
   { key: "kb", label: "Knowledge base" },
   { key: "customers", label: "Customers" },
   { key: "conversation", label: "Inbox" },
+  { key: "bot", label: "Escalations" },
 ];
 
 export default function ActivityPage() {

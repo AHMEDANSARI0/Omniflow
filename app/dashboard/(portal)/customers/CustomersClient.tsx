@@ -129,6 +129,47 @@ export default function CustomersClient({
     }, 300);
   }
 
+  const [mergeOpenFor, setMergeOpenFor] = useState<string | null>(null);
+  const [mergeKeep, setMergeKeep] = useState("");
+  const [mergeBusy, setMergeBusy] = useState(false);
+  const [mergeNote, setMergeNote] = useState("");
+
+  async function mergeContact(duplicate: string) {
+    if (mergeBusy || !mergeKeep || mergeKeep === duplicate) {
+      setMergeNote(
+        mergeKeep === duplicate
+          ? "Pick a different contact to keep."
+          : "Pick which contact to keep."
+      );
+      return;
+    }
+    setMergeBusy(true);
+    setMergeNote("");
+    try {
+      const response = await fetch("/api/omniflow/portal/customers/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keep: mergeKeep, merge: duplicate }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        moved?: number;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setMergeOpenFor(null);
+        setMergeKeep("");
+        void refresh();
+      } else {
+        setMergeNote(payload?.error?.message || "Could not merge. Try again.");
+      }
+    } catch {
+      setMergeNote("Network error — try again.");
+    } finally {
+      setMergeBusy(false);
+    }
+  }
+
   function copyContact(contactId: string) {
     void navigator.clipboard.writeText(contactId);
   }
@@ -504,6 +545,18 @@ export default function CustomersClient({
                   >
                     360
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMergeOpenFor(customer.contactId);
+                      setMergeKeep("");
+                      setMergeNote("");
+                    }}
+                    title="Merge duplicate contact"
+                    className="border-b border-white/[0.05] py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 transition-colors duration-300 hover:text-white"
+                  >
+                    Merge
+                  </button>
                   <a
                     href={`https://wa.me/${customer.contactId.replace(/[^0-9]/g, "")}`}
                     target="_blank"
@@ -543,6 +596,51 @@ export default function CustomersClient({
                   </button>
                 </div>
               </div>
+              {mergeOpenFor === customer.contactId && (
+                <div className="border-t border-white/[0.05] p-4">
+                  <p className="text-xs font-semibold text-white">
+                    Merge duplicates into {customer.name || customer.contactId}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    All chats, pipeline stages and COD orders of the duplicate
+                    move here. This cannot be undone.
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <select
+                      value={mergeKeep}
+                      onChange={(event) => setMergeKeep(event.target.value)}
+                      className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40 sm:w-72"
+                    >
+                      <option value="" className="bg-slate-900">
+                        Keep which contact?
+                      </option>
+                      {customers.map((option) => (
+                        <option
+                          key={option.contactId}
+                          value={option.contactId}
+                          className="bg-slate-900"
+                        >
+                          {option.name || option.contactId}
+                          {option.contactId === customer.contactId
+                            ? " (this row)"
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => void mergeContact(customer.contactId)}
+                      disabled={mergeBusy}
+                      className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-40"
+                    >
+                      {mergeBusy ? "Merging\u2026" : "Merge"}
+                    </button>
+                  </div>
+                  {mergeNote ? (
+                    <p className="mt-2 text-[11px] text-amber-300">{mergeNote}</p>
+                  ) : null}
+                </div>
+              )}
               {notesOpenFor === customer.contactId && (
                 <div className="border-t border-white/[0.05] p-4">
                   {notesByContact[customer.contactId] === undefined ? (

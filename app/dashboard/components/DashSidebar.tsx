@@ -19,45 +19,45 @@ const navItems: NavItem[] = [
   {
     label: "Knowledge base",
     href: "/dashboard/knowledge-base",
-    icon: "",
+    icon: "\u25a6",
     enabled: true,
   },
-  { label: "Overview", href: "/dashboard", icon: "", enabled: true },
+  { label: "Overview", href: "/dashboard", icon: "\u2302", enabled: true },
   {
     label: "WhatsApp setup",
     href: "/dashboard/channels/whatsapp",
-    icon: "",
+    icon: "\u260e",
     enabled: true,
   },
-  { label: "Configure AI", href: "/dashboard/bot", icon: "", enabled: true },
+  { label: "Configure AI", href: "/dashboard/bot", icon: "\u2733", enabled: true },
   {
     label: "Conversations",
     href: "/dashboard/conversations",
-    icon: "",
+    icon: "\u2709",
     enabled: true,
   },
   {
     label: "Customers",
     href: "/dashboard/customers",
-    icon: "",
+    icon: "\u263a",
     enabled: true,
   },
   {
     label: "Automations",
     href: "/dashboard/automations",
-    icon: "",
+    icon: "\u26a1",
     enabled: true,
   },
   {
     label: "Analytics",
     href: "/dashboard/analytics",
-    icon: "",
+    icon: "\u25c9",
     enabled: true,
   },
   {
     label: "Business profile",
     href: "/dashboard/profile",
-    icon: "",
+    icon: "\u25ad",
     enabled: true,
   },
   { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "➤", enabled: true },
@@ -70,7 +70,7 @@ const navItems: NavItem[] = [
   { label: "Activity", href: "/dashboard/activity", icon: "\u2261", enabled: true },
   { label: "Weekly", href: "/dashboard/weekly", icon: "\u2248", enabled: true },
   { label: "Team", href: "/dashboard/team", icon: "⚑", enabled: true },
-  { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: true },
+  { label: "Settings", href: "/dashboard/settings", icon: "\u2699", enabled: true },
 ];
 
 function BrandMark({ compact = false }: { compact?: boolean }) {
@@ -281,7 +281,7 @@ export default function DashSidebar({
           </button>
         </div>
 
-        <div className="flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4">
           <NavLinks collapsed={collapsed} />
         </div>
 
@@ -337,7 +337,7 @@ export default function DashSidebar({
                   ✕
                 </button>
               </div>
-              <div className="flex-1">
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4">
                 <NavLinks onNavigate={() => setMobileOpen(false)} />
               </div>
               <SidebarFooter

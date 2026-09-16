@@ -3,10 +3,21 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+interface ProfileAction {
+  id: number;
+  kind: string;
+  status: string;
+  note: string;
+  createdAt: string | null;
+}
+
 interface Profile {
   contactId: string;
   name: string;
   leadTemp: string;
+  language: string | null;
+  linkedChannels: string[];
+  actions: ProfileAction[];
   chats: number;
   openChats: number;
   firstSeen: string | null;
@@ -186,6 +197,23 @@ export default function ProfileClient({ contact }: { contact: string }) {
               </div>
             </div>
           ) : null}
+          {profile && (profile.language || profile.linkedChannels.length > 0) ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px]">
+              {profile.language ? (
+                <span className="rounded-md border border-violet-400/25 bg-violet-400/[0.08] px-1.5 py-0.5 text-violet-300">
+                  Language: {profile.language}
+                </span>
+              ) : null}
+              {profile.linkedChannels.map((linked) => (
+                <span
+                  key={linked}
+                  className="rounded-md border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-slate-400"
+                >
+                  Linked: {linked}
+                </span>
+              ))}
+            </div>
+          ) : null}
           {profile && profile.tags.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {profile.tags.map((tag) => (
@@ -273,6 +301,40 @@ export default function ProfileClient({ contact }: { contact: string }) {
                       <span className="shrink-0 text-slate-500">
                         {series.status} \\u00b7 step {series.currentStep + 1} \\u00b7{" "}
                         {when(series.enrolledAt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="mt-3 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+              <p className="text-xs font-semibold text-white">Action requests</p>
+              {profile.actions.length === 0 ? (
+                <p className="mt-2 text-xs text-slate-500">
+                  No cancel / address / refund requests yet.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {profile.actions.map((action) => (
+                    <li
+                      key={action.id}
+                      className="flex items-center justify-between gap-2 text-xs"
+                    >
+                      <span className="truncate text-slate-300">
+                        {action.kind}
+                        {action.note ? " \u00b7 " + action.note : ""}
+                      </span>
+                      <span
+                        className={
+                          action.status === "done"
+                            ? "shrink-0 text-emerald-300"
+                            : action.status === "declined"
+                              ? "shrink-0 text-rose-300"
+                              : "shrink-0 text-amber-300"
+                        }
+                      >
+                        {action.status} \u00b7 {when(action.createdAt)}
                       </span>
                     </li>
                   ))}
