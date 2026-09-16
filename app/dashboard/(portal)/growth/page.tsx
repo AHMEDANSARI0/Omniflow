@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import OrderUpdatesSettings from "./OrderUpdatesSettings";
+
 interface ChurnContact {
   contactId: string;
   name: string;
@@ -67,6 +69,61 @@ interface RoutingRule {
   priority: number;
 }
 
+interface ChurnRadarContact {
+  contactId: string;
+  name: string;
+  score: number;
+  tier: string;
+  reasons: string[];
+}
+
+interface RevenueSummaryData {
+  days: number;
+  revenue: number;
+  revenuePrior: number;
+  deltaPercent: number | null;
+  orders: number;
+  ordersPrior: number;
+  aov: number | null;
+  newBuyers: number;
+  repeatBuyers: number;
+  cancelled: number;
+  cancelledRate: number | null;
+  openCarts: number;
+  pipelineValue: number;
+  winbackSent: number;
+}
+
+interface RevenueItemData {
+  name: string;
+  units: number;
+  revenue: number;
+  buyers: number;
+  unitsPrior: number;
+  trend: string;
+}
+
+interface RestockItemData {
+  name: string;
+  weeklyRate: number;
+  revenue: number;
+  buyers: number;
+  lastSoldDays: number | null;
+  recentUnits: number;
+  priorUnits: number;
+  sharePercent: number | null;
+  trend: string;
+}
+
+interface RestockRadarData {
+  stockUp: RestockItemData[];
+  watch: RestockItemData[];
+  slow: RestockItemData[];
+  counts: Record<string, number>;
+  itemsSold: number;
+  days: number;
+}
+
 const DAYS_OPTIONS = [7, 14, 30, 60];
 
 async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
@@ -99,6 +156,10 @@ function Section({
 
 export default function GrowthPage() {
   const [churn, setChurn] = useState<ChurnContact[]>([]);
+  const [radar, setRadar] = useState<ChurnRadarContact[]>([]);
+  const [revenue, setRevenue] = useState<RevenueSummaryData | null>(null);
+  const [revItems, setRevItems] = useState<RevenueItemData[]>([]);
+  const [restock, setRestock] = useState<RestockRadarData | null>(null);
   const [days, setDays] = useState(14);
   const [staffing, setStaffing] = useState<StaffingForecast | null>(null);
   const [suggestions, setSuggestions] = useState<BroadcastSuggestion[]>([]);
@@ -116,10 +177,19 @@ export default function GrowthPage() {
   const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
-    const [churnPayload, forecast, ideas, negotiation, checkout, listenRules, listenHits, routingRules] =
+    const [churnPayload, radarPayload, revenuePayload, itemsPayload, forecast, ideas, negotiation, checkout, listenRules, listenHits, routingRules, restockPayload] =
       await Promise.all([
         getJson<{ contacts: ChurnContact[] }>(
           "/api/omniflow/portal/insights/churn?days=" + days
+        ),
+        getJson<{ contacts: ChurnRadarContact[] }>(
+          "/api/omniflow/portal/churn/radar?limit=5"
+        ),
+        getJson<RevenueSummaryData>(
+          "/api/omniflow/portal/revenue/summary?days=" + days
+        ),
+        getJson<{ items: RevenueItemData[] }>(
+          "/api/omniflow/portal/revenue/items?days=" + days
         ),
         getJson<StaffingForecast>("/api/omniflow/portal/insights/staffing"),
         getJson<{ suggestions: BroadcastSuggestion[] }>(
@@ -134,9 +204,15 @@ export default function GrowthPage() {
         getJson<{ rules: ListenRule[] }>("/api/omniflow/portal/listen/rules"),
         getJson<{ hits: ListenHit[] }>("/api/omniflow/portal/listen/hits"),
         getJson<{ rules: RoutingRule[] }>("/api/omniflow/portal/routing/rules"),
+        getJson<RestockRadarData>(
+          "/api/omniflow/portal/restock/radar?days=" + days
+        ),
       ]);
     setFailed(negotiation === null && forecast === null);
     setChurn(churnPayload?.contacts ?? []);
+    setRadar(radarPayload?.contacts ?? []);
+    setRevenue(revenuePayload);
+    setRevItems(itemsPayload?.items ?? []);
     setStaffing(forecast);
     setSuggestions(ideas?.suggestions ?? []);
     setSettings(negotiation?.settings ?? null);
@@ -144,6 +220,7 @@ export default function GrowthPage() {
     setRules(listenRules?.rules ?? []);
     setHits(listenHits?.hits ?? []);
     setRouting(routingRules?.rules ?? []);
+    setRestock(restockPayload);
   }, [days]);
 
   useEffect(() => {
@@ -233,10 +310,10 @@ export default function GrowthPage() {
 
       <div className="space-y-4">
         <Section
-          title="Churn risk"
-          hint="Customers with no activity for the selected window."
+          title="Revenue & pipeline"
+          hint="Paid revenue, buyers and open-cart value for the selected window."
         >
-          <div className="flex items-center gap-2">
+          <div className="mb-3 flex items-center gap-2">
             {DAYS_OPTIONS.map((option) => (
               <button
                 key={option}
@@ -251,6 +328,219 @@ export default function GrowthPage() {
               </button>
             ))}
           </div>
+          {revenue ? (
+            <>
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
+                  <p className="text-[10px] text-slate-500">Revenue</p>
+                  <p className="mt-0.5 text-lg font-semibold text-white">
+                    Rs {revenue.revenue.toLocaleString()}
+                  </p>
+                  {revenue.deltaPercent === null ? (
+                    <p className="text-[10px] text-slate-500">
+                      no prior window
+                    </p>
+                  ) : (
+                    <p
+                      className={`text-[10px] ${
+                        revenue.deltaPercent >= 0
+                          ? "text-emerald-300"
+                          : "text-rose-300"
+                      }`}
+                    >
+                      {revenue.deltaPercent >= 0 ? "+" : ""}
+                      {revenue.deltaPercent}% vs prior
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
+                  <p className="text-[10px] text-slate-500">Orders</p>
+                  <p className="mt-0.5 text-lg font-semibold text-white">
+                    {revenue.orders}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    AOV Rs {revenue.aov !== null ? revenue.aov.toLocaleString() : "-"}
+                    {revenue.cancelled > 0
+                      ? " · " + revenue.cancelled + " cancelled"
+                      : ""}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
+                  <p className="text-[10px] text-slate-500">Buyers</p>
+                  <p className="mt-0.5 text-lg font-semibold text-white">
+                    {revenue.newBuyers + revenue.repeatBuyers}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    {revenue.newBuyers} new · {revenue.repeatBuyers} repeat
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
+                  <p className="text-[10px] text-slate-500">Pipeline</p>
+                  <p className="mt-0.5 text-lg font-semibold text-white">
+                    Rs {revenue.pipelineValue.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    {revenue.openCarts} open carts ·{" "}
+                    {revenue.winbackSent} win-backs sent
+                  </p>
+                </div>
+              </div>
+              {revItems.length > 0 ? (
+                <div className="mt-3">
+                  <p className="text-[10px] font-semibold text-slate-400">
+                    Top items by revenue
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {revItems.slice(0, 5).map((item) => (
+                      <li
+                        key={item.name}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.05] bg-white/[0.015] px-2.5 py-1.5"
+                      >
+                        <p className="truncate text-xs text-slate-200">
+                          {item.name}
+                        </p>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="text-[10px] text-slate-500">
+                            {item.units} sold
+                            {item.buyers > 0
+                              ? " · " + item.buyers + " buyers"
+                              : ""}
+                          </span>
+                          <span
+                            className={`rounded-md border px-1.5 py-0.5 text-[10px] ${
+                              item.trend === "up"
+                                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                                : item.trend === "down"
+                                  ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
+                                  : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+                            }`}
+                          >
+                            {item.trend}
+                          </span>
+                          <span className="text-[10px] text-slate-300">
+                            Rs {item.revenue.toLocaleString()}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Revenue data unavailable.
+            </p>
+          )}
+        </Section>
+
+        <Section
+          title="Restock radar"
+          hint="What to reorder from your sell-through - fast movers, risers and slow items."
+        >
+          {restock && restock.itemsSold > 0 ? (
+            <div className="grid gap-3 md:grid-cols-3">
+              {(
+                [
+                  ["Stock up", restock.stockUp, "text-emerald-300"],
+                  ["Watch", restock.watch, "text-amber-300"],
+                  ["Slow movers", restock.slow, "text-slate-400"],
+                ] as const
+              ).map(([label, list, tone]) => (
+                <div
+                  key={label}
+                  className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-2.5"
+                >
+                  <p className={`text-[10px] font-semibold ${tone}`}>
+                    {label} ({list.length})
+                  </p>
+                  {list.length === 0 ? (
+                    <p className="mt-1.5 text-[11px] text-slate-600">
+                      Nothing here.
+                    </p>
+                  ) : (
+                    <ul className="mt-1.5 space-y-1">
+                      {list.slice(0, 4).map((item) => (
+                        <li
+                          key={label + item.name}
+                          className="rounded-lg border border-white/[0.05] bg-white/[0.015] px-2 py-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <p className="truncate text-xs text-slate-200">
+                              {item.name}
+                            </p>
+                            <span className="shrink-0 text-[10px] text-slate-500">
+                              {item.weeklyRate}/wk
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[10px] text-slate-600">
+                            {item.trend}
+                            {item.sharePercent !== null
+                              ? " · " + item.sharePercent + "% of revenue"
+                              : ""}
+                            {item.lastSoldDays !== null
+                              ? " · last sold " + item.lastSoldDays + "d ago"
+                              : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Sell a few orders to see restock signals.
+            </p>
+          )}
+        </Section>
+
+        <Section
+          title="Churn radar"
+          hint="Scored from quiet chats, unanswered replies, cold carts and slowing orders."
+        >
+          {radar.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              No churn signals right now.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {radar.map((entry) => (
+                <li
+                  key={entry.contactId}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-slate-200">
+                      {entry.name || entry.contactId}
+                    </p>
+                    {entry.reasons[0] ? (
+                      <p className="truncate text-[10px] text-slate-500">
+                        {entry.reasons[0]}
+                      </p>
+                    ) : null}
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] ${
+                      entry.tier === "at_risk"
+                        ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
+                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                    }`}
+                  >
+                    {entry.score} ·{" "}
+                    {entry.tier === "at_risk" ? "at risk" : "cooling"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        <Section
+          title="Churn risk"
+          hint="Customers with no activity for the selected window."
+        >
           {churn.length === 0 ? (
             <p className="mt-3 text-xs text-slate-500">
               No quiet customers in this window.
@@ -423,7 +713,11 @@ export default function GrowthPage() {
                             ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
                             : link.status === "cancelled"
                               ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
-                              : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                              : link.status === "shipped"
+                                ? "border-sky-400/25 bg-sky-400/[0.08] text-sky-300"
+                                : link.status === "delivered"
+                                  ? "border-violet-400/25 bg-violet-400/[0.08] text-violet-300"
+                                  : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
                         }`}
                       >
                         {link.status}
@@ -444,6 +738,22 @@ export default function GrowthPage() {
                           </button>
                         </>
                       ) : null}
+                      {link.status === "paid" ? (
+                        <button
+                          onClick={() => void markLink(link, "shipped")}
+                          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                        >
+                          Shipped
+                        </button>
+                      ) : null}
+                      {link.status === "shipped" ? (
+                        <button
+                          onClick={() => void markLink(link, "delivered")}
+                          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                        >
+                          Delivered
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </li>
@@ -451,6 +761,8 @@ export default function GrowthPage() {
             </ul>
           )}
         </Section>
+
+        <OrderUpdatesSettings />
 
         <Section
           title="Keyword alerts"

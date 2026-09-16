@@ -4,6 +4,7 @@ import { requireOmniFlowPrincipal } from "../../../lib/omniflow/auth-dal";
 import { getOverview, getRecentActivity } from "../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
 import SetupChecklist from "../components/SetupChecklist";
+import DailyBrief from "./DailyBrief";
 
 
 interface QuickLink {
@@ -30,6 +31,7 @@ const QUICK_LINKS: QuickLink[] = [
   { icon: "\u21c4", title: "Integrations", href: "/dashboard/integrations" },
   { icon: "\u26e8", title: "Compliance", href: "/dashboard/compliance" },
   { icon: "\u25b2", title: "Growth", href: "/dashboard/growth" },
+  { icon: "\u21bb", title: "Win-back", href: "/dashboard/winback" },
   { icon: "/", title: "Quick replies", href: "/dashboard/saved-replies" },
   { icon: "\u2261", title: "Activity", href: "/dashboard/activity" },
   { icon: "\u2699", title: "Settings", href: "/dashboard/settings" },
@@ -91,6 +93,8 @@ export default async function ClientDashboardPage() {
       </div>
 
       <SetupChecklist />
+
+      <DailyBrief />
 
       {overview && (
         <>

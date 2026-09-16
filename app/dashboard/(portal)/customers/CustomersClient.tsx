@@ -40,6 +40,13 @@ function tagHue(tag: string): number {
   return hash;
 }
 
+interface TopCustomer {
+  contactId: string;
+  name: string;
+  totalSpent: number;
+  orders: number;
+}
+
 export default function CustomersClient({
   initialCustomers,
   initialQuery,
@@ -67,6 +74,7 @@ export default function CustomersClient({
   const [msgDraft, setMsgDraft] = useState("");
   const [msgBusy, setMsgBusy] = useState(false);
   const [msgStatus, setMsgStatus] = useState<string | null>(null);
+  const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
   const searchRef = useRef(initialQuery ?? "");
   const debounceRef = useRef<number | null>(null);
   const [channelFilter, setChannelFilter] = useState<
@@ -119,6 +127,36 @@ export default function CustomersClient({
       window.clearInterval(timer);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/value/top?limit=5",
+          { cache: "no-store" }
+        );
+        if (!response.ok || !active) return;
+        const payload = (await response.json().catch(() => null)) as {
+          customers?: TopCustomer[];
+        } | null;
+        if (active && payload && Array.isArray(payload.customers)) {
+          setTopCustomers(
+            payload.customers.filter(
+              (entry): entry is TopCustomer =>
+                entry !== null && typeof entry === "object" &&
+                typeof entry.contactId === "string" && !!entry.contactId
+            )
+          );
+        }
+      } catch {
+        // Top strip is optional - ignore failures.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function onSearchChange(value: string) {
     setSearch(value);
@@ -386,6 +424,32 @@ export default function CustomersClient({
         Every contact across WhatsApp and the website — search, filter, and
         jump straight into their chats.
       </p>
+
+      {topCustomers.length > 0 ? (
+        <div className="mt-4">
+          <p className="text-[10px] font-semibold text-slate-400">
+            Top customers
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {topCustomers.map((entry) => (
+              <Link
+                key={entry.contactId}
+                href={"/dashboard/customers/profile?contact=" +
+                  encodeURIComponent(entry.contactId)}
+                className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-2.5 py-1.5 transition-colors hover:bg-white/[0.05]"
+              >
+                <p className="text-xs text-slate-200">
+                  {entry.name || entry.contactId}
+                </p>
+                <p className="text-[10px] text-emerald-300">
+                  Rs {entry.totalSpent.toLocaleString()} ·{" "}
+                  {entry.orders} orders
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-4">
         <input

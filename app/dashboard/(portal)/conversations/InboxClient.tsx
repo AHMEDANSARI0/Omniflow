@@ -16,6 +16,8 @@ interface ConversationSummary {
   lastMessagePreview: string | null;
   unread: boolean;
   needsReply: boolean;
+  vip: boolean;
+  paidOrders: number;
   lastIntent: string | null;
   leadTemp: string;
   leadScore: number;
@@ -1510,6 +1512,14 @@ export default function InboxClient({
                           </span>
                         )}
                       </p>
+                        {item.vip && (
+                          <span
+                            className="shrink-0 rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-300"
+                            title={"VIP — " + item.paidOrders + " paid orders"}
+                          >
+                            ★ vip
+                          </span>
+                        )}
                       {item.contactId ? (
                         <button
                           type="button"

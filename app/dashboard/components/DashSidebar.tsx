@@ -65,6 +65,7 @@ const navItems: NavItem[] = [
   { label: "Integrations", href: "/dashboard/integrations", icon: "\u21c4", enabled: true },
   { label: "Compliance", href: "/dashboard/compliance", icon: "\u26e8", enabled: true },
   { label: "Growth", href: "/dashboard/growth", icon: "\u25b2", enabled: true },
+  { label: "Win-back", href: "/dashboard/winback", icon: "\u21bb", enabled: true },
   { label: "Sequences", href: "/dashboard/sequences", icon: "\u2192", enabled: true },
   { label: "Segments", href: "/dashboard/segments", icon: "\u25ce", enabled: true },
   { label: "Pipeline", href: "/dashboard/pipeline", icon: "\u25c8", enabled: true },

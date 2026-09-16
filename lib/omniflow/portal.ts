@@ -509,6 +509,8 @@ export interface ConversationSummary {
   createdAt: string | null;
   unread: boolean;
   needsReply: boolean;
+  vip: boolean;
+  paidOrders: number;
   lastIntent: string | null;
   leadScore: number;
   leadTemp: string;
@@ -544,6 +546,8 @@ function normalizeConversation(value: unknown): ConversationSummary | null {
     createdAt: typeof p.created_at === "string" ? p.created_at : null,
     unread: p.unread === true,
     needsReply: p.needs_reply === true,
+    vip: p.vip === true,
+    paidOrders: typeof p.paid_orders === "number" ? p.paid_orders : 0,
     lastIntent: typeof p.last_intent === "string" ? p.last_intent : null,
     leadScore: typeof p.lead_score === "number" ? p.lead_score : 0,
     leadTemp: typeof p.lead_temp === "string" ? p.lead_temp : "cold",
@@ -602,7 +606,7 @@ export async function listConversations(
     assignedFilter === "unassigned" || assignedFilter === "me"
       ? "assigned=" + assignedFilter
       : "";
-  const countsPart = includeCounts ? "include=counts" : "";
+  const countsPart = includeCounts ? "include=counts,vip" : "include=vip";
   const limitPart =
     limit && limit >= 1 && limit <= 50 ? "limit=" + Math.floor(limit) : "";
   const daysPart = daysFilter ? "days=" + encodeURIComponent(daysFilter) : "";
@@ -6164,6 +6168,126 @@ export async function setCheckoutLinkStatus(
   return { ok: true };
 }
 
+export interface CheckoutNotifySettings {
+  notifyEnabled: boolean;
+  tplPaid: string;
+  tplShipped: string;
+  tplDelivered: string;
+  cartEnabled: boolean;
+  cartGap1: number;
+  cartGap2: number;
+  cartGap3: number;
+  cartTpl1: string;
+  cartTpl2: string;
+  cartTpl3: string;
+}
+
+function normalizeCart(raw: Record<string, unknown>): {
+  cartEnabled: boolean;
+  cartGap1: number;
+  cartGap2: number;
+  cartGap3: number;
+  cartTpl1: string;
+  cartTpl2: string;
+  cartTpl3: string;
+} {
+  const gap = (value: unknown, fallback: number): number =>
+    typeof value === "number" && Number.isFinite(value)
+      && value >= 1 && value <= 168
+      ? Math.floor(value)
+      : fallback;
+  return {
+    cartEnabled: raw.enabled === true,
+    cartGap1: gap(raw.gap_1, 2),
+    cartGap2: gap(raw.gap_2, 24),
+    cartGap3: gap(raw.gap_3, 48),
+    cartTpl1: typeof raw.tpl_1 === "string" ? raw.tpl_1 : "",
+    cartTpl2: typeof raw.tpl_2 === "string" ? raw.tpl_2 : "",
+    cartTpl3: typeof raw.tpl_3 === "string" ? raw.tpl_3 : "",
+  };
+}
+
+export async function getCheckoutNotifySettings(
+  accessToken: string
+): Promise<CheckoutNotifySettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/settings"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).settings
+    : null;
+  if (raw === null || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  const cartRaw = s.cart !== null && typeof s.cart === "object"
+    ? (s.cart as Record<string, unknown>)
+    : {};
+  return {
+    notifyEnabled: s.notify_enabled === true,
+    tplPaid: typeof s.tpl_paid === "string" ? s.tpl_paid : "",
+    tplShipped: typeof s.tpl_shipped === "string" ? s.tpl_shipped : "",
+    tplDelivered: typeof s.tpl_delivered === "string" ? s.tpl_delivered : "",
+    ...normalizeCart(cartRaw),
+  };
+}
+
+export async function saveCheckoutNotifySettings(
+  accessToken: string,
+  settings: CheckoutNotifySettings
+): Promise<{ ok: true } | "bad_request" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/settings",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            notify_enabled: settings.notifyEnabled === true,
+            tpl_paid: String(settings.tplPaid || "").trim().slice(0, 500),
+            tpl_shipped: String(settings.tplShipped || "").trim().slice(0, 500),
+            tpl_delivered: String(settings.tplDelivered || "").trim().slice(0, 500),
+            cart: {
+              enabled: settings.cartEnabled === true,
+              gap_1: Number(settings.cartGap1) >= 1
+                && Number(settings.cartGap1) <= 168
+                ? Math.floor(Number(settings.cartGap1)) : 2,
+              gap_2: Number(settings.cartGap2) >= 1
+                && Number(settings.cartGap2) <= 168
+                ? Math.floor(Number(settings.cartGap2)) : 24,
+              gap_3: Number(settings.cartGap3) >= 1
+                && Number(settings.cartGap3) <= 168
+                ? Math.floor(Number(settings.cartGap3)) : 48,
+              tpl_1: String(settings.cartTpl1 || "").trim().slice(0, 500),
+              tpl_2: String(settings.cartTpl2 || "").trim().slice(0, 500),
+              tpl_3: String(settings.cartTpl3 || "").trim().slice(0, 500),
+            },
+          },
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
 export interface ListenRule {
   id: number;
   keyword: string;
@@ -6748,6 +6872,431 @@ export async function getChurnReport(
         reason: typeof item.reason === "string" ? item.reason : "",
         count: typeof item.count === "number" ? item.count : 0,
       })),
+  };
+}
+
+export interface WinbackEntry {
+  contactId: string;
+  name: string;
+  kind: string;
+  days: number | null;
+  item: string;
+  priceText: string;
+  total: number | null;
+  message: string;
+  waLink: string | null;
+}
+
+export interface WinbackQueue {
+  cart: WinbackEntry[];
+  reorder: WinbackEntry[];
+  winback: WinbackEntry[];
+  counts: Record<string, number>;
+  scored: number;
+}
+
+export async function getWinbackQueue(
+  accessToken: string
+): Promise<WinbackQueue | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/winback/queue");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const entryOf = (raw: unknown): WinbackEntry | null => {
+    if (raw === null || typeof raw !== "object") return null;
+    const item = raw as Record<string, unknown>;
+    return {
+      contactId: typeof item.contact_id === "string" ? item.contact_id : "",
+      name: typeof item.name === "string" ? item.name : "",
+      kind: typeof item.kind === "string" ? item.kind : "",
+      days: typeof item.days === "number" ? item.days : null,
+      item: typeof item.item === "string" ? item.item : "",
+      priceText: typeof item.price_text === "string" ? item.price_text : "",
+      total: typeof item.total === "number" ? item.total : null,
+      message: typeof item.message === "string" ? item.message : "",
+      waLink: typeof item.wa_link === "string" ? item.wa_link : null,
+    };
+  };
+  const segmentOf = (raw: unknown): WinbackEntry[] =>
+    Array.isArray(raw)
+      ? raw
+          .map(entryOf)
+          .filter((entry): entry is WinbackEntry => entry !== null)
+      : [];
+  const segments =
+    row.segments !== null && typeof row.segments === "object"
+      ? (row.segments as Record<string, unknown>)
+      : {};
+  const counts =
+    row.counts !== null && typeof row.counts === "object"
+      ? (row.counts as Record<string, unknown>)
+      : {};
+  const tierCounts: Record<string, number> = {};
+  for (const [key, value] of Object.entries(counts)) {
+    if (typeof value === "number") tierCounts[key] = value;
+  }
+  return {
+    cart: segmentOf(segments.cart),
+    reorder: segmentOf(segments.reorder),
+    winback: segmentOf(segments.winback),
+    counts: tierCounts,
+    scored: typeof row.scored === "number" ? row.scored : 0,
+  };
+}
+
+export type WinbackSendResult =
+  | { kind: "ok"; commandId: number }
+  | { kind: "stale" }
+  | { kind: "cooldown" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function sendWinbackEntry(
+  accessToken: string,
+  contactId: string,
+  entryKind: string
+): Promise<WinbackSendResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/winback/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact_id: contactId, kind: entryKind }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 409) {
+    const payload: unknown = await response.json().catch(() => null);
+    const errorRaw =
+      payload !== null && typeof payload === "object"
+        ? (payload as Record<string, unknown>).error
+        : null;
+    const errorCode =
+      errorRaw !== null && typeof errorRaw === "object"
+        ? (errorRaw as Record<string, unknown>).code
+        : "";
+    return errorCode === "cooldown"
+      ? { kind: "cooldown" }
+      : { kind: "stale" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  const row =
+    payload !== null && typeof payload === "object"
+      ? (payload as Record<string, unknown>)
+      : {};
+  const commandId = typeof row.command_id === "number" ? row.command_id : 0;
+  return { kind: "ok", commandId };
+}
+
+export interface RevenueSummary {
+  days: number;
+  revenue: number;
+  revenuePrior: number;
+  deltaPercent: number | null;
+  orders: number;
+  ordersPrior: number;
+  aov: number | null;
+  newBuyers: number;
+  repeatBuyers: number;
+  cancelled: number;
+  cancelledRate: number | null;
+  openCarts: number;
+  pipelineValue: number;
+  winbackSent: number;
+}
+
+export interface RevenueItem {
+  name: string;
+  units: number;
+  revenue: number;
+  buyers: number;
+  unitsPrior: number;
+  trend: string;
+}
+
+export async function getRevenueSummary(
+  accessToken: string,
+  days: number
+): Promise<RevenueSummary | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/revenue/summary?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const num = (key: string): number =>
+    typeof row[key] === "number" ? (row[key] as number) : 0;
+  const opt = (key: string): number | null =>
+    typeof row[key] === "number" ? (row[key] as number) : null;
+  return {
+    days: num("days"),
+    revenue: num("revenue"),
+    revenuePrior: num("revenue_prior"),
+    deltaPercent: opt("delta_percent"),
+    orders: num("orders"),
+    ordersPrior: num("orders_prior"),
+    aov: opt("aov"),
+    newBuyers: num("new_buyers"),
+    repeatBuyers: num("repeat_buyers"),
+    cancelled: num("cancelled"),
+    cancelledRate: opt("cancelled_rate"),
+    openCarts: num("open_carts"),
+    pipelineValue: num("pipeline_value"),
+    winbackSent: num("winback_sent"),
+  };
+}
+
+export async function getRevenueItems(
+  accessToken: string,
+  days: number
+): Promise<RevenueItem[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/revenue/items?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const raw = (payload as Record<string, unknown>).items;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object")
+    .map((item) => ({
+      name: typeof item.name === "string" ? item.name : "",
+      units: typeof item.units === "number" ? item.units : 0,
+      revenue: typeof item.revenue === "number" ? item.revenue : 0,
+      buyers: typeof item.buyers === "number" ? item.buyers : 0,
+      unitsPrior: typeof item.units_prior === "number" ? item.units_prior : 0,
+      trend: typeof item.trend === "string" ? item.trend : "steady",
+    }))
+    .filter((item) => item.name);
+}
+
+export interface RestockItem {
+  name: string;
+  weeklyRate: number;
+  revenue: number;
+  buyers: number;
+  lastSoldDays: number | null;
+  recentUnits: number;
+  priorUnits: number;
+  sharePercent: number | null;
+  trend: string;
+}
+
+export interface RestockRadar {
+  stockUp: RestockItem[];
+  watch: RestockItem[];
+  slow: RestockItem[];
+  counts: Record<string, number>;
+  itemsSold: number;
+  days: number;
+}
+
+function restockItemOf(raw: unknown): RestockItem | null {
+  if (raw === null || typeof raw !== "object") return null;
+  const item = raw as Record<string, unknown>;
+  const name = typeof item.name === "string" ? item.name : "";
+  if (!name) return null;
+  return {
+    name,
+    weeklyRate: typeof item.weekly_rate === "number" ? item.weekly_rate : 0,
+    revenue: typeof item.revenue === "number" ? item.revenue : 0,
+    buyers: typeof item.buyers === "number" ? item.buyers : 0,
+    lastSoldDays:
+      typeof item.last_sold_days === "number" ? item.last_sold_days : null,
+    recentUnits: typeof item.recent_units === "number" ? item.recent_units : 0,
+    priorUnits: typeof item.prior_units === "number" ? item.prior_units : 0,
+    sharePercent:
+      typeof item.share_percent === "number" ? item.share_percent : null,
+    trend: typeof item.trend === "string" ? item.trend : "steady",
+  };
+}
+
+export async function getRestockRadar(
+  accessToken: string,
+  days: number
+): Promise<RestockRadar | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/restock/radar?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const listOf = (raw: unknown): RestockItem[] =>
+    Array.isArray(raw)
+      ? raw
+          .map(restockItemOf)
+          .filter((item): item is RestockItem => item !== null)
+      : [];
+  const counts =
+    row.counts !== null && typeof row.counts === "object"
+      ? (row.counts as Record<string, unknown>)
+      : {};
+  const tierCounts: Record<string, number> = {};
+  for (const [key, value] of Object.entries(counts)) {
+    if (typeof value === "number") tierCounts[key] = value;
+  }
+  return {
+    stockUp: listOf(row.stock_up),
+    watch: listOf(row.watch),
+    slow: listOf(row.slow),
+    counts: tierCounts,
+    itemsSold: typeof row.items_sold === "number" ? row.items_sold : 0,
+    days: typeof row.days === "number" ? row.days : 0,
+  };
+}
+
+export interface CustomerValue {
+  contactId: string;
+  totalSpent: number;
+  orders: number;
+  units: number;
+  avgOrder: number | null;
+  topItem: string;
+  topItemUnits: number;
+  medianGapDays: number | null;
+  firstOrderDays: number | null;
+  lastOrderDays: number | null;
+  tier: string;
+}
+
+export interface ValueCustomer {
+  contactId: string;
+  name: string;
+  totalSpent: number;
+  orders: number;
+  lastOrderDays: number | null;
+  tier: string;
+}
+
+function valueBlockOf(row: Record<string, unknown>, contact: string): CustomerValue {
+  const num = (key: string): number =>
+    typeof row[key] === "number" ? (row[key] as number) : 0;
+  const opt = (key: string): number | null =>
+    typeof row[key] === "number" ? (row[key] as number) : null;
+  return {
+    contactId: typeof row.contact_id === "string" ? row.contact_id : contact,
+    totalSpent: num("total_spent"),
+    orders: num("orders"),
+    units: num("units"),
+    avgOrder: opt("avg_order"),
+    topItem: typeof row.top_item === "string" ? row.top_item : "",
+    topItemUnits: num("top_item_units"),
+    medianGapDays: opt("median_gap_days"),
+    firstOrderDays: opt("first_order_days"),
+    lastOrderDays: opt("last_order_days"),
+    tier: typeof row.tier === "string" ? row.tier : "new",
+  };
+}
+
+export async function getCustomerValue(
+  accessToken: string,
+  contact: string
+): Promise<CustomerValue | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/value/summary?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  return valueBlockOf(payload as Record<string, unknown>, contact);
+}
+
+export async function getTopCustomers(
+  accessToken: string,
+  limit = 10
+): Promise<{ customers: ValueCustomer[]; scored: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/value/top?limit=" + encodeURIComponent(String(limit))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const raw = Array.isArray(row.customers) ? row.customers : [];
+  return {
+    customers: raw
+      .filter((item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object")
+      .map((item) => {
+        const num = (key: string): number =>
+          typeof item[key] === "number" ? (item[key] as number) : 0;
+        const opt = (key: string): number | null =>
+          typeof item[key] === "number" ? (item[key] as number) : null;
+        return {
+          contactId:
+            typeof item.contact_id === "string" ? item.contact_id : "",
+          name: typeof item.name === "string" ? item.name : "",
+          totalSpent: num("total_spent"),
+          orders: num("orders"),
+          lastOrderDays: opt("last_order_days"),
+          tier: typeof item.tier === "string" ? item.tier : "new",
+        };
+      })
+      .filter((item) => item.contactId),
+    scored: typeof row.scored === "number" ? row.scored : 0,
   };
 }
 

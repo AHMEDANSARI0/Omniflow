@@ -3,6 +3,24 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+interface CustomerValueData {
+  totalSpent: number;
+  orders: number;
+  units: number;
+  avgOrder: number | null;
+  topItem: string;
+  medianGapDays: number | null;
+  lastOrderDays: number | null;
+  tier: string;
+}
+
+interface RecoSuggestion {
+  name: string;
+  priceText: string;
+  reasons: string[];
+}
+
+
 interface ProfileAction {
   id: number;
   kind: string;
@@ -74,6 +92,9 @@ export default function ProfileClient({ contact }: { contact: string }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [missing, setMissing] = useState(false);
   const [risk, setRisk] = useState<string | null>(null);
+  const [recos, setRecos] = useState<RecoSuggestion[]>([]);
+  const [churn, setChurn] = useState<{ score: number; tier: string; reason: string } | null>(null);
+  const [value, setValue] = useState<CustomerValueData | null>(null);
 
   const load = useCallback(async () => {
     if (!contact) {
@@ -135,6 +156,137 @@ export default function ProfileClient({ contact }: { contact: string }) {
         }
       } catch {
         if (active) setRisk(null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [profile?.contactId]);
+
+  useEffect(() => {
+    if (!profile?.contactId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/reco/suggest?contact=" +
+            encodeURIComponent(profile.contactId),
+          { cache: "no-store" }
+        );
+        if (!response.ok) {
+          if (active) setRecos([]);
+          return;
+        }
+        const payload: unknown = await response.json().catch(() => null);
+        if (active && payload !== null && typeof payload === "object") {
+          const raw = (payload as Record<string, unknown>).suggestions;
+          if (Array.isArray(raw)) {
+            setRecos(
+              raw
+                .filter((item): item is Record<string, unknown> =>
+                  item !== null && typeof item === "object")
+                .map((item) => ({
+                  name: typeof item.name === "string" ? item.name : "",
+                  priceText:
+                    typeof item.price_text === "string" ? item.price_text : "",
+                  reasons: Array.isArray(item.reasons)
+                    ? item.reasons.filter(
+                        (reason): reason is string => typeof reason === "string"
+                      )
+                    : [],
+                }))
+                .filter((item) => item.name)
+            );
+          } else if (active) {
+            setRecos([]);
+          }
+        }
+      } catch {
+        if (active) setRecos([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [profile?.contactId]);
+
+  useEffect(() => {
+    if (!profile?.contactId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/churn/score?contact=" +
+            encodeURIComponent(profile.contactId),
+          { cache: "no-store" }
+        );
+        if (!response.ok) {
+          if (active) setChurn(null);
+          return;
+        }
+        const payload: unknown = await response.json().catch(() => null);
+        if (active && payload !== null && typeof payload === "object") {
+          const raw = payload as Record<string, unknown>;
+          const score = typeof raw.score === "number" ? raw.score : 0;
+          const tier = typeof raw.tier === "string" ? raw.tier : "";
+          const reasons = Array.isArray(raw.reasons)
+            ? raw.reasons.filter((reason): reason is string =>
+                typeof reason === "string"
+              )
+            : [];
+          if (score > 0 && (tier === "cooling" || tier === "at_risk")) {
+            setChurn({ score, tier, reason: reasons[0] ?? "" });
+          } else if (active) {
+            setChurn(null);
+          }
+        } else if (active) {
+          setChurn(null);
+        }
+      } catch {
+        if (active) setChurn(null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [profile?.contactId]);
+
+  useEffect(() => {
+    if (!profile?.contactId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/value/summary?contact=" +
+            encodeURIComponent(profile.contactId),
+          { cache: "no-store" }
+        );
+        if (!response.ok) {
+          if (active) setValue(null);
+          return;
+        }
+        const payload: unknown = await response.json().catch(() => null);
+        if (active && payload !== null && typeof payload === "object") {
+          const raw = payload as Record<string, unknown>;
+          const num = (key: string): number =>
+            typeof raw[key] === "number" ? (raw[key] as number) : 0;
+          const opt = (key: string): number | null =>
+            typeof raw[key] === "number" ? (raw[key] as number) : null;
+          setValue({
+            totalSpent: num("total_spent"),
+            orders: num("orders"),
+            units: num("units"),
+            avgOrder: opt("avg_order"),
+            topItem: typeof raw.top_item === "string" ? raw.top_item : "",
+            medianGapDays: opt("median_gap_days"),
+            lastOrderDays: opt("last_order_days"),
+            tier: typeof raw.tier === "string" ? raw.tier : "new",
+          });
+        } else if (active) {
+          setValue(null);
+        }
+      } catch {
+        if (active) setValue(null);
       }
     })();
     return () => {
@@ -261,6 +413,19 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   Risk: {risk}
                 </span>
               ) : null}
+              {churn ? (
+                <span
+                  title={churn.reason}
+                  className={`rounded-md border px-1.5 py-0.5 ${
+                    churn.tier === "at_risk"
+                      ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                  }`}
+                >
+                  Churn: {churn.tier === "at_risk" ? "at risk" : "cooling"} (
+                  {churn.score})
+                </span>
+              ) : null}
             </div>
           ) : null}
           {profile && profile.tags.length > 0 ? (
@@ -276,6 +441,90 @@ export default function ProfileClient({ contact }: { contact: string }) {
             </div>
           ) : null}
         </div>
+
+        {profile && recos.length > 0 ? (
+          <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+            <p className="text-xs font-semibold text-white">
+              Recommended next
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Deterministic picks from orders, chat mentions and bestsellers.
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {recos.slice(0, 3).map((suggestion) => (
+                <li
+                  key={suggestion.name}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-slate-200">
+                      {suggestion.name}
+                    </p>
+                    {suggestion.reasons[0] ? (
+                      <p className="truncate text-[10px] text-cyan-300/80">
+                        {suggestion.reasons[0]}
+                      </p>
+                    ) : null}
+                  </div>
+                  {suggestion.priceText ? (
+                    <span className="shrink-0 text-[10px] text-slate-500">
+                      {suggestion.priceText}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {profile && value ? (
+          <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-white">
+                Lifetime value
+              </p>
+              <span
+                className={`rounded-md border px-1.5 py-0.5 text-[10px] ${
+                  value.tier === "loyal"
+                    ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                    : value.tier === "repeat"
+                      ? "border-cyan-400/25 bg-cyan-400/[0.08] text-cyan-300"
+                      : value.tier === "lapsed"
+                        ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
+                        : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+                }`}
+              >
+                {value.tier}
+              </span>
+            </div>
+            {value.orders === 0 ? (
+              <p className="mt-2 text-xs text-slate-500">No orders yet.</p>
+            ) : (
+              <>
+                <p className="mt-1.5 text-2xl font-semibold text-white">
+                  Rs {value.totalSpent.toLocaleString()}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  {value.orders} orders · {value.units} items
+                  {value.avgOrder !== null
+                    ? " · avg Rs " + value.avgOrder.toLocaleString()
+                    : ""}
+                  {value.topItem
+                    ? " · mostly " + value.topItem
+                    : ""}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  {value.lastOrderDays !== null
+                    ? "Last order " + value.lastOrderDays + " days ago"
+                    : ""}
+                  {value.medianGapDays !== null
+                    ? " · reorder gap ~" + value.medianGapDays + " days"
+                    : ""}
+                </p>
+              </>
+            )}
+          </section>
+        ) : null}
 
         {profile ? (
           <>
