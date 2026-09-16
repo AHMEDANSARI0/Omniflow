@@ -1,33 +1,83 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  addListenRule,
-  addRoutingRule,
-  getNegotiationQuote,
-  getNegotiationSettings,
-  getStaffingForecast,
-  listBroadcastSuggestions,
-  listCheckoutLinks,
-  listChurnRisk,
-  listListenHits,
-  listListenRules,
-  listRoutingRules,
-  requirePortalAccessToken,
-  saveNegotiationSettings,
-  setCheckoutLinkStatus,
-  type BroadcastSuggestion,
-  type CheckoutLink,
-  type ChurnContact,
-  type ListenHit,
-  type ListenRule,
-  type NegotiationQuote,
-  type NegotiationSettings,
-  type RoutingRule,
-  type StaffingForecast,
-} from "../../../../lib/omniflow/portal";
+
+interface ChurnContact {
+  contactId: string;
+  name: string;
+  chats: number;
+  lastAt: string | null;
+}
+
+interface StaffingForecast {
+  hours: { hour: number; chats: number }[];
+  peakHour: number | null;
+  peakChats: number;
+  suggested: number[];
+}
+
+interface BroadcastSuggestion {
+  audience: string;
+  count: number;
+  note: string;
+}
+
+interface NegotiationSettings {
+  enabled: boolean;
+  floorPercent: number;
+  maxPercent: number;
+}
+
+interface NegotiationQuote {
+  ask: number;
+  price: number;
+  discountPercent: number;
+  verdict: string;
+  counter: number;
+  maxPercent: number;
+  enabled: boolean;
+}
+
+interface CheckoutLink {
+  id: number;
+  token: string;
+  contactId: string;
+  title: string;
+  total: number;
+  status: string;
+}
+
+interface ListenRule {
+  id: number;
+  keyword: string;
+  note: string;
+}
+
+interface ListenHit {
+  id: number;
+  keyword: string;
+  contactId: string;
+  snippet: string;
+}
+
+interface RoutingRule {
+  id: number;
+  match: string;
+  userId: number;
+  priority: number;
+}
 
 const DAYS_OPTIONS = [7, 14, 30, 60];
+
+async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
+  try {
+    const response = await fetch(url, { cache: "no-store", ...init });
+    if (!response.ok) return null;
+    return (await response.json().catch(() => null)) as T | null;
+  } catch {
+    return null;
+  }
+}
 
 function Section({
   title,
@@ -66,32 +116,34 @@ export default function GrowthPage() {
   const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
-    try {
-      const accessToken = await requirePortalAccessToken();
-      if (!accessToken) return;
-      const [churnRows, forecast, ideas, negotiation, checkout, listenRules, listenHits, routingRules] =
-        await Promise.all([
-          listChurnRisk(accessToken, days),
-          getStaffingForecast(accessToken),
-          listBroadcastSuggestions(accessToken),
-          getNegotiationSettings(accessToken),
-          listCheckoutLinks(accessToken),
-          listListenRules(accessToken),
-          listListenHits(accessToken),
-          listRoutingRules(accessToken),
-        ]);
-      setFailed(negotiation === null && forecast === null);
-      setChurn(churnRows ?? []);
-      setStaffing(forecast);
-      setSuggestions(ideas ?? []);
-      setSettings(negotiation);
-      setLinks(checkout ?? []);
-      setRules(listenRules ?? []);
-      setHits(listenHits ?? []);
-      setRouting(routingRules ?? []);
-    } catch {
-      setFailed(true);
-    }
+    const [churnPayload, forecast, ideas, negotiation, checkout, listenRules, listenHits, routingRules] =
+      await Promise.all([
+        getJson<{ contacts: ChurnContact[] }>(
+          "/api/omniflow/portal/insights/churn?days=" + days
+        ),
+        getJson<StaffingForecast>("/api/omniflow/portal/insights/staffing"),
+        getJson<{ suggestions: BroadcastSuggestion[] }>(
+          "/api/omniflow/portal/insights/broadcast-suggestions"
+        ),
+        getJson<{ settings: NegotiationSettings }>(
+          "/api/omniflow/portal/negotiation/settings"
+        ),
+        getJson<{ links: CheckoutLink[] }>(
+          "/api/omniflow/portal/checkout/links"
+        ),
+        getJson<{ rules: ListenRule[] }>("/api/omniflow/portal/listen/rules"),
+        getJson<{ hits: ListenHit[] }>("/api/omniflow/portal/listen/hits"),
+        getJson<{ rules: RoutingRule[] }>("/api/omniflow/portal/routing/rules"),
+      ]);
+    setFailed(negotiation === null && forecast === null);
+    setChurn(churnPayload?.contacts ?? []);
+    setStaffing(forecast);
+    setSuggestions(ideas?.suggestions ?? []);
+    setSettings(negotiation?.settings ?? null);
+    setLinks(checkout?.links ?? []);
+    setRules(listenRules?.rules ?? []);
+    setHits(listenHits?.hits ?? []);
+    setRouting(routingRules?.rules ?? []);
   }, [days]);
 
   useEffect(() => {
@@ -99,48 +151,61 @@ export default function GrowthPage() {
   }, [load]);
 
   async function saveLimits(enabled: boolean) {
-    const accessToken = await requirePortalAccessToken();
-    if (!accessToken || !settings) return;
-    const saved = await saveNegotiationSettings(
-      accessToken,
-      enabled,
-      settings.floorPercent,
-      settings.maxPercent
+    if (!settings) return;
+    const payload = await getJson<{ settings: NegotiationSettings }>(
+      "/api/omniflow/portal/negotiation/settings",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled,
+          floor_percent: settings.floorPercent,
+          max_percent: settings.maxPercent,
+        }),
+      }
     );
-    if (saved) setSettings(saved);
+    if (payload?.settings) setSettings(payload.settings);
   }
 
   async function runQuote() {
-    const accessToken = await requirePortalAccessToken();
-    if (!accessToken) return;
     const askNumber = Number(ask);
     const priceNumber = Number(price);
     if (!Number.isFinite(askNumber) || !Number.isFinite(priceNumber)) return;
-    const result = await getNegotiationQuote(accessToken, askNumber, priceNumber);
+    const result = await getJson<NegotiationQuote>(
+      "/api/omniflow/portal/negotiation/quote?ask=" + askNumber + "&price=" + priceNumber
+    );
     if (result) setQuote(result);
   }
 
   async function markLink(link: CheckoutLink, status: string) {
-    const accessToken = await requirePortalAccessToken();
-    if (!accessToken) return;
-    const result = await setCheckoutLinkStatus(accessToken, link.id, status);
-    if (result) await load();
+    await getJson("/api/omniflow/portal/checkout/links/" + link.id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    await load();
   }
 
   async function addKeyword() {
-    const accessToken = await requirePortalAccessToken();
-    if (!accessToken || !keyword.trim()) return;
-    await addListenRule(accessToken, keyword.trim(), "");
+    if (!keyword.trim()) return;
+    await getJson("/api/omniflow/portal/listen/rules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keyword: keyword.trim(), note: "" }),
+    });
     setKeyword("");
     await load();
   }
 
   async function addRoute() {
-    const accessToken = await requirePortalAccessToken();
-    if (!accessToken || !match.trim()) return;
+    if (!match.trim()) return;
     const parsed = Number.parseInt(userId, 10);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
-    await addRoutingRule(accessToken, match.trim(), parsed, 100);
+    await getJson("/api/omniflow/portal/routing/rules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ match: match.trim(), user_id: parsed, priority: 100 }),
+    });
     setMatch("");
     setUserId("");
     await load();
@@ -162,7 +227,7 @@ export default function GrowthPage() {
 
       {failed ? (
         <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-300">
-          Some insights are temporarily unavailable. Try Refresh shortly.
+          Some insights are temporarily unavailable. Try again shortly.
         </p>
       ) : null}
 
@@ -303,7 +368,7 @@ export default function GrowthPage() {
                   onClick={() => void runQuote()}
                   className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/[0.14]"
                 >
-                Calculate
+                  Calculate
                 </button>
               </div>
               {quote ? (
@@ -333,7 +398,7 @@ export default function GrowthPage() {
         >
           {links.length === 0 ? (
             <p className="text-xs text-slate-500">
-              No checkout links yet - create one from any customer profile.
+              No checkout links yet.
             </p>
           ) : (
             <ul className="space-y-1.5">

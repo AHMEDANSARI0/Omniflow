@@ -1,11 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  getConversationAssist,
-  requirePortalAccessToken,
-  type AssistResult,
-} from "../../../../../lib/omniflow/portal";
+
+interface AssistSentiment {
+  label: string;
+  score: number;
+  positive: string[];
+  negative: string[];
+}
+
+interface KbSuggestion {
+  id: number;
+  question: string;
+  snippet: string;
+  matched: string[];
+}
+
+interface AssistResult {
+  intent: string;
+  sentiment: AssistSentiment | null;
+  language: string | null;
+  linked: string[];
+  suggestions: KbSuggestion[];
+  basedOn: string;
+}
 
 
 export default function AssistCard({ conversationId }: { conversationId: number }) {
@@ -16,10 +34,15 @@ export default function AssistCard({ conversationId }: { conversationId: number 
     if (!Number.isFinite(conversationId) || conversationId <= 0) return;
     setBusy(true);
     try {
-      const accessToken = await requirePortalAccessToken();
-      if (!accessToken) return;
-      const result = await getConversationAssist(accessToken, conversationId);
-      if (result !== null) setAssist(result);
+      const response = await fetch(
+        `/api/omniflow/portal/conversations/${conversationId}/assist`,
+        { cache: "no-store" }
+      );
+      if (!response.ok) return;
+      const payload: unknown = await response.json().catch(() => null);
+      if (payload !== null && typeof payload === "object") {
+        setAssist(payload as unknown as AssistResult);
+      }
     } catch {
       return;
     } finally {
