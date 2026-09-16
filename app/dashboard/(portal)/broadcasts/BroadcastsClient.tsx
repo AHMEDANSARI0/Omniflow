@@ -178,9 +178,17 @@ export default function BroadcastsClient({
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
-          Broadcasts
-        </h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-white">
+            Broadcasts
+          </h1>
+          <a
+            href="/dashboard/broadcasts/calendar"
+            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-400 transition hover:text-white"
+          >
+            Calendar
+          </a>
+        </div>
         <p className="mt-1 text-sm text-slate-400">
           Send one WhatsApp message to a targeted audience. Use{" "}
           <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 text-xs text-cyan-300">

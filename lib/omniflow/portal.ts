@@ -4942,6 +4942,160 @@ export async function setContactStage(
   return { kind: "ok" };
 }
 
+export interface WeeklySummary {
+  chats: number;
+  messagesIn: number;
+  messagesOut: number;
+  codConfirmed: number;
+  codDeclined: number;
+  broadcasts: number;
+  csatAsked: number;
+  csatAvg: number | null;
+  days: { day: string; chats: number; inbound: number }[];
+}
+
+export async function getWeeklySummary(
+  accessToken: string
+): Promise<WeeklySummary | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/insights/weekly");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const num = (value: unknown): number =>
+    typeof value === "number" ? value : 0;
+  const rawDays = Array.isArray(row.days) ? row.days : [];
+  const days = rawDays
+    .filter(
+      (item): item is Record<string, unknown> =>
+        item !== null && typeof item === "object"
+    )
+    .map((item) => ({
+      day: typeof item.day === "string" ? item.day : "",
+      chats: num(item.chats),
+      inbound: num(item.inbound),
+    }));
+  const avg = row.csat_avg;
+  return {
+    chats: num(row.chats),
+    messagesIn: num(row.messages_in),
+    messagesOut: num(row.messages_out),
+    codConfirmed: num(row.cod_confirmed),
+    codDeclined: num(row.cod_declined),
+    broadcasts: num(row.broadcasts),
+    csatAsked: num(row.csat_asked),
+    csatAvg: typeof avg === "number" ? avg : null,
+    days,
+  };
+}
+
+export interface CalendarItem {
+  id: number;
+  day: string;
+  audience: string;
+  body: string;
+  recipients: number;
+  scheduled: boolean;
+}
+
+export interface BroadcastCalendar {
+  month: string;
+  days: { date: string; sent: number; scheduled: number }[];
+  items: CalendarItem[];
+}
+
+export async function getBroadcastCalendar(
+  accessToken: string,
+  month: string
+): Promise<BroadcastCalendar | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/insights/calendar?month=" + encodeURIComponent(month)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawDays = Array.isArray(row.days) ? row.days : [];
+  const rawItems = Array.isArray(row.items) ? row.items : [];
+  return {
+    month: typeof row.month === "string" ? row.month : month,
+    days: rawDays
+      .filter(
+        (item): item is Record<string, unknown> =>
+          item !== null && typeof item === "object"
+      )
+      .map((item) => ({
+        date: typeof item.date === "string" ? item.date : "",
+        sent: typeof item.sent === "number" ? item.sent : 0,
+        scheduled: typeof item.scheduled === "number" ? item.scheduled : 0,
+      })),
+    items: rawItems
+      .filter(
+        (item): item is Record<string, unknown> =>
+          item !== null && typeof item === "object"
+      )
+      .map((item) => ({
+        id: typeof item.id === "number" ? item.id : 0,
+        day: typeof item.day === "string" ? item.day : "",
+        audience: typeof item.audience === "string" ? item.audience : "all",
+        body: typeof item.body === "string" ? item.body : "",
+        recipients: typeof item.recipients === "number" ? item.recipients : 0,
+        scheduled: item.scheduled === true,
+      })),
+  };
+}
+
+export type MergeMutation =
+  | { kind: "ok"; moved: number }
+  | { kind: "not_found" }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function mergeCustomers(
+  accessToken: string,
+  keep: string,
+  merge: string
+): Promise<MergeMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/customers/merge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keep, merge }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  const moved =
+    payload !== null && typeof payload === "object"
+      ? (payload as Record<string, unknown>).moved
+      : null;
+  return { kind: "ok", moved: typeof moved === "number" ? moved : 0 };
+}
+
 export async function deleteSequence(
   accessToken: string,
   id: number

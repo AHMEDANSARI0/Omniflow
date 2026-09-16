@@ -68,6 +68,7 @@ const navItems: NavItem[] = [
   { label: "Pipeline", href: "/dashboard/pipeline", icon: "\u25c8", enabled: true },
   { label: "Quick replies", href: "/dashboard/saved-replies", icon: "/", enabled: true },
   { label: "Activity", href: "/dashboard/activity", icon: "\u2261", enabled: true },
+  { label: "Weekly", href: "/dashboard/weekly", icon: "\u2248", enabled: true },
   { label: "Team", href: "/dashboard/team", icon: "⚑", enabled: true },
   { label: "Settings", href: "/dashboard/settings", icon: "⌘", enabled: true },
 ];
