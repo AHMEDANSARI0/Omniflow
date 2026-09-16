@@ -7,6 +7,8 @@ interface SavedReply {
   shortcut: string;
   body: string;
   createdAt: string | null;
+  useCount?: number;
+  lastUsedAt?: string | null;
 }
 
 export default function SavedRepliesPicker({
@@ -123,6 +125,17 @@ export default function SavedRepliesPicker({
     onPick(reply.body);
     setOpen(false);
     setMessage("Template inserted into the reply box — edit if needed, then send.");
+    setReplies((current) =>
+      current.map((item) =>
+        item.id === reply.id
+          ? { ...item, useCount: (item.useCount ?? 0) + 1 }
+          : item
+      )
+    );
+    void fetch(`/api/omniflow/portal/saved-replies/${reply.id}/use`, {
+      method: "POST",
+      credentials: "same-origin",
+    }).catch(() => undefined);
   }
 
   return (
@@ -158,6 +171,11 @@ export default function SavedRepliesPicker({
                     <span className="rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-cyan-300">
                       /{reply.shortcut}
                     </span>
+                    {(reply.useCount ?? 0) > 0 ? (
+                      <span className="ml-1.5 text-[10px] text-slate-500">
+                        used {reply.useCount}\u00d7
+                      </span>
+                    ) : null}
                     <p className="mt-1 line-clamp-2 text-xs text-slate-400">
                       {reply.body}
                     </p>

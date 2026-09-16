@@ -95,6 +95,12 @@ export default function ActivityPage() {
           >
             Refresh
           </button>
+          <a
+            href="/api/omniflow/portal/activity/export"
+            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-400 transition hover:text-white"
+          >
+            Export CSV
+          </a>
         </div>
 
         {items === null ? (

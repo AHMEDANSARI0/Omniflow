@@ -3173,6 +3173,8 @@ export interface SavedReply {
   shortcut: string;
   body: string;
   createdAt: string | null;
+  useCount: number;
+  lastUsedAt: string | null;
 }
 
 function normalizeSavedReply(value: unknown): SavedReply | null {
@@ -3185,6 +3187,8 @@ function normalizeSavedReply(value: unknown): SavedReply | null {
     shortcut: typeof p.shortcut === "string" ? p.shortcut : "",
     body: typeof p.body === "string" ? p.body : "",
     createdAt: typeof p.created_at === "string" ? p.created_at : null,
+    useCount: typeof p.use_count === "number" ? p.use_count : 0,
+    lastUsedAt: typeof p.last_used_at === "string" ? p.last_used_at : null,
   };
 }
 
@@ -3858,6 +3862,99 @@ export async function importCustomers(
       : [],
     invalid_count: typeof p.invalid_count === "number" ? p.invalid_count : 0,
   };
+}
+
+export type SavedReplyMutation =
+  | { kind: "ok"; reply?: SavedReply }
+  | { kind: "invalid" }
+  | { kind: "duplicate" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function updateSavedReply(
+  accessToken: string,
+  id: number,
+  shortcut: string,
+  body: string
+): Promise<SavedReplyMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/saved-replies/" + String(id),
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shortcut, body }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 409) return { kind: "duplicate" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload !== null && typeof payload === "object") {
+    const raw = (payload as Record<string, unknown>).reply;
+    if (raw !== null && typeof raw === "object") {
+      const row = raw as Record<string, unknown>;
+      if (typeof row.id === "number") {
+        return {
+          kind: "ok",
+          reply: {
+            id: row.id,
+            shortcut: typeof row.shortcut === "string" ? row.shortcut : "",
+            body: typeof row.body === "string" ? row.body : "",
+            createdAt:
+              typeof row.created_at === "string" ? row.created_at : null,
+            useCount: typeof row.use_count === "number" ? row.use_count : 0,
+            lastUsedAt:
+              typeof row.last_used_at === "string" ? row.last_used_at : null,
+          },
+        };
+      }
+    }
+  }
+  return { kind: "ok" };
+}
+
+export async function markSavedReplyUsed(
+  accessToken: string,
+  id: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/saved-replies/" + String(id) + "/use",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function exportActivityCsv(
+  accessToken: string
+): Promise<string | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/activity/export");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return response.text();
 }
 
 export async function exportCustomersCsv(accessToken: string): Promise<string | null> {
