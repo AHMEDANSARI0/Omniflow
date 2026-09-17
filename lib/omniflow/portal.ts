@@ -3975,6 +3975,41 @@ export async function exportCustomersCsv(accessToken: string): Promise<string | 
   return response.text();
 }
 
+export async function exportRevenueCsv(
+  accessToken: string
+): Promise<string | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/revenue/export");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return response.text();
+}
+
+export async function exportReturnsCsv(
+  accessToken: string
+): Promise<string | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/returns/export"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return response.text();
+}
+
 export type EnrollmentExport =
   | { kind: "ok"; csv: string }
   | { kind: "not_found" }
@@ -6342,6 +6377,73 @@ export async function listCheckoutReturns(
     ? (counts as Record<string, unknown>).total as number
     : returns.length;
   return { returns, total };
+}
+
+export interface DigestSettings {
+  enabled: boolean;
+  ownerContact: string;
+  hour: number;
+}
+
+export async function getDigestSettings(
+  accessToken: string
+): Promise<DigestSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/digest/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).settings
+    : null;
+  if (raw === null || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  return {
+    enabled: s.enabled === true,
+    ownerContact: typeof s.owner_contact === "string" ? s.owner_contact : "",
+    hour: typeof s.hour === "number" && s.hour >= 6 && s.hour <= 21
+      ? Math.floor(s.hour)
+      : 9,
+  };
+}
+
+export async function saveDigestSettings(
+  accessToken: string,
+  settings: DigestSettings
+): Promise<{ ok: true } | "bad_request" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/digest/settings",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            enabled: settings.enabled === true,
+            owner_contact: String(settings.ownerContact || "").trim().slice(0, 100),
+            hour: Number(settings.hour) >= 6 && Number(settings.hour) <= 21
+              ? Math.floor(Number(settings.hour))
+              : 9,
+          },
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
 }
 
 export interface ListenRule {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import OrderUpdatesSettings from "./OrderUpdatesSettings";
 import CheckoutReturnsCard from "./CheckoutReturnsCard";
+import DigestCard from "./DigestCard";
 
 interface ChurnContact {
   contactId: string;
@@ -172,6 +173,25 @@ export default function GrowthPage() {
   const [restock, setRestock] = useState<RestockRadarData | null>(null);
   const [days, setDays] = useState(14);
   const [returnFor, setReturnFor] = useState<number | null>(null);
+
+  async function downloadCsv(path: string, filename: string) {
+    try {
+      const response = await fetch(path, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      return;
+    }
+  }
   const [staffing, setStaffing] = useState<StaffingForecast | null>(null);
   const [suggestions, setSuggestions] = useState<BroadcastSuggestion[]>([]);
   const [settings, setSettings] = useState<NegotiationSettings | null>(null);
@@ -328,6 +348,19 @@ export default function GrowthPage() {
       ) : null}
 
       <div className="space-y-4">
+        <div className="flex justify-end">
+          <button
+            onClick={() =>
+              void downloadCsv(
+                "/api/omniflow/portal/revenue/export",
+                "omniflow-revenue.csv"
+              )
+            }
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-white/[0.06]"
+          >
+            Export revenue CSV
+          </button>
+        </div>
         <Section
           title="Revenue & pipeline"
           hint="Paid revenue, buyers and open-cart value for the selected window."
@@ -814,6 +847,8 @@ export default function GrowthPage() {
         <OrderUpdatesSettings />
 
         <CheckoutReturnsCard />
+
+        <DigestCard />
 
         <Section
           title="Keyword alerts"

@@ -21,6 +21,25 @@ const REASON_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+  async function exportCsv() {
+    try {
+      const response = await fetch("/api/omniflow/portal/checkout/returns/export", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "omniflow-returns.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      return;
+    }
+  }
+
 export default function CheckoutReturnsCard() {
   const [items, setItems] = useState<ReturnRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -67,9 +86,18 @@ export default function CheckoutReturnsCard() {
             revenue and VIP counts automatically.
           </p>
         </div>
-        <span className="rounded-md border border-rose-400/25 bg-rose-400/[0.08] px-2 py-0.5 text-[11px] text-rose-300">
-          {total} total
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void exportCsv()}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-white/[0.06]"
+          >
+            Export CSV
+          </button>
+          <span className="rounded-md border border-rose-400/25 bg-rose-400/[0.08] px-2 py-0.5 text-[11px] text-rose-300">
+            {total} total
+          </span>
+        </div>
       </div>
 
       {items.length === 0 ? (
