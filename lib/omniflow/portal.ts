@@ -5747,12 +5747,19 @@ async function controlPlanePublicRequest(path: string): Promise<Response | null>
   }
 }
 
+export type PublicCheckoutPayment = {
+  paidAmount: number;
+  due: number;
+};
+
 export interface PublicCheckoutView {
   title: string;
   items: { name: string; qty: number; price: number }[];
   total: number;
   status: string;
   createdAt: string | null;
+  discount: number;
+  payment: PublicCheckoutPayment | null;
 }
 
 export async function getPublicCheckout(
@@ -5779,6 +5786,14 @@ export async function getPublicCheckout(
     total: typeof row.total === "number" ? row.total : 0,
     status: typeof row.status === "string" ? row.status : "open",
     createdAt: typeof row.created_at === "string" ? row.created_at : null,
+    discount: typeof row.discount === "number" ? row.discount : 0,
+    payment:
+      typeof row.paid_amount === "number" && row.paid_amount > 0
+        ? {
+            paidAmount: row.paid_amount,
+            due: typeof row.due === "number" ? row.due : 0,
+          }
+        : null,
   };
 }
 
@@ -6075,6 +6090,7 @@ export interface CheckoutLink {
   expiresAt: string | null;
   viewCount: number;
   paidAmount: number;
+  discount: number;
 }
 
 export async function createCheckoutLink(
@@ -6082,7 +6098,8 @@ export async function createCheckoutLink(
   contactId: string,
   title: string,
   items: { name: string; qty: number; price: number }[],
-  expiresInDays?: number | null
+  expiresInDays?: number | null,
+  discountAmount?: number | null
 ): Promise<CheckoutLink | null> {
   let response: Response;
   try {
@@ -6101,6 +6118,7 @@ export async function createCheckoutLink(
             price: item.price,
           })),
           expires_in_days: expiresInDays ?? null,
+          discount_amount: discountAmount ?? null,
         }),
       }
     );
@@ -6137,6 +6155,7 @@ export async function createCheckoutLink(
     expiresAt: typeof row.expires_at === "string" ? row.expires_at : null,
     viewCount: typeof row.view_count === "number" ? row.view_count : 0,
     paidAmount: typeof row.paid_amount === "number" ? row.paid_amount : 0,
+    discount: typeof row.discount === "number" ? row.discount : 0,
   };
 }
 
@@ -6182,6 +6201,7 @@ export async function listCheckoutLinks(
         expiresAt: typeof item.expires_at === "string" ? item.expires_at : null,
         viewCount: typeof item.view_count === "number" ? item.view_count : 0,
         paidAmount: typeof item.paid_amount === "number" ? item.paid_amount : 0,
+        discount: typeof item.discount === "number" ? item.discount : 0,
       };
     });
 }
@@ -6468,7 +6488,8 @@ export async function editCheckoutLink(
   linkId: number,
   title: string,
   items: { name: string; qty: number; price: number }[],
-  expiresInDays?: number | null
+  expiresInDays?: number | null,
+  discountAmount?: number | null
 ): Promise<CheckoutEditMutation> {
   let response: Response;
   try {
@@ -6478,7 +6499,12 @@ export async function editCheckoutLink(
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, items, expires_in_days: expiresInDays ?? null }),
+        body: JSON.stringify({
+          title,
+          items,
+          expires_in_days: expiresInDays ?? null,
+          discount_amount: discountAmount ?? null,
+        }),
       }
     );
   } catch (error) {
@@ -6533,6 +6559,43 @@ export async function duplicateCheckoutLink(
     ok: true,
     token: typeof token === "string" ? token : "",
   };
+}
+
+export type CheckoutShareMutation =
+  | { ok: true }
+  | "not_found"
+  | "bad_request"
+  | null;
+
+export async function shareCheckoutLink(
+  accessToken: string,
+  linkId: number,
+  message: string
+): Promise<CheckoutShareMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/links/" + linkId + "/share",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  if (row.ok !== true) return null;
+  return { ok: true };
 }
 
 export type CheckoutAdvanceMutation =

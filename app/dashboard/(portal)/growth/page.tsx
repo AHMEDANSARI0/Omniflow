@@ -48,6 +48,32 @@ interface CheckoutLinkItem {
   price: number;
 }
 
+interface ComposerRow {
+  name: string;
+  qty: string;
+  price: string;
+}
+
+interface CheckoutComposer {
+  open: boolean;
+  contact: string;
+  title: string;
+  rows: ComposerRow[];
+  discount: string;
+  expiry: string;
+  busy: boolean;
+}
+
+const EMPTY_COMPOSER: CheckoutComposer = {
+  open: false,
+  contact: "",
+  title: "",
+  rows: [{ name: "", qty: "1", price: "" }],
+  discount: "",
+  expiry: "",
+  busy: false,
+}
+
 interface CheckoutLink {
   id: number;
   token: string;
@@ -59,6 +85,7 @@ interface CheckoutLink {
   expiresAt?: string | null;
   viewCount?: number;
   paidAmount?: number;
+  discount?: number;
 }
 
 interface ListenRule {
@@ -190,8 +217,10 @@ export default function GrowthPage() {
   >([]);
   const [editBusy, setEditBusy] = useState(false);
   const [editExpiry, setEditExpiry] = useState("");
+  const [editDiscount, setEditDiscount] = useState("");
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [advanceBusy, setAdvanceBusy] = useState(false);
+  const [composer, setComposer] = useState<CheckoutComposer>(EMPTY_COMPOSER);
 
   async function downloadCsv(path: string, filename: string) {
     try {
@@ -256,6 +285,88 @@ export default function GrowthPage() {
     }
   }
 
+  function updateComposer(patch: Partial<CheckoutComposer>) {
+    setComposer((prev) => ({ ...prev, ...patch }));
+  }
+
+  function updateRow(index: number, patch: Partial<ComposerRow>) {
+    setComposer((prev) => ({
+      ...prev,
+      rows: prev.rows.map((row, row2) =>
+        row2 === index ? { ...row, ...patch } : row
+      ),
+    }));
+  }
+
+  async function createLink() {
+    if (composer.busy) return;
+    const items = composer.rows
+      .map((row) => ({
+        name: row.name.trim(),
+        qty: Math.floor(Number(row.qty)),
+        price: Math.round(Number(row.price) * 100) / 100,
+      }))
+      .filter(
+        (row) =>
+          row.name.length > 0
+          && Number.isFinite(row.qty) && row.qty >= 1
+          && Number.isFinite(row.price) && row.price >= 0
+      );
+    if (!composer.contact.trim() || !items.length) return;
+    updateComposer({ busy: true });
+    try {
+      const result = await getJson<{ ok: boolean }>(
+        "/api/omniflow/portal/checkout/links",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contact_id: composer.contact.trim(),
+            title: composer.title.trim(),
+            items,
+            expires_in_days:
+              composer.expiry === "" ? null : Number(composer.expiry),
+            discount_amount:
+              composer.discount === ""
+                ? null
+                : Math.max(0, Number(composer.discount) || 0),
+          }),
+        }
+      );
+      if (result === null || !result.ok) return;
+      setComposer(EMPTY_COMPOSER);
+      await load();
+    } catch {
+      return;
+    } finally {
+      updateComposer({ busy: false });
+    }
+  }
+
+  async function shareLink(link: CheckoutLink) {
+    const origin =
+      typeof window === "undefined" ? "" : window.location.origin;
+    const due = dueOf(link);
+    const paid = link.paidAmount || 0;
+    const parts = [
+      "Assalam o alaikum!",
+      link.title ? "Your order '" + link.title + "'" : "Your order",
+      "- " + link.total + ".",
+      paid > 0 && due > 0
+        ? "Advance " + paid + " received, due " + due + " on delivery."
+        : "",
+      "Pay or track it here: " + origin + "/c/" + link.token,
+    ].filter(Boolean);
+    await getJson(
+      "/api/omniflow/portal/checkout/links/" + link.id + "/share",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: parts.join(" ") }),
+      }
+    );
+  }
+
   function startEdit(link: CheckoutLink) {
     setEditFor(link.id);
     setEditTitle(link.title || "");
@@ -267,6 +378,7 @@ export default function GrowthPage() {
       }))
     );
     setEditExpiry("");
+    setEditDiscount(link.discount ? String(link.discount) : "");
     setAdvanceAmount("");
   }
 
@@ -295,6 +407,7 @@ export default function GrowthPage() {
           items,
           expires_in_days:
             editExpiry === "" ? null : Math.max(0, Number(editExpiry)),
+          discount_amount: Math.max(0, Number(editDiscount) || 0),
         }),
       });
       setEditFor(null);
@@ -858,6 +971,159 @@ export default function GrowthPage() {
           title="Checkout links"
           hint="Shareable order summaries - the customer opens the link, you close the deal in chat."
         >
+          {composer.open ? (
+            <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-3">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="text-[11px] text-slate-400">
+                    Customer WhatsApp ID
+                  </span>
+                  <input
+                    type="text"
+                    value={composer.contact}
+                    onChange={(event) =>
+                      updateComposer({ contact: event.target.value })
+                    }
+                    placeholder="92300xxxxxxx"
+                    className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[11px] text-slate-400">
+                    Order title
+                  </span>
+                  <input
+                    type="text"
+                    value={composer.title}
+                    onChange={(event) =>
+                      updateComposer({ title: event.target.value })
+                    }
+                    placeholder="Eid bundle"
+                    className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                  />
+                </label>
+              </div>
+              <div className="mt-2 space-y-2">
+                {composer.rows.map((row, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-[1fr_4rem_5rem_2rem] gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={row.name}
+                      onChange={(event) =>
+                        updateRow(index, { name: event.target.value })
+                      }
+                      placeholder="Item"
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.qty}
+                      onChange={(event) =>
+                        updateRow(index, { qty: event.target.value })
+                      }
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={row.price}
+                      onChange={(event) =>
+                        updateRow(index, { price: event.target.value })
+                      }
+                      placeholder="Price"
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                    />
+                    <button
+                      onClick={() =>
+                        updateComposer({
+                          rows: composer.rows.filter(
+                            (_, row2) => row2 !== index
+                          ),
+                        })
+                      }
+                      className="rounded-lg border border-white/[0.08] px-1 text-[10px] text-slate-500 hover:bg-white/[0.06]"
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <button
+                  onClick={() =>
+                    updateComposer({
+                      rows: [
+                        ...composer.rows,
+                        { name: "", qty: "1", price: "" },
+                      ],
+                    })
+                  }
+                  className="text-[11px] text-cyan-300 hover:text-cyan-200"
+                >
+                  + Add item
+                </button>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                    Discount (Rs)
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={composer.discount}
+                      onChange={(event) =>
+                        updateComposer({ discount: event.target.value })
+                      }
+                      placeholder="0"
+                      className="w-20 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                    Expires in
+                    <select
+                      value={composer.expiry}
+                      onChange={(event) =>
+                        updateComposer({ expiry: event.target.value })
+                      }
+                      className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                    >
+                      <option value="">Never</option>
+                      <option value="3">3 days</option>
+                      <option value="7">7 days</option>
+                      <option value="14">14 days</option>
+                      <option value="30">30 days</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={() => void createLink()}
+                  disabled={composer.busy}
+                  className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.1] px-3 py-1.5 text-[11px] font-medium text-cyan-200 hover:bg-cyan-400/[0.18] disabled:opacity-50"
+                >
+                  {composer.busy ? "Creating…" : "Create link"}
+                </button>
+                <button
+                  onClick={() => setComposer(EMPTY_COMPOSER)}
+                  className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/[0.06]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setComposer({ ...EMPTY_COMPOSER, open: true })}
+              className="mb-3 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-[11px] font-medium text-cyan-200 hover:bg-cyan-400/[0.15]"
+            >
+              + New checkout link
+            </button>
+          )}
           {links.length === 0 ? (
             <p className="text-xs text-slate-500">
               No checkout links yet.
@@ -882,6 +1148,9 @@ export default function GrowthPage() {
                         {expiryLabel(link) ? " · " + expiryLabel(link) : ""}
                         {link.status === "open" && (link.paidAmount || 0) > 0
                           ? " · due " + dueOf(link)
+                          : ""}
+                        {link.status === "open" && (link.discount || 0) > 0
+                          ? " · " + link.discount + " off"
                           : ""}
                       </p>
                     </div>
@@ -926,6 +1195,12 @@ export default function GrowthPage() {
                             className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
                           >
                             Duplicate
+                          </button>
+                          <button
+                            onClick={() => void shareLink(link)}
+                            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2 py-1 text-[10px] text-emerald-300 hover:bg-emerald-400/[0.14]"
+                          >
+                            Send on WhatsApp
                           </button>
                         </>
                       ) : null}

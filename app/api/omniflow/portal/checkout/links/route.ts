@@ -112,13 +112,27 @@ export async function POST(request: Request) {
     expiresInDays = days;
   }
 
+  let discountAmount: number | null = null;
+  const rawDiscount = body.discount_amount;
+  if (rawDiscount !== null && rawDiscount !== undefined && rawDiscount !== "") {
+    const amount = Number(rawDiscount);
+    if (!Number.isFinite(amount) || amount < 0 || amount > 100000) {
+      return safeJson(
+        { error: { code: "bad_request", message: "Discount must be 0-100000." } },
+        400
+      );
+    }
+    discountAmount = Math.round(amount * 100) / 100;
+  }
+
   try {
     const link = await createCheckoutLink(
       accessToken,
       contactId,
       title,
       items,
-      expiresInDays
+      expiresInDays,
+      discountAmount
     );
     if (link === null) {
       return safeJson(
