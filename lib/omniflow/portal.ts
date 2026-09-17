@@ -6173,6 +6173,7 @@ export interface CheckoutNotifySettings {
   tplPaid: string;
   tplShipped: string;
   tplDelivered: string;
+  tplReturned: string;
   cartEnabled: boolean;
   cartGap1: number;
   cartGap2: number;
@@ -6237,6 +6238,7 @@ export async function getCheckoutNotifySettings(
     tplPaid: typeof s.tpl_paid === "string" ? s.tpl_paid : "",
     tplShipped: typeof s.tpl_shipped === "string" ? s.tpl_shipped : "",
     tplDelivered: typeof s.tpl_delivered === "string" ? s.tpl_delivered : "",
+    tplReturned: typeof s.tpl_returned === "string" ? s.tpl_returned : "",
     ...normalizeCart(cartRaw),
   };
 }
@@ -6259,6 +6261,7 @@ export async function saveCheckoutNotifySettings(
             tpl_paid: String(settings.tplPaid || "").trim().slice(0, 500),
             tpl_shipped: String(settings.tplShipped || "").trim().slice(0, 500),
             tpl_delivered: String(settings.tplDelivered || "").trim().slice(0, 500),
+            tpl_returned: String(settings.tplReturned || "").trim().slice(0, 500),
             cart: {
               enabled: settings.cartEnabled === true,
               gap_1: Number(settings.cartGap1) >= 1
@@ -6286,6 +6289,59 @@ export async function saveCheckoutNotifySettings(
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   return { ok: true };
+}
+
+export interface CheckoutReturn {
+  id: number;
+  linkId: number;
+  reason: string;
+  note: string;
+  title: string;
+  total: number;
+  createdAt: string | null;
+}
+
+export async function listCheckoutReturns(
+  accessToken: string
+): Promise<{ returns: CheckoutReturn[]; total: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/returns"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).returns
+    : null;
+  if (!Array.isArray(raw)) return { returns: [], total: 0 };
+  const returns = raw
+    .filter((item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object")
+    .map((item) => ({
+      id: typeof item.id === "number" ? item.id : 0,
+      linkId: typeof item.link_id === "number" ? item.link_id : 0,
+      reason: typeof item.reason === "string" ? item.reason : "other",
+      note: typeof item.note === "string" ? item.note : "",
+      title: typeof item.title === "string" ? item.title : "",
+      total: typeof item.total === "number" ? item.total : 0,
+      createdAt: typeof item.created_at === "string" ? item.created_at : null,
+    }));
+  const counts = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).counts
+    : null;
+  const total = counts !== null && typeof counts === "object"
+    && typeof (counts as Record<string, unknown>).total === "number"
+    ? (counts as Record<string, unknown>).total as number
+    : returns.length;
+  return { returns, total };
 }
 
 export interface ListenRule {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import OrderUpdatesSettings from "./OrderUpdatesSettings";
+import CheckoutReturnsCard from "./CheckoutReturnsCard";
 
 interface ChurnContact {
   contactId: string;
@@ -154,6 +155,15 @@ function Section({
   );
 }
 
+const RETURN_REASONS: [string, string][] = [
+  ["size", "Size"],
+  ["fit", "Fit"],
+  ["damaged", "Damaged"],
+  ["late", "Late"],
+  ["changed_mind", "Changed mind"],
+  ["other", "Other"],
+];
+
 export default function GrowthPage() {
   const [churn, setChurn] = useState<ChurnContact[]>([]);
   const [radar, setRadar] = useState<ChurnRadarContact[]>([]);
@@ -161,6 +171,7 @@ export default function GrowthPage() {
   const [revItems, setRevItems] = useState<RevenueItemData[]>([]);
   const [restock, setRestock] = useState<RestockRadarData | null>(null);
   const [days, setDays] = useState(14);
+  const [returnFor, setReturnFor] = useState<number | null>(null);
   const [staffing, setStaffing] = useState<StaffingForecast | null>(null);
   const [suggestions, setSuggestions] = useState<BroadcastSuggestion[]>([]);
   const [settings, setSettings] = useState<NegotiationSettings | null>(null);
@@ -254,11 +265,19 @@ export default function GrowthPage() {
     if (result) setQuote(result);
   }
 
-  async function markLink(link: CheckoutLink, status: string) {
+  async function markLink(
+    link: CheckoutLink,
+    status: string,
+    returnReason?: string
+  ) {
     await getJson("/api/omniflow/portal/checkout/links/" + link.id, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({
+        status,
+        reason: returnReason,
+        note: "",
+      }),
     });
     await load();
   }
@@ -754,7 +773,37 @@ export default function GrowthPage() {
                           Delivered
                         </button>
                       ) : null}
+                      {link.status === "paid"
+                        || link.status === "shipped"
+                        || link.status === "delivered" ? (
+                        <button
+                          onClick={() =>
+                            setReturnFor(
+                              returnFor === link.id ? null : link.id
+                            )
+                          }
+                          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                        >
+                          Returned
+                        </button>
+                      ) : null}
                     </div>
+                    {returnFor === link.id ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {RETURN_REASONS.map(([code, label]) => (
+                          <button
+                            key={code}
+                            onClick={() => {
+                              setReturnFor(null);
+                              void markLink(link, "returned", code);
+                            }}
+                            className="rounded-lg border border-amber-400/25 bg-amber-400/[0.08] px-2 py-1 text-[10px] text-amber-300 hover:bg-amber-400/[0.14]"
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </li>
               ))}
@@ -763,6 +812,8 @@ export default function GrowthPage() {
         </Section>
 
         <OrderUpdatesSettings />
+
+        <CheckoutReturnsCard />
 
         <Section
           title="Keyword alerts"

@@ -69,6 +69,7 @@ export async function PUT(request: Request) {
     tplPaid: typeof raw.tpl_paid === "string" ? raw.tpl_paid.trim().slice(0, 500) : "",
     tplShipped: typeof raw.tpl_shipped === "string" ? raw.tpl_shipped.trim().slice(0, 500) : "",
     tplDelivered: typeof raw.tpl_delivered === "string" ? raw.tpl_delivered.trim().slice(0, 500) : "",
+    tplReturned: typeof raw.tpl_returned === "string" ? raw.tpl_returned.trim().slice(0, 500) : "",
     cartEnabled: false,
     cartGap1: 2,
     cartGap2: 24,

@@ -7,6 +7,7 @@ interface NotifySettings {
   tplPaid: string;
   tplShipped: string;
   tplDelivered: string;
+  tplReturned: string;
   cartEnabled: boolean;
   cartGap1: number;
   cartGap2: number;
@@ -21,6 +22,7 @@ const EMPTY: NotifySettings = {
   tplPaid: "",
   tplShipped: "",
   tplDelivered: "",
+  tplReturned: "",
   cartEnabled: false,
   cartGap1: 2,
   cartGap2: 24,
@@ -57,6 +59,7 @@ export default function OrderUpdatesSettings() {
         tplPaid: typeof s.tplPaid === "string" ? s.tplPaid : "",
         tplShipped: typeof s.tplShipped === "string" ? s.tplShipped : "",
         tplDelivered: typeof s.tplDelivered === "string" ? s.tplDelivered : "",
+        tplReturned: typeof s.tplReturned === "string" ? s.tplReturned : "",
         cartEnabled: s.cartEnabled === true,
         cartGap1: typeof s.cartGap1 === "number" ? s.cartGap1 : 2,
         cartGap2: typeof s.cartGap2 === "number" ? s.cartGap2 : 24,
@@ -91,6 +94,7 @@ export default function OrderUpdatesSettings() {
             tpl_paid: settings.tplPaid.trim().slice(0, 500),
             tpl_shipped: settings.tplShipped.trim().slice(0, 500),
             tpl_delivered: settings.tplDelivered.trim().slice(0, 500),
+            tpl_returned: settings.tplReturned.trim().slice(0, 500),
             cart: {
               enabled: settings.cartEnabled,
               gap_1: settings.cartGap1,
@@ -155,7 +159,7 @@ export default function OrderUpdatesSettings() {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="text-[11px] text-slate-400">Paid message</span>
           <textarea
@@ -195,6 +199,21 @@ export default function OrderUpdatesSettings() {
               }))
             }
             placeholder="Order &apos;{title}&apos; delivered. Thank you!"
+            className={FIELD_BASE}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] text-slate-400">Returned message</span>
+          <textarea
+            rows={3}
+            value={settings.tplReturned}
+            onChange={(event) =>
+              setSettings((prev) => ({
+                ...prev,
+                tplReturned: event.target.value,
+              }))
+            }
+            placeholder="Return for &apos;{title}&apos; registered. We will contact you about the refund."
             className={FIELD_BASE}
           />
         </label>
