@@ -6074,6 +6074,7 @@ export interface CheckoutLink {
   createdAt: string | null;
   expiresAt: string | null;
   viewCount: number;
+  paidAmount: number;
 }
 
 export async function createCheckoutLink(
@@ -6135,6 +6136,7 @@ export async function createCheckoutLink(
     createdAt: typeof row.created_at === "string" ? row.created_at : null,
     expiresAt: typeof row.expires_at === "string" ? row.expires_at : null,
     viewCount: typeof row.view_count === "number" ? row.view_count : 0,
+    paidAmount: typeof row.paid_amount === "number" ? row.paid_amount : 0,
   };
 }
 
@@ -6179,6 +6181,7 @@ export async function listCheckoutLinks(
         createdAt: typeof item.created_at === "string" ? item.created_at : null,
         expiresAt: typeof item.expires_at === "string" ? item.expires_at : null,
         viewCount: typeof item.view_count === "number" ? item.view_count : 0,
+        paidAmount: typeof item.paid_amount === "number" ? item.paid_amount : 0,
       };
     });
 }
@@ -6529,6 +6532,48 @@ export async function duplicateCheckoutLink(
   return {
     ok: true,
     token: typeof token === "string" ? token : "",
+  };
+}
+
+export type CheckoutAdvanceMutation =
+  | { ok: true; paidAmount: number; due: number; status: string }
+  | "not_found"
+  | "bad_request"
+  | null;
+
+export async function addCheckoutAdvance(
+  accessToken: string,
+  linkId: number,
+  amount: number
+): Promise<CheckoutAdvanceMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/links/" + linkId + "/advance",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  if (row.ok !== true) return null;
+  return {
+    ok: true,
+    paidAmount: typeof row.paid_amount === "number" ? row.paid_amount : 0,
+    due: typeof row.due === "number" ? row.due : 0,
+    status: typeof row.status === "string" ? row.status : "open",
   };
 }
 

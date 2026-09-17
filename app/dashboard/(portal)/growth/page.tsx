@@ -58,6 +58,7 @@ interface CheckoutLink {
   items: CheckoutLinkItem[];
   expiresAt?: string | null;
   viewCount?: number;
+  paidAmount?: number;
 }
 
 interface ListenRule {
@@ -189,6 +190,8 @@ export default function GrowthPage() {
   >([]);
   const [editBusy, setEditBusy] = useState(false);
   const [editExpiry, setEditExpiry] = useState("");
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [advanceBusy, setAdvanceBusy] = useState(false);
 
   async function downloadCsv(path: string, filename: string) {
     try {
@@ -223,6 +226,36 @@ export default function GrowthPage() {
     return daysLeft <= 1 ? "Ends today" : daysLeft + "d left";
   }
 
+  function dueOf(link: CheckoutLink) {
+    return Math.max(
+      Math.round(((link.total || 0) - (link.paidAmount || 0)) * 100) / 100,
+      0
+    );
+  }
+
+  async function recordAdvance(link: CheckoutLink) {
+    if (advanceBusy) return;
+    const amount = Math.round(Number(advanceAmount) * 100) / 100;
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    setAdvanceBusy(true);
+    try {
+      await getJson(
+        "/api/omniflow/portal/checkout/links/" + link.id + "/advance",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount }),
+        }
+      );
+      setAdvanceAmount("");
+      await load();
+    } catch {
+      return;
+    } finally {
+      setAdvanceBusy(false);
+    }
+  }
+
   function startEdit(link: CheckoutLink) {
     setEditFor(link.id);
     setEditTitle(link.title || "");
@@ -234,6 +267,7 @@ export default function GrowthPage() {
       }))
     );
     setEditExpiry("");
+    setAdvanceAmount("");
   }
 
   async function saveEdit() {
@@ -846,6 +880,9 @@ export default function GrowthPage() {
                           ? " · " + (link.viewCount || 0) + " views"
                           : ""}
                         {expiryLabel(link) ? " · " + expiryLabel(link) : ""}
+                        {link.status === "open" && (link.paidAmount || 0) > 0
+                          ? " · due " + dueOf(link)
+                          : ""}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
@@ -957,6 +994,34 @@ export default function GrowthPage() {
                             <option value="30">30 days</option>
                           </select>
                         </label>
+                        <div className="mt-2 rounded-lg border border-white/[0.06] p-2">
+                          <span className="text-[11px] text-slate-400">
+                            Advance received (Rs)
+                          </span>
+                          <div className="mt-1 flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={advanceAmount}
+                              onChange={(event) =>
+                                setAdvanceAmount(event.target.value)
+                              }
+                              placeholder="e.g. 500"
+                              className="w-24 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                            />
+                            <button
+                              onClick={() => void recordAdvance(link)}
+                              disabled={advanceBusy}
+                              className="rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-emerald-300 hover:bg-emerald-400/[0.14] disabled:opacity-50"
+                            >
+                              {advanceBusy ? "Recording…" : "Record"}
+                            </button>
+                            <span className="text-[10px] text-slate-500">
+                              Full advance marks the link paid.
+                            </span>
+                          </div>
+                        </div>
                         <div className="mt-2 space-y-2">
                           {editItems.map((item, index) => (
                             <div
