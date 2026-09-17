@@ -42,12 +42,6 @@ interface NegotiationQuote {
   enabled: boolean;
 }
 
-interface CheckoutLinkItem {
-  name: string;
-  qty: number;
-  price: number;
-}
-
 interface CheckoutLink {
   id: number;
   token: string;
@@ -55,9 +49,6 @@ interface CheckoutLink {
   title: string;
   total: number;
   status: string;
-  items: CheckoutLinkItem[];
-  expiresAt?: string | null;
-  viewCount?: number;
 }
 
 interface ListenRule {
@@ -182,13 +173,6 @@ export default function GrowthPage() {
   const [restock, setRestock] = useState<RestockRadarData | null>(null);
   const [days, setDays] = useState(14);
   const [returnFor, setReturnFor] = useState<number | null>(null);
-  const [editFor, setEditFor] = useState<number | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editItems, setEditItems] = useState<
-    { name: string; qty: string; price: string }[]
-  >([]);
-  const [editBusy, setEditBusy] = useState(false);
-  const [editExpiry, setEditExpiry] = useState("");
 
   async function downloadCsv(path: string, filename: string) {
     try {
@@ -208,77 +192,7 @@ export default function GrowthPage() {
       return;
     }
   }
-
-  function isExpired(link: CheckoutLink) {
-    if (!link.expiresAt || link.status !== "open") return false;
-    return new Date(link.expiresAt).getTime() < Date.now();
-  }
-
-  function expiryLabel(link: CheckoutLink) {
-    if (!link.expiresAt) return null;
-    if (isExpired(link)) return "Expired";
-    const daysLeft = Math.ceil(
-      (new Date(link.expiresAt).getTime() - Date.now()) / 86400000
-    );
-    return daysLeft <= 1 ? "Ends today" : daysLeft + "d left";
-  }
-
-  function startEdit(link: CheckoutLink) {
-    setEditFor(link.id);
-    setEditTitle(link.title || "");
-    setEditItems(
-      (link.items || []).map((item) => ({
-        name: item.name,
-        qty: String(item.qty),
-        price: String(item.price),
-      }))
-    );
-    setEditExpiry("");
-  }
-
-  async function saveEdit() {
-    if (editFor === null || editBusy) return;
-    const items = editItems
-      .map((item) => ({
-        name: item.name.trim(),
-        qty: Math.floor(Number(item.qty)),
-        price: Math.round(Number(item.price) * 100) / 100,
-      }))
-      .filter(
-        (item) =>
-          item.name.length > 0
-          && Number.isFinite(item.qty) && item.qty >= 1
-          && Number.isFinite(item.price) && item.price >= 0
-      );
-    if (!items.length) return;
-    setEditBusy(true);
-    try {
-      await getJson("/api/omniflow/portal/checkout/links/" + editFor + "/edit", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: editTitle.trim(),
-          items,
-          expires_in_days:
-            editExpiry === "" ? null : Math.max(0, Number(editExpiry)),
-        }),
-      });
-      setEditFor(null);
-      await load();
-    } catch {
-      return;
-    } finally {
-      setEditBusy(false);
-    }
-  }
-
-  async function duplicateLink(link: CheckoutLink) {
-    await getJson(
-      "/api/omniflow/portal/checkout/links/" + link.id + "/duplicate",
-      { method: "POST" }
-    );
-    await load();
-  }const [staffing, setStaffing] = useState<StaffingForecast | null>(null);
+  const [staffing, setStaffing] = useState<StaffingForecast | null>(null);
   const [suggestions, setSuggestions] = useState<BroadcastSuggestion[]>([]);
   const [settings, setSettings] = useState<NegotiationSettings | null>(null);
   const [quote, setQuote] = useState<NegotiationQuote | null>(null);
@@ -842,10 +756,6 @@ export default function GrowthPage() {
                       </p>
                       <p className="truncate text-[10px] text-slate-500">
                         /c/{link.token}
-                        {link.status === "open" && (link.viewCount || 0) > 0
-                          ? " · " + (link.viewCount || 0) + " views"
-                          : ""}
-                        {expiryLabel(link) ? " · " + expiryLabel(link) : ""}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
@@ -877,18 +787,6 @@ export default function GrowthPage() {
                             className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
                           >
                             Cancel
-                          </button>
-                          <button
-                            onClick={() => startEdit(link)}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => void duplicateLink(link)}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
-                          >
-                            Duplicate
                           </button>
                         </>
                       ) : null}
@@ -923,112 +821,6 @@ export default function GrowthPage() {
                         </button>
                       ) : null}
                     </div>
-                    {editFor === link.id ? (
-                      <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-                        <label className="block">
-                          <span className="text-[11px] text-slate-400">
-                            Title
-                          </span>
-                          <input
-                            type="text"
-                            value={editTitle}
-                            onChange={(event) =>
-                              setEditTitle(event.target.value)
-                            }
-                            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
-                          />
-                        </label>
-                        <label className="mt-2 block">
-                          <span className="text-[11px] text-slate-400">
-                            Link expiry
-                          </span>
-                          <select
-                            value={editExpiry}
-                            onChange={(event) =>
-                              setEditExpiry(event.target.value)
-                            }
-                            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
-                          >
-                            <option value="">Keep current</option>
-                            <option value="0">No expiry</option>
-                            <option value="3">3 days</option>
-                            <option value="7">7 days</option>
-                            <option value="14">14 days</option>
-                            <option value="30">30 days</option>
-                          </select>
-                        </label>
-                        <div className="mt-2 space-y-2">
-                          {editItems.map((item, index) => (
-                            <div
-                              key={index}
-                              className="grid grid-cols-[1fr_4rem_5rem] gap-2"
-                            >
-                              <input
-                                type="text"
-                                value={item.name}
-                                onChange={(event) =>
-                                  setEditItems((prev) =>
-                                    prev.map((row, row2) =>
-                                      row2 === index
-                                        ? { ...row, name: event.target.value }
-                                        : row
-                                    )
-                                  )
-                                }
-                                placeholder="Item"
-                                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
-                              />
-                              <input
-                                type="number"
-                                min={1}
-                                value={item.qty}
-                                onChange={(event) =>
-                                  setEditItems((prev) =>
-                                    prev.map((row, row2) =>
-                                      row2 === index
-                                        ? { ...row, qty: event.target.value }
-                                        : row
-                                    )
-                                  )
-                                }
-                                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
-                              />
-                              <input
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                value={item.price}
-                                onChange={(event) =>
-                                  setEditItems((prev) =>
-                                    prev.map((row, row2) =>
-                                      row2 === index
-                                        ? { ...row, price: event.target.value }
-                                        : row
-                                    )
-                                  )
-                                }
-                                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-3 flex items-center gap-2">
-                          <button
-                            onClick={() => void saveEdit()}
-                            disabled={editBusy}
-                            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-emerald-300 hover:bg-emerald-400/[0.14] disabled:opacity-50"
-                          >
-                            {editBusy ? "Saving…" : "Save changes"}
-                          </button>
-                          <button
-                            onClick={() => setEditFor(null)}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-slate-400 hover:bg-white/[0.06]"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
                     {returnFor === link.id ? (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {RETURN_REASONS.map(([code, label]) => (

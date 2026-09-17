@@ -99,8 +99,27 @@ export async function POST(request: Request) {
     items.push({ name, qty: Math.round(qty), price });
   }
 
+  const rawExpiry = body.expires_in_days;
+  let expiresInDays: number | null = null;
+  if (rawExpiry !== null && rawExpiry !== undefined && rawExpiry !== "") {
+    const days = Number(rawExpiry);
+    if (!Number.isInteger(days) || days < 1 || days > 60) {
+      return safeJson(
+        { error: { code: "bad_request", message: "Expiry must be 1-60 days." } },
+        400
+      );
+    }
+    expiresInDays = days;
+  }
+
   try {
-    const link = await createCheckoutLink(accessToken, contactId, title, items);
+    const link = await createCheckoutLink(
+      accessToken,
+      contactId,
+      title,
+      items,
+      expiresInDays
+    );
     if (link === null) {
       return safeJson(
         { error: { code: "portal_unavailable", message: "Try again shortly." } },

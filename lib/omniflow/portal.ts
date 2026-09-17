@@ -6072,13 +6072,16 @@ export interface CheckoutLink {
   total: number;
   status: string;
   createdAt: string | null;
+  expiresAt: string | null;
+  viewCount: number;
 }
 
 export async function createCheckoutLink(
   accessToken: string,
   contactId: string,
   title: string,
-  items: { name: string; qty: number; price: number }[]
+  items: { name: string; qty: number; price: number }[],
+  expiresInDays?: number | null
 ): Promise<CheckoutLink | null> {
   let response: Response;
   try {
@@ -6096,6 +6099,7 @@ export async function createCheckoutLink(
             qty: item.qty,
             price: item.price,
           })),
+          expires_in_days: expiresInDays ?? null,
         }),
       }
     );
@@ -6129,6 +6133,8 @@ export async function createCheckoutLink(
     total: typeof row.total === "number" ? row.total : 0,
     status: typeof row.status === "string" ? row.status : "open",
     createdAt: typeof row.created_at === "string" ? row.created_at : null,
+    expiresAt: typeof row.expires_at === "string" ? row.expires_at : null,
+    viewCount: typeof row.view_count === "number" ? row.view_count : 0,
   };
 }
 
@@ -6171,6 +6177,8 @@ export async function listCheckoutLinks(
         total: typeof item.total === "number" ? item.total : 0,
         status: typeof item.status === "string" ? item.status : "open",
         createdAt: typeof item.created_at === "string" ? item.created_at : null,
+        expiresAt: typeof item.expires_at === "string" ? item.expires_at : null,
+        viewCount: typeof item.view_count === "number" ? item.view_count : 0,
       };
     });
 }
@@ -6444,6 +6452,84 @@ export async function saveDigestSettings(
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   return { ok: true };
+}
+
+export type CheckoutEditMutation =
+  | { ok: true; total: number }
+  | "not_found"
+  | "bad_request"
+  | null;
+
+export async function editCheckoutLink(
+  accessToken: string,
+  linkId: number,
+  title: string,
+  items: { name: string; qty: number; price: number }[],
+  expiresInDays?: number | null
+): Promise<CheckoutEditMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/links/" + linkId + "/edit",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, items, expires_in_days: expiresInDays ?? null }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const total = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).total
+    : null;
+  return {
+    ok: true,
+    total: typeof total === "number" ? total : 0,
+  };
+}
+
+export type CheckoutDuplicate =
+  | { ok: true; token: string }
+  | "not_found"
+  | null;
+
+export async function duplicateCheckoutLink(
+  accessToken: string,
+  linkId: number
+): Promise<CheckoutDuplicate> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/links/" + linkId + "/duplicate",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).link
+    : null;
+  const token = raw !== null && typeof raw === "object"
+    ? (raw as Record<string, unknown>).token
+    : null;
+  return {
+    ok: true,
+    token: typeof token === "string" ? token : "",
+  };
 }
 
 export interface ListenRule {
