@@ -7573,6 +7573,109 @@ export async function removePublicCoupon(
   return { ok: true, total: typeof payload.total === "number" ? payload.total : 0 };
 }
 
+// ---------------------------------------------------------------------------
+// Deliveries (event core: failed command queue + dead letters)
+// ---------------------------------------------------------------------------
+
+export type DeliveryStatus = "pending" | "failed" | "dead" | "done";
+
+export interface DeliveryRow {
+  id: number;
+  kind: string;
+  label: string;
+  status: string;
+  attempts: number;
+  nextAttemptAt: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  providerMessageId: string | null;
+  channel: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface DeliveriesPayload {
+  deliveries: DeliveryRow[];
+  counts: Record<DeliveryStatus, number>;
+}
+
+function mapDeliveryRow(row: Record<string, unknown>): DeliveryRow {
+  return {
+    id: typeof row.id === "number" ? row.id : 0,
+    kind: typeof row.kind === "string" ? row.kind : "command",
+    label: typeof row.label === "string" ? row.label : "",
+    status: typeof row.status === "string" ? row.status : "",
+    attempts: typeof row.attempts === "number" ? row.attempts : 0,
+    nextAttemptAt: typeof row.nextAttemptAt === "string" ? row.nextAttemptAt : null,
+    errorCode: typeof row.errorCode === "string" ? row.errorCode : null,
+    errorMessage: typeof row.errorMessage === "string" ? row.errorMessage : null,
+    providerMessageId:
+      typeof row.providerMessageId === "string" ? row.providerMessageId : null,
+    channel: typeof row.channel === "string" ? row.channel : null,
+    createdAt: typeof row.createdAt === "string" ? row.createdAt : null,
+    updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : null,
+  };
+}
+
+export async function listDeliveries(
+  accessToken: string,
+  status?: DeliveryStatus
+): Promise<DeliveriesPayload | null> {
+  let response: Response;
+  try {
+    const query = status ? "?status=" + encodeURIComponent(status) : "";
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/deliveries" + query
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    deliveries?: unknown;
+    counts?: unknown;
+  } | null;
+  if (!payload || !Array.isArray(payload.deliveries)) return null;
+  const counts = (payload.counts ?? {}) as Record<string, unknown>;
+  return {
+    deliveries: payload.deliveries
+      .filter((row): row is Record<string, unknown> =>
+        row !== null && typeof row === "object")
+      .map(mapDeliveryRow),
+    counts: {
+      pending: typeof counts.pending === "number" ? counts.pending : 0,
+      failed: typeof counts.failed === "number" ? counts.failed : 0,
+      dead: typeof counts.dead === "number" ? counts.dead : 0,
+      done: typeof counts.done === "number" ? counts.done : 0,
+    },
+  };
+}
+
+export async function replayDelivery(
+  accessToken: string,
+  deliveryId: number
+): Promise<{ ok: true } | "bad_request" | "not_found" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/deliveries/replay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: deliveryId }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return "bad_request";
+  if (response.status === 404) return "not_found";
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
 export type CheckoutShareMutation =
   | { ok: true }
   | "not_found"
