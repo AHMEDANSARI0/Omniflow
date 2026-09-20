@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import ApiKeyCard from "./ApiKeyCard";
 import BusinessHoursCard from "./BusinessHoursCard";
 import WidgetSettingsCard from "./WidgetSettingsCard";
+import PaymentsCard from "./PaymentsCard";
+import DataSafetyCard from "./DataSafetyCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -51,6 +53,8 @@ export default async function ClientSettingsPage() {
       <div className="mt-6">
         <WidgetSettingsCard />
       </div>
+      <PaymentsCard />
+      <DataSafetyCard />
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { getPublicCheckout } from "../../../lib/omniflow/portal";
+import {
+  getPublicCheckout,
+  getPublicPayInfo,
+} from "../../../lib/omniflow/portal";
 
 
 export default async function PublicCheckoutPage({
@@ -9,6 +12,7 @@ export default async function PublicCheckoutPage({
 }) {
   const { token } = await params;
   const view = await getPublicCheckout(token);
+  const payInfo = view ? await getPublicPayInfo(token) : null;
 
   if (!view) {
     return (
@@ -112,6 +116,16 @@ export default async function PublicCheckoutPage({
             Tracking #: {view.trackingNumber}
           </p>
         </div>
+      ) : null}
+
+      {payInfo && payInfo.enabled && view.payment
+        && view.payment.due > 0 ? (
+        <a
+          href={"/api/omniflow/public/checkout/" + token + "/pay"}
+          className="mt-3 block rounded-xl border border-emerald-400/30 bg-emerald-400/[0.1] px-4 py-3 text-center text-sm font-semibold text-emerald-200 hover:bg-emerald-400/[0.18]"
+        >
+          Pay {view.payment.due} online
+        </a>
       ) : null}
 
       {view.status === "paid" ? (

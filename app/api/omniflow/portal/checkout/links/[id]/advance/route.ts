@@ -61,6 +61,17 @@ export async function POST(
         400
       );
     }
+    if (result === "forbidden") {
+      return safeJson(
+        {
+          error: {
+            code: "forbidden",
+            message: "Only owners can record advances or discounts.",
+          },
+        },
+        403
+      );
+    }
     if (result === null) {
       return safeJson(
         { error: { code: "portal_unavailable", message: "Try again shortly." } },

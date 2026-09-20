@@ -48,6 +48,23 @@ interface CheckoutLinkItem {
   price: number;
 }
 
+interface CustomerAnalyticsRow {
+  contact_id: string;
+  orders: number;
+  spend: number;
+  avg_order: number;
+  tier: string;
+  last_order: string | null;
+}
+
+interface ProductAnalyticsRow {
+  name: string;
+  qty_sold: number;
+  revenue: number;
+  orders: number;
+}
+
+
 interface ComposerRow {
   name: string;
   qty: string;
@@ -170,7 +187,6 @@ const DAYS_OPTIONS = [7, 14, 30, 60];
 async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
   try {
     const response = await fetch(url, { cache: "no-store", ...init });
-    if (!response.ok) return null;
     return (await response.json().catch(() => null)) as T | null;
   } catch {
     return null;
@@ -222,7 +238,14 @@ export default function GrowthPage() {
   const [editDiscount, setEditDiscount] = useState("");
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [advanceBusy, setAdvanceBusy] = useState(false);
+  const [advanceNote, setAdvanceNote] = useState("");
   const [composer, setComposer] = useState<CheckoutComposer>(EMPTY_COMPOSER);
+  const [custAnalytics, setCustAnalytics] = useState<
+    CustomerAnalyticsRow[]
+  >([]);
+  const [prodAnalytics, setProdAnalytics] = useState<
+    ProductAnalyticsRow[]
+  >([]);
   const [trackFor, setTrackFor] = useState<number | null>(null);
   const [trackCourier, setTrackCourier] = useState("");
   const [trackNumber, setTrackNumber] = useState("");
@@ -273,8 +296,12 @@ export default function GrowthPage() {
     const amount = Math.round(Number(advanceAmount) * 100) / 100;
     if (!Number.isFinite(amount) || amount <= 0) return;
     setAdvanceBusy(true);
+    setAdvanceNote("");
     try {
-      await getJson(
+      const result = await getJson<
+        | { ok: true; paid_amount: number; due: number; status: string }
+        | { error: { message: string } }
+      >(
         "/api/omniflow/portal/checkout/links/" + link.id + "/advance",
         {
           method: "POST",
@@ -282,6 +309,14 @@ export default function GrowthPage() {
           body: JSON.stringify({ amount }),
         }
       );
+      if (result === null) {
+        setAdvanceNote("Could not record the advance - try again.");
+        return;
+      }
+      if ("error" in result) {
+        setAdvanceNote(result.error.message);
+        return;
+      }
       setAdvanceAmount("");
       await load();
     } catch {
@@ -479,7 +514,7 @@ export default function GrowthPage() {
   const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
-    const [churnPayload, radarPayload, revenuePayload, itemsPayload, forecast, ideas, negotiation, checkout, listenRules, listenHits, routingRules, restockPayload] =
+    const [churnPayload, radarPayload, revenuePayload, itemsPayload, forecast, ideas, negotiation, checkout, listenRules, listenHits, routingRules, restockPayload, custPayload, prodPayload] =
       await Promise.all([
         getJson<{ contacts: ChurnContact[] }>(
           "/api/omniflow/portal/insights/churn?days=" + days
@@ -509,6 +544,12 @@ export default function GrowthPage() {
         getJson<RestockRadarData>(
           "/api/omniflow/portal/restock/radar?days=" + days
         ),
+        getJson<{ customers: CustomerAnalyticsRow[] }>(
+          "/api/omniflow/portal/insights/customer-analytics?days=" + days
+        ),
+        getJson<{ products: ProductAnalyticsRow[] }>(
+          "/api/omniflow/portal/insights/product-analytics?days=" + days
+        ),
       ]);
     setFailed(negotiation === null && forecast === null);
     setChurn(churnPayload?.contacts ?? []);
@@ -523,6 +564,8 @@ export default function GrowthPage() {
     setHits(listenHits?.hits ?? []);
     setRouting(routingRules?.rules ?? []);
     setRestock(restockPayload);
+    setCustAnalytics(custPayload?.customers ?? []);
+    setProdAnalytics(prodPayload?.products ?? []);
   }, [days]);
 
   useEffect(() => {
@@ -1006,6 +1049,81 @@ export default function GrowthPage() {
         </Section>
 
         <Section
+          title="Customer insights"
+          hint="Who buys again - and who deserves a VIP price next time."
+        >
+          {custAnalytics.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              Paid orders appear here as customers come back.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {custAnalytics.slice(0, 4).map((row) => (
+                <li
+                  key={row.contact_id}
+                  className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-slate-200">
+                      {row.contact_id}
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {row.orders}
+                      {row.orders === 1 ? " order" : " orders"} · avg{" "}
+                      {row.avg_order}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] uppercase ${
+                      row.tier === "vip"
+                        ? "border-violet-400/25 bg-violet-400/[0.08] text-violet-300"
+                        : row.tier === "repeat"
+                          ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                          : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+                    }`}
+                  >
+                    {row.tier}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        <Section
+          title="Top products"
+          hint="What actually sells, from paid orders only."
+        >
+          {prodAnalytics.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              Paid orders appear here.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {prodAnalytics.slice(0, 4).map((row) => (
+                <li
+                  key={row.name}
+                  className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-slate-200">
+                      {row.name}
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {row.qty_sold} sold · {row.orders}
+                      {row.orders === 1 ? " order" : " orders"}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-medium text-slate-200">
+                    {row.revenue}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        <Section
           title="Checkout links"
           hint="Shareable order summaries - the customer opens the link, you close the deal in chat."
         >
@@ -1386,6 +1504,11 @@ export default function GrowthPage() {
                               Full advance marks the link paid.
                             </span>
                           </div>
+                          {advanceNote ? (
+                            <p className="mt-1 text-[10px] text-rose-300">
+                              {advanceNote}
+                            </p>
+                          ) : null}
                         </div>
                         <div className="mt-2 space-y-2">
                           {editItems.map((item, index) => (

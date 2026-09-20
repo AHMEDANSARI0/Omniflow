@@ -6574,6 +6574,322 @@ export async function duplicateCheckoutLink(
   };
 }
 
+export interface PaymentSettings {
+  provider: string;
+  enabled: boolean;
+  sandbox: boolean;
+  configured: boolean;
+  merchantIdMask: string;
+  storeIdMask: string;
+}
+
+export async function fetchPublicPayHtml(
+  token: string
+): Promise<{ status: number; html: string } | null> {
+  const response = await controlPlanePublicRequest(
+    "api/v1/public/checkout/" + encodeURIComponent(token) + "/pay"
+  );
+  if (response === null) return null;
+  const html = await response.text().catch(() => "");
+  return { status: response.status, html };
+}
+
+export async function getPublicPayInfo(
+  token: string
+): Promise<{ enabled: boolean; due: number } | null> {
+  const response = await controlPlanePublicRequest(
+    "api/v1/public/checkout/" + encodeURIComponent(token) + "/payinfo"
+  );
+  if (response === null || !response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    enabled: row.enabled === true,
+    due: typeof row.due === "number" ? row.due : 0,
+  };
+}
+
+export async function getPaymentSettings(
+  accessToken: string
+): Promise<PaymentSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/payments/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = (payload as Record<string, unknown>).settings;
+  if (row === null || typeof row !== "object") return null;
+  const data = row as Record<string, unknown>;
+  return {
+    provider: typeof data.provider === "string" ? data.provider : "jazzcash",
+    enabled: data.enabled === true,
+    sandbox: data.sandbox === true,
+    configured: data.configured === true,
+    merchantIdMask:
+      typeof data.merchant_id_masked === "string"
+        ? data.merchant_id_masked
+        : "****",
+    storeIdMask:
+      typeof data.store_id_masked === "string" ? data.store_id_masked : "****",
+  };
+}
+
+export async function savePaymentSettings(
+  accessToken: string,
+  input: {
+    provider: string;
+    enabled: boolean;
+    sandbox: boolean;
+    merchantId: string;
+    password: string;
+    salt: string;
+    storeId: string;
+  }
+): Promise<{ ok: true } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/payments/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: input.provider,
+        enabled: input.enabled,
+        sandbox: input.sandbox,
+        merchant_id: input.merchantId,
+        password: input.password,
+        salt: input.salt,
+        store_id: input.storeId,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
+export interface CustomerAnalyticsEntry {
+  contactId: string;
+  orders: number;
+  spend: number;
+  avgOrder: number;
+  tier: string;
+  lastOrder: string | null;
+}
+
+export interface ProductAnalyticsEntry {
+  name: string;
+  qtySold: number;
+  revenue: number;
+  orders: number;
+}
+
+export async function getCustomerAnalytics(
+  accessToken: string,
+  days: number
+): Promise<{
+  customers: CustomerAnalyticsEntry[];
+  tiers: Record<string, number>;
+  repeatShare: number;
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/insights/customer-analytics?days=" + days
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const rawCustomers = Array.isArray(row.customers) ? row.customers : [];
+  const rawTiers =
+    row.tiers !== null && typeof row.tiers === "object"
+      ? (row.tiers as Record<string, unknown>)
+      : {};
+  return {
+    customers: rawCustomers
+      .filter((entry): entry is Record<string, unknown> =>
+        entry !== null && typeof entry === "object")
+      .map((entry) => ({
+        contactId:
+          typeof entry.contact_id === "string" ? entry.contact_id : "",
+        orders: typeof entry.orders === "number" ? entry.orders : 0,
+        spend: typeof entry.spend === "number" ? entry.spend : 0,
+        avgOrder: typeof entry.avg_order === "number" ? entry.avg_order : 0,
+        tier: typeof entry.tier === "string" ? entry.tier : "new",
+        lastOrder:
+          typeof entry.last_order === "string" ? entry.last_order : null,
+      })),
+    tiers: {
+      new: typeof rawTiers.new === "number" ? rawTiers.new : 0,
+      repeat: typeof rawTiers.repeat === "number" ? rawTiers.repeat : 0,
+      vip: typeof rawTiers.vip === "number" ? rawTiers.vip : 0,
+    },
+    repeatShare: typeof row.repeat_share === "number" ? row.repeat_share : 0,
+  };
+}
+
+export async function getProductAnalytics(
+  accessToken: string,
+  days: number
+): Promise<ProductAnalyticsEntry[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/insights/product-analytics?days=" + days
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const raw = Array.isArray(
+    (payload as Record<string, unknown>).products
+  )
+    ? ((payload as Record<string, unknown>).products as unknown[])
+    : [];
+  return raw
+    .filter((entry): entry is Record<string, unknown> =>
+      entry !== null && typeof entry === "object")
+    .map((entry) => ({
+      name: typeof entry.name === "string" ? entry.name : "",
+      qtySold: typeof entry.qty_sold === "number" ? entry.qty_sold : 0,
+      revenue: typeof entry.revenue === "number" ? entry.revenue : 0,
+      orders: typeof entry.orders === "number" ? entry.orders : 0,
+    }));
+}
+
+export interface RetentionSettings {
+  closeIdleDays: number;
+  purgeRejectedDays: number;
+}
+
+export async function getRetention(
+  accessToken: string
+): Promise<RetentionSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/data/retention");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = (payload as Record<string, unknown>).retention;
+  if (row === null || typeof row !== "object") return null;
+  const data = row as Record<string, unknown>;
+  return {
+    closeIdleDays:
+      typeof data.close_idle_days === "number" ? data.close_idle_days : 14,
+    purgeRejectedDays:
+      typeof data.purge_rejected_days === "number"
+        ? data.purge_rejected_days
+        : 30,
+  };
+}
+
+export async function saveRetention(
+  accessToken: string,
+  closeIdleDays: number,
+  purgeRejectedDays: number
+): Promise<RetentionSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/data/retention", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        close_idle_days: closeIdleDays,
+        purge_rejected_days: purgeRejectedDays,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = (payload as Record<string, unknown>).retention;
+  if (row === null || typeof row !== "object") return null;
+  const data = row as Record<string, unknown>;
+  return {
+    closeIdleDays:
+      typeof data.close_idle_days === "number" ? data.close_idle_days : 14,
+    purgeRejectedDays:
+      typeof data.purge_rejected_days === "number"
+        ? data.purge_rejected_days
+        : 30,
+  };
+}
+
+export async function runRetention(
+  accessToken: string
+): Promise<{ closed: number; purged: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/data/retention/run",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    closed: typeof row.closed === "number" ? row.closed : 0,
+    purged: typeof row.purged === "number" ? row.purged : 0,
+  };
+}
+
+export async function fetchDataExport(
+  accessToken: string
+): Promise<{ status: number; body: string; filename: string | null } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/data/export");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  const body = await response.text().catch(() => "");
+  const disposition = response.headers.get("content-disposition");
+  const match = disposition
+    ? /filename="([^"]+)"/.exec(disposition)
+    : null;
+  return { status: response.status, body, filename: match ? match[1] : null };
+}
+
 export type CheckoutShareMutation =
   | { ok: true }
   | "not_found"
@@ -6649,6 +6965,7 @@ export type CheckoutAdvanceMutation =
   | { ok: true; paidAmount: number; due: number; status: string }
   | "not_found"
   | "bad_request"
+  | "forbidden"
   | null;
 
 export async function addCheckoutAdvance(
@@ -6673,6 +6990,7 @@ export async function addCheckoutAdvance(
   }
   if (response.status === 404) return "not_found";
   if (response.status === 400) return "bad_request";
+  if (response.status === 403) return "forbidden";
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   const payload: unknown = await response.json().catch(() => null);
