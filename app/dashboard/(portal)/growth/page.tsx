@@ -239,6 +239,8 @@ export default function GrowthPage() {
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [advanceBusy, setAdvanceBusy] = useState(false);
   const [advanceNote, setAdvanceNote] = useState("");
+  const [statusNote, setStatusNote] = useState("");
+  const [statusNoteFor, setStatusNoteFor] = useState<number | null>(null);
   const [composer, setComposer] = useState<CheckoutComposer>(EMPTY_COMPOSER);
   const [custAnalytics, setCustAnalytics] = useState<
     CustomerAnalyticsRow[]
@@ -604,7 +606,12 @@ export default function GrowthPage() {
     status: string,
     returnReason?: string
   ) {
-    await getJson("/api/omniflow/portal/checkout/links/" + link.id, {
+    setStatusNote("");
+    setStatusNoteFor(null);
+    const result = await getJson<
+      | { ok: true }
+      | { error: { message: string } }
+    >("/api/omniflow/portal/checkout/links/" + link.id, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -613,6 +620,16 @@ export default function GrowthPage() {
         note: "",
       }),
     });
+    if (result === null) {
+      setStatusNoteFor(link.id);
+      setStatusNote("Could not update - try again.");
+      return;
+    }
+    if ("error" in result) {
+      setStatusNoteFor(link.id);
+      setStatusNote(result.error.message);
+      return;
+    }
     await load();
   }
 
@@ -1442,6 +1459,11 @@ export default function GrowthPage() {
                           </button>
                         </div>
                       </div>
+                    ) : null}
+                    {statusNoteFor === link.id && statusNote ? (
+                      <p className="mt-1 text-[10px] text-rose-300">
+                        {statusNote}
+                      </p>
                     ) : null}
                     {editFor === link.id ? (
                       <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">

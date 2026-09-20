@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const CodCard = dynamic(() => import("./CodCard"));
+const InteractiveCard = dynamic(() => import("./InteractiveCard"));
 const TeamCard = dynamic(() => import("./TeamCard"));
 const TagsCard = dynamic(() => import("./TagsCard"));
 const NotesCard = dynamic(() => import("./NotesCard"));
@@ -587,6 +588,9 @@ export default function ThreadClient({
 
       {!expired && !notFound && conversation?.channel !== "website" && (
         <CodCard conversationId={Number(id)} />
+      )}
+      {!expired && !notFound && conversation?.channel !== "website" && (
+        <InteractiveCard conversationId={Number(id)} />
       )}
       {!expired && !notFound && (
         <TeamCard

@@ -6219,12 +6219,15 @@ export async function listCheckoutLinks(
     });
 }
 
-export type CheckoutStatusMutation = { ok: true } | "not_found" | null;
+export type CheckoutStatusMutation = { ok: true } | "not_found"
+  | "forbidden"
+  | null;
 
 export async function setCheckoutLinkStatus(
   accessToken: string,
   linkId: number,
-  status: string
+  status: string,
+  returnReason?: string
 ): Promise<CheckoutStatusMutation> {
   let response: Response;
   try {
@@ -6234,7 +6237,7 @@ export async function setCheckoutLinkStatus(
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, reason: returnReason, note: "" }),
       }
     );
   } catch (error) {
@@ -6242,6 +6245,7 @@ export async function setCheckoutLinkStatus(
     return null;
   }
   if (response.status === 404) return "not_found";
+  if (response.status === 403) return "forbidden";
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   return { ok: true };
@@ -6888,6 +6892,193 @@ export async function fetchDataExport(
     ? /filename="([^"]+)"/.exec(disposition)
     : null;
   return { status: response.status, body, filename: match ? match[1] : null };
+}
+
+export interface InteractiveTemplate {
+  id: number | null;
+  name: string;
+  kind: string;
+  header: string;
+  body: string;
+  footer: string;
+  rows: { title: string; description?: string }[];
+  listLabel: string;
+  createdAt: string | null;
+}
+
+export async function listInteractiveTemplates(
+  accessToken: string
+): Promise<InteractiveTemplate[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/interactive/templates");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const raw = Array.isArray((payload as Record<string, unknown>).templates)
+    ? ((payload as Record<string, unknown>).templates as unknown[])
+    : [];
+  return raw
+    .filter((entry): entry is Record<string, unknown> =>
+      entry !== null && typeof entry === "object")
+    .map((entry) => {
+      const rawRows = Array.isArray(entry.rows) ? entry.rows : [];
+      return {
+        id: typeof entry.id === "number" ? entry.id : null,
+        name: typeof entry.name === "string" ? entry.name : "",
+        kind: typeof entry.kind === "string" ? entry.kind : "buttons",
+        header: typeof entry.header === "string" ? entry.header : "",
+        body: typeof entry.body === "string" ? entry.body : "",
+        footer: typeof entry.footer === "string" ? entry.footer : "",
+        rows: rawRows
+          .filter((row): row is Record<string, unknown> =>
+            row !== null && typeof row === "object")
+          .map((row) => ({
+            title: typeof row.title === "string" ? row.title : "",
+            description:
+              typeof row.description === "string" ? row.description : undefined,
+          }))
+          .filter((row) => row.title !== ""),
+        listLabel: typeof entry.list_label === "string" ? entry.list_label : "",
+        createdAt:
+          typeof entry.created_at === "string" ? entry.created_at : null,
+      };
+    });
+}
+
+export interface InteractiveTemplateInput {
+  name: string;
+  kind: string;
+  header: string;
+  body: string;
+  footer: string;
+  listLabel: string;
+  rows: { title: string; description?: string }[];
+}
+
+function interactiveTemplateBody(input: InteractiveTemplateInput): string {
+  return JSON.stringify({
+    name: input.name,
+    kind: input.kind,
+    header: input.header,
+    body: input.body,
+    footer: input.footer,
+    list_label: input.listLabel,
+    rows: input.rows.map((row) => ({
+      title: row.title,
+      ...(row.description ? { description: row.description } : {}),
+    })),
+  });
+}
+
+export async function createInteractiveTemplate(
+  accessToken: string,
+  input: InteractiveTemplateInput
+): Promise<{ ok: true } | "bad_request" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/interactive/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: interactiveTemplateBody(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
+export async function updateInteractiveTemplate(
+  accessToken: string,
+  templateId: number,
+  input: InteractiveTemplateInput
+): Promise<{ ok: true } | "not_found" | "bad_request" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/interactive/templates/" + templateId,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: interactiveTemplateBody(input),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
+export async function deleteInteractiveTemplate(
+  accessToken: string,
+  templateId: number
+): Promise<{ ok: true } | "not_found" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/interactive/templates/" + templateId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
+export type InteractiveSendResult =
+  | { ok: true; kind: string }
+  | "not_found"
+  | "bad_request"
+  | null;
+
+export async function sendInteractiveTemplate(
+  accessToken: string,
+  conversationId: number,
+  templateId: number
+): Promise<InteractiveSendResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/interactive/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        template_id: templateId,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  if (row.ok !== true) return null;
+  return { ok: true, kind: typeof row.kind === "string" ? row.kind : "buttons" };
 }
 
 export type CheckoutShareMutation =
