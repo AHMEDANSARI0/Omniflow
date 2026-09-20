@@ -40,6 +40,10 @@ export default function InteractiveCard({
   const [builder, setBuilder] = useState<TemplateEntry>(EMPTY_BUILDER);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [watiTemplates, setWatiTemplates] = useState<{ name: string }[]>([]);
+  const [watiParams, setWatiParams] = useState<Record<string, string>>({});
+  const [watiBusy, setWatiBusy] = useState(false);
+  const [watiNote, setWatiNote] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -50,6 +54,14 @@ export default function InteractiveCard({
       const payload = await response.json().catch(() => null);
       if (payload && Array.isArray(payload.templates)) {
         setTemplates(payload.templates);
+      }
+      const watiResponse = await fetch(
+        "/api/omniflow/portal/wati/templates",
+        { cache: "no-store" }
+      );
+      const watiPayload = await watiResponse.json().catch(() => null);
+      if (watiPayload && Array.isArray(watiPayload.templates)) {
+        setWatiTemplates(watiPayload.templates);
       }
     } catch {
       return;
@@ -150,6 +162,37 @@ export default function InteractiveCard({
       setNote("Could not delete - try again.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sendWati(name: string) {
+    if (watiBusy) return;
+    setWatiBusy(true);
+    setWatiNote("");
+    try {
+      const values = (watiParams[name] || "")
+        .split("|")
+        .map((value) => value.trim())
+        .filter((value) => value !== "");
+      const response = await fetch("/api/omniflow/portal/wati/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          template_name: name,
+          parameters: values,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (payload && payload.error) {
+        setWatiNote(payload.error.message || "Could not send.");
+        return;
+      }
+      setWatiNote("Sent - " + name + " WATI se chala gaya.");
+    } catch {
+      setWatiNote("Could not send - try again.");
+    } finally {
+      setWatiBusy(false);
     }
   }
 
@@ -358,6 +401,49 @@ export default function InteractiveCard({
           ))
         )}
       </div>
+      {watiTemplates.length > 0 ? (
+        <div className="mt-4 border-t border-white/[0.06] pt-3">
+          <h3 className="text-sm font-medium text-slate-200">WATI templates</h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Approved WATI templates - parameters ko | se alag karein.
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {watiTemplates.map((template) => (
+              <div
+                key={template.name}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm text-slate-200">
+                    {template.name}
+                  </p>
+                  <button
+                    onClick={() => void sendWati(template.name)}
+                    disabled={watiBusy}
+                    className="shrink-0 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2.5 py-1 text-[11px] text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                  >
+                    {watiBusy ? "Sending..." : "Send"}
+                  </button>
+                </div>
+                <input
+                  value={watiParams[template.name] || ""}
+                  onChange={(event) =>
+                    setWatiParams({
+                      ...watiParams,
+                      [template.name]: event.target.value,
+                    })
+                  }
+                  placeholder="Parameters (Value1 | Value2 | ...)"
+                  className="mt-1.5 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                />
+              </div>
+            ))}
+          </div>
+          {watiNote ? (
+            <p className="mt-2 text-[11px] text-slate-400">{watiNote}</p>
+          ) : null}
+        </div>
+      ) : null}
       {note ? <p className="mt-2 text-[11px] text-slate-400">{note}</p> : null}
     </section>
   );

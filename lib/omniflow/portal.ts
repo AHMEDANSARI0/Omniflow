@@ -7081,6 +7081,147 @@ export async function sendInteractiveTemplate(
   return { ok: true, kind: typeof row.kind === "string" ? row.kind : "buttons" };
 }
 
+export interface WatiSettings {
+  enabled: boolean;
+  baseUrl: string;
+  tokenMasked: string;
+  configured: boolean;
+}
+
+export async function getWatiSettings(
+  accessToken: string
+): Promise<WatiSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/wati/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = ((payload as Record<string, unknown>).settings || {}) as Record<string, unknown>;
+  return {
+    enabled: row.enabled === true,
+    baseUrl: typeof row.baseUrl === "string" ? row.baseUrl : "",
+    tokenMasked: typeof row.tokenMasked === "string" ? row.tokenMasked : "",
+    configured: row.configured === true,
+  };
+}
+
+export async function saveWatiSettings(
+  accessToken: string,
+  input: { enabled: boolean; baseUrl: string; apiToken: string }
+): Promise<{ ok: true } | "bad_request" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/wati/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        enabled: input.enabled,
+        base_url: input.baseUrl,
+        api_token: input.apiToken,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { ok: true };
+}
+
+export async function syncWatiTemplates(
+  accessToken: string
+): Promise<{ ok: true; count: number } | "bad_request" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/wati/sync", {
+      method: "POST",
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  if (row.ok !== true) return null;
+  return { ok: true, count: typeof row.count === "number" ? row.count : 0 };
+}
+
+export async function listWatiTemplates(
+  accessToken: string
+): Promise<{ name: string; data: Record<string, unknown> }[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/wati/templates");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const raw = Array.isArray((payload as Record<string, unknown>).templates)
+    ? ((payload as Record<string, unknown>).templates as unknown[])
+    : [];
+  return raw
+    .filter((entry): entry is Record<string, unknown> =>
+      entry !== null && typeof entry === "object")
+    .map((entry) => ({
+      name: typeof entry.name === "string" ? entry.name : "",
+      data:
+        entry.data !== null && typeof entry.data === "object"
+          ? (entry.data as Record<string, unknown>)
+          : {},
+    }))
+    .filter((entry) => entry.name !== "");
+}
+
+export async function sendWatiTemplate(
+  accessToken: string,
+  conversationId: number,
+  templateName: string,
+  parameters: string[]
+): Promise<{ ok: true } | "not_found" | "bad_request" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/wati/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        template_name: templateName,
+        parameters: parameters.map((value, index) => ({
+          name: String(index + 1),
+          value,
+        })),
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  if ((payload as Record<string, unknown>).ok !== true) return null;
+  return { ok: true };
+}
+
 export type CheckoutShareMutation =
   | { ok: true }
   | "not_found"
