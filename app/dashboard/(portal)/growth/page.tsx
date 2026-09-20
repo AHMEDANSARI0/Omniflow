@@ -71,6 +71,23 @@ interface ComposerRow {
   price: string;
 }
 
+interface CatalogPick {
+  id: number;
+  name: string;
+  priceText: string;
+  isActive: boolean;
+}
+
+interface ChangeRequestRow {
+  id: number;
+  kind: string;
+  message: string;
+  addressText: string;
+  status: string;
+  title: string;
+  createdAt: string | null;
+}
+
 interface CheckoutComposer {
   open: boolean;
   contact: string;
@@ -242,6 +259,38 @@ export default function GrowthPage() {
   const [statusNote, setStatusNote] = useState("");
   const [statusNoteFor, setStatusNoteFor] = useState<number | null>(null);
   const [composer, setComposer] = useState<CheckoutComposer>(EMPTY_COMPOSER);
+  const [catalogItems, setCatalogItems] = useState<CatalogPick[]>([]);
+  const [changeReqs, setChangeReqs] = useState<ChangeRequestRow[]>([]);
+  const [reqBusy, setReqBusy] = useState(0);
+  const [changeNote, setChangeNote] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [catalogRes, requestsRes] = await Promise.all([
+          fetch("/api/omniflow/portal/catalog", { cache: "no-store" }),
+          fetch("/api/omniflow/portal/changes/requests?status=pending", {
+            cache: "no-store",
+          }),
+        ]);
+        const catalog = await catalogRes.json().catch(() => null);
+        const requests = await requestsRes.json().catch(() => null);
+        if (cancelled) return;
+        if (catalog && Array.isArray(catalog.items)) {
+          setCatalogItems(catalog.items);
+        }
+        if (requests && Array.isArray(requests.requests)) {
+          setChangeReqs(requests.requests);
+        }
+      } catch {
+        return;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [custAnalytics, setCustAnalytics] = useState<
     CustomerAnalyticsRow[]
   >([]);
@@ -339,6 +388,61 @@ export default function GrowthPage() {
         row2 === index ? { ...row, ...patch } : row
       ),
     }));
+  }
+
+  function addCatalogRow(item: CatalogPick) {
+    const digits = (item.priceText || "").replace(/[^0-9.]/g, "");
+    const parsed = parseFloat(digits);
+    const price = Number.isFinite(parsed) && parsed > 0
+      ? Math.round(parsed * 100) / 100
+      : 0;
+    setComposer((prev) => {
+      const rows = [...prev.rows];
+      const blank = rows.length === 1 && !rows[0].name.trim()
+        && !rows[0].price.trim();
+      const row = { name: item.name, qty: "1", price: price ? String(price) : "" };
+      if (blank) {
+        rows[0] = row;
+      } else {
+        rows.push(row);
+      }
+      return { ...prev, rows };
+    });
+  }
+
+  async function decideChange(id: number, action: "approve" | "decline") {
+    setReqBusy(id);
+    setChangeNote("");
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/changes/requests/" + id + "/decide",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (payload && payload.error) {
+        setChangeNote(payload.error.message || "Could not save the decision.");
+      } else {
+        setChangeNote(
+          action === "approve"
+            ? "Approved - the customer has been notified on WhatsApp."
+            : "Declined - the customer has been notified on WhatsApp."
+        );
+      }
+      const refresh = await fetch(
+        "/api/omniflow/portal/changes/requests?status=pending",
+        { cache: "no-store" }
+      );
+      const next = await refresh.json().catch(() => null);
+      if (next && Array.isArray(next.requests)) setChangeReqs(next.requests);
+    } catch {
+      setChangeNote("Could not save the decision - try again.");
+    } finally {
+      setReqBusy(0);
+    }
   }
 
   async function createLink() {
@@ -1177,6 +1281,29 @@ export default function GrowthPage() {
                 </label>
               </div>
               <div className="mt-2 space-y-2">
+                {catalogItems.filter((item) => item.isActive).length > 0 ? (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                      From saved catalog
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {catalogItems
+                        .filter((item) => item.isActive)
+                        .slice(0, 12)
+                        .map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => addCatalogRow(item)}
+                            className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[10px] text-slate-300 hover:border-cyan-400/30 hover:text-cyan-200"
+                          >
+                            + {item.name}
+                            {item.priceText ? " · " + item.priceText : ""}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                ) : null}
                 {composer.rows.map((row, index) => (
                   <div
                     key={index}
@@ -1297,6 +1424,55 @@ export default function GrowthPage() {
               + New checkout link
             </button>
           )}
+          {changeReqs.length > 0 ? (
+            <div className="mb-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-3">
+              <p className="text-xs font-medium text-amber-200">
+                Customer change requests ({changeReqs.length})
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {changeReqs.slice(0, 5).map((req) => (
+                  <li
+                    key={req.id}
+                    className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                  >
+                    <p className="text-xs text-slate-200">
+                      {req.kind === "address" ? "Address change" : "Cancellation"}
+                      {req.title ? " · " + req.title : ""}
+                    </p>
+                    {req.kind === "address" ? (
+                      <p className="mt-0.5 text-[11px] text-slate-400">
+                        New address: {req.addressText}
+                      </p>
+                    ) : null}
+                    {req.message ? (
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        Note: {req.message}
+                      </p>
+                    ) : null}
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <button
+                        onClick={() => void decideChange(req.id, "approve")}
+                        disabled={reqBusy === req.id}
+                        className="rounded-md border border-emerald-400/30 bg-emerald-400/[0.1] px-2 py-1 text-[10px] font-medium text-emerald-200 hover:bg-emerald-400/[0.2] disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => void decideChange(req.id, "decline")}
+                        disabled={reqBusy === req.id}
+                        className="rounded-md border border-white/[0.1] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06] disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {changeNote ? (
+                <p className="mt-1.5 text-[10px] text-slate-400">{changeNote}</p>
+              ) : null}
+            </div>
+          ) : null}
           {links.length === 0 ? (
             <p className="text-xs text-slate-500">
               No checkout links yet.

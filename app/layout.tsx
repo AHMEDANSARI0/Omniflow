@@ -33,6 +33,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase,
+    appleWebApp: {
+      capable: true,
+      title: "OmniFlow",
+      statusBarStyle: "black-translucent",
+    },
     title: {
       default: s.meta_title,
       template: "%s — OmniFlow",

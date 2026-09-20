@@ -835,6 +835,8 @@ export interface BusinessHoursConfig {
   timezone: string;
   days: BusinessHoursDay[];
   away_message: string;
+  away_message_ur?: string;
+  away_message_roman?: string;
 }
 
 export async function getBusinessHours(
@@ -5734,11 +5736,15 @@ export async function getConversationAssist(
   };
 }
 
-async function controlPlanePublicRequest(path: string): Promise<Response | null> {
+async function controlPlanePublicRequest(
+  path: string,
+  init?: RequestInit
+): Promise<Response | null> {
   try {
     const url = new URL(path.replace(/^\//, ""), controlPlaneBaseUrl());
     return await fetch(url, {
-      headers: { Accept: "application/json" },
+      ...(init ?? {}),
+      headers: { Accept: "application/json", ...(init?.headers ?? {}) },
       cache: "no-store",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
@@ -5759,6 +5765,8 @@ export interface PublicCheckoutView {
   status: string;
   createdAt: string | null;
   discount: number;
+  couponCode: string;
+  couponDiscount: number;
   courier: string;
   trackingNumber: string;
   payment: PublicCheckoutPayment | null;
@@ -5789,6 +5797,9 @@ export async function getPublicCheckout(
     status: typeof row.status === "string" ? row.status : "open",
     createdAt: typeof row.created_at === "string" ? row.created_at : null,
     discount: typeof row.discount === "number" ? row.discount : 0,
+    couponCode: typeof row.coupon_code === "string" ? row.coupon_code : "",
+    couponDiscount:
+      typeof row.coupon_discount === "number" ? row.coupon_discount : 0,
     courier: typeof row.courier === "string" ? row.courier : "",
     trackingNumber:
       typeof row.tracking_number === "string" ? row.tracking_number : "",
@@ -7220,6 +7231,346 @@ export async function sendWatiTemplate(
   if (payload === null || typeof payload !== "object") return null;
   if ((payload as Record<string, unknown>).ok !== true) return null;
   return { ok: true };
+}
+
+export interface ChangeRequest {
+  id: number;
+  linkId: number;
+  kind: "address" | "cancel";
+  message: string;
+  addressText: string;
+  status: "pending" | "approved" | "declined";
+  createdAt: string | null;
+  decidedAt: string | null;
+  title: string;
+}
+
+function mapChangeRequest(raw: Record<string, unknown>): ChangeRequest {
+  return {
+    id: typeof raw.id === "number" ? raw.id : 0,
+    linkId: typeof raw.linkId === "number" ? raw.linkId : 0,
+    kind: raw.kind === "cancel" ? "cancel" : "address",
+    message: typeof raw.message === "string" ? raw.message : "",
+    addressText: typeof raw.addressText === "string" ? raw.addressText : "",
+    status:
+      raw.status === "approved"
+        ? "approved"
+        : raw.status === "declined"
+          ? "declined"
+          : "pending",
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : null,
+    decidedAt: typeof raw.decidedAt === "string" ? raw.decidedAt : null,
+    title: typeof raw.title === "string" ? raw.title : "",
+  };
+}
+
+export async function listChangeRequests(
+  accessToken: string,
+  statusFilter: "pending" | "approved" | "declined" | "all"
+): Promise<{ requests: ChangeRequest[]; counts: Record<string, number> } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/changes/requests?status=" + statusFilter
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    requests?: unknown;
+    counts?: unknown;
+  } | null;
+  if (!payload || !Array.isArray(payload.requests)) return null;
+  const counts: Record<string, number> = {};
+  if (payload.counts && typeof payload.counts === "object") {
+    for (const [key, value] of Object.entries(
+      payload.counts as Record<string, unknown>
+    )) {
+      if (typeof value === "number") counts[key] = value;
+    }
+  }
+  return {
+    requests: payload.requests
+      .filter((row): row is Record<string, unknown> =>
+        row !== null && typeof row === "object")
+      .map(mapChangeRequest),
+    counts,
+  };
+}
+
+export async function decideChangeRequest(
+  accessToken: string,
+  requestId: number,
+  action: "approve" | "decline"
+): Promise<{ ok: true; request: ChangeRequest } | "bad_request" | "conflict" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/changes/requests/" + requestId + "/decide",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return "bad_request";
+  if (response.status === 409) return "conflict";
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    request?: unknown;
+  } | null;
+  if (!payload || !payload.request || typeof payload.request !== "object") {
+    return null;
+  }
+  return {
+    ok: true,
+    request: mapChangeRequest(payload.request as Record<string, unknown>),
+  };
+}
+
+export async function submitChangeRequest(
+  token: string,
+  input: { kind: "address" | "cancel"; message: string; addressText: string }
+): Promise<{ ok: true } | { error: { message: string } } | null> {
+  const response = await controlPlanePublicRequest(
+    "api/v1/public/checkout/" + encodeURIComponent(token) + "/change-request",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: input.kind,
+        message: input.message,
+        address_text: input.addressText,
+      }),
+    }
+  );
+  if (response === null) return null;
+  const payload = (await response.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+  if (payload === null) return null;
+  if (!response.ok) {
+    const error =
+      payload.error !== null && typeof payload.error === "object"
+        ? (payload.error as Record<string, unknown>)
+        : {};
+    return {
+      error: { message: typeof error.message === "string" ? error.message : "" },
+    };
+  }
+  return { ok: true };
+}
+
+export interface Coupon {
+  id: number;
+  code: string;
+  kind: "percent" | "fixed";
+  value: number;
+  minTotal: number;
+  usageLimit: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  isActive: boolean;
+}
+
+function mapCoupon(raw: Record<string, unknown>): Coupon {
+  return {
+    id: typeof raw.id === "number" ? raw.id : 0,
+    code: typeof raw.code === "string" ? raw.code : "",
+    kind: raw.kind === "percent" ? "percent" : "fixed",
+    value: typeof raw.value === "number" ? raw.value : 0,
+    minTotal: typeof raw.minTotal === "number" ? raw.minTotal : 0,
+    usageLimit: typeof raw.usageLimit === "number" ? raw.usageLimit : null,
+    usedCount: typeof raw.usedCount === "number" ? raw.usedCount : 0,
+    expiresAt: typeof raw.expiresAt === "string" ? raw.expiresAt : null,
+    isActive: raw.isActive === true,
+  };
+}
+
+export async function listCoupons(
+  accessToken: string
+): Promise<{ coupons: Coupon[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/coupons");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    coupons?: unknown;
+  } | null;
+  if (!payload || !Array.isArray(payload.coupons)) return null;
+  return {
+    coupons: payload.coupons
+      .filter((row): row is Record<string, unknown> =>
+        row !== null && typeof row === "object")
+      .map(mapCoupon),
+  };
+}
+
+export type CouponInput = {
+  code: string;
+  kind: "percent" | "fixed";
+  value: number;
+  min_total?: number;
+  usage_limit?: number | null;
+  expires_in_days?: number | null;
+};
+
+export async function createCoupon(
+  accessToken: string,
+  input: CouponInput
+): Promise<{ ok: true; coupon: Coupon } | { error: string } | "conflict" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/coupons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 409) return "conflict";
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+    return { error: payload?.error?.message || "Check the coupon details." };
+  }
+  const payload = (await response.json().catch(() => null)) as {
+    coupon?: unknown;
+  } | null;
+  if (!payload || !payload.coupon || typeof payload.coupon !== "object") {
+    return null;
+  }
+  return {
+    ok: true,
+    coupon: mapCoupon(payload.coupon as Record<string, unknown>),
+  };
+}
+
+export async function setCouponActive(
+  accessToken: string,
+  couponId: number,
+  isActive: boolean
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/coupons/" + couponId,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: isActive }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function deleteCoupon(
+  accessToken: string,
+  couponId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/coupons/" + couponId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function applyPublicCoupon(
+  token: string,
+  code: string
+): Promise<
+  | { ok: true; total: number; discount: number; code: string }
+  | { error: string }
+  | null
+> {
+  const response = await controlPlanePublicRequest(
+    "api/v1/public/checkout/" + encodeURIComponent(token) + "/coupon",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    }
+  );
+  if (response === null) return null;
+  const payload = (await response.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+  if (payload === null) return null;
+  if (!response.ok) {
+    const error =
+      payload.error !== null && typeof payload.error === "object"
+        ? (payload.error as Record<string, unknown>)
+        : {};
+    return {
+      error: typeof error.message === "string" ? error.message : "",
+    };
+  }
+  return {
+    ok: true,
+    total: typeof payload.total === "number" ? payload.total : 0,
+    discount: typeof payload.discount === "number" ? payload.discount : 0,
+    code: typeof payload.code === "string" ? payload.code : "",
+  };
+}
+
+export async function removePublicCoupon(
+  token: string
+): Promise<{ ok: true; total: number } | { error: string } | null> {
+  const response = await controlPlanePublicRequest(
+    "api/v1/public/checkout/" + encodeURIComponent(token) + "/coupon",
+    { method: "DELETE" }
+  );
+  if (response === null) return null;
+  const payload = (await response.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+  if (payload === null) return null;
+  if (!response.ok) {
+    const error =
+      payload.error !== null && typeof payload.error === "object"
+        ? (payload.error as Record<string, unknown>)
+        : {};
+    return {
+      error: typeof error.message === "string" ? error.message : "",
+    };
+  }
+  return { ok: true, total: typeof payload.total === "number" ? payload.total : 0 };
 }
 
 export type CheckoutShareMutation =

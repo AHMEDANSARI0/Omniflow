@@ -3,6 +3,7 @@ import {
   getPublicCheckout,
   getPublicPayInfo,
 } from "../../../lib/omniflow/portal";
+import SelfServe from "./SelfServe";
 
 
 export default async function PublicCheckoutPage({
@@ -89,6 +90,18 @@ export default async function PublicCheckoutPage({
         <p className="text-lg font-semibold text-white">{view.total}</p>
       </div>
 
+      {view.couponCode ? (
+        <div className="mt-2 flex items-center justify-between rounded-xl border border-cyan-400/15 bg-cyan-400/[0.04] px-4 py-2">
+          <p className="text-xs text-cyan-200">
+            Coupon <span className="font-semibold">{view.couponCode}</span>{" "}
+            applied
+          </p>
+          <p className="text-xs font-medium text-cyan-200">
+            −{view.couponDiscount}
+          </p>
+        </div>
+      ) : null}
+
       {view.payment ? (
         <div className="mt-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-4 py-3">
           <div className="flex items-center justify-between">
@@ -127,6 +140,12 @@ export default async function PublicCheckoutPage({
           Pay {view.payment.due} online
         </a>
       ) : null}
+
+      <SelfServe
+        token={token}
+        status={view.status}
+        hasCoupon={Boolean(view.couponCode)}
+      />
 
       {view.status === "paid" ? (
         <p className="mt-3 rounded-xl border border-emerald-400/25 bg-emerald-400/[0.08] px-4 py-2.5 text-center text-sm font-medium text-emerald-300">

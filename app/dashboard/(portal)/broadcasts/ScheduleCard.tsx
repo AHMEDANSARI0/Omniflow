@@ -41,8 +41,14 @@ function minLocalValue(): string {
   );
 }
 
+interface SegmentOption {
+  id: number;
+  name: string;
+}
+
 export default function ScheduleCard() {
   const [rows, setRows] = useState<ScheduledRow[]>([]);
+  const [segmentList, setSegmentList] = useState<SegmentOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [audience, setAudience] = useState("all");
   const [body, setBody] = useState("");
@@ -82,6 +88,46 @@ export default function ScheduleCard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/omniflow/portal/segments", {
+          cache: "no-store",
+        });
+        const payload: unknown = await response.json().catch(() => null);
+        const list =
+          payload !== null && typeof payload === "object"
+            ? (payload as { segments?: unknown }).segments
+            : null;
+        if (cancelled) return;
+        setSegmentList(
+          Array.isArray(list)
+            ? list
+                .filter(
+                  (row): row is Record<string, unknown> =>
+                    row !== null && typeof row === "object"
+                )
+                .filter(
+                  (row) =>
+                    typeof row.id === "number" && typeof row.name === "string"
+                )
+                .map((row) => ({
+                  id: row.id as number,
+                  name: row.name as string,
+                }))
+                .slice(0, 30)
+            : []
+        );
+      } catch {
+        if (!cancelled) setSegmentList([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const submit = useCallback(async () => {
     if (!body.trim() || !when) {
@@ -168,6 +214,15 @@ export default function ScheduleCard() {
               {option.label}
             </option>
           ))}
+          {segmentList.length > 0 ? (
+            <optgroup label="Saved segments">
+              {segmentList.map((segment) => (
+                <option key={"segment:" + String(segment.id)} value={"segment:" + String(segment.id)}>
+                  Segment: {segment.name}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
         </select>
         <input
           type="datetime-local"

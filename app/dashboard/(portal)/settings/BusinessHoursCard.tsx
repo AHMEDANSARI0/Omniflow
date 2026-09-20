@@ -13,6 +13,8 @@ interface BusinessHoursConfig {
   timezone: string;
   days: BusinessHoursDay[];
   away_message: string;
+  away_message_ur?: string;
+  away_message_roman?: string;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -166,6 +168,34 @@ export default function BusinessHoursCard() {
             }
             rows={3}
             maxLength={500}
+            className="mt-1 w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          />
+        </label>
+        <label className="block text-xs text-slate-400">
+          Away message — Urdu (optional, sent to customers who write in Urdu
+          script)
+          <textarea
+            value={config.away_message_ur ?? ""}
+            onChange={(event) =>
+              setConfig({ ...config, away_message_ur: event.target.value })
+            }
+            rows={2}
+            maxLength={500}
+            placeholder="اگر خالی چھوڑا تو انگریزی والا پیغام جائے گا"
+            className="mt-1 w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          />
+        </label>
+        <label className="block text-xs text-slate-400">
+          Away message — Roman Urdu (optional, sent to customers who write
+          Roman Urdu)
+          <textarea
+            value={config.away_message_roman ?? ""}
+            onChange={(event) =>
+              setConfig({ ...config, away_message_roman: event.target.value })
+            }
+            rows={2}
+            maxLength={500}
+            placeholder="Khali chhora to English wala message jayega"
             className="mt-1 w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
           />
         </label>

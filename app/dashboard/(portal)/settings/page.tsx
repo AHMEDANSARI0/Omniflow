@@ -5,6 +5,8 @@ import WidgetSettingsCard from "./WidgetSettingsCard";
 import PaymentsCard from "./PaymentsCard";
 import DataSafetyCard from "./DataSafetyCard";
 import WatiCard from "./WatiCard";
+import CatalogCard from "./CatalogCard";
+import CouponsCard from "./CouponsCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -57,6 +59,8 @@ export default async function ClientSettingsPage() {
       <PaymentsCard />
       <DataSafetyCard />
       <WatiCard />
+      <CatalogCard />
+      <CouponsCard />
     </div>
   );
 }
