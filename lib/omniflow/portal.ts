@@ -5759,6 +5759,8 @@ export interface PublicCheckoutView {
   status: string;
   createdAt: string | null;
   discount: number;
+  courier: string;
+  trackingNumber: string;
   payment: PublicCheckoutPayment | null;
 }
 
@@ -5787,6 +5789,9 @@ export async function getPublicCheckout(
     status: typeof row.status === "string" ? row.status : "open",
     createdAt: typeof row.created_at === "string" ? row.created_at : null,
     discount: typeof row.discount === "number" ? row.discount : 0,
+    courier: typeof row.courier === "string" ? row.courier : "",
+    trackingNumber:
+      typeof row.tracking_number === "string" ? row.tracking_number : "",
     payment:
       typeof row.paid_amount === "number" && row.paid_amount > 0
         ? {
@@ -6091,6 +6096,8 @@ export interface CheckoutLink {
   viewCount: number;
   paidAmount: number;
   discount: number;
+  courier: string;
+  trackingNumber: string;
 }
 
 export async function createCheckoutLink(
@@ -6156,6 +6163,9 @@ export async function createCheckoutLink(
     viewCount: typeof row.view_count === "number" ? row.view_count : 0,
     paidAmount: typeof row.paid_amount === "number" ? row.paid_amount : 0,
     discount: typeof row.discount === "number" ? row.discount : 0,
+    courier: typeof row.courier === "string" ? row.courier : "",
+    trackingNumber:
+      typeof row.tracking_number === "string" ? row.tracking_number : "",
   };
 }
 
@@ -6202,6 +6212,9 @@ export async function listCheckoutLinks(
         viewCount: typeof item.view_count === "number" ? item.view_count : 0,
         paidAmount: typeof item.paid_amount === "number" ? item.paid_amount : 0,
         discount: typeof item.discount === "number" ? item.discount : 0,
+        courier: typeof item.courier === "string" ? item.courier : "",
+        trackingNumber:
+          typeof item.tracking_number === "string" ? item.tracking_number : "",
       };
     });
 }
@@ -6589,6 +6602,40 @@ export async function shareCheckoutLink(
   }
   if (response.status === 404) return "not_found";
   if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  if (row.ok !== true) return null;
+  return { ok: true };
+}
+
+export async function setLinkTracking(
+  accessToken: string,
+  linkId: number,
+  courier: string,
+  trackingNumber: string
+): Promise<{ ok: true } | "not_found" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/checkout/links/" + linkId + "/tracking",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courier,
+          tracking_number: trackingNumber,
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   const payload: unknown = await response.json().catch(() => null);

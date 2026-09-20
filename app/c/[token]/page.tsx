@@ -103,6 +103,17 @@ export default async function PublicCheckoutPage({
         </div>
       ) : null}
 
+      {view.trackingNumber ? (
+        <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+          <p className="text-xs text-slate-400">
+            Courier: {view.courier || "-"}
+          </p>
+          <p className="mt-1 text-sm font-medium text-slate-200">
+            Tracking #: {view.trackingNumber}
+          </p>
+        </div>
+      ) : null}
+
       {view.status === "paid" ? (
         <p className="mt-3 rounded-xl border border-emerald-400/25 bg-emerald-400/[0.08] px-4 py-2.5 text-center text-sm font-medium text-emerald-300">
           Paid in full — thank you!

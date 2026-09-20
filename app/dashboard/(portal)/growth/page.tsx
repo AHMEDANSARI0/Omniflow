@@ -86,6 +86,8 @@ interface CheckoutLink {
   viewCount?: number;
   paidAmount?: number;
   discount?: number;
+  courier?: string;
+  trackingNumber?: string;
 }
 
 interface ListenRule {
@@ -221,6 +223,10 @@ export default function GrowthPage() {
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [advanceBusy, setAdvanceBusy] = useState(false);
   const [composer, setComposer] = useState<CheckoutComposer>(EMPTY_COMPOSER);
+  const [trackFor, setTrackFor] = useState<number | null>(null);
+  const [trackCourier, setTrackCourier] = useState("");
+  const [trackNumber, setTrackNumber] = useState("");
+  const [trackBusy, setTrackBusy] = useState(false);
 
   async function downloadCsv(path: string, filename: string) {
     try {
@@ -340,6 +346,38 @@ export default function GrowthPage() {
       return;
     } finally {
       updateComposer({ busy: false });
+    }
+  }
+
+  function openTracking(link: CheckoutLink) {
+    setTrackFor(link.id);
+    setTrackCourier(link.courier || "");
+    setTrackNumber(link.trackingNumber || "");
+  }
+
+  async function saveTracking() {
+    if (trackBusy || trackFor === null) return;
+    const number = trackNumber.trim();
+    if (!number) return;
+    setTrackBusy(true);
+    try {
+      await getJson(
+        "/api/omniflow/portal/checkout/links/" + trackFor + "/tracking",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            courier: trackCourier.trim(),
+            tracking_number: number,
+          }),
+        }
+      );
+      setTrackFor(null);
+      await load();
+    } catch {
+      return;
+    } finally {
+      setTrackBusy(false);
     }
   }
 
@@ -1152,6 +1190,11 @@ export default function GrowthPage() {
                         {link.status === "open" && (link.discount || 0) > 0
                           ? " · " + link.discount + " off"
                           : ""}
+                        {link.status !== "open" && (link.trackingNumber || "") !== ""
+                          ? " · " + (link.courier
+                            ? link.courier + " "
+                            : "") + link.trackingNumber
+                          : ""}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
@@ -1234,7 +1277,54 @@ export default function GrowthPage() {
                           Returned
                         </button>
                       ) : null}
+                      {link.status !== "open" ? (
+                        <button
+                          onClick={() => openTracking(link)}
+                          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                        >
+                          Tracking
+                        </button>
+                      ) : null}
                     </div>
+                    {trackFor === link.id ? (
+                      <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={trackCourier}
+                            onChange={(event) =>
+                              setTrackCourier(event.target.value)
+                            }
+                            placeholder="Courier (TCS, Leopards...)"
+                            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                          />
+                          <input
+                            type="text"
+                            value={trackNumber}
+                            onChange={(event) =>
+                              setTrackNumber(event.target.value)
+                            }
+                            placeholder="Tracking #"
+                            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                          />
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <button
+                            onClick={() => void saveTracking()}
+                            disabled={trackBusy}
+                            className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.08] px-2.5 py-1 text-[11px] text-cyan-200 hover:bg-cyan-400/[0.15] disabled:opacity-50"
+                          >
+                            {trackBusy ? "Saving..." : "Save tracking"}
+                          </button>
+                          <button
+                            onClick={() => setTrackFor(null)}
+                            className="rounded-lg border border-white/[0.08] px-2.5 py-1 text-[11px] text-slate-400 hover:bg-white/[0.06]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                     {editFor === link.id ? (
                       <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
                         <label className="block">
