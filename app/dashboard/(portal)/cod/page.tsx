@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import RiskCard from "./RiskCard";
+import AddressCard from "./AddressCard";
 
 interface Settings {
   enabled: boolean;
@@ -150,6 +152,9 @@ export default function CodPage() {
             recorded here so delivered orders (and returns) stay visible.
           </p>
         </div>
+
+        <RiskCard />
+        <AddressCard />
 
         {loadError ? (
           <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm text-amber-300">

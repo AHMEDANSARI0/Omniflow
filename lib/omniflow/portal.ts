@@ -8276,6 +8276,381 @@ export async function generateBroadcastCopy(
   } | null;
 }
 
+export interface RiskFactor {
+  key: string;
+  points: number;
+  note: string;
+}
+
+export interface RiskScore {
+  score: number;
+  factors: RiskFactor[];
+  recommendation: "proceed" | "collect_advance" | "hold";
+  threshold: number;
+  task_created: boolean;
+}
+
+export interface RiskSettings {
+  score_threshold: number;
+  staff_tasks: boolean;
+  city_default_pct: number;
+}
+
+export interface RiskTask {
+  id: number;
+  contact_id: string;
+  conversation_id: number | null;
+  score: number;
+  factors: RiskFactor[];
+  created_at: string | null;
+}
+
+export interface AddressIntel {
+  normalized: string;
+  city: string | null;
+  phone: string | null;
+  issues: string[];
+  ask_prompts: string[];
+}
+
+export async function getRiskScore(
+  accessToken: string,
+  contact: string,
+  options?: { total?: number; address?: string }
+): Promise<RiskScore | null> {
+  let query = "?contact=" + encodeURIComponent(contact);
+  if (options?.total) query += "&total=" + encodeURIComponent(String(options.total));
+  if (options?.address)
+    query += "&address=" + encodeURIComponent(options.address);
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/risk/score" + query);
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as RiskScore | null;
+}
+
+export async function getRiskSettings(
+  accessToken: string
+): Promise<{ settings: RiskSettings; city_rates: { city: string; return_pct: number }[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/risk/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    settings: RiskSettings;
+    city_rates: { city: string; return_pct: number }[];
+  } | null;
+}
+
+export async function putRiskSettings(
+  accessToken: string,
+  settings: RiskSettings
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/risk/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function listRiskTasks(
+  accessToken: string
+): Promise<{ tasks: RiskTask[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/risk/tasks");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    tasks: RiskTask[];
+  } | null;
+}
+
+export async function completeRiskTask(
+  accessToken: string,
+  id: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/risk/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function normalizeAddress(
+  accessToken: string,
+  address: string
+): Promise<AddressIntel | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/address/normalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as AddressIntel | null;
+}
+
+export async function putAlertSettings(
+  accessToken: string,
+  enabled: boolean
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/alerts/settings",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export interface CourierSettings {
+  configured: boolean;
+  enabled: boolean;
+  provider: string;
+  base_url: string;
+  api_key_masked: string;
+  api_password_masked: string;
+  secret_label: string;
+  providers: { id: string; label: string; default_base: string }[];
+}
+
+export interface CourierBooking {
+  id: number;
+  contact_id: string;
+  tracking_number: string;
+  provider: string;
+  status: string;
+  raw_status: string;
+  cod_amount: number;
+  city: string;
+  created_at: string | null;
+  tracked_at: string | null;
+}
+
+export interface CourierBookInput {
+  contact_id?: string;
+  customer_name?: string;
+  phone?: string;
+  city: string;
+  address: string;
+  cod_amount?: number;
+  pieces?: number;
+  weight?: number;
+  description?: string;
+}
+
+export async function getCourierSettings(
+  accessToken: string
+): Promise<CourierSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/courier/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as CourierSettings | null;
+}
+
+export async function putCourierSettings(
+  accessToken: string,
+  settings: {
+    provider: string;
+    api_key?: string;
+    api_password?: string;
+    base_url?: string;
+    enabled?: boolean;
+  }
+): Promise<{ ok: boolean; configured: boolean } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/courier/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    configured: boolean;
+  } | null;
+}
+
+export async function testCourierConnection(
+  accessToken: string
+): Promise<{ ok: boolean; message: string } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/courier/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  const payload = (await response.json().catch(() => null)) as {
+    ok?: boolean;
+    message?: string;
+  } | null;
+  if (payload === null) return null;
+  return { ok: Boolean(payload.ok), message: payload.message ?? "" };
+}
+
+export async function bookCourierParcel(
+  accessToken: string,
+  input: CourierBookInput
+): Promise<{
+  ok: boolean;
+  id: number | null;
+  tracking_number: string;
+  address_issues: string[];
+  ask_prompts: string[];
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/courier/book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    id: number | null;
+    tracking_number: string;
+    address_issues: string[];
+    ask_prompts: string[];
+  } | null;
+}
+
+export async function listCourierBookings(
+  accessToken: string
+): Promise<{
+  bookings: CourierBooking[];
+  summary: Record<string, number>;
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/courier/bookings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    bookings: CourierBooking[];
+    summary: Record<string, number>;
+  } | null;
+}
+
+export async function trackCourierParcel(
+  accessToken: string,
+  id: number
+): Promise<{
+  ok: boolean;
+  id: number;
+  status: string;
+  raw_status: string;
+  events: { when: string; status: string; detail: string }[];
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/courier/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    id: number;
+    status: string;
+    raw_status: string;
+    events: { when: string; status: string; detail: string }[];
+  } | null;
+}
+
 export async function replayDelivery(
   accessToken: string,
   deliveryId: number
