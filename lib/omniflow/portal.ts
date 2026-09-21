@@ -8651,6 +8651,164 @@ export async function trackCourierParcel(
   } | null;
 }
 
+export interface MediaAsset {
+  id: number;
+  kind: string;
+  filename: string;
+  mime: string;
+  size_bytes: number;
+  caption: string;
+  created_at: string | null;
+}
+
+export async function listMediaAssets(
+  accessToken: string
+): Promise<{ assets: MediaAsset[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/media");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    assets: MediaAsset[];
+  } | null;
+}
+
+export async function uploadMediaAsset(
+  accessToken: string,
+  form: FormData
+): Promise<{ asset: MediaAsset | null } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/media", {
+      method: "POST",
+      body: form,
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    asset: MediaAsset | null;
+  } | null;
+}
+
+export async function deleteMediaAsset(
+  accessToken: string,
+  id: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/media/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function sendMediaAsset(
+  accessToken: string,
+  input: { id: number; contact_id: string; conversation_id?: number;
+    caption?: string }
+): Promise<{ ok: boolean; queued: boolean } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/media/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    queued: boolean;
+  } | null;
+}
+
+export async function transcribeMediaAsset(
+  accessToken: string,
+  id: number
+): Promise<{ ok: boolean; text: string; model: string } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/media/transcribe",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    text: string;
+    model: string;
+  } | null;
+}
+
+export interface PerfReport {
+  counts: {
+    conversations: number;
+    messages: number;
+    actions: number;
+    checkout_links: number;
+  };
+  timings_ms: {
+    recent_conversations: number;
+    recent_messages: number;
+    open_links: number;
+  };
+  indexes: string[];
+  hot_indexes_present: string[];
+  missing_hot_indexes: string[];
+  ok: boolean;
+}
+
+export async function getPerfReport(
+  accessToken: string
+): Promise<PerfReport | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/perf");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as PerfReport | null;
+}
+
 export async function replayDelivery(
   accessToken: string,
   deliveryId: number
