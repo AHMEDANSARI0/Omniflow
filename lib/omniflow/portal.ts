@@ -7654,6 +7654,183 @@ export async function listDeliveries(
   };
 }
 
+export interface GrowthBundlePayload {
+  segments?: Record<string, unknown> | null;
+  trends?:
+    | Record<string, { day: string | null; value: number }[]>
+    | null;
+  days?: number;
+  generated_at?: string;
+}
+
+export async function getGrowthBundle(
+  accessToken: string,
+  days: number
+): Promise<GrowthBundlePayload | "bundle_disabled" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/growth-bundle?days=" +
+        encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 503) return "bundle_disabled";
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as
+    | GrowthBundlePayload
+    | null;
+  return payload;
+}
+export interface PortalAlert {
+  id: number;
+  kind: string;
+  severity: string;
+  title: string;
+  detail: string;
+  is_read: boolean;
+  created_at: string | null;
+}
+
+export interface AlertsPayload {
+  alerts: PortalAlert[];
+  unread: number;
+}
+
+export async function listAlerts(
+  accessToken: string
+): Promise<AlertsPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/alerts");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as AlertsPayload | null;
+}
+
+export async function markAlertsRead(
+  accessToken: string,
+  id?: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/alerts/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(id ? { id } : { all: true }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+export interface BrainSettings {
+  autonomy: "off" | "suggest" | "auto";
+  tone: string;
+}
+
+export interface BrainDraftResult {
+  decision: string;
+  draft: string;
+  grounding: Record<string, unknown> | null;
+  autonomy?: string;
+}
+
+export async function getBrainSettings(
+  accessToken: string
+): Promise<BrainSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/brain/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    settings?: BrainSettings;
+  } | null;
+  return payload?.settings ?? null;
+}
+
+export async function putBrainSettings(
+  accessToken: string,
+  settings: BrainSettings
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/brain/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function draftBrainReply(
+  accessToken: string,
+  conversationId: number
+): Promise<BrainDraftResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/brain/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: conversationId }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as BrainDraftResult | null;
+}
+
+export async function listBrainTraces(
+  accessToken: string,
+  conversationId?: number
+): Promise<{ traces: Record<string, unknown>[] } | null> {
+  let response: Response;
+  try {
+    const query = conversationId
+      ? "?conversation_id=" + encodeURIComponent(String(conversationId))
+      : "";
+    response = await portalRequest(accessToken, "api/v1/portal/brain/trace" + query);
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    traces: Record<string, unknown>[];
+  } | null;
+}
+
 export async function replayDelivery(
   accessToken: string,
   deliveryId: number

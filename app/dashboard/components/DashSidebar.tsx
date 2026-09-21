@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { openCommandPalette } from "./CommandPalette";
 import SignOutButton from "./SignOutButton";
+import AlertsBell from "./AlertsBell";
 import { useUnreadCount } from "./useUnreadCount";
 
 interface NavItem {
@@ -234,7 +235,8 @@ function SidebarFooter({
           Workspace {clientId} · {role}
         </p>
       </div>
-      <div className="px-3 pb-1">
+      <div className="flex items-center justify-between px-3 pb-1">
+        <AlertsBell />
         <SignOutButton />
       </div>
     </div>

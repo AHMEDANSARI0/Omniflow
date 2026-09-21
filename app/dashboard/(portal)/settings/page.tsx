@@ -8,6 +8,7 @@ import WatiCard from "./WatiCard";
 import CatalogCard from "./CatalogCard";
 import CouponsCard from "./CouponsCard";
 import DeliveriesCard from "./DeliveriesCard";
+import BrainCard from "./BrainCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -63,6 +64,7 @@ export default async function ClientSettingsPage() {
       <CatalogCard />
       <CouponsCard />
       <DeliveriesCard />
+      <BrainCard />
     </div>
   );
 }
