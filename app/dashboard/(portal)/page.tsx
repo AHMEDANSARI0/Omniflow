@@ -5,6 +5,7 @@ import { getOverview, getRecentActivity } from "../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
 import SetupChecklist from "../components/SetupChecklist";
 import DailyBrief from "./DailyBrief";
+import RecoveryCard from "../components/RecoveryCard";
 
 
 interface QuickLink {
@@ -95,6 +96,8 @@ export default async function ClientDashboardPage() {
       <SetupChecklist />
 
       <DailyBrief />
+
+      <RecoveryCard />
 
       {overview && (
         <>

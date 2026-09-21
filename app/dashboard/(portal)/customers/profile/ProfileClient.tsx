@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import CustomerMemoryCard from "./CustomerMemoryCard";
+import CustomerJourneyCard from "./CustomerJourneyCard";
 import { useCallback, useEffect, useState } from "react";
 
 interface CustomerValueData {
@@ -441,6 +443,9 @@ export default function ProfileClient({ contact }: { contact: string }) {
             </div>
           ) : null}
         </div>
+
+        {contact ? <CustomerMemoryCard contact={contact} /> : null}
+        {contact ? <CustomerJourneyCard contact={contact} /> : null}
 
         {profile && recos.length > 0 ? (
           <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">

@@ -9,6 +9,7 @@ import CatalogCard from "./CatalogCard";
 import CouponsCard from "./CouponsCard";
 import DeliveriesCard from "./DeliveriesCard";
 import BrainCard from "./BrainCard";
+import NegotiationCard from "./NegotiationCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -65,6 +66,7 @@ export default async function ClientSettingsPage() {
       <CouponsCard />
       <DeliveriesCard />
       <BrainCard />
+      <NegotiationCard />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   type BroadcastRow,
 } from "../../../../lib/omniflow/portal";
 import BroadcastsClient from "./BroadcastsClient";
+import CopyGenCard from "./CopyGenCard";
 
 
 export default async function BroadcastsPage() {
@@ -19,5 +20,10 @@ export default async function BroadcastsPage() {
     }
   }
 
-  return <BroadcastsClient initialHistory={initialHistory} />;
+  return (
+    <div className="space-y-4">
+      <CopyGenCard />
+      <BroadcastsClient initialHistory={initialHistory} />
+    </div>
+  );
 }

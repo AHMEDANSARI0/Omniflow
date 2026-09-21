@@ -7831,6 +7831,451 @@ export async function listBrainTraces(
   } | null;
 }
 
+export interface MemoryEntry {
+  id: number;
+  kind: "preference" | "note" | "fact";
+  content: string;
+  created_by: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface JourneyStage {
+  id: number;
+  name: string;
+  position: number;
+  is_active: boolean;
+}
+
+export interface JourneyEvent {
+  stage_name: string;
+  source: string;
+  created_at: string | null;
+}
+
+export interface JourneySnapshot {
+  stages: JourneyStage[];
+  current: { stage_id: number; name: string; updated_at: string } | null;
+  events: JourneyEvent[];
+}
+
+export interface ExplainActivity {
+  action: string;
+  actor_kind: string;
+  note: string;
+  created_at: string | null;
+}
+
+export async function listCustomerMemory(
+  accessToken: string,
+  contact: string
+): Promise<{ memory: MemoryEntry[]; cap: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/memory?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    memory: MemoryEntry[];
+    cap: number;
+  } | null;
+}
+
+export async function addCustomerMemory(
+  accessToken: string,
+  contact: string,
+  kind: MemoryEntry["kind"],
+  content: string
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/memory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact, kind, content }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function updateCustomerMemory(
+  accessToken: string,
+  id: number,
+  content: string
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/memory/" + id, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function deleteCustomerMemory(
+  accessToken: string,
+  id: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/memory/" + id, {
+      method: "DELETE",
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function purgeCustomerMemory(
+  accessToken: string,
+  contact: string
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/memory?contact=" + encodeURIComponent(contact),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function getJourney(
+  accessToken: string,
+  contact: string
+): Promise<JourneySnapshot | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/journey?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as JourneySnapshot | null;
+}
+
+export async function moveJourneyStage(
+  accessToken: string,
+  contact: string,
+  stageId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/journey", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact, stage_id: stageId }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function addJourneyStage(
+  accessToken: string,
+  name: string
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/journey/stages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function deleteJourneyStage(
+  accessToken: string,
+  stageId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/journey/stages/" + stageId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function getExplain(
+  accessToken: string,
+  contact: string
+): Promise<{ activity: ExplainActivity[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/explain?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    activity: ExplainActivity[];
+  } | null;
+}
+
+export interface RecoveryItem {
+  id: number;
+  kind: string;
+  contact_id: string;
+  conversation_id: number | null;
+  priority: number;
+  status: string;
+  note: string;
+  created_at: string | null;
+}
+
+export interface RecoverySettings {
+  auto_enabled: boolean;
+  checkout_hours: number;
+  cod_hours: number;
+  inactive_days: number;
+  min_value: number;
+}
+
+export interface PriceBounds {
+  enabled: boolean;
+  min_price: number;
+  max_discount_pct: number;
+}
+
+export interface NegotiationDecision {
+  decision: "accept" | "counter" | "reject";
+  counter_price: number;
+  floor: number;
+  message: string;
+}
+
+export async function listRecoveries(
+  accessToken: string
+): Promise<{ items: RecoveryItem[]; settings: RecoverySettings } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/recovery");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    items: RecoveryItem[];
+    settings: RecoverySettings;
+  } | null;
+}
+
+export async function sendRecoveryFollowup(
+  accessToken: string,
+  id: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/recovery/followup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function dismissRecovery(
+  accessToken: string,
+  id: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/recovery/dismiss", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function putRecoverySettings(
+  accessToken: string,
+  settings: RecoverySettings
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/recovery/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function getPriceBounds(
+  accessToken: string
+): Promise<PriceBounds | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/negotiation/bounds"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    settings?: PriceBounds;
+  } | null;
+  return payload?.settings ?? null;
+}
+
+export async function putPriceBounds(
+  accessToken: string,
+  settings: PriceBounds
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/negotiation/bounds",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function decideNegotiation(
+  accessToken: string,
+  input: { price: number; offer: number; conversation_id?: number }
+): Promise<NegotiationDecision | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/negotiation/decide", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as NegotiationDecision | null;
+}
+
+export async function generateBroadcastCopy(
+  accessToken: string,
+  topic: string,
+  lang: "ur" | "roman" | "en"
+): Promise<{ variants: string[]; source: string } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/copygen/broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, lang }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    variants: string[];
+    source: string;
+  } | null;
+}
+
 export async function replayDelivery(
   accessToken: string,
   deliveryId: number
