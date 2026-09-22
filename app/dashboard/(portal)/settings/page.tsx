@@ -1,3 +1,5 @@
+// b17: the AI Brain card moved to Configure AI (/dashboard/bot) - the
+// assistant keeps a single setup surface.
 import { redirect } from "next/navigation";
 import ApiKeyCard from "./ApiKeyCard";
 import BusinessHoursCard from "./BusinessHoursCard";
@@ -8,9 +10,9 @@ import WatiCard from "./WatiCard";
 import CatalogCard from "./CatalogCard";
 import CouponsCard from "./CouponsCard";
 import DeliveriesCard from "./DeliveriesCard";
-import BrainCard from "./BrainCard";
 import NegotiationCard from "./NegotiationCard";
 import PerfCard from "./PerfCard";
+import PlanCard from "./PlanCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -66,9 +68,9 @@ export default async function ClientSettingsPage() {
       <CatalogCard />
       <CouponsCard />
       <DeliveriesCard />
-      <BrainCard />
       <NegotiationCard />
       <PerfCard />
+      <PlanCard />
     </div>
   );
 }

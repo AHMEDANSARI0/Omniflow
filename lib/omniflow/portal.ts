@@ -8961,6 +8961,124 @@ export async function getOperations(
   } | null;
 }
 
+export interface TemplatePack {
+  key: string;
+  label: string;
+  description: string;
+  persona: {
+    agent_name: string;
+    tone: string;
+    greeting: string;
+    fallback: string;
+  };
+  kb: { title: string; category: string; keywords: string;
+        content: string; lang: string }[];
+  keywords: { keyword: string; note: string }[];
+  saved_replies: { shortcut: string; body: string }[];
+  journey: string[];
+}
+
+export interface TemplatesPayload {
+  packs: TemplatePack[];
+  applied: string;
+  applied_at: string;
+}
+
+export async function listTemplates(
+  accessToken: string
+): Promise<TemplatesPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/templates");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as TemplatesPayload | null;
+}
+
+export async function applyTemplate(
+  accessToken: string,
+  vertical: string,
+  overwritePersona = false
+): Promise<{
+  ok: boolean;
+  vertical: string;
+  created: Record<string, number>;
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken,
+      "api/v1/portal/templates/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vertical, overwrite_persona: overwritePersona }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    vertical: string;
+    created: Record<string, number>;
+  } | null;
+}
+
+export interface PlansPayload {
+  plan: string;
+  limits: Record<string, number | null>;
+  usage: Record<string, number>;
+  catalog: {
+    key: string;
+    label: string;
+    description: string;
+    limits: Record<string, number | null>;
+  }[];
+}
+
+export async function getPlans(
+  accessToken: string
+): Promise<PlansPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/plans");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as PlansPayload | null;
+}
+
+export async function putPlan(
+  accessToken: string,
+  plan: string
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/plans", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
 export interface MediaAsset {
   id: number;
   kind: string;

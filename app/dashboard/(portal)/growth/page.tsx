@@ -94,6 +94,7 @@ interface CheckoutComposer {
   title: string;
   rows: ComposerRow[];
   discount: string;
+  advance: string;
   expiry: string;
   busy: boolean;
 }
@@ -104,6 +105,7 @@ const EMPTY_COMPOSER: CheckoutComposer = {
   title: "",
   rows: [{ name: "", qty: "1", price: "" }],
   discount: "",
+  advance: "",
   expiry: "",
   busy: false,
 }
@@ -122,6 +124,9 @@ interface CheckoutLink {
   discount?: number;
   courier?: string;
   trackingNumber?: string;
+  advancePercent?: number;
+  advanceDue?: number;
+  codBalance?: number;
 }
 
 interface ListenRule {
@@ -293,6 +298,9 @@ export default function GrowthPage() {
   }, []);
   const [custAnalytics, setCustAnalytics] = useState<
     CustomerAnalyticsRow[]
+  >([]);
+  const [langCounts, setLangCounts] = useState<
+    { lang: string; count: number }[]
   >([]);
   const [prodAnalytics, setProdAnalytics] = useState<
     ProductAnalyticsRow[]
@@ -477,6 +485,11 @@ export default function GrowthPage() {
               composer.discount === ""
                 ? null
                 : Math.max(0, Number(composer.discount) || 0),
+            advance_percent:
+              composer.advance === "" || Number(composer.advance) <= 0
+                ? null
+                : Math.min(90, Math.max(1,
+                  Math.floor(Number(composer.advance) || 0))),
           }),
         }
       );
@@ -619,7 +632,7 @@ export default function GrowthPage() {
   const [userId, setUserId] = useState("");
   const [failed, setFailed] = useState(false);
 
-  const load = useCallback(async () => {
+  const loadLegacy = useCallback(async () => {
     const [churnPayload, radarPayload, revenuePayload, itemsPayload, forecast, ideas, negotiation, checkout, listenRules, listenHits, routingRules, restockPayload, custPayload, prodPayload] =
       await Promise.all([
         getJson<{ contacts: ChurnContact[] }>(
@@ -650,7 +663,10 @@ export default function GrowthPage() {
         getJson<RestockRadarData>(
           "/api/omniflow/portal/restock/radar?days=" + days
         ),
-        getJson<{ customers: CustomerAnalyticsRow[] }>(
+        getJson<{
+          customers: CustomerAnalyticsRow[];
+          languages?: { lang: string; count: number }[];
+        }>(
           "/api/omniflow/portal/insights/customer-analytics?days=" + days
         ),
         getJson<{ products: ProductAnalyticsRow[] }>(
@@ -671,8 +687,55 @@ export default function GrowthPage() {
     setRouting(routingRules?.rules ?? []);
     setRestock(restockPayload);
     setCustAnalytics(custPayload?.customers ?? []);
+    setLangCounts(custPayload?.languages ?? []);
     setProdAnalytics(prodPayload?.products ?? []);
   }, [days]);
+
+  const load = useCallback(async () => {
+    const bundle = await getJson<{
+      segments?: {
+        churn?: { contacts?: ChurnContact[] } | null;
+        radar?: { contacts?: ChurnRadarContact[] } | null;
+        revenue?: RevenueSummaryData | null;
+        revenue_items?: { items?: RevenueItemData[] } | null;
+        staffing?: StaffingForecast | null;
+        ideas?: { suggestions?: BroadcastSuggestion[] } | null;
+        negotiation?: { settings?: NegotiationSettings | null } | null;
+        links?: { links?: CheckoutLink[] } | null;
+        listen_rules?: { rules?: ListenRule[] } | null;
+        listen_hits?: { hits?: ListenHit[] } | null;
+        routing?: { rules?: RoutingRule[] } | null;
+        restock?: RestockRadarData | null;
+        customers?: {
+          customers?: CustomerAnalyticsRow[];
+          languages?: { lang: string; count: number }[];
+        } | null;
+        products?: { products?: ProductAnalyticsRow[] } | null;
+      } | null;
+    }>("/api/omniflow/portal/growth-bundle?days=" + days);
+    const seg = bundle?.segments ?? null;
+    if (!seg) {
+      await loadLegacy();
+      return;
+    }
+    setChurn(seg.churn?.contacts ?? []);
+    setRadar(seg.radar?.contacts ?? []);
+    setRevenue(seg.revenue ?? null);
+    setRevItems(seg.revenue_items?.items ?? []);
+    setStaffing(seg.staffing ?? null);
+    setSuggestions(seg.ideas?.suggestions ?? []);
+    setSettings(seg.negotiation?.settings ?? null);
+    setLinks(seg.links?.links ?? []);
+    setRules(seg.listen_rules?.rules ?? []);
+    setHits(seg.listen_hits?.hits ?? []);
+    setRouting(seg.routing?.rules ?? []);
+    setRestock(seg.restock ?? null);
+    setCustAnalytics(seg.customers?.customers ?? []);
+    setLangCounts(seg.customers?.languages ?? []);
+    setProdAnalytics(seg.products?.products ?? []);
+    setFailed(false);
+  }, [days]);
+
 
   useEffect(() => {
     void load();
@@ -1209,6 +1272,23 @@ export default function GrowthPage() {
               ))}
             </ul>
           )}
+          {langCounts.length > 0 ? (
+            <div className="mt-3 border-t border-white/[0.06] pt-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                Customer languages
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {langCounts.map((row) => (
+                  <span
+                    key={row.lang}
+                    className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-slate-300"
+                  >
+                    {row.lang || "auto"} · {row.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </Section>
 
         <Section
@@ -1383,6 +1463,20 @@ export default function GrowthPage() {
                     />
                   </label>
                   <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                    Advance %
+                    <input
+                      type="number"
+                      min={0}
+                      max={90}
+                      value={composer.advance}
+                      onChange={(event) =>
+                        updateComposer({ advance: event.target.value })
+                      }
+                      placeholder="0 = full payment"
+                      className="w-24 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-[11px] text-slate-400">
                     Expires in
                     <select
                       value={composer.expiry}
@@ -1524,6 +1618,12 @@ export default function GrowthPage() {
                       >
                         {link.status}
                       </span>
+                      {(link.advancePercent || 0) > 0 && link.status === "open" ? (
+                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[10px] text-sky-300">
+                          Pay Rs {link.advanceDue} now · Rs {link.codBalance}{" "}
+                          on delivery
+                        </span>
+                      ) : null}
                       {link.status === "open" ? (
                         <>
                           <button

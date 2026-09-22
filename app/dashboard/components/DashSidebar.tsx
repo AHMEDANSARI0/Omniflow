@@ -16,73 +16,113 @@ interface NavItem {
   enabled: boolean;
 }
 
-const navItems: NavItem[] = [
+const navGroups: { title: string; items: NavItem[] }[] = [
   {
-    label: "Knowledge base",
-    href: "/dashboard/knowledge-base",
-    icon: "\u25a6",
-    enabled: true,
-  },
-  { label: "Overview", href: "/dashboard", icon: "\u2302", enabled: true },
-  {
-    label: "WhatsApp setup",
-    href: "/dashboard/channels/whatsapp",
-    icon: "\u2706",
-    enabled: true,
-  },
-  { label: "Configure AI", href: "/dashboard/bot", icon: "\u2736", enabled: true },
-  {
-    label: "Conversations",
-    href: "/dashboard/conversations",
-    icon: "\u270e",
-    enabled: true,
-  },
-  {
-    label: "Customers",
-    href: "/dashboard/customers",
-    icon: "\u2606",
-    enabled: true,
+    title: "Inbox",
+    items: [
+      { label: "Overview", href: "/dashboard", icon: "\u2302", enabled: true },
+      {
+        label: "Conversations",
+        href: "/dashboard/conversations",
+        icon: "\u270e",
+        enabled: true,
+      },
+      {
+        label: "Customers",
+        href: "/dashboard/customers",
+        icon: "\u2606",
+        enabled: true,
+      },
+      {
+        label: "Automations",
+        href: "/dashboard/automations",
+        icon: "\u2301",
+        enabled: true,
+      },
+    ],
   },
   {
-    label: "Automations",
-    href: "/dashboard/automations",
-    icon: "\u2301",
-    enabled: true,
+    title: "Sell",
+    items: [
+      { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "\u27a4", enabled: true },
+      { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
+      { label: "Courier", href: "/dashboard/courier", icon: "\u25bb", enabled: true },
+      { label: "Growth", href: "/dashboard/growth", icon: "\u25b2", enabled: true },
+      { label: "Win-back", href: "/dashboard/winback", icon: "\u21bb", enabled: true },
+      { label: "Sequences", href: "/dashboard/sequences", icon: "\u2192", enabled: true },
+    ],
   },
   {
-    label: "AI Brain",
-    href: "/dashboard/ai-brain",
-    icon: "\u25c6",
-    enabled: true,
+    title: "Audience",
+    items: [
+      { label: "Segments", href: "/dashboard/segments", icon: "\u25ce", enabled: true },
+      { label: "Pipeline", href: "/dashboard/pipeline", icon: "\u25c8", enabled: true },
+    ],
   },
   {
-    label: "Analytics",
-    href: "/dashboard/analytics",
-    icon: "\u25c9",
-    enabled: true,
+    title: "Content",
+    items: [
+      {
+        label: "Knowledge base",
+        href: "/dashboard/knowledge-base",
+        icon: "\u25a6",
+        enabled: true,
+      },
+      { label: "Quick replies", href: "/dashboard/saved-replies", icon: "/", enabled: true },
+      { label: "Media", href: "/dashboard/media", icon: "\u25a6", enabled: true },
+    ],
   },
   {
-    label: "Business profile",
-    href: "/dashboard/profile",
-    icon: "\u25ad",
-    enabled: true,
+    title: "Insights",
+    items: [
+      {
+        label: "Analytics",
+        href: "/dashboard/analytics",
+        icon: "\u25c9",
+        enabled: true,
+      },
+      { label: "Weekly", href: "/dashboard/weekly", icon: "\u2248", enabled: true },
+      { label: "Activity", href: "/dashboard/activity", icon: "\u2261", enabled: true },
+    ],
   },
-  { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "➤", enabled: true },
-  { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
-  { label: "Courier", href: "/dashboard/courier", icon: "\u25bb", enabled: true },
-  { label: "Media", href: "/dashboard/media", icon: "\u25a6", enabled: true },
-  { label: "Integrations", href: "/dashboard/integrations", icon: "\u21c4", enabled: true },
-  { label: "Compliance", href: "/dashboard/compliance", icon: "\u26e8", enabled: true },
-  { label: "Growth", href: "/dashboard/growth", icon: "\u25b2", enabled: true },
-  { label: "Win-back", href: "/dashboard/winback", icon: "\u21bb", enabled: true },
-  { label: "Sequences", href: "/dashboard/sequences", icon: "\u2192", enabled: true },
-  { label: "Segments", href: "/dashboard/segments", icon: "\u25ce", enabled: true },
-  { label: "Pipeline", href: "/dashboard/pipeline", icon: "\u25c8", enabled: true },
-  { label: "Quick replies", href: "/dashboard/saved-replies", icon: "/", enabled: true },
-  { label: "Activity", href: "/dashboard/activity", icon: "\u2261", enabled: true },
-  { label: "Weekly", href: "/dashboard/weekly", icon: "\u2248", enabled: true },
-  { label: "Team", href: "/dashboard/team", icon: "⚑", enabled: true },
-  { label: "Settings", href: "/dashboard/settings", icon: "\u2699", enabled: true },
+  {
+    title: "Workspace",
+    items: [
+      {
+        label: "WhatsApp setup",
+        href: "/dashboard/channels/whatsapp",
+        icon: "\u2706",
+        enabled: true,
+      },
+      { label: "Configure AI", href: "/dashboard/bot", icon: "\u2736", enabled: true },
+      {
+        label: "Setup wizard",
+        href: "/dashboard/onboarding",
+        icon: "\u2726",
+        enabled: true,
+      },
+      {
+        label: "Business profile",
+        href: "/dashboard/profile",
+        icon: "\u25ad",
+        enabled: true,
+      },
+      {
+        label: "Integrations",
+        href: "/dashboard/integrations",
+        icon: "\u21c4",
+        enabled: true,
+      },
+      { label: "Compliance", href: "/dashboard/compliance", icon: "\u26e8", enabled: true },
+      { label: "Team", href: "/dashboard/team", icon: "\u2691", enabled: true },
+      {
+        label: "Settings",
+        href: "/dashboard/settings",
+        icon: "\u2699",
+        enabled: true,
+      },
+    ],
+  },
 ];
 
 function BrandMark({ compact = false }: { compact?: boolean }) {
@@ -119,68 +159,80 @@ function NavLinks({
   const pathname = usePathname();
   const unreadCount = useUnreadCount();
 
-  return (
-    <nav className="space-y-1">
-      {navItems.map((item) => {
-        const isActive =
-          item.href === "/dashboard"
-            ? pathname === "/dashboard"
-            : pathname.startsWith(item.href);
+  const renderItem = (item: NavItem) => {
+    const isActive =
+      item.href === "/dashboard"
+        ? pathname === "/dashboard"
+        : pathname.startsWith(item.href);
 
-        if (!item.enabled) {
-          return (
-            <div
-              key={item.href}
-              title={`${item.label} — coming soon`}
-              className={`flex cursor-not-allowed items-center rounded-xl py-2.5 opacity-50 ${
-                collapsed ? "justify-center px-0" : "justify-between px-3"
-              }`}
-            >
-              <span className="flex items-center gap-3 text-sm text-slate-500">
-                <span className="text-xs">{item.icon}</span>
-                {!collapsed && item.label}
-              </span>
-              {!collapsed && (
-                <span className="rounded-md border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-slate-600">
-                  Soon
-                </span>
-              )}
-            </div>
-          );
-        }
-
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            title={item.label}
-            className={`relative flex items-center gap-3 rounded-xl border py-2.5 text-sm transition-colors duration-200 ${
-              collapsed ? "justify-center px-0" : "px-3"
-            } ${
-              isActive
-                ? "border-cyan-400/20 bg-cyan-400/[0.06] text-white"
-                : "border-transparent text-slate-400 hover:bg-white/[0.03] hover:text-white"
-            }`}
-          >
-            <span className={`text-xs ${isActive ? "text-cyan-300" : ""}`}>
-              {item.icon}
+    if (!item.enabled) {
+      return (
+        <div
+          key={item.href}
+          title={`${item.label} — coming soon`}
+          className={`flex cursor-not-allowed items-center rounded-xl py-2.5 opacity-50 ${
+            collapsed ? "justify-center px-0" : "justify-between px-3"
+          }`}
+        >
+          <span className="flex items-center gap-3 text-sm text-slate-500">
+            <span className="text-xs">{item.icon}</span>
+            {!collapsed && item.label}
+          </span>
+          {!collapsed && (
+            <span className="rounded-md border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-slate-600">
+              Soon
             </span>
-            {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
-            {item.href === "/dashboard/conversations" &&
-              unreadCount > 0 &&
-              (collapsed ? (
-                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-400 px-1 text-[9px] font-bold text-[#07111f]">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              ) : (
-                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-400 px-1.5 text-[10px] font-bold text-[#07111f]">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              ))}
-          </Link>
-        );
-      })}
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onNavigate}
+        title={item.label}
+        className={`relative flex items-center gap-3 rounded-xl border py-2.5 text-sm transition-colors duration-200 ${
+          collapsed ? "justify-center px-0" : "px-3"
+        } ${
+          isActive
+            ? "border-cyan-400/20 bg-cyan-400/[0.06] text-white"
+            : "border-transparent text-slate-400 hover:bg-white/[0.03] hover:text-white"
+        }`}
+      >
+        <span className={`text-xs ${isActive ? "text-cyan-300" : ""}`}>
+          {item.icon}
+        </span>
+        {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+        {item.href === "/dashboard/conversations" &&
+          unreadCount > 0 &&
+          (collapsed ? (
+            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-400 px-1 text-[9px] font-bold text-[#07111f]">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          ) : (
+            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-400 px-1.5 text-[10px] font-bold text-[#07111f]">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          ))}
+      </Link>
+    );
+  };
+
+  return (
+    <nav className="space-y-4">
+      {navGroups.map((group) => (
+        <div key={group.title} className="space-y-1">
+          {!collapsed && (
+            <p className="px-3 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+              {group.title}
+            </p>
+          )}
+          {collapsed && <div className="mx-3 border-t border-white/[0.06]" />}
+          {group.items.map(renderItem)}
+        </div>
+      ))}
     </nav>
   );
 }

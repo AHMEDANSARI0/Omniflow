@@ -1,7 +1,12 @@
 import Link from "next/link";
 
 import { requireOmniFlowPrincipal } from "../../../lib/omniflow/auth-dal";
-import { getOverview, getRecentActivity } from "../../../lib/omniflow/portal";
+import {
+  getOverview,
+  getPlans,
+  getRecentActivity,
+  listCodRequests,
+} from "../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
 import SetupChecklist from "../components/SetupChecklist";
 import DailyBrief from "./DailyBrief";
@@ -21,7 +26,7 @@ const QUICK_LINKS: QuickLink[] = [
   { icon: "\u2301", title: "Automations", href: "/dashboard/automations" },
   { icon: "\u2192", title: "Sequences", href: "/dashboard/sequences" },
   { icon: "\u2736", title: "Configure AI", href: "/dashboard/bot" },
-  { icon: "\u25c6", title: "AI Brain", href: "/dashboard/ai-brain" },
+  { icon: "\u2726", title: "Setup wizard", href: "/dashboard/onboarding" },
   { icon: "\u2706", title: "WhatsApp setup", href: "/dashboard/channels/whatsapp" },
   { icon: "\u25a6", title: "Knowledge base", href: "/dashboard/knowledge-base" },
   { icon: "\u25ad", title: "Business profile", href: "/dashboard/profile" },
@@ -76,10 +81,37 @@ function whenLabel(iso: string | null): string {
 export default async function ClientDashboardPage() {
   const principal = await requireOmniFlowPrincipal();
   const { accessToken } = await readSessionCookies();
-  const [activity, overview] = await Promise.all([
+  const [activity, overview, plans, cod] = await Promise.all([
     accessToken ? getRecentActivity(accessToken) : Promise.resolve(null),
     accessToken ? getOverview(accessToken) : Promise.resolve(null),
+    accessToken ? getPlans(accessToken) : Promise.resolve(null),
+    accessToken ? listCodRequests(accessToken, "pending") : Promise.resolve(null),
   ]);
+
+  const usageRows: { label: string; href: string; key: string }[] = plans
+    ? [
+        {
+          label: "Broadcasts this month",
+          href: "/dashboard/growth",
+          key: "broadcasts_per_month",
+        },
+        {
+          label: "Knowledge-base entries",
+          href: "/dashboard/knowledge-base",
+          key: "kb_entries",
+        },
+        {
+          label: "Keyword alerts",
+          href: "/dashboard/growth",
+          key: "alert_rules",
+        },
+        {
+          label: "Courier companies",
+          href: "/dashboard/courier",
+          key: "courier_providers",
+        },
+      ]
+    : [];
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -102,6 +134,62 @@ export default async function ClientDashboardPage() {
       <RecoveryCard />
 
       <OperationsCard />
+
+      {(plans || cod) && (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          {plans && (
+            <Link
+              href="/dashboard/settings"
+              className="block rounded-2xl border border-white/[0.06] bg-white/[0.015] px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                  Plan &amp; usage
+                </p>
+                <span className="rounded-full border border-cyan-400/30 bg-cyan-400/[0.08] px-2 py-0.5 text-[10px] text-cyan-200">
+                  {plans.plan === "legacy" ? "Unlimited" : plans.plan}
+                </span>
+              </div>
+              <ul className="mt-2.5 space-y-1.5">
+                {usageRows.map((row) => {
+                  const used = Number(plans.usage[row.key] ?? 0);
+                  const limit = plans.limits[row.key] ?? null;
+                  return (
+                    <li
+                      key={row.key}
+                      className="flex items-center justify-between gap-2 text-[11px]"
+                    >
+                      <span className="text-slate-400">{row.label}</span>
+                      <span className="text-slate-300">
+                        {used} / {limit === null ? "\u221e" : limit}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-2 text-[10px] text-slate-600">
+                Manage in Settings &gt; Plan &amp; usage
+              </p>
+            </Link>
+          )}
+          {cod && (
+            <Link
+              href="/dashboard/cod"
+              className="block rounded-2xl border border-white/[0.06] bg-white/[0.015] px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
+            >
+              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                COD confirmations
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-white">
+                {cod.counts.pending ?? 0}
+              </p>
+              <p className="mt-0.5 text-[10px] text-slate-500">
+                orders waiting for the customer to confirm
+              </p>
+            </Link>
+          )}
+        </div>
+      )}
 
       {overview && (
         <>

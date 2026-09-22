@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+
+import BrainCard from "../settings/BrainCard";
 import { getBotConfig, getFollowupSettings } from "../../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../../lib/omniflow/session-cookies";
 import BotForm from "./BotForm";
@@ -5,6 +8,8 @@ import FollowupSettingsForm from "./FollowupSettingsForm";
 
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Configure AI" };
 
 export default async function MyBotPage() {
   const { accessToken } = await readSessionCookies();
@@ -17,13 +22,13 @@ export default async function MyBotPage() {
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight text-white">
-          AI agent
+          Configure AI
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Behaviour of the assistant that answers on your connected channels.
-          Business details (products, prices, policies, FAQs) live in
-          Business profile — this page is only about how the assistant talks
-          and takes decisions.
+          Everything about how the assistant talks and takes decisions:
+          behaviour, follow-ups, and the autonomy level that decides whether
+          it only suggests, drafts, or answers on its own. Business details
+          (products, prices, policies, FAQs) live in Business profile.
         </p>
       </div>
 
@@ -34,6 +39,10 @@ export default async function MyBotPage() {
 
       <div className="mt-6">
         <FollowupSettingsForm initial={followupSettings} />
+      </div>
+
+      <div className="mt-6">
+        <BrainCard />
       </div>
     </div>
   );
