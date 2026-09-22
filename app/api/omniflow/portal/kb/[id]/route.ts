@@ -21,9 +21,10 @@ function parseEntryInput(payload: {
     keywords?: unknown;
     content?: unknown;
     isActive?: unknown;
+    lang?: unknown;
   };
 } | null):
-  | { kind: "ok"; entry: { title: string; category: string; keywords: string; content: string; isActive: boolean } }
+  | { kind: "ok"; entry: { title: string; category: string; keywords: string; content: string; isActive: boolean; lang: "auto" | "en" | "ur" | "roman" } }
   | { kind: "error"; message: string } {
   const input = payload?.entry;
   if (!input) {
@@ -49,7 +50,11 @@ function parseEntryInput(payload: {
   if (category.length > 60) {
     return { kind: "error", message: "Category must be 60 characters or fewer." };
   }
-  return { kind: "ok", entry: { title, category, keywords, content, isActive } };
+  const lang =
+    input.lang === "en" || input.lang === "ur" || input.lang === "roman"
+      ? input.lang
+      : "auto";
+  return { kind: "ok", entry: { title, category, keywords, content, isActive, lang } };
 }
 
 export async function PUT(request: Request, context: RouteContext) {
