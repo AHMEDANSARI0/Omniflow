@@ -1014,6 +1014,8 @@ export async function saveFollowupSettings(
   return response.ok;
 }
 
+export type KbLang = "auto" | "en" | "ur" | "roman";
+
 export interface KbEntry {
   id: number;
   title: string;
@@ -1022,6 +1024,7 @@ export interface KbEntry {
   content: string;
   isActive: boolean;
   usageCount: number;
+  lang: KbLang;
 }
 
 export interface KbEntryInput {
@@ -1030,6 +1033,7 @@ export interface KbEntryInput {
   keywords: string;
   content: string;
   isActive: boolean;
+  lang: KbLang;
 }
 
 export interface KbSettings {
@@ -1050,6 +1054,10 @@ function mapKbEntry(raw: Record<string, unknown>): KbEntry {
     content: typeof raw.content === "string" ? raw.content : "",
     isActive: raw.is_active === true,
     usageCount: typeof raw.usage_count === "number" ? raw.usage_count : 0,
+    lang:
+      raw.lang === "en" || raw.lang === "ur" || raw.lang === "roman"
+        ? raw.lang
+        : "auto",
   };
 }
 
@@ -1103,6 +1111,7 @@ export async function createKbEntry(
           keywords: entry.keywords,
           content: entry.content,
           is_active: entry.isActive,
+          lang: entry.lang,
         },
       }),
     });
@@ -1135,6 +1144,7 @@ export async function updateKbEntry(
             keywords: entry.keywords,
             content: entry.content,
             is_active: entry.isActive,
+            lang: entry.lang,
           },
         }),
       }
@@ -6708,6 +6718,11 @@ export interface ProductAnalyticsEntry {
   orders: number;
 }
 
+export interface CustomerLanguageCount {
+  lang: string;
+  count: number;
+}
+
 export async function getCustomerAnalytics(
   accessToken: string,
   days: number
@@ -6715,6 +6730,7 @@ export async function getCustomerAnalytics(
   customers: CustomerAnalyticsEntry[];
   tiers: Record<string, number>;
   repeatShare: number;
+  languages: CustomerLanguageCount[];
 } | null> {
   let response: Response;
   try {
@@ -6756,6 +6772,13 @@ export async function getCustomerAnalytics(
       vip: typeof rawTiers.vip === "number" ? rawTiers.vip : 0,
     },
     repeatShare: typeof row.repeat_share === "number" ? row.repeat_share : 0,
+    languages: (Array.isArray(row.languages) ? row.languages : [])
+      .filter((entry): entry is Record<string, unknown> =>
+        entry !== null && typeof entry === "object")
+      .map((entry) => ({
+        lang: typeof entry.lang === "string" ? entry.lang : "",
+        count: typeof entry.count === "number" ? entry.count : 0,
+      })),
   };
 }
 
@@ -7573,6 +7596,82 @@ export async function removePublicCoupon(
   return { ok: true, total: typeof payload.total === "number" ? payload.total : 0 };
 }
 
+export interface CloudTemplate {
+  id: number;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+}
+
+export async function getCloudTemplates(
+  accessToken: string
+): Promise<{ templates: CloudTemplate[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/cloud/templates");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    templates?: unknown;
+  } | null;
+  if (!payload || !Array.isArray(payload.templates)) return null;
+  return {
+    templates: payload.templates
+      .filter((row): row is Record<string, unknown> =>
+        row !== null && typeof row === "object")
+      .map((row) => ({
+        id: typeof row.id === "number" ? row.id : 0,
+        name: typeof row.name === "string" ? row.name : "",
+        language: typeof row.language === "string" ? row.language : "",
+        status: typeof row.status === "string" ? row.status : "",
+        category: typeof row.category === "string" ? row.category : "",
+      })),
+  };
+}
+
+export async function sendCloudTemplate(
+  accessToken: string,
+  input: {
+    conversationId: number;
+    templateName: string;
+    languageCode: string;
+    parameters: string[];
+  }
+): Promise<{ ok: true; template: string } | "bad_request" | "not_found" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/cloud/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation_id: input.conversationId,
+        template_name: input.templateName,
+        language_code: input.languageCode,
+        parameters: input.parameters,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return "bad_request";
+  if (response.status === 404) return "not_found";
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    template?: unknown;
+  } | null;
+  return {
+    ok: true,
+    template: typeof payload?.template === "string" ? payload.template : "",
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Deliveries (event core: failed command queue + dead letters)
 // ---------------------------------------------------------------------------
@@ -7687,6 +7786,7 @@ export async function getGrowthBundle(
     | null;
   return payload;
 }
+
 export interface PortalAlert {
   id: number;
   kind: string;
@@ -7737,6 +7837,31 @@ export async function markAlertsRead(
     throw new ControlPlaneRequestError(401, "unauthorized");
   return response.ok;
 }
+
+export async function putAlertSettings(
+  accessToken: string,
+  enabled: boolean
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/alerts/settings",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
 export interface BrainSettings {
   autonomy: "off" | "suggest" | "auto";
   tone: string;
@@ -8433,30 +8558,6 @@ export async function normalizeAddress(
   return (await response.json().catch(() => null)) as AddressIntel | null;
 }
 
-export async function putAlertSettings(
-  accessToken: string,
-  enabled: boolean
-): Promise<boolean> {
-  let response: Response;
-  try {
-    response = await portalRequest(
-      accessToken,
-      "api/v1/portal/alerts/settings",
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      }
-    );
-  } catch (error) {
-    assertNotAuthError(error);
-    return false;
-  }
-  if (response.status === 401)
-    throw new ControlPlaneRequestError(401, "unauthorized");
-  return response.ok;
-}
-
 export interface CourierSettings {
   configured: boolean;
   enabled: boolean;
@@ -8648,6 +8749,215 @@ export async function trackCourierParcel(
     status: string;
     raw_status: string;
     events: { when: string; status: string; detail: string }[];
+  } | null;
+}
+
+export interface CourierProvider {
+  id: number;
+  name: string;
+  adapter: string;
+  base_url: string;
+  api_key_masked: string;
+  api_secret_masked: string;
+  booking_mode: string;
+  enabled: boolean;
+  test_status: string;
+  test_message: string;
+  created_at: string;
+}
+
+export interface CourierProviderAdapter {
+  key: string;
+  label: string;
+  default_base: string;
+  secret_label: string;
+}
+
+export interface CourierProviderInput {
+  name: string;
+  adapter: string;
+  base_url?: string;
+  api_key?: string;
+  api_secret?: string;
+  booking_mode?: string;
+  enabled?: boolean;
+}
+
+export async function listCourierProviders(
+  accessToken: string
+): Promise<{
+  providers: CourierProvider[];
+  adapters: CourierProviderAdapter[];
+  booking_modes: string[];
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/courier/providers");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    providers: CourierProvider[];
+    adapters: CourierProviderAdapter[];
+    booking_modes: string[];
+  } | null;
+}
+
+export async function createCourierProvider(
+  accessToken: string,
+  input: CourierProviderInput
+): Promise<{ ok: boolean; id: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/courier/providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    id: number;
+  } | null;
+}
+
+export async function updateCourierProvider(
+  accessToken: string,
+  id: number,
+  patch: Partial<CourierProviderInput>
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/courier/providers/" + id,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function deleteCourierProvider(
+  accessToken: string,
+  id: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/courier/providers/" + id,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function testCourierProvider(
+  accessToken: string,
+  id: number
+): Promise<{ ok: boolean; message: string } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/courier/providers/" + id + "/test",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    message: string;
+  } | null;
+}
+
+export async function confirmCourierBooking(
+  accessToken: string,
+  id: number
+): Promise<{ ok: boolean; id: number; tracking_number: string } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/courier/bookings/" + id + "/confirm",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    ok: boolean;
+    id: number;
+    tracking_number: string;
+  } | null;
+}
+
+export interface OperationsSnapshot {
+  chats: { new: number; open: number; total: number };
+  messages: { received: number; sent: number };
+  orders: { paid: number; revenue: number };
+  deliveries: {
+    bookings: number;
+    by_status: Record<string, number>;
+  };
+  recovery: { open: number; resolved: number };
+  csat: { answers: number; avg_score: number | null };
+}
+
+export async function getOperations(
+  accessToken: string,
+  days?: number
+): Promise<{ days: number; operations: OperationsSnapshot } | null> {
+  let response: Response;
+  try {
+    const query = days ? "?days=" + String(days) : "";
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/insights/operations" + query
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    days: number;
+    operations: OperationsSnapshot;
   } | null;
 }
 
@@ -10208,6 +10518,73 @@ export async function retryWebhookDelivery(
     delivered: p.delivered,
     statusCode: typeof p.status_code === "number" ? p.status_code : null,
   };
+}
+
+export type SequenceEnrollResult =
+  | { kind: "ok"; enrolled: number; skipped: string[] }
+  | { kind: "not_found" }
+  | { kind: "invalid" }
+  | { kind: "unavailable" };
+
+export async function enrollSequenceContacts(
+  accessToken: string,
+  sequenceId: number,
+  contacts: string[]
+): Promise<SequenceEnrollResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(sequenceId) + "/enrollments",
+      { method: "POST", body: JSON.stringify({ contacts }) }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 400) return { kind: "invalid" };
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
+  const p = payload as Record<string, unknown>;
+  if (typeof p.enrolled !== "number") return { kind: "unavailable" };
+  return {
+    kind: "ok",
+    enrolled: p.enrolled,
+    skipped: Array.isArray(p.skipped)
+      ? p.skipped.filter((item): item is string => typeof item === "string")
+      : [],
+  };
+}
+
+export type SequenceCancelResult =
+  | { kind: "ok" }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
+export async function cancelSequenceEnrollment(
+  accessToken: string,
+  sequenceId: number,
+  enrollmentId: number
+): Promise<SequenceCancelResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/sequences/" + String(sequenceId) +
+        "/enrollments/" + String(enrollmentId),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return { kind: "unavailable" };
+  return { kind: "ok" };
 }
 
 export type ConversationStatusResult =

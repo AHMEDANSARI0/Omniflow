@@ -80,8 +80,8 @@ export default function PerfCard() {
         </div>
       </div>
       <p className="mt-0.5 text-[11px] text-slate-500">
-        Live speed report - the dashboard ki sab se heavy queries ka
-        waqt (milliseconds) aur data ka size.
+        Live speed report - how big the store is and how long the
+        heaviest dashboard queries take right now.
       </p>
 
       {report ? (

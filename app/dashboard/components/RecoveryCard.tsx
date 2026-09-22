@@ -160,7 +160,7 @@ export default function RecoveryCard() {
           </ul>
         ) : (
           <p className="mt-3 text-xs text-slate-500">
-            Sab clear - koi recovery pending nahi.
+            All clear - nothing needs a follow-up right now.
           </p>
         )
       ) : (

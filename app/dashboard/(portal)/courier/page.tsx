@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-interface CourierSettings {
-  configured: boolean;
+import CourierProvidersCard from "./CourierProvidersCard";
+
+interface CourierProvider {
+  id: number;
+  name: string;
+  booking_mode: string;
   enabled: boolean;
-  provider: string;
-  base_url: string;
-  api_key_masked: string;
-  api_password_masked: string;
-  secret_label: string;
-  providers: { id: string; label: string; default_base: string }[];
 }
 
 interface CourierBooking {
@@ -25,6 +23,7 @@ interface CourierBooking {
 
 const STATUS_STYLES: Record<string, string> = {
   booked: "border-sky-400/25 bg-sky-400/[0.07] text-sky-300",
+  draft: "border-violet-400/25 bg-violet-400/[0.07] text-violet-300",
   in_transit: "border-amber-400/25 bg-amber-400/[0.07] text-amber-300",
   delivered: "border-emerald-400/25 bg-emerald-400/[0.07] text-emerald-300",
   returned: "border-rose-400/25 bg-rose-400/[0.07] text-rose-300",
@@ -32,30 +31,22 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: "border-white/[0.1] bg-white/[0.03] text-slate-400",
 };
 
+const EMPTY_BOOK = {
+  contact_id: "", customer_name: "", phone: "", city: "", address: "",
+  cod_amount: "", description: "",
+};
+
 /**
- * Courier connector: the owner pastes their courier account's API
- * credentials here (provider + key + secret, base URL optional).
- * While credentials are missing everything stays in a clean
- * "not configured" state - the moment they save working ones and
- * enable the connector, booking and tracking go live. Includes a
- * Test button that pings the courier with the saved credentials.
+ * Courier operations: providers are data rows (add, test, connect
+ * above); the booking form uses whichever connected provider is
+ * active. Hybrid booking honors each provider's mode - auto books
+ * instantly, draft/manual queue a draft that a human confirms below.
  */
 export default function CourierPage() {
-  const [settings, setSettings] = useState<CourierSettings | null>(null);
-  const [provider, setProvider] = useState("leopards");
-  const [apiKey, setApiKey] = useState("");
-  const [apiPassword, setApiPassword] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
-  const [enabled, setEnabled] = useState(true);
-  const [testNote, setTestNote] = useState<string | null>(null);
-  const [saveNote, setSaveNote] = useState<string | null>(null);
-
-  const [bookForm, setBookForm] = useState({
-    contact_id: "", customer_name: "", phone: "", city: "", address: "",
-    cod_amount: "", description: "",
-  });
+  const [providers, setProviders] = useState<CourierProvider[]>([]);
+  const [providerId, setProviderId] = useState(0);
+  const [bookForm, setBookForm] = useState({ ...EMPTY_BOOK });
   const [bookNote, setBookNote] = useState<string | null>(null);
-
   const [bookings, setBookings] = useState<CourierBooking[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -74,75 +65,33 @@ export default function CourierPage() {
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch("/api/omniflow/portal/courier/settings",
-          { cache: "no-store" });
-        if (response.ok) {
-          const payload = (await response.json()) as CourierSettings;
-          setSettings(payload);
-          setProvider(payload.provider);
-          setEnabled(payload.enabled);
-        }
-      } catch {
-        /* empty states speak for themselves */
-      }
-    })();
-    void loadBookings();
-  }, [loadBookings]);
-
-  async function saveSettings() {
-    setBusy(true);
-    setSaveNote(null);
+  const loadProviders = useCallback(async () => {
     try {
-      const response = await fetch("/api/omniflow/portal/courier/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider,
-          api_key: apiKey,
-          api_password: apiPassword,
-          base_url: baseUrl,
-          enabled,
-        }),
-      });
+      const response = await fetch("/api/omniflow/portal/courier/providers",
+        { cache: "no-store" });
       if (response.ok) {
-        const payload = (await response.json()) as { configured: boolean };
-        setSaveNote(payload.configured
-          ? "Saved - connector ready. Test kar ke dekh lein."
-          : "Saved - credentials abhi mukammal nahi.");
-        setApiKey("");
-        setApiPassword("");
-      } else {
-        setSaveNote("Save failed.");
+        const payload = (await response.json()) as {
+          providers?: CourierProvider[];
+        };
+        const enabled = (payload.providers ?? []).filter(
+          (provider) => provider.enabled
+        );
+        setProviders(enabled);
+        setProviderId((current) =>
+          enabled.some((provider) => provider.id === current)
+            ? current
+            : 0
+        );
       }
     } catch {
-      setSaveNote("Save failed.");
-    } finally {
-      setBusy(false);
+      /* empty select means: default provider */
     }
-  }
+  }, []);
 
-  async function testConnection() {
-    setBusy(true);
-    setTestNote(null);
-    try {
-      const response = await fetch("/api/omniflow/portal/courier/test",
-        { method: "POST" });
-      const payload = (await response.json().catch(() => null)) as
-        { ok?: boolean; message?: string } | null;
-      if (payload && typeof payload.ok === "boolean") {
-        setTestNote((payload.ok ? "\u2713 " : "\u2717 ") + payload.message);
-      } else {
-        setTestNote("\u2717 Credentials save karein pehle.");
-      }
-    } catch {
-      setTestNote("\u2717 Test failed - try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  useEffect(() => {
+    void loadBookings();
+    void loadProviders();
+  }, [loadBookings, loadProviders]);
 
   async function bookParcel() {
     if (!bookForm.city.trim() || !bookForm.address.trim()) return;
@@ -160,24 +109,54 @@ export default function CourierPage() {
           address: bookForm.address,
           cod_amount: Number(bookForm.cod_amount) || 0,
           description: bookForm.description,
+          provider_id: providerId || undefined,
         }),
       });
       const payload = (await response.json().catch(() => null)) as
-        { tracking_number?: string; ask_prompts?: string[];
-          error?: { message?: string } } | null;
-      if (response.ok && payload?.tracking_number) {
+        | { tracking_number?: string; draft?: boolean;
+            ask_prompts?: string[]; error?: { message?: string } }
+        | null;
+      if (response.ok && payload?.draft) {
+        setBookNote("Draft stored - review and confirm it below.");
+        setBookForm({ ...EMPTY_BOOK });
+        await loadBookings();
+      } else if (response.ok && payload?.tracking_number) {
         setBookNote("Booked \u2713 Tracking: " + payload.tracking_number
           + (payload.ask_prompts && payload.ask_prompts.length > 0
-            ? " \u00b7 Address me kami: " + payload.ask_prompts.join(" ")
+            ? " \u00b7 Address gaps: " + payload.ask_prompts.join(" ")
             : ""));
-        setBookForm({ contact_id: "", customer_name: "", phone: "",
-          city: "", address: "", cod_amount: "", description: "" });
+        setBookForm({ ...EMPTY_BOOK });
         await loadBookings();
       } else {
         setBookNote(payload?.error?.message ?? "Booking failed.");
       }
     } catch {
       setBookNote("Booking failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmDraft(id: number) {
+    setBusy(true);
+    setBookNote(null);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/courier/bookings/" + id + "/confirm",
+        { method: "POST" }
+      );
+      const payload = (await response.json().catch(() => null)) as
+        | { tracking_number?: string; error?: { message?: string } }
+        | null;
+      if (response.ok && payload?.tracking_number) {
+        setBookNote("Confirmed \u2713 Tracking: "
+          + payload.tracking_number);
+        await loadBookings();
+      } else {
+        setBookNote(payload?.error?.message ?? "Confirm failed.");
+      }
+    } catch {
+      setBookNote("Confirm failed - try again.");
     } finally {
       setBusy(false);
     }
@@ -210,118 +189,40 @@ export default function CourierPage() {
             Courier
           </h1>
           <p className="mt-1.5 text-sm text-slate-400">
-            Apne courier account (Leopards / TCS) ko jorein - credentials
-            yahan paste karein, Test chala kar confirm karein, phir
-            booking aur tracking isi page se chalega.
+            Connect your courier accounts, then book or track parcels
+            right from this page - with as much automation as you
+            allow.
           </p>
         </div>
 
-        <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-white">Connector</p>
-            {settings ? (
-              <span
-                className={
-                  "rounded-full border px-2.5 py-1 text-[11px] " +
-                  (settings.configured && settings.enabled
-                    ? "border-emerald-400/30 bg-emerald-400/[0.08] text-emerald-200"
-                    : "border-white/[0.1] bg-white/[0.03] text-slate-400")
-                }
-              >
-                {settings.configured
-                  ? (settings.enabled ? "Live" : "Saved (disabled)")
-                  : "Not configured"}
-              </span>
-            ) : null}
-          </div>
-
-          {settings ? (
-            <p className="mt-1 text-[11px] text-slate-500">
-              {settings.api_key_masked
-                ? "Saved: " + settings.api_key_masked
-                : "Koi credentials saved nahi."}
-            </p>
-          ) : null}
-
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <select
-              value={provider}
-              onChange={(event) => setProvider(event.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none"
-            >
-              {(settings?.providers ?? [{ id: "leopards",
-                label: "Leopards Courier", default_base: "" }]).map(
-                (p) => (
-                  <option key={p.id} value={p.id} className="bg-[#0b1626]">
-                    {p.label}
-                  </option>
-                )
-              )}
-            </select>
-            <input
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-              placeholder="API key"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
-            />
-            <input
-              value={apiPassword}
-              onChange={(event) => setApiPassword(event.target.value)}
-              placeholder={
-                (settings?.providers.find((p) => p.id === provider)
-                  ?.default_base ? "API password / secret" : "API secret")
-              }
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
-            />
-            <input
-              value={baseUrl}
-              onChange={(event) => setBaseUrl(event.target.value)}
-              placeholder="Base URL (khali = default)"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
-            />
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => void saveSettings()}
-              disabled={busy || !provider}
-              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => void testConnection()}
-              disabled={busy}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs text-slate-300 hover:bg-white/[0.05] disabled:opacity-40"
-            >
-              Test connection
-            </button>
-            <button
-              onClick={() => setEnabled(!enabled)}
-              disabled={busy}
-              className={
-                "ml-auto rounded-full border px-3 py-1 text-[11px] " +
-                (enabled
-                  ? "border-emerald-400/40 bg-emerald-400/[0.12] text-emerald-200"
-                  : "border-white/[0.08] bg-white/[0.02] text-slate-400")
-              }
-            >
-              Connector: {enabled ? "on" : "off"}
-            </button>
-          </div>
-          {saveNote ? (
-            <p className="mt-1.5 text-[11px] text-slate-400">{saveNote}</p>
-          ) : null}
-          {testNote ? (
-            <p className="mt-1.5 text-[11px] text-slate-300">{testNote}</p>
-          ) : null}
-        </section>
+        <CourierProvidersCard />
 
         <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
           <p className="text-xs font-semibold text-white">Book parcel</p>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            COD parcel book karein - tracking number foran milta he.
+            {providers.length === 0
+              ? "Connect a courier above first - then book here."
+              : "Books through the selected courier - drafts land in the list below when the mode asks for a confirm."}
           </p>
+          {providers.length > 0 ? (
+            <select
+              value={providerId}
+              onChange={(event) =>
+                setProviderId(Number(event.target.value) || 0)}
+              className="mt-2 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none sm:w-auto"
+              aria-label="Courier company"
+            >
+              <option value={0} className="bg-[#0b1626]">
+                Default courier
+              </option>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}
+                  className="bg-[#0b1626]">
+                  {provider.name} ({provider.booking_mode})
+                </option>
+              ))}
+            </select>
+          ) : null}
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <input
               value={bookForm.customer_name}
@@ -362,7 +263,8 @@ export default function CourierPage() {
           </div>
           <button
             onClick={() => void bookParcel()}
-            disabled={busy || !bookForm.city.trim() || !bookForm.address.trim()}
+            disabled={busy || providers.length === 0
+              || !bookForm.city.trim() || !bookForm.address.trim()}
             className="mt-2 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
           >
             Book parcel
@@ -376,7 +278,7 @@ export default function CourierPage() {
           <p className="text-xs font-semibold text-white">Bookings</p>
           {bookings.length === 0 ? (
             <p className="mt-1 text-[11px] text-slate-500">
-              Abhi koi booking nahi.
+              No bookings yet.
             </p>
           ) : (
             <ul className="mt-2 space-y-1">
@@ -406,13 +308,23 @@ export default function CourierPage() {
                     >
                       {booking.status}
                     </span>
-                    <button
-                      onClick={() => void trackBooking(booking.id)}
-                      disabled={busy}
-                      className="text-[11px] text-cyan-300 hover:underline disabled:opacity-40"
-                    >
-                      Track
-                    </button>
+                    {booking.status === "draft" ? (
+                      <button
+                        onClick={() => void confirmDraft(booking.id)}
+                        disabled={busy}
+                        className="text-[11px] text-violet-200 hover:underline disabled:opacity-40"
+                      >
+                        Confirm
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => void trackBooking(booking.id)}
+                        disabled={busy}
+                        className="text-[11px] text-cyan-300 hover:underline disabled:opacity-40"
+                      >
+                        Track
+                      </button>
+                    )}
                   </div>
                 </li>
               ))}

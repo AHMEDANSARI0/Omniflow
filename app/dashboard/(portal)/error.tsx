@@ -15,11 +15,11 @@ export default function PortalError({
     <main className="flex min-h-screen items-center justify-center bg-[#07111f] px-4">
       <div className="w-full max-w-md rounded-2xl border border-rose-400/20 bg-rose-400/[0.05] p-6 text-center">
         <h1 className="text-lg font-semibold text-white">
-          Page load nahi ho saka
+          This page failed to load
         </h1>
         <p className="mt-2 text-sm text-slate-400">
-          Kuch der baad dobara koshish karein. Masla barqarar rahe to
-          dobara sign-in kar ke dekhein.
+          Try again in a moment. If it keeps failing, sign in once
+          more.
         </p>
         {error.digest ? (
           <p className="mt-2 text-[11px] text-slate-600">

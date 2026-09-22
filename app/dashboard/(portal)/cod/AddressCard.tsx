@@ -56,9 +56,9 @@ export default function AddressCard() {
     <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
       <p className="text-xs font-semibold text-white">Address check</p>
       <p className="mt-0.5 text-[11px] text-slate-500">
-        Paste the address - it gets cleaned (city + phone extracted),
-        missing cheezein flag hoti hain, aur customer se poochne ke
-        liye tayyar sawal milte hain.
+        Paste an address - it is cleaned, the city and phone are
+        extracted, and ready-to-send questions cover anything
+        missing.
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <input
@@ -90,8 +90,8 @@ export default function AddressCard() {
             </button>
           </div>
           <p className="text-[11px] text-slate-500">
-            City: {intel.city ?? "nahi mili"} &middot; Phone:{" "}
-            {intel.phone ?? "nahi mila"}
+            City: {intel.city ?? "not found"} &middot; Phone:{" "}
+            {intel.phone ?? "not found"}
           </p>
           {intel.ask_prompts.length > 0 ? (
             <ul className="space-y-1">
@@ -114,7 +114,7 @@ export default function AddressCard() {
             </ul>
           ) : (
             <p className="text-[11px] text-emerald-300">
-              Address mukammal lag rahi he - koi sawal nahi.
+              Address looks complete - nothing to ask.
             </p>
           )}
         </div>

@@ -6,6 +6,7 @@ import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
 import SetupChecklist from "../components/SetupChecklist";
 import DailyBrief from "./DailyBrief";
 import RecoveryCard from "../components/RecoveryCard";
+import OperationsCard from "../components/OperationsCard";
 
 
 interface QuickLink {
@@ -20,6 +21,7 @@ const QUICK_LINKS: QuickLink[] = [
   { icon: "\u2301", title: "Automations", href: "/dashboard/automations" },
   { icon: "\u2192", title: "Sequences", href: "/dashboard/sequences" },
   { icon: "\u2736", title: "Configure AI", href: "/dashboard/bot" },
+  { icon: "\u25c6", title: "AI Brain", href: "/dashboard/ai-brain" },
   { icon: "\u2706", title: "WhatsApp setup", href: "/dashboard/channels/whatsapp" },
   { icon: "\u25a6", title: "Knowledge base", href: "/dashboard/knowledge-base" },
   { icon: "\u25ad", title: "Business profile", href: "/dashboard/profile" },
@@ -98,6 +100,8 @@ export default async function ClientDashboardPage() {
       <DailyBrief />
 
       <RecoveryCard />
+
+      <OperationsCard />
 
       {overview && (
         <>

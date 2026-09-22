@@ -50,6 +50,12 @@ const navItems: NavItem[] = [
     enabled: true,
   },
   {
+    label: "AI Brain",
+    href: "/dashboard/ai-brain",
+    icon: "\u25c6",
+    enabled: true,
+  },
+  {
     label: "Analytics",
     href: "/dashboard/analytics",
     icon: "\u25c9",

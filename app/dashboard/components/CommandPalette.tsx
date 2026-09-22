@@ -19,6 +19,7 @@ const PAGES: PaletteItem[] = [
   { group: "Pages", label: "Broadcasts", href: "/dashboard/broadcasts" },
   { group: "Pages", label: "Automations", href: "/dashboard/automations" },
   { group: "Pages", label: "Analytics", href: "/dashboard/analytics" },
+  { group: "Pages", label: "AI Brain", href: "/dashboard/ai-brain" },
   { group: "Pages", label: "Team", href: "/dashboard/team" },
   { group: "Pages", label: "Knowledge base", href: "/dashboard/knowledge-base" },
   { group: "Pages", label: "COD confirmations", href: "/dashboard/cod" },

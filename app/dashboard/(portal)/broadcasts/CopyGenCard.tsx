@@ -64,7 +64,7 @@ export default function CopyGenCard() {
       <p className="text-xs font-semibold text-white">AI copy helper</p>
       <p className="mt-0.5 text-[11px] text-slate-500">
         Topic likhein - do short variants ban jayenge. Text sirf yahan
-        copy hota he; bhejne se pehle aap edit karte hain.
+        plain text you can edit before sending.
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <input

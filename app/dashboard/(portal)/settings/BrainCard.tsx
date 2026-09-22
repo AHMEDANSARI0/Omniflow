@@ -130,7 +130,7 @@ export default function BrainCard() {
               <input
                 value={tone}
                 onChange={(event) => setTone(event.target.value)}
-                placeholder="e.g. warm, concise, Roman Urdu friendly"
+                placeholder="e.g. warm, concise, friendly"
                 className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-white/[0.2]"
               />
               <button

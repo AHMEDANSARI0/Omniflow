@@ -122,14 +122,12 @@ export default function MediaPage() {
       const payload = (await response.json().catch(() => null)) as
         { error?: { code?: string; message?: string } } | null;
       if (response.ok) {
-        setSendNote("Queued - customer ko WhatsApp par jayegi (bot"
-          + " agla poll par bhejta he).");
+        setSendNote("Queued - the bot delivers it on WhatsApp within the\n          next poll.");
         setSendFor(null);
         setContactId("");
         setSendCaption("");
       } else if (payload?.error?.code === "opted_out") {
-        setSendNote("Ye customer opt-out kar chuka he - bhej nahi"
-          + " sakte.");
+        setSendNote("This customer has opted out - sending is blocked.");
       } else {
         setSendNote(payload?.error?.message ?? "Send failed.");
       }
@@ -182,11 +180,11 @@ export default function MediaPage() {
             Media &amp; voice
           </h1>
           <p className="mt-1.5 text-sm text-slate-400">
-            Tasveer / PDF / audio yahan rakhein - customer ko WhatsApp
-            par bhejein ya voice note ko text me badlein. Upload aur
-            library hamesha chalti he; Send ke liye bot par
-            OMNIFLOW_WA_CLOUD_URL + OMNIFLOW_WA_TOKEN, aur transcript
-            ke liye CP par OMNIFLOW_STT_API_KEY hona chahiye.
+            Store images, PDFs and audio - send them to customers on
+            WhatsApp or turn voice notes into text. Uploads and the
+            library always work; sending needs OMNIFLOW_WA_CLOUD_URL
+            + OMNIFLOW_WA_TOKEN on the bot, transcription needs
+            OMNIFLOW_STT_API_KEY on the CP.
           </p>
         </div>
 
@@ -225,7 +223,7 @@ export default function MediaPage() {
           <p className="text-xs font-semibold text-white">Library</p>
           {assets.length === 0 ? (
             <p className="mt-1 text-[11px] text-slate-500">
-              Abhi koi file nahi - upar se upload karein.
+              No files yet - upload one above.
             </p>
           ) : (
             <ul className="mt-2 space-y-2">
