@@ -16,7 +16,7 @@ const REQUEST_TIMEOUT_MS = 8_000;
  * no frontend changes needed when the backend endpoint ships.
  */
 
-function controlPlaneBaseUrl(): URL {
+export function controlPlaneBaseUrl(): URL {
   const raw = process.env.OMNIFLOW_CONTROL_PLANE_URL?.trim();
   if (!raw) throw new ControlPlaneRequestError(503, "control_plane_not_configured");
 
