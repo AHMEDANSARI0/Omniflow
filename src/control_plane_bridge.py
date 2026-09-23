@@ -308,6 +308,7 @@ class ControlPlaneBridge:
         command_id,
         ok,
         note=None,
+        provider_message_id=None,
     ):
         if not isinstance(command_id, int):
             return
@@ -320,6 +321,8 @@ class ControlPlaneBridge:
                 "command_id": command_id,
                 "ok": bool(ok),
                 "note": note,
+                **({"provider_message_id": provider_message_id}
+                   if provider_message_id else {}),
             },
         )
 
@@ -328,6 +331,204 @@ class ControlPlaneBridge:
                 "CP bridge ack deferred (HTTP "
                 f"{status})"
             )
+
+
+    def send_media_message(self, payload, adapter):
+        """Deliver a send_media command: download the stored asset from
+        the CP, upload it to the WhatsApp Cloud media API and send the
+        image / document / audio message. Graceful when the Cloud API
+        env is missing - returns a clear note instead of raising."""
+        import json as _json
+        import os as _os
+        import urllib.request as _urllib
+        import uuid as _uuid
+
+        to = str(payload.get("external_user_id") or "").strip()
+        try:
+            asset_id = int(payload.get("asset_id") or 0)
+        except (TypeError, ValueError):
+            asset_id = 0
+        kind = str(payload.get("kind") or "image")
+        caption = str(payload.get("caption") or "")
+        filename = str(payload.get("filename") or "file")
+        if not to or asset_id <= 0:
+            return "Invalid media payload."
+
+        cloud_url = _os.environ.get("OMNIFLOW_WA_CLOUD_URL", "").strip()
+        token = _os.environ.get("OMNIFLOW_WA_TOKEN", "").strip()
+        header_name = (
+            _os.environ.get("OMNIFLOW_WA_AUTH_HEADER", "").strip()
+            or "Authorization"
+        )
+        header_value = (
+            _os.environ.get("OMNIFLOW_WA_AUTH_VALUE", "").strip()
+            or ("Bearer " + token)
+        )
+        if not cloud_url or not token:
+            return ("WhatsApp Cloud not configured - set "
+                    "OMNIFLOW_WA_CLOUD_URL + OMNIFLOW_WA_TOKEN.")
+        endpoint = cloud_url
+        if not endpoint.endswith("/"):
+            endpoint = endpoint + "/"
+
+        download_url = (self.base_url.rstrip("/")
+                        + "/api/v1/connector/media/" + str(asset_id)
+                        + "?client_id=" + str(self.client_id))
+        request = _urllib.Request(download_url)
+        request.add_header("X-Omniflow-Key", self.service_key)
+        try:
+            with _urllib.urlopen(request, timeout=30) as response:
+                asset_bytes = response.read()
+                asset_mime = (response.headers.get("Content-Type")
+                              or "").split(";")[0].strip()
+        except Exception as error:
+            return "Asset download failed: " + str(error)
+        if not asset_bytes:
+            return "Asset download failed: empty response."
+
+        mime_map = {"image": "image/jpeg",
+                    "document": "application/pdf",
+                    "audio": "audio/ogg"}
+        upload_mime = asset_mime or mime_map.get(
+            kind, "application/octet-stream")
+
+        boundary = "omniflow" + _uuid.uuid4().hex
+        parts = [
+            ("--%s\r\nContent-Disposition: form-data; name=\"file\";"
+             " filename=\"%s\"\r\nContent-Type: %s\r\n\r\n"
+             % (boundary, filename, upload_mime)).encode("utf-8"),
+            asset_bytes,
+            ("\r\n--%s--\r\n" % boundary).encode("utf-8"),
+        ]
+        body = b"".join(parts)
+        request = _urllib.Request(endpoint + "media", data=body,
+                                  method="POST")
+        request.add_header("Content-Type",
+                           "multipart/form-data; boundary=" + boundary)
+        request.add_header(header_name, header_value)
+        try:
+            with _urllib.urlopen(request, timeout=60) as response:
+                upload = _json.loads(
+                    response.read().decode("utf-8", "replace") or "{}")
+        except Exception as error:
+            return "Media upload failed: " + str(error)
+        media_id = str(upload.get("id") or "")
+        if not media_id:
+            return ("Media upload refused: "
+                    + _json.dumps(upload)[:180])
+
+        message = {"messaging_product": "whatsapp", "to": to,
+                   "type": kind}
+        if kind == "image":
+            message["image"] = {"id": media_id, "caption": caption}
+        elif kind == "audio":
+            message["audio"] = {"id": media_id}
+        else:
+            message["document"] = {"id": media_id,
+                                   "filename": filename}
+            if caption:
+                message["document"]["caption"] = caption
+        request = _urllib.Request(
+            endpoint + "messages",
+            data=_json.dumps(message).encode("utf-8"), method="POST")
+        request.add_header("Content-Type", "application/json")
+        request.add_header(header_name, header_value)
+        try:
+            with _urllib.urlopen(request, timeout=30) as response:
+                _json.loads(response.read().decode("utf-8", "replace")
+                            or "{}")
+        except Exception as error:
+            return "Media send failed: " + str(error)
+        return "Media " + media_id + " sent as " + kind + "."
+
+
+    def send_interactive_message(self, payload, adapter):
+        """Deliver a send_interactive command: post the WhatsApp Cloud API
+        interactive body when OMNIFLOW_WA_CLOUD_URL + OMNIFLOW_WA_TOKEN are
+        configured (360dialog: set OMNIFLOW_WA_AUTH_HEADER=D360-API-KEY),
+        otherwise fall back to a numbered plain-text menu through the normal
+        adapter so the customer still gets the menu."""
+        import json as _json
+        import os as _os
+        import urllib.request as _urllib
+
+        interactive = payload.get("interactive")
+        to = str(payload.get("external_user_id") or "").strip()
+        body = str(payload.get("body") or "")
+        if not isinstance(interactive, dict) or not to:
+            return "Invalid interactive payload."
+
+        cloud_url = _os.environ.get("OMNIFLOW_WA_CLOUD_URL", "").strip()
+        token = _os.environ.get("OMNIFLOW_WA_TOKEN", "").strip()
+        header_name = (
+            _os.environ.get("OMNIFLOW_WA_AUTH_HEADER", "").strip()
+            or "Authorization"
+        )
+        header_value = (
+            _os.environ.get("OMNIFLOW_WA_AUTH_VALUE", "").strip()
+            or ("Bearer " + token)
+        )
+        if cloud_url and token:
+            endpoint = cloud_url
+            if not endpoint.endswith("/"):
+                endpoint = endpoint + "/"
+            request = _urllib.Request(
+                endpoint,
+                data=_json.dumps(
+                    {
+                        "messaging_product": "whatsapp",
+                        "recipient_type": "individual",
+                        "to": to,
+                        **interactive,
+                    }
+                ).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    header_name: header_value,
+                },
+                method="POST",
+            )
+            try:
+                with _urllib.urlopen(request, timeout=20) as response:
+                    response.read()
+                return "Interactive sent via Cloud API."
+            except Exception as error:
+                print(
+                    "interactive cloud send failed: "
+                    + str(error)
+                    + " - falling back to text"
+                )
+
+        lines = []
+        ival = interactive.get("interactive") or {}
+        if isinstance(ival.get("header"), dict):
+            lines.append("*" + str(ival["header"].get("text", "")) + "*")
+        if isinstance(ival.get("body"), dict):
+            lines.append(str(ival["body"].get("text", "")))
+        action = ival.get("action") or {}
+        rows = []
+        for section in action.get("sections") or []:
+            rows.extend(section.get("rows") or [])
+        for index, row in enumerate(rows, start=1):
+            line = str(index) + ". " + str(row.get("title", ""))
+            description = str(row.get("description", ""))
+            if description:
+                line = line + " - " + description
+            lines.append(line)
+        if action.get("button"):
+            lines.append(
+                "(" + str(action["button"]) + " - reply with a number)"
+            )
+        if isinstance(ival.get("footer"), dict):
+            lines.append(str(ival["footer"].get("text", "")))
+        text = "\n".join(lines) or body
+        if adapter is not None:
+            adapter.send(OutboundMessage(to=to, body=text))
+        return (
+            "Sent as text menu"
+            " (set OMNIFLOW_WA_CLOUD_URL + OMNIFLOW_WA_TOKEN for real"
+            " buttons)."
+        )
 
     def run_due_commands(
         self,
@@ -440,6 +641,15 @@ class ControlPlaneBridge:
                                 send_result.error or "unknown error"
                             )
 
+                elif action == "send_interactive":
+                    note = self.send_interactive_message(
+                        command.get("payload") or {}, adapter
+                    )
+
+                elif action == "send_media":
+                    note = self.send_media_message(
+                        command.get("payload") or {}, adapter
+                    )
                 else:
                     ok = False
                     note = (
