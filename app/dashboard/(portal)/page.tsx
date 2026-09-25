@@ -1,0 +1,340 @@
+import Link from "next/link";
+
+import { requireOmniFlowPrincipal } from "../../../lib/omniflow/auth-dal";
+import {
+  getOverview,
+  getPlans,
+  getRecentActivity,
+  listCodRequests,
+} from "../../../lib/omniflow/portal";
+import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
+import SetupChecklist from "../components/SetupChecklist";
+import DailyBrief from "./DailyBrief";
+import RecoveryCard from "../components/RecoveryCard";
+import OperationsCard from "../components/OperationsCard";
+
+
+interface QuickLink {
+  icon: string;
+  title: string;
+  href: string;
+}
+
+const QUICK_LINKS: QuickLink[] = [
+  { icon: "\u270e", title: "Conversations", href: "/dashboard/conversations" },
+  { icon: "\u2606", title: "Customers", href: "/dashboard/customers" },
+  { icon: "\u2301", title: "Automations", href: "/dashboard/automations" },
+  { icon: "\u2192", title: "Sequences", href: "/dashboard/sequences" },
+  { icon: "\u2736", title: "Configure AI", href: "/dashboard/bot" },
+  { icon: "\u2726", title: "Setup wizard", href: "/dashboard/onboarding" },
+  { icon: "\u2706", title: "WhatsApp setup", href: "/dashboard/channels/whatsapp" },
+  { icon: "\u25a6", title: "Knowledge base", href: "/dashboard/knowledge-base" },
+  { icon: "\u25ad", title: "Business profile", href: "/dashboard/profile" },
+  { icon: "\u25c9", title: "Analytics", href: "/dashboard/analytics" },
+  { icon: "\u2248", title: "Weekly", href: "/dashboard/weekly" },
+  { icon: "\u25ce", title: "Segments", href: "/dashboard/segments" },
+  { icon: "\u25c8", title: "Pipeline", href: "/dashboard/pipeline" },
+  { icon: "➤", title: "Broadcasts", href: "/dashboard/broadcasts" },
+  { icon: "\u25a4", title: "COD confirmations", href: "/dashboard/cod" },
+  { icon: "\u21c4", title: "Integrations", href: "/dashboard/integrations" },
+  { icon: "\u26e8", title: "Compliance", href: "/dashboard/compliance" },
+  { icon: "\u25b2", title: "Growth", href: "/dashboard/growth" },
+  { icon: "\u21bb", title: "Win-back", href: "/dashboard/winback" },
+  { icon: "/", title: "Quick replies", href: "/dashboard/saved-replies" },
+  { icon: "\u2261", title: "Activity", href: "/dashboard/activity" },
+  { icon: "\u2699", title: "Settings", href: "/dashboard/settings" },
+  { icon: "⚑", title: "Team", href: "/dashboard/team" },
+];
+
+function StatTile({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: number;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-line bg-soft px-4 py-3.5">
+      <p className="text-[10px] uppercase tracking-wider text-ink-3">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-semibold text-ink">{value}</p>
+      {sub ? <p className="mt-0.5 text-[10px] text-ink-3">{sub}</p> : null}
+    </div>
+  );
+}
+
+function whenLabel(iso: string | null): string {
+  if (!iso) return "";
+  const stamp = Date.parse(iso);
+  if (Number.isNaN(stamp)) return "";
+  const minutes = Math.max(0, Math.round((Date.now() - stamp) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  return Math.floor(hours / 24) + "d ago";
+}
+
+export default async function ClientDashboardPage() {
+  const principal = await requireOmniFlowPrincipal();
+  const { accessToken } = await readSessionCookies();
+  const [activity, overview, plans, cod] = await Promise.all([
+    accessToken ? getRecentActivity(accessToken) : Promise.resolve(null),
+    accessToken ? getOverview(accessToken) : Promise.resolve(null),
+    accessToken ? getPlans(accessToken) : Promise.resolve(null),
+    accessToken ? listCodRequests(accessToken, "pending") : Promise.resolve(null),
+  ]);
+
+  const usageRows: { label: string; href: string; key: string }[] = plans
+    ? [
+        {
+          label: "Broadcasts this month",
+          href: "/dashboard/growth",
+          key: "broadcasts_per_month",
+        },
+        {
+          label: "Knowledge-base entries",
+          href: "/dashboard/knowledge-base",
+          key: "kb_entries",
+        },
+        {
+          label: "Keyword alerts",
+          href: "/dashboard/growth",
+          key: "alert_rules",
+        },
+        {
+          label: "Courier companies",
+          href: "/dashboard/courier",
+          key: "courier_providers",
+        },
+      ]
+    : [];
+
+  return (
+    <div className="mx-auto max-w-4xl">
+      <div className="mb-8">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          Workspace {principal.clientId}
+        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
+          Welcome{principal.displayName ? `, ${principal.displayName}` : ""}
+        </h1>
+        <p className="mt-1.5 text-sm text-ink-3">
+          Your tenant-isolated OmniFlow workspace is authenticated and ready.
+        </p>
+      </div>
+
+      <SetupChecklist />
+
+      <DailyBrief />
+
+      <RecoveryCard />
+
+      <OperationsCard />
+
+      {(plans || cod) && (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          {plans && (
+            <Link
+              href="/dashboard/settings"
+              className="block rounded-2xl border border-line bg-soft px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">
+                  Plan &amp; usage
+                </p>
+                <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[10px] text-brand">
+                  {plans.plan === "legacy" ? "Unlimited" : plans.plan}
+                </span>
+              </div>
+              <ul className="mt-2.5 space-y-1.5">
+                {usageRows.map((row) => {
+                  const used = Number(plans.usage[row.key] ?? 0);
+                  const limit = plans.limits[row.key] ?? null;
+                  return (
+                    <li
+                      key={row.key}
+                      className="flex items-center justify-between gap-2 text-[11px]"
+                    >
+                      <span className="text-ink-3">{row.label}</span>
+                      <span className="text-ink-2">
+                        {used} / {limit === null ? "\u221e" : limit}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-2 text-[10px] text-ink-3">
+                Manage in Settings &gt; Plan &amp; usage
+              </p>
+            </Link>
+          )}
+          {cod && (
+            <Link
+              href="/dashboard/cod"
+              className="block rounded-2xl border border-line bg-soft px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
+            >
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
+                COD confirmations
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-ink">
+                {cod.counts.pending ?? 0}
+              </p>
+              <p className="mt-0.5 text-[10px] text-ink-3">
+                orders waiting for the customer to confirm
+              </p>
+            </Link>
+          )}
+        </div>
+      )}
+
+      {overview && (
+        <>
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <StatTile label="New chats · 24h" value={overview.newChats} />
+            <StatTile label="Inbound · 24h" value={overview.inboundMessages} />
+            <StatTile label="Team replies · 24h" value={overview.teamReplies} />
+            <StatTile
+              label="Open now"
+              value={overview.openNow}
+              sub={
+                overview.unassignedOpen > 0
+                  ? overview.unassignedOpen + " unassigned"
+                  : "all assigned"
+              }
+            />
+            <StatTile
+              label="Needs reply"
+              value={overview.needsReplyOpen}
+              sub={
+                overview.needsReplyOverdue > 0
+                  ? overview.needsReplyOverdue + " overdue"
+                  : "customer sent the last message"
+              }
+            />
+          </div>
+          {overview.needsReplyOverdue > 0 && (
+            <Link
+              href="/dashboard/conversations?needs_reply=overdue"
+              className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-red-400/25 bg-red-400/[0.06] px-5 py-4 transition-colors duration-300 hover:bg-red-400/[0.10]"
+            >
+              <span className="text-sm text-red-200">
+                {overview.needsReplyOverdue}{" "}
+                {overview.needsReplyOverdue === 1 ? "customer is" : "customers are"} waiting longer than the reply SLA.
+              </span>
+              <span className="shrink-0 text-xs font-medium text-danger">
+                Review overdue →
+              </span>
+            </Link>
+          )}
+          {overview.unassignedOpen > 0 && (
+            <Link
+              href="/dashboard/conversations"
+              className="mb-8 flex items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] px-5 py-4 transition-colors duration-300 hover:bg-amber-400/[0.09]"
+            >
+              <span className="text-sm text-amber-200">
+                {overview.unassignedOpen} open{" "}
+                {overview.unassignedOpen === 1 ? "chat has" : "chats have"} no
+                assignee — pick it up before it waits any longer.
+              </span>
+              <span className="shrink-0 text-xs font-medium text-amber-600">
+                Open inbox →
+              </span>
+            </Link>
+          )}
+          {overview.hotLeads.length > 0 && (
+            <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
+              <h2 className="text-sm font-semibold text-ink">Hot leads</h2>
+              <p className="mt-1 text-xs text-ink-3">
+                Open chats flagged hot — reply before they cool down.
+              </p>
+              <ul className="mt-4 space-y-2">
+                {overview.hotLeads.map((lead) => (
+                  <li key={"hot-lead-" + String(lead.id)}>
+                    <Link
+                      href={
+                        "/dashboard/conversations?q=" +
+                        encodeURIComponent(lead.contactId)
+                      }
+                      className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white/[0.01] px-3.5 py-2.5 transition-colors duration-300 hover:border-amber-400/25"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-400/25 bg-amber-400/[0.08] text-sm">
+                          🔥
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-medium text-ink">
+                            {lead.contactName || lead.contactId}
+                          </span>
+                          {lead.preview && (
+                            <span className="block truncate text-[10px] text-ink-3">
+                              {lead.preview}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+                          {lead.leadScore !== null
+                            ? "score " + lead.leadScore
+                            : "hot"}
+                        </span>
+                        <span className="block text-[10px] text-ink-3">
+                          {whenLabel(lead.lastMessageAt)}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+
+      {activity && activity.length > 0 && (
+        <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
+          <h2 className="text-sm font-semibold text-ink">Recent activity</h2>
+          <p className="mt-1 text-xs text-ink-3">
+            Live audit trail of what your assistant and team did across
+            conversations.
+          </p>
+          <ul className="mt-4 space-y-2.5">
+            {activity.slice(0, 6).map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-4 text-xs"
+              >
+                <span className="min-w-0 truncate text-ink-2">
+                  {item.label}
+                  {item.note ? (
+                    <span className="text-ink-3"> — {item.note}</span>
+                  ) : null}
+                </span>
+                <span className="shrink-0 text-ink-3">{item.timeAgo}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {QUICK_LINKS.map((link) => (
+          <Link
+            key={link.title}
+            href={link.href}
+            className="rounded-2xl border border-line bg-soft p-4 transition-colors duration-300 hover:border-brand/25 hover:bg-cyan-400/[0.04]"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
+              {link.icon}
+            </div>
+            <p className="mt-3 text-xs font-medium text-ink">{link.title}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}

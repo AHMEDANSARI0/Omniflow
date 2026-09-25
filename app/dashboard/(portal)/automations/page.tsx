@@ -1,0 +1,695 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+interface AutomationRule {
+  id: number;
+  keyword: string;
+  actionType: "add_tag" | "assign";
+  actionValue: string;
+  isActive: boolean;
+  timesTriggered: number;
+  createdAt: string | null;
+}
+
+interface TeamMemberLite {
+  email: string;
+  name: string;
+}
+
+export default function AutomationsPage() {
+  const [rules, setRules] = useState<AutomationRule[] | null>(null);
+  const [expired, setExpired] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [actionType, setActionType] = useState<"add_tag" | "assign">("add_tag");
+  const [actionValue, setActionValue] = useState("");
+  const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(
+    null
+  );
+  const [welcomeEnabled, setWelcomeEnabled] = useState(false);
+  const [welcomeText, setWelcomeText] = useState("");
+  const [welcomeBusy, setWelcomeBusy] = useState(false);
+  const [welcomeMessage, setWelcomeMessage] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+  const [closeEnabled, setCloseEnabled] = useState(false);
+  const [closeHours, setCloseHours] = useState("48");
+  const [closeBusy, setCloseBusy] = useState(false);
+  const [closeMessage, setCloseMessage] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+  const [assignEnabled, setAssignEnabled] = useState(false);
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [assignMessage, setAssignMessage] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+  const mounted = useRef(true);
+
+  const load = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/automations", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (response.status === 401) {
+        if (mounted.current) setExpired(true);
+        return;
+      }
+      const payload = (await response.json().catch(() => null)) as {
+        automations?: AutomationRule[];
+      } | null;
+      if (mounted.current && payload && Array.isArray(payload.automations)) {
+        setRules(payload.automations);
+      }
+    } catch {
+      // Transient network issue — retry on next visit.
+    }
+  }, []);
+
+  const loadWelcome = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/welcome", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (response.status === 401) {
+        setExpired(true);
+        return;
+      }
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        enabled?: boolean;
+        text?: string;
+      } | null;
+      if (payload) {
+        setWelcomeEnabled(payload.enabled === true);
+        setWelcomeText(typeof payload.text === "string" ? payload.text : "");
+      }
+    } catch {
+      // Additive card — never block the page on it.
+    }
+  }, []);
+
+  const loadAutoClose = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/autoclose", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (response.status === 401) {
+        setExpired(true);
+        return;
+      }
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        enabled?: boolean;
+        hours?: number;
+      } | null;
+      if (payload) {
+        setCloseEnabled(payload.enabled === true);
+        setCloseHours(
+          String(
+            typeof payload.hours === "number" && payload.hours > 0
+              ? payload.hours
+              : 48
+          )
+        );
+      }
+    } catch {
+      // Additive card — never block the page on it.
+    }
+  }, []);
+
+  const loadAutoAssign = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/autoassign", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (response.status === 401) {
+        setExpired(true);
+        return;
+      }
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        enabled?: boolean;
+      } | null;
+      if (payload) setAssignEnabled(payload.enabled === true);
+    } catch {
+      // Additive card — never block the page on it.
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAutoAssign();
+  }, [loadAutoAssign]);
+
+  useEffect(() => {
+    void loadAutoClose();
+  }, [loadAutoClose]);
+
+  useEffect(() => {
+    void loadWelcome();
+  }, [loadWelcome]);
+
+  useEffect(() => {
+    mounted.current = true;
+    void load();
+    void (async () => {
+      try {
+        const response = await fetch("/api/omniflow/portal/team", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (response.status !== 200) return;
+        const payload = (await response.json().catch(() => null)) as {
+          members?: { email?: string; name?: string; status?: string }[];
+        } | null;
+        if (mounted.current && payload && Array.isArray(payload.members)) {
+          setTeamMembers(
+            payload.members
+              .filter(
+                (member): member is { email: string; name?: string; status?: string } =>
+                  member !== null &&
+                  typeof member === "object" &&
+                  typeof member.email === "string" &&
+                  member.status === "active"
+              )
+              .map((member) => ({
+                email: member.email,
+                name: typeof member.name === "string" ? member.name : "",
+              }))
+          );
+        }
+      } catch {
+        // Assign dropdown stays empty — typed emails still work via the API.
+      }
+    })();
+    return () => {
+      mounted.current = false;
+    };
+  }, [load]);
+
+  async function saveAutoAssign() {
+    if (assignBusy) return;
+    setAssignBusy(true);
+    setAssignMessage(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/autoassign", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ enabled: assignEnabled }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setAssignMessage({ kind: "ok", text: "Auto-assign saved." });
+      } else {
+        setAssignMessage({
+          kind: "error",
+          text: payload?.error?.message || "Could not save. Try again shortly.",
+        });
+      }
+    } catch {
+      setAssignMessage({ kind: "error", text: "Network error — try again." });
+    } finally {
+      setAssignBusy(false);
+    }
+  }
+
+  async function saveAutoClose() {
+    if (closeBusy) return;
+    const hours = Number.parseInt(closeHours, 10);
+    if (!Number.isFinite(hours) || hours < 1 || hours > 720) {
+      setCloseMessage({
+        kind: "error",
+        text: "Hours must be between 1 and 720.",
+      });
+      return;
+    }
+    setCloseBusy(true);
+    setCloseMessage(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/autoclose", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ enabled: closeEnabled, hours }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setCloseMessage({ kind: "ok", text: "Auto-close saved." });
+      } else {
+        setCloseMessage({
+          kind: "error",
+          text: payload?.error?.message || "Could not save. Try again shortly.",
+        });
+      }
+    } catch {
+      setCloseMessage({ kind: "error", text: "Network error — try again." });
+    } finally {
+      setCloseBusy(false);
+    }
+  }
+
+  async function saveWelcome() {
+    if (welcomeBusy) return;
+    setWelcomeBusy(true);
+    setWelcomeMessage(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/automations/welcome", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ enabled: welcomeEnabled, text: welcomeText.trim() }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setWelcomeMessage({ kind: "ok", text: "Welcome message saved." });
+      } else {
+        setWelcomeMessage({
+          kind: "error",
+          text: payload?.error?.message || "Could not save. Try again shortly.",
+        });
+      }
+    } catch {
+      setWelcomeMessage({ kind: "error", text: "Network error — try again." });
+    } finally {
+      setWelcomeBusy(false);
+    }
+  }
+
+  async function addRule() {
+    if (busy) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/automations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ keyword, actionType, actionValue }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        automation?: AutomationRule;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok && payload.automation) {
+        setRules((current) => [
+          payload.automation as AutomationRule,
+          ...(current ?? []),
+        ]);
+        setKeyword("");
+        setActionValue("");
+        setMessage({ kind: "ok", text: "Automation saved — it runs on every incoming message." });
+      } else {
+        setMessage({
+          kind: "error",
+          text: payload?.error?.message || "Could not save the automation.",
+        });
+      }
+    } catch {
+      setMessage({ kind: "error", text: "Network error — try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleRule(rule: AutomationRule) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/automations/" + rule.id,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ isActive: !rule.isActive }),
+        }
+      );
+      if (response.ok) {
+        setRules((current) =>
+          (current ?? []).map((item) =>
+            item.id === rule.id ? { ...item, isActive: !item.isActive } : item
+          )
+        );
+      }
+    } catch {
+      // Toggle is best-effort — reload to see the stored state.
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeRule(rule: AutomationRule) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/automations/" + rule.id,
+        { method: "DELETE", credentials: "same-origin" }
+      );
+      if (response.ok) {
+        setRules((current) =>
+          (current ?? []).filter((item) => item.id !== rule.id)
+        );
+      }
+    } catch {
+      // Delete is best-effort — reload to see the stored state.
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function describeAction(rule: AutomationRule): string {
+    if (rule.actionType === "add_tag") return "Adds label #" + rule.actionValue;
+    const member = teamMembers.find((item) => item.email === rule.actionValue);
+    return "Assigns to " + (member ? member.name || member.email : rule.actionValue);
+  }
+
+  if (expired) {
+    return (
+      <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <p className="text-sm text-ink-2">Session expired.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="text-base font-semibold text-ink">Automations</h1>
+      <p className="mt-0.5 text-xs text-ink-3">
+        Simple keyword rules that run instantly on every incoming message —
+        WhatsApp and website. No AI, fully deterministic.
+      </p>
+
+      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-ink-2">Welcome message</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
+              Sent automatically when a customer messages for the first time.
+              Use {"{{name}}"} to greet by first name.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWelcomeEnabled(!welcomeEnabled)}
+            className={
+              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              (welcomeEnabled
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line bg-soft text-ink-3")
+            }
+          >
+            {welcomeEnabled ? "On" : "Off"}
+          </button>
+        </div>
+        <textarea
+          value={welcomeText}
+          onChange={(event) => setWelcomeText(event.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="Hi! Thanks for reaching out — how can we help you today?"
+          className="mt-3 w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+        />
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] text-ink-3">
+            {welcomeText.trim().length}/500
+          </span>
+          <button
+            type="button"
+            onClick={() => void saveWelcome()}
+            disabled={welcomeBusy || (welcomeEnabled && !welcomeText.trim())}
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+          >
+            {welcomeBusy ? "Saving…" : "Save welcome message"}
+          </button>
+        </div>
+        {welcomeMessage && (
+          <p
+            className={
+              "mt-2 text-xs " +
+              (welcomeMessage.kind === "ok" ? "text-ok" : "text-danger")
+            }
+          >
+            {welcomeMessage.text}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-ink-2">
+              Auto-close idle chats
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
+              Open chats with no new messages for this many hours close
+              automatically, so the open count stays honest.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCloseEnabled(!closeEnabled)}
+            className={
+              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              (closeEnabled
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line bg-soft text-ink-3")
+            }
+          >
+            {closeEnabled ? "On" : "Off"}
+          </button>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="number"
+            min={1}
+            max={720}
+            value={closeHours}
+            onChange={(event) => setCloseHours(event.target.value)}
+            className="w-full sm:w-32 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink outline-none transition-colors duration-300 focus:border-brand/40"
+          />
+          <span className="text-[11px] text-ink-3">
+            hours of silence before closing (1–720)
+          </span>
+          <button
+            type="button"
+            onClick={() => void saveAutoClose()}
+            disabled={closeBusy}
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50 sm:ml-auto"
+          >
+            {closeBusy ? "Saving…" : "Save auto-close"}
+          </button>
+        </div>
+        {closeMessage && (
+          <p
+            className={
+              "mt-2 text-xs " +
+              (closeMessage.kind === "ok" ? "text-ok" : "text-danger")
+            }
+          >
+            {closeMessage.text}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-ink-2">
+              Auto-assign new chats
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
+              Every new chat goes straight to the teammate with the fewest
+              open chats right now — fair spread, no manual triage.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAssignEnabled(!assignEnabled)}
+            className={
+              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              (assignEnabled
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line bg-soft text-ink-3")
+            }
+          >
+            {assignEnabled ? "On" : "Off"}
+          </button>
+        </div>
+        <div className="mt-3 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => void saveAutoAssign()}
+            disabled={assignBusy}
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+          >
+            {assignBusy ? "Saving…" : "Save auto-assign"}
+          </button>
+        </div>
+        {assignMessage && (
+          <p
+            className={
+              "mt-2 text-xs " +
+              (assignMessage.kind === "ok" ? "text-ok" : "text-danger")
+            }
+          >
+            {assignMessage.text}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <p className="text-xs font-medium text-ink-2">
+          When a message contains…
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            maxLength={40}
+            placeholder="keyword, e.g. wholesale"
+            className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+          />
+          <select
+            value={actionType}
+            onChange={(event) => {
+              setActionType(event.target.value as "add_tag" | "assign");
+              setActionValue("");
+            }}
+            className="w-full sm:w-44 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink outline-none"
+          >
+            <option value="add_tag">Add label…</option>
+            <option value="assign">Assign to…</option>
+          </select>
+          {actionType === "add_tag" ? (
+            <input
+              value={actionValue}
+              onChange={(event) => setActionValue(event.target.value)}
+              maxLength={24}
+              placeholder="label, e.g. pricing"
+              className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+            />
+          ) : (
+            <select
+              value={actionValue}
+              onChange={(event) => setActionValue(event.target.value)}
+              className="w-full flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink outline-none"
+            >
+              <option value="">Choose team member…</option>
+              {teamMembers.map((member) => (
+                <option key={member.email} value={member.email}>
+                  {member.name || member.email}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={() => void addRule()}
+            disabled={
+              busy || !keyword.trim() || !actionValue.trim()
+            }
+            className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+          >
+            {busy ? "Working…" : "Add automation"}
+          </button>
+        </div>
+        {message && (
+          <p
+            className={
+              "mt-2 text-xs " +
+              (message.kind === "ok" ? "text-ok" : "text-danger")
+            }
+          >
+            {message.text}
+          </p>
+        )}
+      </div>
+
+      {!rules ? (
+        <div className="mt-4 animate-pulse space-y-3">
+          {[0, 1].map((index) => (
+            <div
+              key={index}
+              className="h-16 rounded-2xl border border-line bg-soft"
+            />
+          ))}
+        </div>
+      ) : rules.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">
+            No automations yet — add your first rule above (for example
+            &quot;wholesale&quot; adds the label #wholesale).
+          </p>
+        </div>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {rules.map((rule) => (
+            <li
+              key={rule.id}
+              className="flex flex-col gap-3 rounded-2xl border border-line bg-soft p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-ink">
+                  <span className="rounded-md border border-brand/20 bg-brand-soft px-1.5 py-0.5 text-xs font-semibold text-brand">
+                    {rule.keyword}
+                  </span>
+                  <span className="mx-2 text-ink-3">→</span>
+                  <span className="text-xs text-ink-2">
+                    {describeAction(rule)}
+                  </span>
+                </p>
+                <p className="mt-1 text-[11px] text-ink-3">
+                  Fired {rule.timesTriggered}
+                  {rule.timesTriggered === 1 ? " time" : " times"}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void toggleRule(rule)}
+                  disabled={busy}
+                  className={
+                    "rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-colors duration-300 disabled:opacity-40 " +
+                    (rule.isActive
+                      ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                      : "border-line bg-soft text-ink-3")
+                  }
+                >
+                  {rule.isActive ? "Active" : "Paused"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void removeRule(rule)}
+                  disabled={busy}
+                  className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-[11px] text-ink-3 transition-colors duration-300 hover:text-ink disabled:opacity-40"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

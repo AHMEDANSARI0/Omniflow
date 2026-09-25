@@ -1,0 +1,295 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+interface WidgetSettings {
+  enabled: boolean;
+  businessName: string;
+  welcomeText: string;
+  accent: string;
+  position: "left" | "right";
+  launcherLabel: string;
+}
+
+const ACCENT_PRESETS = [
+  "#22d3ee",
+  "#a78bfa",
+  "#34d399",
+  "#f472b6",
+  "#fbbf24",
+  "#fb7185",
+  "#60a5fa",
+];
+
+const inputClass =
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+
+const primaryBtn =
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+
+export default function WidgetSettingsCard() {
+  const [settings, setSettings] = useState<WidgetSettings | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(
+    null
+  );
+
+  const load = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/widget-settings", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        setLoadError(true);
+        return;
+      }
+      const payload = (await response.json().catch(() => null)) as {
+        settings?: {
+          enabled?: boolean;
+          businessName?: string;
+          welcomeText?: string;
+          accent?: string;
+          position?: string;
+          launcherLabel?: string;
+        } | null;
+      } | null;
+      if (payload?.settings) {
+        setSettings({
+          enabled: payload.settings.enabled === true,
+          businessName: payload.settings.businessName ?? "",
+          welcomeText: payload.settings.welcomeText ?? "",
+          accent: payload.settings.accent ?? "#22d3ee",
+          position: payload.settings.position === "left" ? "left" : "right",
+          launcherLabel: payload.settings.launcherLabel ?? "",
+        });
+      }
+      setLoaded(true);
+    } catch {
+      setLoadError(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function save(next: WidgetSettings) {
+    if (busy) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/widget-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          enabled: next.enabled,
+          businessName: next.businessName.trim(),
+          welcomeText: next.welcomeText.trim(),
+          accent: next.accent,
+          position: next.position,
+          launcherLabel: next.launcherLabel.trim(),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload?.ok) {
+        setSettings(next);
+        setMessage({
+          kind: "ok",
+          text: next.enabled
+            ? "Saved — the website chat bubble updates right away."
+            : "Saved — the website chat bubble is now hidden.",
+        });
+      } else {
+        setMessage({
+          kind: "error",
+          text: payload?.error?.message || "Could not save. Try again shortly.",
+        });
+      }
+    } catch {
+      setMessage({ kind: "error", text: "Network error — try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!loaded && !loadError) {
+    return (
+      <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="h-4 w-40 animate-pulse rounded bg-soft" />
+        <div className="mt-3 h-10 animate-pulse rounded bg-soft" />
+      </div>
+    );
+  }
+
+  if (loadError || !settings) {
+    return (
+      <div className="rounded-2xl border border-line bg-soft px-5 py-6 text-center">
+        <p className="text-sm text-ink-2">
+          The widget control is rolling out on the server — try again in a
+          couple of minutes.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold text-ink">
+              Website chat widget
+            </h2>
+            <span
+              className={
+                "rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider " +
+                (settings.enabled
+                  ? "border-emerald-400/20 bg-emerald-400/[0.06] text-ok"
+                  : "border-line bg-soft text-ink-3")
+              }
+            >
+              {settings.enabled ? "Live" : "Off"}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
+            Visitors chat from your website straight into the same inbox —
+            replies reach them inside the widget, never on WhatsApp.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => save({ ...settings, enabled: !settings.enabled })}
+          disabled={busy}
+          className={
+            "w-full shrink-0 rounded-xl px-4 py-2 text-xs font-medium transition-colors duration-300 disabled:opacity-50 sm:w-auto " +
+            (settings.enabled
+              ? "border border-red-400/25 bg-red-400/[0.06] text-danger hover:bg-red-400/[0.12]"
+              : "border border-emerald-400/25 bg-emerald-400/[0.08] text-ok hover:bg-emerald-400/[0.14]")
+          }
+        >
+          {settings.enabled ? "Disable widget" : "Enable widget"}
+        </button>
+      </div>
+
+      {settings.enabled && (
+        <div className="mt-4 space-y-3 border-t border-line pt-4">
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
+              Business name (widget header)
+            </label>
+            <input
+              value={settings.businessName}
+              onChange={(event) =>
+                setSettings({ ...settings, businessName: event.target.value })
+              }
+              maxLength={80}
+              placeholder="e.g. Ahmed Collection"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
+              Welcome message
+            </label>
+            <textarea
+              value={settings.welcomeText}
+              onChange={(event) =>
+                setSettings({ ...settings, welcomeText: event.target.value })
+              }
+              rows={2}
+              maxLength={200}
+              placeholder="Hi! Message us here and we will reply right away."
+              className={inputClass + " resize-none"}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
+              Accent colour
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              {ACCENT_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  aria-label={"Accent colour " + preset}
+                  onClick={() => setSettings({ ...settings, accent: preset })}
+                  className={
+                    "h-8 w-8 rounded-full border-2 transition-transform duration-150 " +
+                    (settings.accent.toLowerCase() === preset
+                      ? "scale-110 border-white"
+                      : "border-white/20 hover:scale-105")
+                  }
+                  style={{ backgroundColor: preset }}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
+              Bubble position (desktop)
+            </label>
+            <div className="flex gap-2">
+              {(["left", "right"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSettings({ ...settings, position: value })}
+                  className={
+                    "rounded-xl border px-4 py-2 text-xs font-medium capitalize transition-colors duration-300 " +
+                    (settings.position === value
+                      ? "border-brand/30 bg-brand-soft text-brand"
+                      : "border-line bg-soft text-ink-3 hover:text-ink")
+                  }
+                >
+                  {value === "left" ? "Bottom left" : "Bottom right"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
+              Launcher label (optional)
+            </label>
+            <input
+              value={settings.launcherLabel}
+              onChange={(event) =>
+                setSettings({ ...settings, launcherLabel: event.target.value })
+              }
+              maxLength={24}
+              placeholder="Chat with us"
+              className={inputClass}
+            />
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <button
+              type="button"
+              onClick={() => save(settings)}
+              disabled={busy}
+              className={primaryBtn + " w-full sm:w-auto"}
+            >
+              {busy ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {message && (
+        <p
+          className={
+            "mt-3 text-xs " +
+            (message.kind === "ok" ? "text-ok" : "text-danger")
+          }
+        >
+          {message.text}
+        </p>
+      )}
+    </div>
+  );
+}

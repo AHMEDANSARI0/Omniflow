@@ -97,11 +97,11 @@ export default function PayGate({
 
   if (phoneVerification && !verified) {
     return (
-      <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-        <p className="text-xs font-medium text-slate-200">
+      <div className="mt-3 rounded-xl border border-line bg-soft px-4 py-3">
+        <p className="text-xs font-medium text-ink">
           Verify it&apos;s you before paying
         </p>
-        <p className="mt-1 text-[11px] text-slate-500">
+        <p className="mt-1 text-[11px] text-ink-3">
           We send a 6-digit code to your WhatsApp.
         </p>
         {sent ? (
@@ -112,12 +112,12 @@ export default function PayGate({
               inputMode="numeric"
               maxLength={6}
               placeholder="123456"
-              className="w-28 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm tracking-[0.3em] text-white placeholder:text-slate-600 focus:border-cyan-400/40 focus:outline-none"
+              className="w-28 rounded-xl border border-line bg-soft px-3 py-2 text-sm tracking-[0.3em] text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
             />
             <button
               onClick={() => void verify()}
               disabled={busy}
-              className="rounded-xl border border-cyan-400/30 bg-cyan-400/[0.08] px-3 py-2 text-xs font-medium text-cyan-200 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+              className="rounded-xl border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand hover:bg-brand-soft disabled:opacity-50"
             >
               {busy ? "Checking…" : "Verify"}
             </button>
@@ -126,7 +126,7 @@ export default function PayGate({
           <button
             onClick={() => void sendCode()}
             disabled={busy}
-            className="mt-2 rounded-xl border border-cyan-400/30 bg-cyan-400/[0.08] px-3 py-2 text-xs font-medium text-cyan-200 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+            className="mt-2 rounded-xl border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand hover:bg-brand-soft disabled:opacity-50"
           >
             {busy ? "Sending…" : "Send my code"}
           </button>
@@ -134,7 +134,7 @@ export default function PayGate({
         {note ? (
           <p
             className={
-              "mt-2 text-[11px] " + (note.ok ? "text-emerald-300" : "text-rose-300")
+              "mt-2 text-[11px] " + (note.ok ? "text-ok" : "text-danger")
             }
           >
             {note.text}
@@ -147,7 +147,7 @@ export default function PayGate({
   return (
     <a
       href={"/api/omniflow/public/checkout/" + encodeURIComponent(token) + "/pay"}
-      className="mt-3 block rounded-xl border border-emerald-400/30 bg-emerald-400/[0.1] px-4 py-3 text-center text-sm font-semibold text-emerald-200 hover:bg-emerald-400/[0.18]"
+      className="mt-3 block rounded-xl border border-emerald-400/30 bg-emerald-400/[0.1] px-4 py-3 text-center text-sm font-semibold text-ok hover:bg-emerald-400/[0.18]"
     >
       Pay {due} online
     </a>

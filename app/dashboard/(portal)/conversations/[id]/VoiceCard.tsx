@@ -9,7 +9,16 @@ interface VoiceCall {
   sid: string;
   status: string;
   message: string;
+  direction: "inbound" | "outbound";
+  hasRecording: boolean;
+  durationSeconds: number;
   createdAt: string | null;
+}
+
+function durationLabel(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m + ":" + String(s).padStart(2, "0");
 }
 
 export default function VoiceCard({ conversationId }: { conversationId: number }) {
@@ -132,12 +141,39 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
           {calls.map((entry) => (
             <li
               key={entry.id}
-              className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.05] bg-white/[0.015] px-2.5 py-1.5 text-[11px]"
+              className="rounded-lg border border-white/[0.05] bg-white/[0.015] px-2.5 py-1.5 text-[11px]"
             >
-              <span className="truncate text-slate-300">{entry.phone}</span>
-              <span className="shrink-0 rounded-md border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[10px] text-slate-400">
-                {entry.status}
-              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-slate-300">{entry.phone}</span>
+                <span className="flex shrink-0 items-center gap-1">
+                  <span
+                    className={
+                      "rounded-md border px-1.5 py-0.5 text-[10px] " +
+                      (entry.direction === "inbound"
+                        ? "border-cyan-400/25 bg-cyan-400/[0.06] text-cyan-200"
+                        : "border-white/[0.08] bg-white/[0.02] text-slate-400")
+                    }
+                  >
+                    {entry.direction === "inbound" ? "In" : "Out"}
+                  </span>
+                  <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[10px] text-slate-400">
+                    {entry.status}
+                  </span>
+                </span>
+              </div>
+              {entry.hasRecording ? (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <audio
+                    controls
+                    preload="none"
+                    className="h-7 w-full"
+                    src={"/api/omniflow/portal/voice/recordings/" + entry.sid}
+                  />
+                  <span className="shrink-0 text-[10px] text-slate-500">
+                    {durationLabel(entry.durationSeconds)}
+                  </span>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

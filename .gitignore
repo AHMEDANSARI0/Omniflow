@@ -1,13 +1,52 @@
-.env
-venv/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
 __pycache__/
-*.pyc
-whatsapp_session/
-logs/
-temp_audio/
-Omniflow/
-_archive/
-Omniflow-website-auth/
-whatsapp_sessions/
-whatsapp_sessions/
-hide/
+*.py[cod]
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (commit only the secret-free example)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+*.pre_*.bak
+/whatsapp_sessions/
+/src/whatsapp_session/
+/logs/
+/src/logs/
+/hide/
+/Omniflow/
+*.dir_conflict.bak/

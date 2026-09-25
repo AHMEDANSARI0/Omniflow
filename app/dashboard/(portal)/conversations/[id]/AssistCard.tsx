@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 interface AssistSentiment {
   label: string;
   score: number;
+  engine: "llm" | "lexicon";
   positive: string[];
   negative: string[];
 }
@@ -175,6 +176,7 @@ export default function AssistCard({ conversationId }: { conversationId: number 
             }`}
           >
             Sentiment: {sentiment}
+            {assist.sentiment?.engine === "llm" ? " · AI" : ""}
           </span>
         ) : null}
         {assist.language ? (

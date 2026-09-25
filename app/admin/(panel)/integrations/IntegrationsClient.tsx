@@ -76,7 +76,7 @@ const GROUPS: GroupDef[] = [
     id: "flags",
     title: "AI switches",
     description:
-      "Your earlier decision locked these OFF — flip them once the AI key above is saved.",
+      "Flip these once the AI key above is saved — true sentiment powers the Assist card's sentiment (an 'AI' tag marks LLM results), and KB auto-draft ships a saveable knowledge-base entry with every draft.",
     toggles: [
       {
         key: "true_sentiment",
@@ -134,7 +134,7 @@ const GROUPS: GroupDef[] = [
       { key: "webhook_secret", label: "Webhook secret", secret: true },
     ],
     note:
-      "Stripe Checkout runs on the secret key here — a workspace that picks Stripe (platform keys) uses it directly.",
+      "Legacy gateway key — workspaces pay through Pakistan gateways (JazzCash / Easypaisa) with their own keys in Settings > Payments. This platform key stays unused unless the legacy Stripe path is re-enabled in code.",
   },
   {
     id: "whatsapp_e2e",

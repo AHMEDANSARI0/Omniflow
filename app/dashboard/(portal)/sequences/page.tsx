@@ -1,0 +1,1297 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+interface Step {
+  step_no: number;
+  delay_hours: number;
+  body: string;
+  onlyIfIdleHours: number | null;
+}
+
+interface Sequence {
+  id: number;
+  name: string;
+  enabled: boolean;
+  steps: Step[];
+  activeEnrollments: number;
+  completedEnrollments: number;
+  triggerKeyword: string | null;
+  pauseOnReply: boolean;
+}
+
+interface DraftStep {
+  delay_hours: number;
+  body: string;
+  onlyIfIdleHours: number | null;
+}
+
+const TEMPLATES: {
+  label: string;
+  name: string;
+  keyword: string;
+  steps: DraftStep[];
+}[] = [
+  {
+    label: "Welcome flow",
+    name: "Welcome flow",
+    keyword: "",
+    steps: [
+      {
+        delay_hours: 0,
+        body: "Welcome {name}! Thanks for reaching out \u2014 reply here anytime and we'll help you out.",
+        onlyIfIdleHours: null,
+      },
+    ],
+  },
+  {
+    label: "Order follow-up",
+    name: "Order follow-up",
+    keyword: "",
+    steps: [
+      {
+        delay_hours: 0,
+        body: "Thank you {name}! Your order is confirmed. We'll share delivery updates right here.",
+        onlyIfIdleHours: null,
+      },
+      {
+        delay_hours: 24,
+        body: "Hi {name}, did your order arrive safely? Reply if you need anything.",
+        onlyIfIdleHours: null,
+      },
+    ],
+  },
+  {
+    label: "Reorder nudge",
+    name: "Reorder nudge",
+    keyword: "reorder",
+    steps: [
+      {
+        delay_hours: 72,
+        body: "Hi {name}! Time for a refill? Send REORDER and we'll set you up.",
+        onlyIfIdleHours: null,
+      },
+      {
+        delay_hours: 96,
+        body: "{name}, your favourites are back in stock. Reply REORDER and we'll reserve them for you.",
+        onlyIfIdleHours: null,
+      },
+    ],
+  },
+  {
+    label: "Review request",
+    name: "Review request",
+    keyword: "",
+    steps: [
+      {
+        delay_hours: 48,
+        body: "Hi {name}! Glad you shopped with us. Could you spare a minute to share your experience?",
+        onlyIfIdleHours: null,
+      },
+    ],
+  },
+];
+
+export default function SequencesPage() {
+  const [sequences, setSequences] = useState<Sequence[] | null>(null);
+  const [name, setName] = useState("");
+  const [draft, setDraft] = useState<DraftStep[]>([
+    { delay_hours: 0, body: "", onlyIfIdleHours: null },
+  ]);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [noteTone, setNoteTone] = useState("neutral");
+  const [openLog, setOpenLog] = useState<number | null>(null);
+  const [enrollments, setEnrollments] = useState<
+    { id: number; contact_name: string | null; current_step: number; status: string }[]
+  >([]);
+  const [keyword, setKeyword] = useState("");
+  const [triggerOpenFor, setTriggerOpenFor] = useState<number | null>(null);
+  const [triggerDraft, setTriggerDraft] = useState("");
+  const [triggerBusy, setTriggerBusy] = useState(false);
+  const [addOpenFor, setAddOpenFor] = useState<number | null>(null);
+  const [addDraft, setAddDraft] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+  const [addNote, setAddNote] = useState<string | null>(null);
+  const [editOpenFor, setEditOpenFor] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<DraftStep[]>([]);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editNote, setEditNote] = useState<string | null>(null);
+  const [openStats, setOpenStats] = useState<number | null>(null);
+  const [stats, setStats] = useState<
+    Record<number, { sent: number; skipped: number }>
+  >({});
+  const [quiet, setQuiet] = useState<{
+    enabled: boolean;
+    start: number;
+    end: number;
+    offset: number;
+  } | null>(null);
+  const [quietBusy, setQuietBusy] = useState(false);
+  const [quietNote, setQuietNote] = useState<string | null>(null);
+
+  const hourLabel = (hour: number) => {
+    const period = hour < 12 ? "AM" : "PM";
+    const display = hour % 12 === 0 ? 12 : hour % 12;
+    return display + ":00 " + period;
+  };
+
+  const load = useCallback(async () => {
+    try {
+      const response = await fetch("/api/omniflow/portal/sequences", {
+        cache: "no-store",
+      });
+      const payload: unknown = await response.json().catch(() => null);
+      if (payload !== null && typeof payload === "object") {
+        const list = (payload as { sequences?: Sequence[] }).sequences;
+        setSequences(Array.isArray(list) ? list : []);
+      }
+    } catch {
+      setSequences([]);
+    }
+    fetch("/api/omniflow/portal/sequences/settings", { cache: "no-store" })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        const row =
+          payload !== null && typeof payload === "object"
+            ? (payload as {
+                settings?: {
+                  quiet_enabled?: boolean;
+                  quiet_start?: number;
+                  quiet_end?: number;
+                  utc_offset?: number;
+                } | null;
+              })
+            : null;
+        if (row && row.settings) {
+          setQuiet({
+            enabled: row.settings.quiet_enabled === true,
+            start:
+              typeof row.settings.quiet_start === "number"
+                ? row.settings.quiet_start
+                : 22,
+            end:
+              typeof row.settings.quiet_end === "number" ? row.settings.quiet_end : 8,
+            offset:
+              typeof row.settings.utc_offset === "number" ? row.settings.utc_offset : 5,
+          });
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const addStep = () => {
+    setDraft((current) =>
+      current.length < 5
+        ? [...current, { delay_hours: 24, body: "", onlyIfIdleHours: null }]
+        : current
+    );
+  };
+
+  const patchStep = (index: number, changes: Partial<DraftStep>) => {
+    setDraft((current) =>
+      current.map((step, i) => (i === index ? { ...step, ...changes } : step))
+    );
+  };
+
+  const applyTemplate = (template: (typeof TEMPLATES)[number]) => {
+    setName(template.name);
+    setKeyword(template.keyword);
+    setDraft(template.steps.map((step) => ({ ...step })));
+    setNoteTone("neutral");
+    setNote("Template loaded \u2014 edit anything, then Create series.");
+  };
+
+  const saveQuiet = useCallback(async () => {
+    if (quietBusy || !quiet) return;
+    setQuietBusy(true);
+    setQuietNote(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/sequences/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quietEnabled: quiet.enabled,
+          quietStart: quiet.start,
+          quietEnd: quiet.end,
+          utcOffset: quiet.offset,
+        }),
+      });
+      setQuietNote(
+        response.ok
+          ? "Send window saved."
+          : "Could not save. Check the hours and offset."
+      );
+    } catch {
+      setQuietNote("Could not save. Try again.");
+    } finally {
+      setQuietBusy(false);
+    }
+  }, [quietBusy, quiet]);
+
+  const create = useCallback(async () => {
+    if (!name.trim() || draft.some((step) => !step.body.trim())) {
+      setNoteTone("amber");
+      setNote("Give the series a name and fill every step's message.");
+      return;
+    }
+    setBusy(true);
+    setNote("");
+    try {
+      const response = await fetch("/api/omniflow/portal/sequences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify((() => {
+          const steps = draft.map((step) => ({
+            delay_hours: step.delay_hours,
+            body: step.body,
+            only_if_idle_hours: step.onlyIfIdleHours,
+          }));
+          return keyword.trim()
+            ? { name, steps, trigger_keyword: keyword.trim() }
+            : { name, steps };
+        })()),
+      });
+      if (response.ok) {
+        setNoteTone("emerald");
+        setNote(
+          keyword.trim()
+            ? "Series created. Send the keyword in a chat to start it."
+            : "Series created. Toggle it on to enroll new contacts."
+        );
+        setName("");
+        setKeyword("");
+        setDraft([{ delay_hours: 0, body: "", onlyIfIdleHours: null }]);
+        void load();
+        return;
+      }
+      setNoteTone("amber");
+      setNote("Could not create. Check steps (1-5, 0-168h each).");
+    } catch {
+      setNoteTone("amber");
+      setNote("Could not create. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }, [name, draft, keyword, load]);
+
+  const setEnabled = useCallback(
+    async (row: Sequence, enabled: boolean) => {
+      setBusy(true);
+      try {
+        await fetch("/api/omniflow/portal/sequences/" + String(row.id), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        });
+        void load();
+      } catch {
+        void load();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load]
+  );
+
+  const togglePauseReply = useCallback(
+    async (row: Sequence) => {
+      setBusy(true);
+      try {
+        await fetch("/api/omniflow/portal/sequences/" + String(row.id), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pauseOnReply: !row.pauseOnReply }),
+        });
+        void load();
+      } catch {
+        void load();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load]
+  );
+
+  const remove = useCallback(
+    async (row: Sequence) => {
+      setBusy(true);
+      try {
+        await fetch("/api/omniflow/portal/sequences/" + String(row.id), {
+          method: "DELETE",
+        });
+        void load();
+      } catch {
+        void load();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load]
+  );
+
+  const refreshLog = useCallback(async (id: number) => {
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/sequences/" + String(id) + "/enrollments",
+        { cache: "no-store" }
+      );
+      const payload: unknown = await response.json().catch(() => null);
+      if (payload !== null && typeof payload === "object") {
+        const list = (payload as { enrollments?: typeof enrollments }).enrollments;
+        setEnrollments(Array.isArray(list) ? list : []);
+      }
+    } catch {
+      setEnrollments([]);
+    }
+  }, []);
+
+  const showLog = useCallback(
+    async (id: number) => {
+      if (openLog === id) {
+        setOpenLog(null);
+        return;
+      }
+      setOpenLog(id);
+      setEnrollments([]);
+      await refreshLog(id);
+    },
+    [openLog, refreshLog]
+  );
+
+  const setEnrollmentState = useCallback(
+    async (
+      sequenceId: number,
+      enrollmentId: number,
+      action: "pause" | "resume"
+    ) => {
+      try {
+        await fetch(
+          "/api/omniflow/portal/sequences/" + String(sequenceId) +
+            "/enrollments/" + String(enrollmentId) + "/" + action,
+          { method: "POST" }
+        );
+      } catch {
+        // Transient network issue — the refresh below still runs.
+      }
+      void refreshLog(sequenceId);
+    },
+    [refreshLog]
+  );
+
+  const bulkEnrollments = useCallback(
+    async (sequenceId: number, action: "pause-all" | "resume-all") => {
+      try {
+        await fetch(
+          "/api/omniflow/portal/sequences/" + String(sequenceId) +
+            "/enrollments/" + action,
+          { method: "POST" }
+        );
+      } catch {
+        // Transient network issue — the refresh below still runs.
+      }
+      void refreshLog(sequenceId);
+    },
+    [refreshLog]
+  );
+
+  const toggleStats = useCallback(
+    async (id: number) => {
+      if (openStats === id) {
+        setOpenStats(null);
+        return;
+      }
+      setOpenStats(id);
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/sequences/" + String(id) + "/stats",
+          { cache: "no-store" }
+        );
+        const payload: unknown = await response.json().catch(() => null);
+        const list =
+          payload !== null && typeof payload === "object"
+            ? (payload as {
+                steps?: { step_no: number; sent: number; skipped: number }[];
+              }).steps
+            : null;
+        const map: Record<number, { sent: number; skipped: number }> = {};
+        for (const row of Array.isArray(list) ? list : []) {
+          map[row.step_no] = { sent: row.sent, skipped: row.skipped };
+        }
+        setStats(map);
+      } catch {
+        setStats({});
+      }
+    },
+    [openStats]
+  );
+
+  const openAdd = useCallback((id: number) => {
+    setAddOpenFor(id);
+    setAddDraft("");
+    setAddNote(null);
+  }, []);
+
+  const openTrigger = useCallback((row: Sequence) => {
+    setTriggerOpenFor(row.id);
+    setTriggerDraft(row.triggerKeyword ?? "");
+  }, []);
+
+  const openEdit = useCallback((row: Sequence) => {
+    setEditOpenFor(row.id);
+    setEditDraft(
+      row.steps.map((step) => ({
+        delay_hours: step.delay_hours,
+        body: step.body,
+        onlyIfIdleHours: step.onlyIfIdleHours,
+      }))
+    );
+    setEditNote(null);
+  }, []);
+
+  const patchEditStep = (index: number, changes: Partial<DraftStep>) => {
+    setEditDraft((current) =>
+      current.map((step, i) => (i === index ? { ...step, ...changes } : step))
+    );
+  };
+
+  const saveEdit = useCallback(
+    async (row: Sequence, asCopy: boolean) => {
+      if (editBusy) return;
+      const steps = editDraft.map((step) => ({
+        delay_hours: step.delay_hours,
+        body: step.body,
+        onlyIfIdleHours: step.onlyIfIdleHours,
+      }));
+      if (steps.length === 0 || steps.some((step) => !step.body.trim())) {
+        setEditNote("Fill every step's message.");
+        return;
+      }
+      setEditBusy(true);
+      setEditNote(null);
+      try {
+        if (asCopy) {
+          const response = await fetch("/api/omniflow/portal/sequences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: row.name + " copy", steps }),
+          });
+          if (!response.ok) {
+            setEditNote("Could not save the copy. Check steps (1-5, 0-168h each).");
+            return;
+          }
+        } else {
+          const response = await fetch(
+            "/api/omniflow/portal/sequences/" + String(row.id) + "/steps",
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ steps }),
+            }
+          );
+          if (!response.ok) {
+            setEditNote(
+              response.status === 404
+                ? "Series not found."
+                : "Could not save. Check steps (1-5, 0-168h each)."
+            );
+            return;
+          }
+        }
+        setEditOpenFor(null);
+        void load();
+      } catch {
+        setEditNote("Could not save. Try again.");
+      } finally {
+        setEditBusy(false);
+      }
+    },
+    [editBusy, editDraft, load]
+  );
+
+  const saveTrigger = useCallback(
+    async (row: Sequence) => {
+      if (triggerBusy) return;
+      setTriggerBusy(true);
+      try {
+        await fetch("/api/omniflow/portal/sequences/" + String(row.id), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            triggerKeyword: triggerDraft.trim() ? triggerDraft.trim() : null,
+          }),
+        });
+        setTriggerOpenFor(null);
+        void load();
+      } catch {
+        setTriggerOpenFor(null);
+      } finally {
+        setTriggerBusy(false);
+      }
+    },
+    [triggerBusy, triggerDraft, load]
+  );
+
+  const submitAdd = useCallback(
+    async (id: number) => {
+      const contacts = addDraft
+        .split(/[,;\n]+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (addBusy || contacts.length === 0) return;
+      setAddBusy(true);
+      setAddNote(null);
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/sequences/" + String(id) + "/enrollments",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contacts }),
+          }
+        );
+        const payload = (await response.json().catch(() => null)) as {
+          enrolled?: number;
+          skipped?: string[];
+        } | null;
+        if (response.ok && payload && typeof payload.enrolled === "number") {
+          const skipped = Array.isArray(payload.skipped) ? payload.skipped.length : 0;
+          setAddNote(
+            "Enrolled " + String(payload.enrolled) +
+              (skipped > 0 ? " \u00b7 " + String(skipped) + " skipped (no chat yet)" : "")
+          );
+          setAddDraft("");
+          void load();
+        } else {
+          setAddNote("Could not add people. Try again.");
+        }
+      } catch {
+        setAddNote("Could not add people. Try again.");
+      } finally {
+        setAddBusy(false);
+      }
+    },
+    [addBusy, addDraft, load]
+  );
+
+  const cancelEnrollment = useCallback(
+    async (sequenceId: number, enrollmentId: number) => {
+      try {
+        await fetch(
+          "/api/omniflow/portal/sequences/" + String(sequenceId) +
+            "/enrollments/" + String(enrollmentId),
+          { method: "DELETE" }
+        );
+      } catch {
+        // Transient network issue — the refresh below still runs.
+      }
+      void refreshLog(sequenceId);
+    },
+    [refreshLog]
+  );
+
+  return (
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-6">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+            Workspace
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Sequences</h1>
+          <p className="mt-1.5 text-sm text-ink-3">
+            A multi-message series that new contacts receive automatically,
+            step by step. Great for welcome flows and first-order care.
+          </p>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-ink">New series</h2>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wider text-ink-3">
+              Start from:
+            </span>
+            {TEMPLATES.map((template) => (
+              <button
+                key={template.label}
+                type="button"
+                onClick={() => applyTemplate(template)}
+                className="rounded-full border border-line px-3 py-1 text-xs text-ink-2 transition hover:border-brand/40 hover:text-brand"
+              >
+                {template.label}
+              </button>
+            ))}
+          </div>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Series name, e.g. Welcome flow"
+            className="mt-3 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
+          />
+          <input
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="Trigger keyword (optional), e.g. CATALOG"
+            className="mt-2 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
+          />
+          <div className="mt-3 space-y-2">
+            {draft.map((step, index) => (
+              <div
+                key={index}
+                className="rounded-xl border border-line bg-white/[0.01] p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] uppercase tracking-wider text-ink-3">
+                    Step {index + 1}
+                    {index === 0
+                      ? " \u00b7 sends after this many hours"
+                      : " \u00b7 waits this many hours"}
+                  </p>
+                  {draft.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDraft((current) => current.filter((_, i) => i !== index))
+                      }
+                      className="text-[11px] text-ink-3 transition hover:text-danger"
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    max={168}
+                    value={step.delay_hours}
+                    onChange={(event) =>
+                      patchStep(index, {
+                        delay_hours: Math.max(
+                          0,
+                          Math.min(168, Number(event.target.value) || 0)
+                        ),
+                      })
+                    }
+                    className="w-20 shrink-0 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-sm text-ink outline-none focus:border-brand/40"
+                  />
+                  <span className="shrink-0 text-xs text-ink-3">hours</span>
+                </div>
+                <label className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-3">
+                  <input
+                    type="checkbox"
+                    checked={step.onlyIfIdleHours !== null}
+                    onChange={(event) =>
+                      patchStep(index, {
+                        onlyIfIdleHours: event.target.checked ? 24 : null,
+                      })
+                    }
+                    className="h-3.5 w-3.5 accent-cyan-400"
+                  />
+                  Send only if no reply for
+                  <input
+                    type="number"
+                    min={1}
+                    max={168}
+                    value={step.onlyIfIdleHours ?? 24}
+                    disabled={step.onlyIfIdleHours === null}
+                    onChange={(event) =>
+                      patchStep(index, {
+                        onlyIfIdleHours: Math.max(
+                          1,
+                          Math.min(168, Number(event.target.value) || 24)
+                        ),
+                      })
+                    }
+                    className="w-14 rounded-md border border-line bg-soft px-1.5 py-0.5 text-[11px] text-ink outline-none focus:border-brand/40 disabled:opacity-40"
+                  />
+                  hours
+                </label>
+                <textarea
+                  value={step.body}
+                  onChange={(event) => patchStep(index, { body: event.target.value })}
+                  rows={2}
+                  maxLength={1000}
+                  placeholder={"Use {name} and it becomes each customer's first name."}
+                  className="mt-2 w-full rounded-lg border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {draft.length < 5 ? (
+              <button
+                type="button"
+                onClick={addStep}
+                className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+              >
+                + Add step
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void create()}
+              disabled={busy}
+              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
+            >
+              {busy ? "Working\u2026" : "Create series"}
+            </button>
+            {note ? (
+              <p
+                className={
+                  "text-xs " +
+                  (noteTone === "emerald" ? "text-ok" : "text-amber-600")
+                }
+              >
+                {note}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-line bg-soft p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-ink">Night guard</p>
+              <p className="mt-0.5 text-[11px] text-ink-3">
+                Pause automatic series messages during these hours so nobody gets woken
+                up. Replies you send by hand are never blocked.
+              </p>
+            </div>
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-ink-2">
+              <input
+                type="checkbox"
+                checked={quiet ? quiet.enabled : false}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, enabled: event.target.checked } : current
+                  )
+                }
+                className="h-4 w-4 accent-cyan-400"
+              />
+              {quiet && quiet.enabled ? "On" : "Off"}
+            </label>
+          </div>
+          {quiet ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-2">
+              <span className="text-ink-3">Pause from</span>
+              <select
+                value={quiet.start}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, start: Number(event.target.value) } : current
+                  )
+                }
+                className="rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink outline-none focus:border-brand/40"
+              >
+                {Array.from({ length: 24 }, (_, hour) => (
+                  <option key={hour} value={hour} className="bg-soft">
+                    {hourLabel(hour)}
+                  </option>
+                ))}
+              </select>
+              <span className="text-ink-3">to</span>
+              <select
+                value={quiet.end}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, end: Number(event.target.value) } : current
+                  )
+                }
+                className="rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink outline-none focus:border-brand/40"
+              >
+                {Array.from({ length: 24 }, (_, hour) => (
+                  <option key={hour} value={hour} className="bg-soft">
+                    {hourLabel(hour)}
+                  </option>
+                ))}
+              </select>
+              <span className="text-ink-3">\u00b7 your time zone</span>
+              <select
+                value={quiet.offset}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, offset: Number(event.target.value) } : current
+                  )
+                }
+                className="rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink outline-none focus:border-brand/40"
+              >
+                {Array.from({ length: 27 }, (_, index) => index - 12).map((offset) => (
+                  <option key={offset} value={offset} className="bg-soft">
+                    UTC{offset >= 0 ? "+" : ""}
+                    {offset}
+                    {offset === 5 ? " (Pakistan)" : ""}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void saveQuiet()}
+                disabled={quietBusy}
+                className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+              >
+                {quietBusy ? "Saving..." : "Save"}
+              </button>
+              {quietNote ? <p className="text-xs text-amber-600">{quietNote}</p> : null}
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-ink-3">Loading window\u2026</p>
+          )}
+        </div>
+
+        {sequences === null ? (
+          <p className="text-sm text-ink-3">Loading\u2026</p>
+        ) : sequences.length === 0 ? (
+          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+            <p className="text-sm text-ink-3">No series yet.</p>
+            <p className="mt-1 text-xs text-ink-3">
+              Create one above; every brand-new contact will walk through it.
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {sequences.map((row) => (
+              <li
+                key={row.id}
+                className="rounded-2xl border border-line bg-soft p-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <p className="truncate text-sm font-medium text-ink">{row.name}</p>
+                      {row.triggerKeyword ? (
+                        <span className="shrink-0 rounded-md border border-brand/25 bg-brand-soft px-1.5 py-0.5 text-[10px] text-brand">
+                          {row.triggerKeyword}
+                        </span>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void togglePauseReply(row)}
+                        title="Pause this series automatically when the customer replies"
+                        className={
+                          "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] transition " +
+                          (row.pauseOnReply
+                            ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                            : "border-line bg-soft text-ink-3")
+                        }
+                      >
+                        {row.pauseOnReply ? "pauses on reply" : "ignores replies"}
+                      </button>
+                    </span>
+                    <p className="mt-0.5 text-[11px] text-ink-3">
+                      {row.steps.length} step{row.steps.length === 1 ? "" : "s"} \u00b7{" "}
+                      {row.activeEnrollments} active
+                      {" \u00b7 "}
+                      {row.completedEnrollments} done
+                      {row.enabled ? " \u00b7 enrolling" : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void setEnabled(row, !row.enabled)}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                    >
+                      {row.enabled ? "Turn off" : "Turn on"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void showLog(row.id)}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                    >
+                      {openLog === row.id ? "Hide people" : "People"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void toggleStats(row.id)}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                    >
+                      {openStats === row.id ? "Hide stats" : "Stats"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAdd(row.id)}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                    >
+                      Add people
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openTrigger(row)}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                    >
+                      Trigger
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(row)}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void remove(row)}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                {openStats === row.id ? (
+                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-3">
+                      Step delivery
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {row.steps.map((step) => {
+                        const stat = stats[step.step_no] ?? {
+                          sent: 0,
+                          skipped: 0,
+                        };
+                        const total = stat.sent + stat.skipped;
+                        const pct =
+                          total === 0
+                            ? 0
+                            : Math.round((stat.sent / total) * 100);
+                        return (
+                          <div key={step.step_no}>
+                            <div className="flex items-center justify-between text-[11px] text-ink-3">
+                              <span>Step {step.step_no}</span>
+                              <span>
+                                {stat.sent} sent \u00b7 {stat.skipped} skipped
+                                \u00b7 {pct}%
+                              </span>
+                            </div>
+                            <div className="mt-1 h-2 overflow-hidden rounded-full bg-soft">
+                              <div
+                                className="h-full rounded-full bg-cyan-400/50"
+                                style={{ width: pct + "%" }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+                {openLog === row.id ? (
+                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] uppercase tracking-wider text-ink-3">
+                        People in {row.name}
+                      </p>
+                      <a
+                        href={
+                          "/api/omniflow/portal/sequences/" +
+                          String(row.id) +
+                          "/enrollments/export"
+                        }
+                        className="text-[11px] text-brand transition hover:text-brand"
+                      >
+                        Export CSV
+                      </a>
+                      <span className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void bulkEnrollments(row.id, "pause-all")}
+                          className="text-[11px] text-ink-3 transition hover:text-amber-600"
+                        >
+                          Pause all
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void bulkEnrollments(row.id, "resume-all")}
+                          className="text-[11px] text-ink-3 transition hover:text-ok"
+                        >
+                          Resume all
+                        </button>
+                      </span>
+                    </div>
+                    <div className="mt-2">
+                    {enrollments.length === 0 ? (
+                      <p className="text-xs text-ink-3">No enrollments yet.</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {enrollments.map((enrollment) => (
+                          <li
+                            key={enrollment.id}
+                            className="flex items-center justify-between gap-2 text-xs"
+                          >
+                            <span className="truncate text-ink-2">
+                              {enrollment.contact_name || "Customer"}
+                            </span>
+                            <span
+                              className={
+                                enrollment.status === "completed"
+                                  ? "text-ok"
+                                  : "text-amber-600"
+                              }
+                            >
+                              {enrollment.status === "completed"
+                                ? "completed"
+                                : enrollment.status === "paused"
+                                  ? "paused"
+                                  : "step " + String(enrollment.current_step + 1) + " pending"}
+                            </span>
+                            <span className="flex shrink-0 items-center gap-2">
+                              {enrollment.status === "active" ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void setEnrollmentState(row.id, enrollment.id, "pause")
+                                  }
+                                  className="text-[11px] text-ink-3 transition hover:text-amber-600"
+                                >
+                                  Pause
+                                </button>
+                              ) : null}
+                              {enrollment.status === "paused" ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void setEnrollmentState(row.id, enrollment.id, "resume")
+                                  }
+                                  className="text-[11px] text-ink-3 transition hover:text-ok"
+                                >
+                                  Resume
+                                </button>
+                              ) : null}
+                              {enrollment.status === "active" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void cancelEnrollment(row.id, enrollment.id)}
+                                  className="text-[11px] text-ink-3 transition hover:text-danger"
+                                >
+                                  Cancel
+                                </button>
+                              ) : null}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    </div>
+                  </div>
+                ) : null}
+                {triggerOpenFor === row.id ? (
+                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-3">
+                      Keyword trigger for {row.name}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        value={triggerDraft}
+                        onChange={(event) => setTriggerDraft(event.target.value)}
+                        placeholder="e.g. CATALOG"
+                        className="w-44 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void saveTrigger(row)}
+                        disabled={triggerBusy}
+                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                      >
+                        {triggerBusy ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTriggerOpenFor(null)}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] text-ink-3">
+                      When a customer sends exactly this word, the series starts for
+                      them. Leave empty to turn the trigger off.
+                    </p>
+                  </div>
+                ) : null}
+                {editOpenFor === row.id ? (
+                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-3">
+                      Edit steps \u2014 {row.name}
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {editDraft.map((step, index) => (
+                        <div
+                          key={index}
+                          className="rounded-lg border border-line bg-soft p-2.5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[10px] uppercase tracking-wider text-ink-3">
+                              Step {index + 1}
+                            </p>
+                            {editDraft.length > 1 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditDraft((current) =>
+                                    current.filter((_, i) => i !== index)
+                                  )
+                                }
+                                className="text-[11px] text-ink-3 transition hover:text-danger"
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={168}
+                              value={step.delay_hours}
+                              onChange={(event) =>
+                                patchEditStep(index, {
+                                  delay_hours: Math.max(
+                                    0,
+                                    Math.min(168, Number(event.target.value) || 0)
+                                  ),
+                                })
+                              }
+                              className="w-20 shrink-0 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-sm text-ink outline-none focus:border-brand/40"
+                            />
+                            <span className="shrink-0 text-xs text-ink-3">hours</span>
+                          </div>
+                          <label className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-3">
+                            <input
+                              type="checkbox"
+                              checked={step.onlyIfIdleHours !== null}
+                              onChange={(event) =>
+                                patchEditStep(index, {
+                                  onlyIfIdleHours: event.target.checked ? 24 : null,
+                                })
+                              }
+                              className="h-3.5 w-3.5 accent-cyan-400"
+                            />
+                            Send only if no reply for
+                            <input
+                              type="number"
+                              min={1}
+                              max={168}
+                              value={step.onlyIfIdleHours ?? 24}
+                              disabled={step.onlyIfIdleHours === null}
+                              onChange={(event) =>
+                                patchEditStep(index, {
+                                  onlyIfIdleHours: Math.max(
+                                    1,
+                                    Math.min(168, Number(event.target.value) || 24)
+                                  ),
+                                })
+                              }
+                              className="w-14 rounded-md border border-line bg-soft px-1.5 py-0.5 text-[11px] text-ink outline-none focus:border-brand/40 disabled:opacity-40"
+                            />
+                            hours
+                          </label>
+                          <textarea
+                            value={step.body}
+                            onChange={(event) =>
+                              patchEditStep(index, { body: event.target.value })
+                            }
+                            rows={2}
+                            maxLength={1000}
+                            placeholder="Use {name} for the customer's first name."
+                            className="mt-2 w-full rounded-lg border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {editDraft.length < 5 ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditDraft((current) => [
+                              ...current,
+                              { delay_hours: 24, body: "", onlyIfIdleHours: null },
+                            ])
+                          }
+                          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                        >
+                          + Add step
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void saveEdit(row, false)}
+                        disabled={editBusy}
+                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                      >
+                        {editBusy ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void saveEdit(row, true)}
+                        disabled={editBusy}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink disabled:opacity-50"
+                      >
+                        Save as copy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditOpenFor(null)}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      >
+                        Close
+                      </button>
+                      {editNote ? (
+                        <p className="text-xs text-amber-600">{editNote}</p>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-[10px] text-ink-3">
+                      People already in the series continue with the new steps. Save as
+                      copy keeps this series untouched.
+                    </p>
+                  </div>
+                ) : null}
+                {addOpenFor === row.id ? (
+                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-3">
+                      Add people to {row.name}
+                    </p>
+                    <textarea
+                      value={addDraft}
+                      onChange={(event) => setAddDraft(event.target.value)}
+                      rows={3}
+                      placeholder={"One number per line\n+92 300 1234567"}
+                      className="mt-2 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void submitAdd(row.id)}
+                        disabled={addBusy || !addDraft.trim()}
+                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                      >
+                        {addBusy ? "Adding..." : "Add to sequence"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddOpenFor(null)}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      >
+                        Close
+                      </button>
+                      {addNote ? (
+                        <span className="text-[11px] text-ink-3">{addNote}</span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-[10px] text-ink-3">
+                      Only customers who already have a chat are added. Everyone keeps
+                      their own step position.
+                    </p>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </main>
+  );
+}

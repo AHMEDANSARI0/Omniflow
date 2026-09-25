@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 interface Brand {
   id: number;
   name: string;
+  slug: string | null;
   isActive: boolean;
 }
 
@@ -213,6 +214,17 @@ export default function BrandsCard() {
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2 text-[11px]">
+                    {brand.slug ? (
+                      <a
+                        href={"/store/" + brand.slug}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-cyan-400/80 transition-colors duration-200 hover:text-cyan-300"
+                        title={"Open the " + brand.name + " store page"}
+                      >
+                        Store
+                      </a>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => {
