@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-20T21:07:24.664687+00:00",
+  "channel_account_id": 1,
+  "ready": true,
+  "blocker_count": 0,
+  "warning_count": 1,
+  "results": [
+    {
+      "level": "blocker",
+      "name": "Project environment file",
+      "passed": true,
+      "details": "C:\\Users\\Ahmed Ansari\\Desktop\\whatsapp-ai-bot\\.env"
+    },
+    {
+      "level": "blocker",
+      "name": "Database environment",
+      "passed": true,
+      "details": "configured"
+    },
+    {
+      "level": "blocker",
+      "name": "At least one AI provider credential",
+      "passed": true,
+      "details": "GROQ_API_KEY, GEMINI_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY"
+    },
+    {
+      "level": "blocker",
+      "name": "Voice reply mode",
+      "passed": true,
+      "details": "text"
+    },
+    {
+      "level": "blocker",
+      "name": "Required runtime files",
+      "passed": true,
+      "details": "all present"
+    },
+    {
+      "level": "blocker",
+      "name": "Obsolete launchers disabled",
+      "passed": true,
+      "details": "src/main.py and src/app.py are safe shims"
+    },
+    {
+      "level": "blocker",
+      "name": "Channel account exists",
+      "passed": true,
+      "details": "account=1"
+    },
+    {
+      "level": "blocker",
+      "name": "Channel account active",
+      "passed": true,
+      "details": "status=active"
+    },
+    {
+      "level": "blocker",
+      "name": "Installed platform adapter",
+      "passed": true,
+      "details": "platform=whatsapp"
+    },
+    {
+      "level": "blocker",
+      "name": "External account identity",
+      "passed": true,
+      "details": "configured"
+    },
+    {
+      "level": "info",
+      "name": "Tenant context",
+      "passed": true,
+      "details": "client=1, account=1, name=Production Test WhatsApp"
+    },
+    {
+      "level": "blocker",
+      "name": "Required database tables",
+      "passed": true,
+      "details": "all present"
+    },
+    {
+      "level": "blocker",
+      "name": "No live worker lease during audit",
+      "passed": true,
+      "details": "live_leases=0"
+    },
+    {
+      "level": "blocker",
+      "name": "Customer tenant isolation",
+      "passed": true,
+      "details": "cross_tenant_contacts=0"
+    },
+    {
+      "level": "blocker",
+      "name": "Stable external contact identities",
+      "passed": true,
+      "details": "blank_identities=0"
+    },
+    {
+      "level": "warning",
+      "name": "Recovery routing display-name coverage",
+      "passed": false,
+      "details": "active_contacts_missing_name=2"
+    },
+    {
+      "level": "blocker",
+      "name": "Inbound messages have durable reply jobs",
+      "passed": true,
+      "details": "missing_jobs=0"
+    },
+    {
+      "level": "blocker",
+      "name": "External message idempotency",
+      "passed": true,
+      "details": "duplicate_keys=0"
+    },
+    {
+      "level": "blocker",
+      "name": "Message role/direction consistency",
+      "passed": true,
+      "details": "mismatches=0"
+    },
+    {
+      "level": "blocker",
+      "name": "Sent jobs have provider delivery IDs",
+      "passed": true,
+      "details": "sent_without_id=0"
+    },
+    {
+      "level": "blocker",
+      "name": "No fresh processing locks while stopped",
+      "passed": true,
+      "details": "fresh_processing_jobs=0"
+    },
+    {
+      "level": "warning",
+      "name": "No due recovery backlog",
+      "passed": true,
+      "details": "due_jobs=0"
+    },
+    {
+      "level": "info",
+      "name": "Reply job status distribution",
+      "passed": true,
+      "details": {
+        "cancelled": 4,
+        "sent": 22
+      }
+    },
+    {
+      "level": "blocker",
+      "name": "WhatsApp persistent session directory",
+      "passed": true,
+      "details": "C:\\Users\\Ahmed Ansari\\Desktop\\whatsapp-ai-bot\\whatsapp_sessions\\account_1"
+    },
+    {
+      "level": "blocker",
+      "name": "WhatsApp session is non-empty",
+      "passed": true,
+      "details": "top_level_entries=15"
+    }
+  ]
+}

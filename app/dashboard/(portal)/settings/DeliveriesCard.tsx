@@ -35,7 +35,7 @@ const STATUS_STYLES: Record<DeliveryStatus, string> = {
   pending: "border-sky-400/25 bg-sky-400/[0.07] text-sky-200",
   failed: "border-amber-400/25 bg-amber-400/[0.07] text-amber-200",
   dead: "border-rose-400/25 bg-rose-400/[0.07] text-rose-200",
-  done: "border-emerald-400/25 bg-emerald-400/[0.07] text-emerald-200",
+  done: "border-emerald-400/25 bg-emerald-400/[0.07] text-ok",
 };
 
 function formatWhen(value: string | null): string {
@@ -108,11 +108,11 @@ export default function DeliveriesCard() {
     filter === "all" ? rows : rows.filter((row) => row.status === filter);
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+    <section className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">Deliveries</h3>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-ink-3">
             Outbound WhatsApp queue — failed sends retry automatically with
             backoff; replay anything that ended up failed.
           </p>
@@ -120,7 +120,7 @@ export default function DeliveriesCard() {
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-white/[0.08] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-white/[0.04] disabled:opacity-50"
+          className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
         >
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -136,7 +136,7 @@ export default function DeliveriesCard() {
                 "rounded-lg border px-2 py-0.5 text-[11px] " +
                 (filter === status
                   ? STATUS_STYLES[status]
-                  : "border-white/[0.08] text-slate-400 hover:bg-white/[0.03]")
+                  : "border-line text-ink-3 hover:bg-soft")
               }
             >
               {STATUS_LABELS[status]} · {counts[status] ?? 0}
@@ -146,12 +146,12 @@ export default function DeliveriesCard() {
       ) : null}
 
       {note ? (
-        <p className="mt-2 text-xs text-slate-400">{note}</p>
+        <p className="mt-2 text-xs text-ink-3">{note}</p>
       ) : null}
 
       <div className="mt-3 space-y-1.5">
         {visible.length === 0 ? (
-          <p className="rounded-xl border border-white/[0.06] px-3 py-4 text-center text-xs text-slate-500">
+          <p className="rounded-xl border border-line px-3 py-4 text-center text-xs text-ink-3">
             Nothing here — every outbound message is in good shape.
           </p>
         ) : (
@@ -160,16 +160,16 @@ export default function DeliveriesCard() {
             return (
               <div
                 key={row.kind + "-" + row.id}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                className="rounded-xl border border-line bg-soft px-3 py-2"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="min-w-0 truncate text-sm text-slate-200">
-                    <span className="font-mono text-[11px] text-slate-400">
+                  <p className="min-w-0 truncate text-sm text-ink">
+                    <span className="font-mono text-[11px] text-ink-3">
                       #{row.id}
                     </span>{" "}
                     {row.label || "message"}
                     {row.channel && row.channel !== "whatsapp" ? (
-                      <span className="ml-1.5 text-[10px] text-slate-500">
+                      <span className="ml-1.5 text-[10px] text-ink-3">
                         {row.channel}
                       </span>
                     ) : null}
@@ -185,7 +185,7 @@ export default function DeliveriesCard() {
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-                  <p className="min-w-0 truncate text-[11px] text-slate-500">
+                  <p className="min-w-0 truncate text-[11px] text-ink-3">
                     {row.errorMessage
                       ? row.errorMessage
                       : status === "failed" && row.nextAttemptAt
@@ -199,7 +199,7 @@ export default function DeliveriesCard() {
                     <button
                       onClick={() => void replay(row.id)}
                       disabled={busy}
-                      className="shrink-0 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2 py-0.5 text-[11px] text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                      className="shrink-0 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2 py-0.5 text-[11px] text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
                     >
                       Replay
                     </button>

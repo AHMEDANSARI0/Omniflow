@@ -100,20 +100,20 @@ export default function BroadcastCalendarPage() {
   for (const day of data?.days ?? []) byDay.set(day.date, day);
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">
+            <h1 className="text-2xl font-semibold tracking-tight text-ink">
               Broadcast calendar
             </h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-ink-3">
               Sent and scheduled broadcasts by day.
             </p>
           </div>
           <a
             href="/dashboard/broadcasts"
-            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-400 transition hover:text-white"
+            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
           >
             Back
           </a>
@@ -123,31 +123,31 @@ export default function BroadcastCalendarPage() {
           <button
             type="button"
             onClick={() => setMonth((current) => shiftMonth(current, -1))}
-            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
             \\u2190 Prev
           </button>
-          <p className="text-sm font-medium text-white">{monthTitle(month)}</p>
+          <p className="text-sm font-medium text-ink">{monthTitle(month)}</p>
           <button
             type="button"
             onClick={() => setMonth((current) => shiftMonth(current, 1))}
-            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
             Next \\u2192
           </button>
         </div>
 
         {failed ? (
-          <p className="mt-6 text-sm text-slate-500">
+          <p className="mt-6 text-sm text-ink-3">
             The calendar is unavailable right now.
           </p>
         ) : data === null ? (
-          <p className="mt-6 text-sm text-slate-500">Loading\\u2026</p>
+          <p className="mt-6 text-sm text-ink-3">Loading\\u2026</p>
         ) : (
           <>
             <div className="mt-4 grid grid-cols-7 gap-1 text-center">
               {WEEKDAYS.map((label) => (
-                <p key={label} className="pb-1 text-[10px] uppercase text-slate-600">
+                <p key={label} className="pb-1 text-[10px] uppercase text-ink-3">
                   {label}
                 </p>
               ))}
@@ -160,16 +160,16 @@ export default function BroadcastCalendarPage() {
                 return (
                   <div
                     key={date}
-                    className="min-h-16 rounded-lg border border-white/[0.05] bg-white/[0.01] p-1"
+                    className="min-h-16 rounded-lg border border-line bg-white/[0.01] p-1"
                   >
-                    <p className="text-[10px] text-slate-600">{dayNumber}</p>
+                    <p className="text-[10px] text-ink-3">{dayNumber}</p>
                     {entry && entry.sent > 0 ? (
-                      <p className="mt-0.5 rounded bg-emerald-400/10 px-0.5 text-[9px] text-emerald-300">
+                      <p className="mt-0.5 rounded bg-emerald-400/10 px-0.5 text-[9px] text-ok">
                         {entry.sent} sent
                       </p>
                     ) : null}
                     {entry && entry.scheduled > 0 ? (
-                      <p className="mt-0.5 rounded bg-amber-400/10 px-0.5 text-[9px] text-amber-300">
+                      <p className="mt-0.5 rounded bg-amber-400/10 px-0.5 text-[9px] text-amber-600">
                         {entry.scheduled} queued
                       </p>
                     ) : null}
@@ -179,15 +179,15 @@ export default function BroadcastCalendarPage() {
             </div>
 
             {data.items.length > 0 ? (
-              <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-                <p className="text-xs font-semibold text-white">This month</p>
+              <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+                <p className="text-xs font-semibold text-ink">This month</p>
                 <ul className="mt-2 space-y-1.5">
                   {data.items.map((item) => (
                     <li
                       key={item.id}
                       className="flex items-center justify-between gap-2 text-xs"
                     >
-                      <span className="truncate text-slate-300">
+                      <span className="truncate text-ink-2">
                         {item.day.slice(8, 10)}
                         {" \\u00b7 "}
                         {item.body || "(no text)"}
@@ -195,7 +195,7 @@ export default function BroadcastCalendarPage() {
                       <span
                         className={
                           "shrink-0 " +
-                          (item.scheduled ? "text-amber-300" : "text-emerald-300")
+                          (item.scheduled ? "text-amber-600" : "text-ok")
                         }
                       >
                         {item.scheduled ? "queued" : "sent"} \\u00b7 {item.recipients}

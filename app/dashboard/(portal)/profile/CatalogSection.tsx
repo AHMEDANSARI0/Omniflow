@@ -4,18 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import type { CatalogItem, IndustryPreset } from "../../../../lib/omniflow/portal";
 
 const inputClass =
-  "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
 
-const labelClass = "mb-1.5 block text-xs font-medium text-slate-400";
+const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
 const primaryBtn =
-  "rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 
 const ghostBtn =
-  "rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs font-medium text-slate-300 transition-colors duration-300 hover:bg-white/[0.05] disabled:opacity-50";
+  "rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50";
 
 const chipClass =
-  "rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500";
+  "rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-3";
 
 interface ItemFormState {
   id: number | null;
@@ -236,9 +236,9 @@ export default function CatalogSection() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="text-sm font-semibold text-white">Quick setup</h2>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="text-sm font-semibold text-ink">Quick setup</h2>
+        <p className="mt-1 text-xs leading-relaxed text-ink-3">
           Pick your business type and we will load proven starter answers
           (delivery, payments, policies) into your knowledge base. You can
           edit or remove them anytime.
@@ -267,13 +267,13 @@ export default function CatalogSection() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
+      <div className="rounded-2xl border border-line bg-soft p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-white">
+            <h2 className="text-sm font-semibold text-ink">
               Products &amp; services
             </h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            <p className="mt-1 text-xs leading-relaxed text-ink-3">
               Your offering at a glance — what you sell and at what price.
             </p>
           </div>
@@ -294,7 +294,7 @@ export default function CatalogSection() {
             className={
               "mt-4 rounded-xl border px-4 py-3 text-xs leading-relaxed " +
               (message.kind === "ok"
-                ? "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-200/90"
+                ? "border-emerald-400/20 bg-emerald-400/[0.05] text-ok/90"
                 : "border-red-400/20 bg-red-400/[0.05] text-red-200/90")
             }
           >
@@ -303,7 +303,7 @@ export default function CatalogSection() {
         )}
 
         {form && (
-          <div className="mt-4 rounded-2xl border border-cyan-400/15 bg-white/[0.02] p-5">
+          <div className="mt-4 rounded-2xl border border-cyan-400/15 bg-soft p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="itemKind" className={labelClass}>
@@ -365,14 +365,14 @@ export default function CatalogSection() {
               />
             </div>
             <div className="mt-4 flex items-center justify-between gap-4">
-              <label className="flex items-center gap-2 text-xs text-slate-400">
+              <label className="flex items-center gap-2 text-xs text-ink-3">
                 <input
                   type="checkbox"
                   checked={form.isActive}
                   onChange={(e) =>
                     setForm({ ...form, isActive: e.target.checked })
                   }
-                  className="h-4 w-4 rounded border-white/20 bg-white/[0.03]"
+                  className="h-4 w-4 rounded border-white/20 bg-soft"
                 />
                 Active
               </label>
@@ -398,9 +398,9 @@ export default function CatalogSection() {
         )}
 
         {!loaded ? (
-          <p className="mt-4 text-xs text-slate-600">Loading catalog...</p>
+          <p className="mt-4 text-xs text-ink-3">Loading catalog...</p>
         ) : items.length === 0 ? (
-          <p className="mt-4 text-xs leading-relaxed text-slate-600">
+          <p className="mt-4 text-xs leading-relaxed text-ink-3">
             No items yet — add your first product or service above.
           </p>
         ) : (
@@ -408,28 +408,28 @@ export default function CatalogSection() {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-4"
+                className="rounded-xl border border-line bg-white/[0.01] p-4"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-medium text-white">
+                      <h3 className="text-sm font-medium text-ink">
                         {item.name}
                       </h3>
                       <span className={chipClass}>{item.kind}</span>
                       {!item.isActive && (
-                        <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-amber-300/80">
+                        <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-amber-600/80">
                           Hidden
                         </span>
                       )}
                     </div>
                     {item.priceText && (
-                      <p className="mt-1 text-xs text-slate-400">
+                      <p className="mt-1 text-xs text-ink-3">
                         {item.priceText}
                       </p>
                     )}
                     {item.notes && (
-                      <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                      <p className="mt-1 text-[11px] leading-relaxed text-ink-3">
                         {item.notes}
                       </p>
                     )}
@@ -456,7 +456,7 @@ export default function CatalogSection() {
                       type="button"
                       onClick={() => removeItem(item.id)}
                       disabled={busy}
-                      className="rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-2 text-xs font-medium text-red-300/80 transition-colors duration-300 hover:bg-red-400/[0.09] disabled:opacity-50"
+                      className="rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-2 text-xs font-medium text-danger/80 transition-colors duration-300 hover:bg-red-400/[0.09] disabled:opacity-50"
                     >
                       Delete
                     </button>

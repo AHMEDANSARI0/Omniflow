@@ -87,37 +87,37 @@ export default function DailyBrief() {
   if (failed || !brief) return null;
 
   return (
-    <section className="mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+    <section className="mb-6 rounded-2xl border border-line bg-soft p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-white">Today</p>
+        <p className="text-xs font-semibold text-ink">Today</p>
         <div className="flex gap-3 text-[10px]">
           <Link
             href="/dashboard/growth"
-            className="text-cyan-300 hover:underline"
+            className="text-brand hover:underline"
           >
             Growth
           </Link>
           <Link
             href="/dashboard/winback"
-            className="text-cyan-300 hover:underline"
+            className="text-brand hover:underline"
           >
             Win-back
           </Link>
           <Link
             href="/dashboard/customers"
-            className="text-cyan-300 hover:underline"
+            className="text-brand hover:underline"
           >
             Customers
           </Link>
         </div>
       </div>
-      <ul className="mt-2 space-y-1 text-xs text-slate-300">
+      <ul className="mt-2 space-y-1 text-xs text-ink-2">
         <li>
           Rs {brief.revenue.toLocaleString()} this week
           {brief.delta !== null ? (
             <span
               className={
-                brief.delta >= 0 ? " text-emerald-300" : " text-rose-300"
+                brief.delta >= 0 ? " text-ok" : " text-danger"
               }
             >
               {" "}
@@ -127,7 +127,7 @@ export default function DailyBrief() {
           ) : null}
         </li>
         <li>
-          <span className="text-amber-300">
+          <span className="text-amber-600">
             {brief.carts + brief.reorders} to recover
           </span>{" "}
           · {brief.carts} open carts, {brief.reorders} reorders due
@@ -135,7 +135,7 @@ export default function DailyBrief() {
         </li>
         {brief.atRisk > 0 ? (
           <li>
-            <span className="text-rose-300">
+            <span className="text-danger">
               {brief.atRisk} customers cooling or at risk
             </span>
           </li>
@@ -146,14 +146,14 @@ export default function DailyBrief() {
           <p className="text-[11px] font-semibold text-amber-200">
             Needs attention
           </p>
-          <ul className="mt-1 space-y-0.5 text-[11px] text-slate-300">
+          <ul className="mt-1 space-y-0.5 text-[11px] text-ink-2">
             {brief.deadDeliveries > 0 ? (
               <li>
                 {brief.deadDeliveries} delivery failure
                 {brief.deadDeliveries === 1 ? "" : "s"} stuck in the queue —{" "}
                 <Link
                   href="/dashboard/settings"
-                  className="text-cyan-300 hover:underline"
+                  className="text-brand hover:underline"
                 >
                   replay from Deliveries
                 </Link>
@@ -166,8 +166,8 @@ export default function DailyBrief() {
               </li>
             ) : null}
           </ul>
-          <p className="mt-1.5 text-[11px] text-slate-500">
-            <span className="font-semibold text-slate-400">
+          <p className="mt-1.5 text-[11px] text-ink-3">
+            <span className="font-semibold text-ink-3">
               Recommended:
             </span>{" "}
             {brief.deadDeliveries > 0

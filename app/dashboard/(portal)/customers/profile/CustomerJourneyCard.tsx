@@ -126,9 +126,9 @@ export default function CustomerJourneyCard({ contact }: { contact: string }) {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-      <p className="text-xs font-semibold text-white">Journey</p>
-      <p className="mt-0.5 text-[11px] text-slate-500">
+    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+      <p className="text-xs font-semibold text-ink">Journey</p>
+      <p className="mt-0.5 text-[11px] text-ink-3">
         Where this customer stands. A fully paid order moves them to
         &quot;Customer&quot; automatically; every move is logged as an event.
       </p>
@@ -144,8 +144,8 @@ export default function CustomerJourneyCard({ contact }: { contact: string }) {
               className={
                 "rounded-full border px-3 py-1 text-[11px] transition-colors " +
                 (stage.id === currentStageId
-                  ? "border-emerald-400/40 bg-emerald-400/[0.12] text-emerald-200"
-                  : "border-white/[0.08] bg-white/[0.02] text-slate-400 hover:bg-white/[0.05]")
+                  ? "border-emerald-400/40 bg-emerald-400/[0.12] text-ok"
+                  : "border-line bg-soft text-ink-3 hover:bg-soft")
               }
             >
               {stage.name}
@@ -156,12 +156,12 @@ export default function CustomerJourneyCard({ contact }: { contact: string }) {
             value={newStage}
             onChange={(event) => setNewStage(event.target.value)}
             placeholder="new stage"
-            className="w-24 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[11px] text-slate-200 outline-none placeholder:text-slate-600"
+            className="w-24 rounded-lg border border-line bg-soft px-2 py-1 text-[11px] text-ink outline-none placeholder:text-ink-3"
           />
           <button
             onClick={() => void addStage()}
             disabled={busy || !newStage.trim()}
-            className="text-[11px] text-cyan-300 hover:underline disabled:opacity-40"
+            className="text-[11px] text-brand hover:underline disabled:opacity-40"
           >
             Add
           </button>
@@ -169,7 +169,7 @@ export default function CustomerJourneyCard({ contact }: { contact: string }) {
       </div>
 
       {events.length > 0 ? (
-        <p className="mt-2 text-[10px] text-slate-600">
+        <p className="mt-2 text-[10px] text-ink-3">
           Last move: {events[0].stage_name}
           {events[0].source !== "owner" ? " (auto)" : ""} &middot;{" "}
           {formatWhen(events[0].created_at)}
@@ -177,8 +177,8 @@ export default function CustomerJourneyCard({ contact }: { contact: string }) {
       ) : null}
 
       {activity.length > 0 ? (
-        <div className="mt-3 border-t border-white/[0.05] pt-2">
-          <p className="text-[11px] font-semibold text-slate-300">
+        <div className="mt-3 border-t border-line pt-2">
+          <p className="text-[11px] font-semibold text-ink-2">
             Why this happened
           </p>
           <ul className="mt-1 space-y-0.5">
@@ -187,11 +187,11 @@ export default function CustomerJourneyCard({ contact }: { contact: string }) {
                 key={index}
                 className="flex items-baseline justify-between gap-2 text-[10px]"
               >
-                <span className="min-w-0 truncate text-slate-500">
-                  <span className="text-slate-400">{row.action}</span>
+                <span className="min-w-0 truncate text-ink-3">
+                  <span className="text-ink-3">{row.action}</span>
                   {row.note ? " \u2014 " + row.note : ""}
                 </span>
-                <span className="shrink-0 text-slate-600">
+                <span className="shrink-0 text-ink-3">
                   {formatWhen(row.created_at)}
                 </span>
               </li>

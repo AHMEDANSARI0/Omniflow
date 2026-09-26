@@ -385,25 +385,25 @@ export default function AutomationsPage() {
 
   if (expired) {
     return (
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-        <p className="text-sm text-slate-300">Session expired.</p>
+      <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <p className="text-sm text-ink-2">Session expired.</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-base font-semibold text-white">Automations</h1>
-      <p className="mt-0.5 text-xs text-slate-500">
+      <h1 className="text-base font-semibold text-ink">Automations</h1>
+      <p className="mt-0.5 text-xs text-ink-3">
         Simple keyword rules that run instantly on every incoming message —
         WhatsApp and website. No AI, fully deterministic.
       </p>
 
-      <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-300">Welcome message</p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
+            <p className="text-xs font-medium text-ink-2">Welcome message</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
               Sent automatically when a customer messages for the first time.
               Use {"{{name}}"} to greet by first name.
             </p>
@@ -414,8 +414,8 @@ export default function AutomationsPage() {
             className={
               "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
               (welcomeEnabled
-                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                : "border-white/[0.08] bg-white/[0.03] text-slate-500")
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line bg-soft text-ink-3")
             }
           >
             {welcomeEnabled ? "On" : "Off"}
@@ -427,17 +427,17 @@ export default function AutomationsPage() {
           maxLength={500}
           rows={3}
           placeholder="Hi! Thanks for reaching out — how can we help you today?"
-          className="mt-3 w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          className="mt-3 w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
         />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[10px] text-slate-600">
+          <span className="text-[10px] text-ink-3">
             {welcomeText.trim().length}/500
           </span>
           <button
             type="button"
             onClick={() => void saveWelcome()}
             disabled={welcomeBusy || (welcomeEnabled && !welcomeText.trim())}
-            className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
           >
             {welcomeBusy ? "Saving…" : "Save welcome message"}
           </button>
@@ -446,7 +446,7 @@ export default function AutomationsPage() {
           <p
             className={
               "mt-2 text-xs " +
-              (welcomeMessage.kind === "ok" ? "text-emerald-300" : "text-red-300")
+              (welcomeMessage.kind === "ok" ? "text-ok" : "text-danger")
             }
           >
             {welcomeMessage.text}
@@ -454,13 +454,13 @@ export default function AutomationsPage() {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-300">
+            <p className="text-xs font-medium text-ink-2">
               Auto-close idle chats
             </p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
               Open chats with no new messages for this many hours close
               automatically, so the open count stays honest.
             </p>
@@ -471,8 +471,8 @@ export default function AutomationsPage() {
             className={
               "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
               (closeEnabled
-                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                : "border-white/[0.08] bg-white/[0.03] text-slate-500")
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line bg-soft text-ink-3")
             }
           >
             {closeEnabled ? "On" : "Off"}
@@ -485,16 +485,16 @@ export default function AutomationsPage() {
             max={720}
             value={closeHours}
             onChange={(event) => setCloseHours(event.target.value)}
-            className="w-full sm:w-32 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-sm text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="w-full sm:w-32 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink outline-none transition-colors duration-300 focus:border-brand/40"
           />
-          <span className="text-[11px] text-slate-600">
+          <span className="text-[11px] text-ink-3">
             hours of silence before closing (1–720)
           </span>
           <button
             type="button"
             onClick={() => void saveAutoClose()}
             disabled={closeBusy}
-            className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50 sm:ml-auto"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50 sm:ml-auto"
           >
             {closeBusy ? "Saving…" : "Save auto-close"}
           </button>
@@ -503,7 +503,7 @@ export default function AutomationsPage() {
           <p
             className={
               "mt-2 text-xs " +
-              (closeMessage.kind === "ok" ? "text-emerald-300" : "text-red-300")
+              (closeMessage.kind === "ok" ? "text-ok" : "text-danger")
             }
           >
             {closeMessage.text}
@@ -511,13 +511,13 @@ export default function AutomationsPage() {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-300">
+            <p className="text-xs font-medium text-ink-2">
               Auto-assign new chats
             </p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
               Every new chat goes straight to the teammate with the fewest
               open chats right now — fair spread, no manual triage.
             </p>
@@ -528,8 +528,8 @@ export default function AutomationsPage() {
             className={
               "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
               (assignEnabled
-                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                : "border-white/[0.08] bg-white/[0.03] text-slate-500")
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line bg-soft text-ink-3")
             }
           >
             {assignEnabled ? "On" : "Off"}
@@ -540,7 +540,7 @@ export default function AutomationsPage() {
             type="button"
             onClick={() => void saveAutoAssign()}
             disabled={assignBusy}
-            className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
           >
             {assignBusy ? "Saving…" : "Save auto-assign"}
           </button>
@@ -549,7 +549,7 @@ export default function AutomationsPage() {
           <p
             className={
               "mt-2 text-xs " +
-              (assignMessage.kind === "ok" ? "text-emerald-300" : "text-red-300")
+              (assignMessage.kind === "ok" ? "text-ok" : "text-danger")
             }
           >
             {assignMessage.text}
@@ -557,8 +557,8 @@ export default function AutomationsPage() {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
-        <p className="text-xs font-medium text-slate-300">
+      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <p className="text-xs font-medium text-ink-2">
           When a message contains…
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -567,7 +567,7 @@ export default function AutomationsPage() {
             onChange={(event) => setKeyword(event.target.value)}
             maxLength={40}
             placeholder="keyword, e.g. wholesale"
-            className="w-full sm:w-56 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <select
             value={actionType}
@@ -575,7 +575,7 @@ export default function AutomationsPage() {
               setActionType(event.target.value as "add_tag" | "assign");
               setActionValue("");
             }}
-            className="w-full sm:w-44 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white outline-none"
+            className="w-full sm:w-44 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink outline-none"
           >
             <option value="add_tag">Add label…</option>
             <option value="assign">Assign to…</option>
@@ -586,13 +586,13 @@ export default function AutomationsPage() {
               onChange={(event) => setActionValue(event.target.value)}
               maxLength={24}
               placeholder="label, e.g. pricing"
-              className="w-full flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+              className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
             />
           ) : (
             <select
               value={actionValue}
               onChange={(event) => setActionValue(event.target.value)}
-              className="w-full flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white outline-none"
+              className="w-full flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink outline-none"
             >
               <option value="">Choose team member…</option>
               {teamMembers.map((member) => (
@@ -608,7 +608,7 @@ export default function AutomationsPage() {
             disabled={
               busy || !keyword.trim() || !actionValue.trim()
             }
-            className="shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+            className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
           >
             {busy ? "Working…" : "Add automation"}
           </button>
@@ -617,7 +617,7 @@ export default function AutomationsPage() {
           <p
             className={
               "mt-2 text-xs " +
-              (message.kind === "ok" ? "text-emerald-300" : "text-red-300")
+              (message.kind === "ok" ? "text-ok" : "text-danger")
             }
           >
             {message.text}
@@ -630,13 +630,13 @@ export default function AutomationsPage() {
           {[0, 1].map((index) => (
             <div
               key={index}
-              className="h-16 rounded-2xl border border-white/[0.06] bg-white/[0.015]"
+              className="h-16 rounded-2xl border border-line bg-soft"
             />
           ))}
         </div>
       ) : rules.length === 0 ? (
-        <div className="mt-4 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">
+        <div className="mt-4 rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">
             No automations yet — add your first rule above (for example
             &quot;wholesale&quot; adds the label #wholesale).
           </p>
@@ -646,19 +646,19 @@ export default function AutomationsPage() {
           {rules.map((rule) => (
             <li
               key={rule.id}
-              className="flex flex-col gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-2xl border border-line bg-soft p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
-                <p className="text-sm text-white">
-                  <span className="rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-1.5 py-0.5 text-xs font-semibold text-cyan-300">
+                <p className="text-sm text-ink">
+                  <span className="rounded-md border border-brand/20 bg-brand-soft px-1.5 py-0.5 text-xs font-semibold text-brand">
                     {rule.keyword}
                   </span>
-                  <span className="mx-2 text-slate-500">→</span>
-                  <span className="text-xs text-slate-300">
+                  <span className="mx-2 text-ink-3">→</span>
+                  <span className="text-xs text-ink-2">
                     {describeAction(rule)}
                   </span>
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className="mt-1 text-[11px] text-ink-3">
                   Fired {rule.timesTriggered}
                   {rule.timesTriggered === 1 ? " time" : " times"}
                 </p>
@@ -671,8 +671,8 @@ export default function AutomationsPage() {
                   className={
                     "rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-colors duration-300 disabled:opacity-40 " +
                     (rule.isActive
-                      ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                      : "border-white/[0.08] bg-white/[0.02] text-slate-400")
+                      ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                      : "border-line bg-soft text-ink-3")
                   }
                 >
                   {rule.isActive ? "Active" : "Paused"}
@@ -681,7 +681,7 @@ export default function AutomationsPage() {
                   type="button"
                   onClick={() => void removeRule(rule)}
                   disabled={busy}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-[11px] text-slate-400 transition-colors duration-300 hover:text-white disabled:opacity-40"
+                  className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-[11px] text-ink-3 transition-colors duration-300 hover:text-ink disabled:opacity-40"
                 >
                   Delete
                 </button>

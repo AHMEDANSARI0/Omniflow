@@ -1,8 +1,73 @@
 @import "tailwindcss";
 
+/* ============================================================
+   OmniFlow design tokens — light-first SaaS system.
+   Canvas is neutral, brand is indigo, AI is violet, flow (cyan)
+   is a support accent only. Dark sections are intentional.
+   ============================================================ */
+
+@theme {
+  /* Surfaces */
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+  --color-soft: #f3f6fa;
+
+  /* Ink */
+  --color-ink: #0b1220;
+  --color-ink-2: #526071;
+  --color-ink-3: #7a8797;
+
+  /* Lines */
+  --color-line: #e5eaf0;
+  --color-line-2: #d9e1ea;
+
+  /* Brand (primary indigo) */
+  --color-brand: #4f46e5;
+  --color-brand-2: #4338ca;
+  --color-brand-soft: #eef2ff;
+
+  /* AI accent (violet) */
+  --color-ai: #7c3aed;
+  --color-ai-soft: #f3e8ff;
+
+  /* Flow support accent (cyan) */
+  --color-flow: #06b6d4;
+  --color-flow-soft: #ecfeff;
+
+  /* Status */
+  --color-ok: #16a34a;
+  --color-ok-soft: #ecfdf3;
+  --color-warn: #f59e0b;
+  --color-warn-soft: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+
+  /* Dark sections */
+  --color-night: #080d18;
+  --color-night-2: #0d1422;
+  --color-snow: #f8fafc;
+  --color-night-muted: #94a3b8;
+
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), var(--font-inter), ui-sans-serif,
+    system-ui, sans-serif;
+
+  /* Radii */
+  --radius-xl2: 20px;
+  --radius-xl3: 24px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgba(11, 18, 32, 0.04),
+    0 8px 24px -16px rgba(11, 18, 32, 0.12);
+  --shadow-card-hover: 0 2px 4px rgba(11, 18, 32, 0.04),
+    0 16px 40px -20px rgba(11, 18, 32, 0.18);
+  --shadow-cta: 0 8px 24px -10px rgba(79, 70, 229, 0.5);
+}
+
 :root {
-  --background: #07111f;
-  --foreground: #f8fafc;
+  --background: #f8fafc;
+  --foreground: #0b1220;
 }
 
 html {
@@ -23,39 +88,39 @@ body {
 /* Selection */
 
 ::selection {
-  background: rgba(34, 211, 238, 0.22);
-  color: #ffffff;
+  background: rgba(79, 70, 229, 0.14);
+  color: #0b1220;
 }
 
 ::-moz-selection {
-  background: rgba(34, 211, 238, 0.22);
-  color: #ffffff;
+  background: rgba(79, 70, 229, 0.14);
+  color: #0b1220;
 }
 
-/* Premium scrollbar */
+/* Premium scrollbar (light) */
 
 ::-webkit-scrollbar {
   width: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #050d18;
+  background: #f3f6fa;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.18);
+  background: rgba(82, 96, 113, 0.25);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.35);
+  background: rgba(79, 70, 229, 0.45);
 }
 
 /* Firefox */
 
 html {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.18) #050d18;
+  scrollbar-color: rgba(82, 96, 113, 0.25) #f3f6fa;
 }
 
 /* Better anchor behavior */
@@ -112,6 +177,7 @@ a {
     scroll-margin-top: 85px;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -122,96 +188,204 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
 /* ============================================================
    Performance-friendly continuous animations (compositor-only)
    ============================================================ */
 
 @keyframes of-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes of-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(6px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes of-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes of-spin-rev {
-  to { transform: rotate(-360deg); }
+  to {
+    transform: rotate(-360deg);
+  }
 }
 
 @keyframes of-grid-drift {
-  to { transform: translate(64px, 64px); }
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(56px, 56px);
+  }
 }
 
 @keyframes of-orb-a {
-  0%, 100% { transform: translate(0, 0); opacity: 0.5; }
-  50% { transform: translate(14px, -28px); opacity: 0.9; }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(40px, -30px) scale(1.08);
+    opacity: 0.75;
+  }
 }
 
 @keyframes of-orb-b {
-  0%, 100% { transform: translate(0, 0); opacity: 0.4; }
-  50% { transform: translate(-12px, 24px); opacity: 0.75; }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-36px, 24px) scale(1.1);
+    opacity: 0.65;
+  }
 }
 
 @keyframes of-orb-c {
-  0%, 100% { transform: translateY(0); opacity: 0.35; }
-  50% { transform: translateY(-18px); opacity: 0.7; }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate(24px, 32px) scale(1.05);
+    opacity: 0.6;
+  }
 }
 
 @keyframes of-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
-.of-float { animation: of-float 5s ease-in-out infinite; will-change: transform; }
-.of-bob { animation: of-bob 2s ease-in-out infinite; }
-.of-spin-slow { animation: of-spin 28s linear infinite; will-change: transform; }
-.of-spin-rev { animation: of-spin-rev 35s linear infinite; will-change: transform; }
-.of-grid-drift { animation: of-grid-drift 30s linear infinite; will-change: transform; }
-.of-orb-a { animation: of-orb-a 13s ease-in-out infinite; will-change: transform, opacity; }
-.of-orb-b { animation: of-orb-b 17s ease-in-out infinite 2s; will-change: transform, opacity; }
-.of-orb-c { animation: of-orb-c 21s ease-in-out infinite 5s; will-change: transform, opacity; }
-.of-pulse { animation: of-pulse 2s ease-in-out infinite; }
-/* ===== Hexagon grid + blinking dots ===== */
+.of-float {
+  animation: of-float 5s ease-in-out infinite;
+  will-change: transform;
+}
+.of-bob {
+  animation: of-bob 2s ease-in-out infinite;
+}
+.of-spin-slow {
+  animation: of-spin 28s linear infinite;
+  will-change: transform;
+}
+.of-spin-rev {
+  animation: of-spin-rev 35s linear infinite;
+  will-change: transform;
+}
+.of-grid-drift {
+  animation: of-grid-drift 30s linear infinite;
+  will-change: transform;
+}
+.of-orb-a {
+  animation: of-orb-a 13s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.of-orb-b {
+  animation: of-orb-b 17s ease-in-out infinite 2s;
+  will-change: transform, opacity;
+}
+.of-orb-c {
+  animation: of-orb-c 21s ease-in-out infinite 5s;
+  will-change: transform, opacity;
+}
+.of-pulse {
+  animation: of-pulse 2s ease-in-out infinite;
+}
 
 @keyframes of-hex-drift {
-  to { transform: translate(56px, 100px); }
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(-80px, -80px);
+  }
 }
 
 @keyframes of-dot-blink {
-  0%, 100% { opacity: 0.1; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
-.of-hex-drift { animation: of-hex-drift 60s linear infinite; will-change: transform; }
-.of-dot-blink { animation: of-dot-blink 3.2s ease-in-out infinite; }
+.of-hex-drift {
+  animation: of-hex-drift 60s linear infinite;
+  will-change: transform;
+}
+.of-dot-blink {
+  animation: of-dot-blink 3.2s ease-in-out infinite;
+}
 
 @keyframes of-ripple {
-  0% { transform: scale(1); opacity: 0.3; }
-  100% { transform: scale(1.5); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }
 
-.of-ripple { animation: of-ripple 2.5s ease-out infinite; will-change: transform, opacity; }
+.of-ripple {
+  animation: of-ripple 2.5s ease-out infinite;
+  will-change: transform, opacity;
+}
 
 @keyframes of-loadbar {
-  0%, 100% { transform: scaleX(0.2); }
-  50% { transform: scaleX(0.85); }
+  0%,
+  100% {
+    transform: scaleX(0.2);
+  }
+  50% {
+    transform: scaleX(0.85);
+  }
 }
 
-.of-loadbar { animation: of-loadbar 4s ease-in-out infinite; will-change: transform; }
+.of-loadbar {
+  animation: of-loadbar 4s ease-in-out infinite;
+  will-change: transform;
+}
 
 @keyframes of-borderpulse {
-  0%, 100% { border-color: rgba(139, 92, 246, 0.08); }
-  50% { border-color: rgba(34, 211, 238, 0.18); }
+  0%,
+  100% {
+    border-color: rgba(79, 70, 229, 0.14);
+  }
+  50% {
+    border-color: rgba(124, 58, 237, 0.3);
+  }
 }
 
-.of-borderpulse { animation: of-borderpulse 3s ease-in-out infinite; }
-
+.of-borderpulse {
+  animation: of-borderpulse 3s ease-in-out infinite;
+}
 
 @media (max-width: 640px) {
   input,
@@ -236,7 +410,6 @@ a {
   animation: of-fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-
 /* Scroll reveal (server sections + client Reveal islands) */
 
 .of-reveal.of-lift {
@@ -258,4 +431,84 @@ html.of-js .of-reveal.of-reveal-in {
   transform: translateY(0);
   transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
     transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================================
+   Shared brand surfaces
+   ============================================================ */
+
+/* The signature OmniFlow gradient — accents only, never a
+   section background by default. */
+.of-gradient {
+  background-image: linear-gradient(
+    135deg,
+    #4f46e5 0%,
+    #7c3aed 55%,
+    #06b6d4 100%
+  );
+}
+
+/* Soft hero glow for light sections (indigo -> violet -> cyan). */
+.of-hero-glow {
+  background:
+    radial-gradient(
+      42rem 30rem ellipse at 85% -10%,
+      rgba(124, 58, 237, 0.1),
+      transparent 60%
+    ),
+    radial-gradient(
+      38rem 28rem ellipse at 8% 8%,
+      rgba(79, 70, 229, 0.08),
+      transparent 55%
+    ),
+    radial-gradient(
+      30rem 24rem ellipse at 60% 110%,
+      rgba(6, 182, 212, 0.07),
+      transparent 60%
+    );
+}
+
+/* Ambient glow used INSIDE dark sections only. */
+.of-night-glow {
+  background:
+    radial-gradient(
+      46rem 32rem ellipse at 50% -20%,
+      rgba(79, 70, 229, 0.28),
+      transparent 60%
+    ),
+    radial-gradient(
+      36rem 26rem ellipse at 88% 80%,
+      rgba(6, 182, 212, 0.12),
+      transparent 60%
+    ),
+    radial-gradient(
+      30rem 24rem ellipse at 6% 90%,
+      rgba(124, 58, 237, 0.16),
+      transparent 60%
+    );
+}
+
+/* Final CTA gradient band (blue -> indigo -> violet). */
+.of-cta-gradient {
+  background-image: linear-gradient(
+    120deg,
+    #2563eb 0%,
+    #6366f1 48%,
+    #8b5cf6 100%
+  );
+}
+
+/* Hairline gradient border helper for premium cards. */
+.of-ring-gradient {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(135deg, rgba(79, 70, 229, 0.35), rgba(124, 58, 237, 0.2), rgba(6, 182, 212, 0.3))
+      border-box;
+}
+
+/* Subtle dot texture for light soft sections. */
+.of-dot-grid {
+  background-image: radial-gradient(rgba(11, 18, 32, 0.07) 1px, transparent 1px);
+  background-size: 22px 22px;
 }

@@ -81,24 +81,24 @@ export default function WeeklyPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
           Workspace
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Weekly summary
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
+        <p className="mt-1.5 text-sm text-ink-3">
           The last 7 days at a glance — chats, messages, orders and ratings.
         </p>
 
         {failed ? (
-          <p className="mt-6 text-sm text-slate-500">
+          <p className="mt-6 text-sm text-ink-3">
             The summary is unavailable right now.
           </p>
         ) : summary === null ? (
-          <p className="mt-6 text-sm text-slate-500">Loading\\u2026</p>
+          <p className="mt-6 text-sm text-ink-3">Loading\\u2026</p>
         ) : (
           <>
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -117,22 +117,22 @@ export default function WeeklyPage() {
               ].map((tile) => (
                 <div
                   key={tile.label}
-                  className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-3 text-center"
+                  className="rounded-2xl border border-line bg-soft p-3 text-center"
                 >
-                  <p className="text-xl font-semibold text-white">{tile.value}</p>
-                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-slate-500">
+                  <p className="text-xl font-semibold text-ink">{tile.value}</p>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-3">
                     {tile.label}
                   </p>
                 </div>
               ))}
             </div>
 
-            <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-              <p className="text-xs font-semibold text-white">Day by day</p>
+            <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+              <p className="text-xs font-semibold text-ink">Day by day</p>
               <ul className="mt-3 space-y-2">
                 {summary.days.map((day) => (
                   <li key={day.day} className="flex items-center gap-3">
-                    <span className="w-10 shrink-0 text-[11px] text-slate-500">
+                    <span className="w-10 shrink-0 text-[11px] text-ink-3">
                       {dayLabel(day.day)}
                     </span>
                     <span className="flex-1">
@@ -151,13 +151,13 @@ export default function WeeklyPage() {
                         />
                       </span>
                     </span>
-                    <span className="w-24 shrink-0 text-right text-[11px] text-slate-500">
+                    <span className="w-24 shrink-0 text-right text-[11px] text-ink-3">
                       {day.inbound} in \\u00b7 {day.chats} chats
                     </span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-[10px] text-slate-600">
+              <p className="mt-3 text-[10px] text-ink-3">
                 Cyan = customer messages, green = new chats.
               </p>
             </section>

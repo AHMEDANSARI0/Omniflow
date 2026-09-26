@@ -175,11 +175,11 @@ export default function TeamCard({
   const activeMembers = members.filter((member) => member.status === "active");
 
   return (
-    <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+    <div className="mb-4 rounded-2xl border border-line bg-soft p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-xs font-semibold text-white">Team</h2>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+          <h2 className="text-xs font-semibold text-ink">Team</h2>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
             Assign this conversation and keep internal notes — notes stay
             private to your team.
           </p>
@@ -188,7 +188,7 @@ export default function TeamCard({
           value={assignedTo ?? ""}
           onChange={(event) => assign(event.target.value)}
           disabled={busyAssign}
-          className="w-full shrink-0 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40 disabled:opacity-50 sm:w-56"
+          className="w-full shrink-0 rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none transition-colors duration-300 focus:border-brand/40 disabled:opacity-50 sm:w-56"
         >
           <option value="">Unassigned</option>
           {activeMembers.map((member) => (
@@ -199,24 +199,24 @@ export default function TeamCard({
         </select>
       </div>
 
-      <div className="mt-4 border-t border-white/[0.06] pt-4">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+      <div className="mt-4 border-t border-line pt-4">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
           Internal notes
         </h3>
         {notesLoaded && notes.length === 0 ? (
-          <p className="mt-2 text-[11px] text-slate-600">No notes yet.</p>
+          <p className="mt-2 text-[11px] text-ink-3">No notes yet.</p>
         ) : (
           <ul className="mt-2 space-y-2">
             {notes.map((note) => (
               <li
                 key={note.id}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                className="rounded-xl border border-line bg-soft px-3 py-2"
               >
-                <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   {note.authorName || note.authorEmail}
                   {note.createdAt ? " · " + formatWhen(note.createdAt) : ""}
                 </p>
-                <p className="mt-1 whitespace-pre-wrap break-words text-xs text-slate-300">
+                <p className="mt-1 whitespace-pre-wrap break-words text-xs text-ink-2">
                   {note.body}
                 </p>
               </li>
@@ -230,13 +230,13 @@ export default function TeamCard({
             rows={2}
             maxLength={2000}
             placeholder="Internal note — never sent to the customer"
-            className="w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-xs text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-xs text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <button
             type="button"
             onClick={addNote}
             disabled={busyNote || !draft.trim()}
-            className="shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50 sm:w-auto"
+            className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50 sm:w-auto"
           >
             {busyNote ? "Saving…" : "Add note"}
           </button>
@@ -245,7 +245,7 @@ export default function TeamCard({
           <p
             className={
               "mt-2 text-[11px] " +
-              (message.kind === "ok" ? "text-emerald-300" : "text-red-300")
+              (message.kind === "ok" ? "text-ok" : "text-danger")
             }
           >
             {message.text}

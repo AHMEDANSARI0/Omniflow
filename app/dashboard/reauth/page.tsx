@@ -35,19 +35,19 @@ export default function DashboardReauthenticationPage() {
   }, [router]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#07111f] px-5">
-      <div className="w-full max-w-sm rounded-2xl border border-white/[0.07] bg-white/[0.02] p-7 text-center">
-        <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06]">
+    <main className="flex min-h-screen items-center justify-center bg-canvas px-5">
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-soft p-7 text-center">
+        <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-brand-soft">
           <span className="of-pulse h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]" />
         </div>
-        <h1 className="text-base font-semibold text-white">OmniFlow session</h1>
-        <p className="mt-2 text-sm text-slate-400" aria-live="polite">
+        <h1 className="text-base font-semibold text-ink">OmniFlow session</h1>
+        <p className="mt-2 text-sm text-ink-3" aria-live="polite">
           {message}
         </p>
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="mt-5 rounded-xl border border-white/[0.1] px-4 py-2 text-xs text-slate-300 transition-colors hover:border-cyan-400/30 hover:text-white"
+          className="mt-5 rounded-xl border border-line-2 px-4 py-2 text-xs text-ink-2 transition-colors hover:border-brand/30 hover:text-ink"
         >
           Retry
         </button>

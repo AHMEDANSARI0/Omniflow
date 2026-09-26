@@ -231,35 +231,35 @@ export default function SegmentsPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
             OmniFlow
           </p>
-          <h1 className="text-2xl font-semibold text-white">Segments</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-ink">Segments</h1>
+          <p className="mt-1 text-sm text-ink-3">
             Save customer groups with simple filters, then message the whole
             group. Counts stay live.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-          <p className="text-sm font-medium text-slate-200">New segment</p>
+        <div className="rounded-2xl border border-line bg-soft p-5">
+          <p className="text-sm font-medium text-ink">New segment</p>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Group name, e.g. Hot leads gone quiet"
-            className="mt-3 w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="mt-3 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <select
               value={leadTemp}
               onChange={(event) => setLeadTemp(event.target.value)}
-              className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/40"
+              className="rounded-xl border border-line bg-soft px-3 py-2.5 text-sm text-ink outline-none focus:border-brand/40"
             >
               {LEAD_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-slate-900">
+                <option key={option.value} value={option.value} className="bg-soft">
                   {option.label}
                 </option>
               ))}
@@ -267,10 +267,10 @@ export default function SegmentsPage() {
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
-              className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/40"
+              className="rounded-xl border border-line bg-soft px-3 py-2.5 text-sm text-ink outline-none focus:border-brand/40"
             >
               {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-slate-900">
+                <option key={option.value} value={option.value} className="bg-soft">
                   {option.label}
                 </option>
               ))}
@@ -278,10 +278,10 @@ export default function SegmentsPage() {
             <select
               value={stage}
               onChange={(event) => setStage(event.target.value)}
-              className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/40"
+              className="rounded-xl border border-line bg-soft px-3 py-2.5 text-sm text-ink outline-none focus:border-brand/40"
             >
               {STAGE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-slate-900">
+                <option key={option.value} value={option.value} className="bg-soft">
                   {option.label}
                 </option>
               ))}
@@ -293,13 +293,13 @@ export default function SegmentsPage() {
               value={idleDays}
               onChange={(event) => setIdleDays(event.target.value)}
               placeholder="Quiet for N days (optional)"
-              className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:border-cyan-400/40"
+              className="rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
             />
             <input
               value={tag}
               onChange={(event) => setTag(event.target.value)}
               placeholder="Tagged with (optional)"
-              className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:border-cyan-400/40"
+              className="rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
             />
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -307,7 +307,7 @@ export default function SegmentsPage() {
               type="button"
               onClick={() => void create()}
               disabled={busy}
-              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:bg-cyan-400/25 disabled:opacity-50"
+              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
             >
               {busy ? "Working\u2026" : "Save segment"}
             </button>
@@ -315,7 +315,7 @@ export default function SegmentsPage() {
               <p
                 className={
                   "text-xs " +
-                  (noteTone === "emerald" ? "text-emerald-300" : "text-amber-300")
+                  (noteTone === "emerald" ? "text-ok" : "text-amber-600")
                 }
               >
                 {note}
@@ -325,11 +325,11 @@ export default function SegmentsPage() {
         </div>
 
         {segments === null ? (
-          <p className="text-sm text-slate-500">Loading\u2026</p>
+          <p className="text-sm text-ink-3">Loading\u2026</p>
         ) : segments.length === 0 ? (
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] px-5 py-8 text-center">
-            <p className="text-sm text-slate-400">No segments yet.</p>
-            <p className="mt-1 text-xs text-slate-600">
+          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+            <p className="text-sm text-ink-3">No segments yet.</p>
+            <p className="mt-1 text-xs text-ink-3">
               Save your first group above \u2014 hot leads, quiet customers, tagged VIPs.
             </p>
           </div>
@@ -338,16 +338,16 @@ export default function SegmentsPage() {
             {segments.map((row) => (
               <li
                 key={row.id}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4"
+                className="rounded-2xl border border-line bg-soft p-4"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-200">
+                    <p className="truncate text-sm font-medium text-ink">
                       {row.name}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">
+                    <p className="mt-0.5 text-[11px] text-ink-3">
                       {describe(row.filters) || "No filters"} \u00b7{" "}
-                      <span className="text-cyan-300">{row.memberCount}</span>{" "}
+                      <span className="text-brand">{row.memberCount}</span>{" "}
                       member{row.memberCount === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -355,30 +355,30 @@ export default function SegmentsPage() {
                     <button
                       type="button"
                       onClick={() => void showMembers(row.id)}
-                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {openMembers === row.id ? "Hide people" : "People"}
                     </button>
                     <button
                       type="button"
                       onClick={() => openCast(row)}
-                      className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14]"
+                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft"
                     >
                       Send broadcast
                     </button>
                     <button
                       type="button"
                       onClick={() => void remove(row)}
-                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:border-rose-400/40 hover:text-rose-300"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
                 {openMembers === row.id ? (
-                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
                     {members.length === 0 ? (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-ink-3">
                         No members match right now.
                       </p>
                     ) : (
@@ -388,10 +388,10 @@ export default function SegmentsPage() {
                             key={member.contactId}
                             className="flex items-center justify-between gap-2 text-xs"
                           >
-                            <span className="truncate text-slate-300">
+                            <span className="truncate text-ink-2">
                               {member.name || "Customer"}
                             </span>
-                            <span className="shrink-0 text-slate-500">
+                            <span className="shrink-0 text-ink-3">
                               {member.chats} chat{member.chats === 1 ? "" : "s"}
                             </span>
                           </li>
@@ -401,8 +401,8 @@ export default function SegmentsPage() {
                   </div>
                 ) : null}
                 {castOpenFor === row.id ? (
-                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
-                    <p className="text-[11px] uppercase tracking-wider text-slate-500">
+                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-3">
                       Message everyone in {row.name}
                     </p>
                     <textarea
@@ -411,29 +411,29 @@ export default function SegmentsPage() {
                       rows={2}
                       maxLength={1000}
                       placeholder="Use {name} for the customer's first name."
-                      className="mt-2 w-full rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-cyan-400/40"
+                      className="mt-2 w-full rounded-lg border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
                     />
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={() => void sendCast(row)}
                         disabled={castBusy}
-                        className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
                       >
                         {castBusy ? "Sending..." : "Send now"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setCastOpenFor(null)}
-                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                       >
                         Close
                       </button>
                       {castNote ? (
-                        <p className="text-xs text-amber-300">{castNote}</p>
+                        <p className="text-xs text-amber-600">{castNote}</p>
                       ) : null}
                     </div>
-                    <p className="mt-2 text-[10px] text-slate-600">
+                    <p className="mt-2 text-[10px] text-ink-3">
                       Delivered through your WhatsApp queue, up to 200 members per
                       send.
                     </p>

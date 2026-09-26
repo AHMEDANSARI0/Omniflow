@@ -79,15 +79,15 @@ function when(value: string | null): string {
 }
 
 const LEAD_STYLES: Record<string, string> = {
-  hot: "border-orange-400/25 bg-orange-400/[0.08] text-orange-300",
+  hot: "border-orange-400/25 bg-orange-400/[0.08] text-amber-600",
   warm: "border-amber-400/20 bg-amber-400/[0.05] text-amber-200/80",
-  cold: "border-white/[0.08] bg-white/[0.02] text-slate-400",
+  cold: "border-line bg-soft text-ink-3",
 };
 
 const COD_STYLES: Record<string, string> = {
-  confirmed: "text-emerald-300",
-  declined: "text-rose-300",
-  pending: "text-amber-300",
+  confirmed: "text-ok",
+  declined: "text-danger",
+  pending: "text-amber-600",
 };
 
 export default function ProfileClient({ contact }: { contact: string }) {
@@ -298,13 +298,13 @@ export default function ProfileClient({ contact }: { contact: string }) {
 
   if (missing || !contact) {
     return (
-      <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+      <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-ink-3">
             No customer selected.{" "}
             <Link
               href="/dashboard/customers"
-              className="text-cyan-300 transition hover:text-cyan-200"
+              className="text-brand transition hover:text-brand"
             >
               Pick one from Customers
             </Link>
@@ -316,21 +316,21 @@ export default function ProfileClient({ contact }: { contact: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <Link
           href="/dashboard/customers"
-          className="text-xs text-slate-500 transition hover:text-white"
+          className="text-xs text-ink-3 transition hover:text-ink"
         >
           \\u2190 Customers
         </Link>
-        <div className="mt-3 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+        <div className="mt-3 rounded-2xl border border-line bg-soft p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-semibold text-white">
+              <h1 className="truncate text-xl font-semibold text-ink">
                 {profile ? profile.name || "Customer" : "Loading\\u2026"}
               </h1>
-              <p className="mt-0.5 break-all font-mono text-[11px] text-slate-500">
+              <p className="mt-0.5 break-all font-mono text-[11px] text-ink-3">
                 {contact}
               </p>
             </div>
@@ -349,7 +349,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                 href={`https://wa.me/${contact.replace(/[^0-9]/g, "")}`}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-emerald-300 transition hover:text-emerald-200"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs text-ok transition hover:text-ok"
               >
                 WhatsApp
               </a>
@@ -357,33 +357,33 @@ export default function ProfileClient({ contact }: { contact: string }) {
           </div>
           {profile ? (
             <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-2">
-                <p className="text-lg font-semibold text-white">{profile.chats}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+                <p className="text-lg font-semibold text-ink">{profile.chats}</p>
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   Total chats
                 </p>
               </div>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-2">
-                <p className="text-lg font-semibold text-white">
+              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+                <p className="text-lg font-semibold text-ink">
                   {profile.openChats}
                 </p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   Open now
                 </p>
               </div>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-2">
-                <p className="truncate text-sm font-medium text-slate-300">
+              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+                <p className="truncate text-sm font-medium text-ink-2">
                   {when(profile.firstSeen)}
                 </p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   First seen
                 </p>
               </div>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-2">
-                <p className="truncate text-sm font-medium text-slate-300">
+              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+                <p className="truncate text-sm font-medium text-ink-2">
                   {when(profile.lastSeen)}
                 </p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   Last seen
                 </p>
               </div>
@@ -392,14 +392,14 @@ export default function ProfileClient({ contact }: { contact: string }) {
           {profile && (profile.language || profile.linkedChannels.length > 0) ? (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px]">
               {profile.language ? (
-                <span className="rounded-md border border-violet-400/25 bg-violet-400/[0.08] px-1.5 py-0.5 text-violet-300">
+                <span className="rounded-md border border-violet-400/25 bg-violet-400/[0.08] px-1.5 py-0.5 text-ai">
                   Language: {profile.language}
                 </span>
               ) : null}
               {profile.linkedChannels.map((linked) => (
                 <span
                   key={linked}
-                  className="rounded-md border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-slate-400"
+                  className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-ink-3"
                 >
                   Linked: {linked}
                 </span>
@@ -408,8 +408,8 @@ export default function ProfileClient({ contact }: { contact: string }) {
                 <span
                   className={`rounded-md border px-1.5 py-0.5 ${
                     risk === "high"
-                      ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
-                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                      ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
                   }`}
                 >
                   Risk: {risk}
@@ -420,8 +420,8 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   title={churn.reason}
                   className={`rounded-md border px-1.5 py-0.5 ${
                     churn.tier === "at_risk"
-                      ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
-                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                      ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
                   }`}
                 >
                   Churn: {churn.tier === "at_risk" ? "at risk" : "cooling"} (
@@ -435,7 +435,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               {profile.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded-md border border-cyan-400/25 bg-cyan-400/[0.08] px-1.5 py-0.5 text-[10px] text-cyan-300"
+                  className="rounded-md border border-brand/25 bg-brand-soft px-1.5 py-0.5 text-[10px] text-brand"
                 >
                   {tag}
                 </span>
@@ -448,31 +448,31 @@ export default function ProfileClient({ contact }: { contact: string }) {
         {contact ? <CustomerJourneyCard contact={contact} /> : null}
 
         {profile && recos.length > 0 ? (
-          <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-            <p className="text-xs font-semibold text-white">
+          <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+            <p className="text-xs font-semibold text-ink">
               Recommended next
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <p className="mt-0.5 text-[11px] text-ink-3">
               Deterministic picks from orders, chat mentions and bestsellers.
             </p>
             <ul className="mt-2 space-y-1.5">
               {recos.slice(0, 3).map((suggestion) => (
                 <li
                   key={suggestion.name}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-slate-200">
+                    <p className="truncate text-sm text-ink">
                       {suggestion.name}
                     </p>
                     {suggestion.reasons[0] ? (
-                      <p className="truncate text-[10px] text-cyan-300/80">
+                      <p className="truncate text-[10px] text-brand/80">
                         {suggestion.reasons[0]}
                       </p>
                     ) : null}
                   </div>
                   {suggestion.priceText ? (
-                    <span className="shrink-0 text-[10px] text-slate-500">
+                    <span className="shrink-0 text-[10px] text-ink-3">
                       {suggestion.priceText}
                     </span>
                   ) : null}
@@ -483,33 +483,33 @@ export default function ProfileClient({ contact }: { contact: string }) {
         ) : null}
 
         {profile && value ? (
-          <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+          <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-white">
+              <p className="text-xs font-semibold text-ink">
                 Lifetime value
               </p>
               <span
                 className={`rounded-md border px-1.5 py-0.5 text-[10px] ${
                   value.tier === "loyal"
-                    ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                    ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
                     : value.tier === "repeat"
-                      ? "border-cyan-400/25 bg-cyan-400/[0.08] text-cyan-300"
+                      ? "border-brand/25 bg-brand-soft text-brand"
                       : value.tier === "lapsed"
-                        ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
-                        : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+                        ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
+                        : "border-line bg-soft text-ink-3"
                 }`}
               >
                 {value.tier}
               </span>
             </div>
             {value.orders === 0 ? (
-              <p className="mt-2 text-xs text-slate-500">No orders yet.</p>
+              <p className="mt-2 text-xs text-ink-3">No orders yet.</p>
             ) : (
               <>
-                <p className="mt-1.5 text-2xl font-semibold text-white">
+                <p className="mt-1.5 text-2xl font-semibold text-ink">
                   Rs {value.totalSpent.toLocaleString()}
                 </p>
-                <p className="mt-0.5 text-[11px] text-slate-500">
+                <p className="mt-0.5 text-[11px] text-ink-3">
                   {value.orders} orders · {value.units} items
                   {value.avgOrder !== null
                     ? " · avg Rs " + value.avgOrder.toLocaleString()
@@ -518,7 +518,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                     ? " · mostly " + value.topItem
                     : ""}
                 </p>
-                <p className="mt-0.5 text-[11px] text-slate-500">
+                <p className="mt-0.5 text-[11px] text-ink-3">
                   {value.lastOrderDays !== null
                     ? "Last order " + value.lastOrderDays + " days ago"
                     : ""}
@@ -533,10 +533,10 @@ export default function ProfileClient({ contact }: { contact: string }) {
 
         {profile ? (
           <>
-            <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-              <p className="text-xs font-semibold text-white">Conversations</p>
+            <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+              <p className="text-xs font-semibold text-ink">Conversations</p>
               {profile.conversations.length === 0 ? (
-                <p className="mt-2 text-xs text-slate-500">No chats yet.</p>
+                <p className="mt-2 text-xs text-ink-3">No chats yet.</p>
               ) : (
                 <ul className="mt-2 space-y-1.5">
                   {profile.conversations.map((conversation) => (
@@ -544,16 +544,16 @@ export default function ProfileClient({ contact }: { contact: string }) {
                       <Link
                         prefetch={false}
                         href={"/dashboard/conversations/" + conversation.id}
-                        className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/[0.03]"
+                        className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-soft"
                       >
-                        <span className="text-slate-300">
+                        <span className="text-ink-2">
                           #{conversation.id} \\u00b7 {conversation.channel}
                         </span>
                         <span
                           className={
                             conversation.status === "open"
-                              ? "text-emerald-300"
-                              : "text-slate-500"
+                              ? "text-ok"
+                              : "text-ink-3"
                           }
                         >
                           {conversation.status} \\u00b7{" "}
@@ -566,10 +566,10 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-              <p className="text-xs font-semibold text-white">COD orders</p>
+            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+              <p className="text-xs font-semibold text-ink">COD orders</p>
               {profile.codRequests.length === 0 ? (
-                <p className="mt-2 text-xs text-slate-500">No COD asks yet.</p>
+                <p className="mt-2 text-xs text-ink-3">No COD asks yet.</p>
               ) : (
                 <ul className="mt-2 space-y-1.5">
                   {profile.codRequests.map((order) => (
@@ -577,8 +577,8 @@ export default function ProfileClient({ contact }: { contact: string }) {
                       key={order.id}
                       className="flex items-center justify-between gap-2 text-xs"
                     >
-                      <span className="text-slate-300">Order #{order.id}</span>
-                      <span className={COD_STYLES[order.status] ?? "text-slate-500"}>
+                      <span className="text-ink-2">Order #{order.id}</span>
+                      <span className={COD_STYLES[order.status] ?? "text-ink-3"}>
                         {order.status} \\u00b7 {when(order.createdAt)}
                       </span>
                     </li>
@@ -587,10 +587,10 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-              <p className="text-xs font-semibold text-white">Series</p>
+            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+              <p className="text-xs font-semibold text-ink">Series</p>
               {profile.sequences.length === 0 ? (
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-ink-3">
                   Not enrolled in any series.
                 </p>
               ) : (
@@ -600,8 +600,8 @@ export default function ProfileClient({ contact }: { contact: string }) {
                       key={series.name}
                       className="flex items-center justify-between gap-2 text-xs"
                     >
-                      <span className="truncate text-slate-300">{series.name}</span>
-                      <span className="shrink-0 text-slate-500">
+                      <span className="truncate text-ink-2">{series.name}</span>
+                      <span className="shrink-0 text-ink-3">
                         {series.status} \\u00b7 step {series.currentStep + 1} \\u00b7{" "}
                         {when(series.enrolledAt)}
                       </span>
@@ -611,10 +611,10 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-              <p className="text-xs font-semibold text-white">Action requests</p>
+            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+              <p className="text-xs font-semibold text-ink">Action requests</p>
               {profile.actions.length === 0 ? (
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-ink-3">
                   No cancel / address / refund requests yet.
                 </p>
               ) : (
@@ -624,17 +624,17 @@ export default function ProfileClient({ contact }: { contact: string }) {
                       key={action.id}
                       className="flex items-center justify-between gap-2 text-xs"
                     >
-                      <span className="truncate text-slate-300">
+                      <span className="truncate text-ink-2">
                         {action.kind}
                         {action.note ? " \u00b7 " + action.note : ""}
                       </span>
                       <span
                         className={
                           action.status === "done"
-                            ? "shrink-0 text-emerald-300"
+                            ? "shrink-0 text-ok"
                             : action.status === "declined"
-                              ? "shrink-0 text-rose-300"
-                              : "shrink-0 text-amber-300"
+                              ? "shrink-0 text-danger"
+                              : "shrink-0 text-amber-600"
                         }
                       >
                         {action.status} \u00b7 {when(action.createdAt)}
@@ -645,19 +645,19 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-              <p className="text-xs font-semibold text-white">Notes</p>
+            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+              <p className="text-xs font-semibold text-ink">Notes</p>
               {profile.notes.length === 0 ? (
-                <p className="mt-2 text-xs text-slate-500">No notes yet.</p>
+                <p className="mt-2 text-xs text-ink-3">No notes yet.</p>
               ) : (
                 <ul className="mt-2 space-y-2">
                   {profile.notes.map((note, index) => (
                     <li
                       key={index}
-                      className="rounded-lg border border-white/[0.05] bg-white/[0.01] p-2.5"
+                      className="rounded-lg border border-line bg-white/[0.01] p-2.5"
                     >
-                      <p className="text-xs text-slate-300">{note.body}</p>
-                      <p className="mt-1 text-[10px] text-slate-600">
+                      <p className="text-xs text-ink-2">{note.body}</p>
+                      <p className="mt-1 text-[10px] text-ink-3">
                         {note.authorEmail} \\u00b7 {when(note.createdAt)}
                       </p>
                     </li>
@@ -667,7 +667,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
             </section>
           </>
         ) : (
-          <p className="mt-4 text-sm text-slate-500">Loading\\u2026</p>
+          <p className="mt-4 text-sm text-ink-3">Loading\\u2026</p>
         )}
       </div>
     </main>

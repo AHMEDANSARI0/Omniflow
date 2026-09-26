@@ -60,9 +60,9 @@ export default function CopyGenCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-      <p className="text-xs font-semibold text-white">AI copy helper</p>
-      <p className="mt-0.5 text-[11px] text-slate-500">
+    <section className="rounded-2xl border border-line bg-soft p-4">
+      <p className="text-xs font-semibold text-ink">AI copy helper</p>
+      <p className="mt-0.5 text-[11px] text-ink-3">
         Topic likhein - do short variants ban jayenge. Text sirf yahan
         plain text you can edit before sending.
       </p>
@@ -71,17 +71,17 @@ export default function CopyGenCard() {
           value={topic}
           onChange={(event) => setTopic(event.target.value)}
           placeholder="e.g. winter sale 20% off shawls"
-          className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+          className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
         />
         <select
           value={lang}
           onChange={(event) =>
             setLang(event.target.value as "ur" | "roman" | "en")
           }
-          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1.5 text-xs text-slate-300 outline-none"
+          className="rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink-2 outline-none"
         >
           {LANGS.map((option) => (
-            <option key={option.value} value={option.value} className="bg-[#101418]">
+            <option key={option.value} value={option.value} className="bg-white">
               {option.label}
             </option>
           ))}
@@ -89,7 +89,7 @@ export default function CopyGenCard() {
         <button
           onClick={() => void generate()}
           disabled={busy || !topic.trim()}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
         >
           {busy ? "Generating..." : "Generate"}
         </button>
@@ -99,12 +99,12 @@ export default function CopyGenCard() {
           {variants.map((text, index) => (
             <li
               key={index}
-              className="flex items-start justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+              className="flex items-start justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
             >
-              <p className="min-w-0 text-xs text-slate-300">{text}</p>
+              <p className="min-w-0 text-xs text-ink-2">{text}</p>
               <button
                 onClick={() => void copy(index, text)}
-                className="shrink-0 text-[11px] text-cyan-300 hover:underline"
+                className="shrink-0 text-[11px] text-brand hover:underline"
               >
                 {copied === index ? "Copied" : "Copy"}
               </button>
@@ -113,7 +113,7 @@ export default function CopyGenCard() {
         </ul>
       ) : null}
       {source ? (
-        <p className="mt-1.5 text-[10px] text-slate-600">
+        <p className="mt-1.5 text-[10px] text-ink-3">
           {source === "llm"
             ? "AI-generated - edit before sending."
             : "Template copy (no AI key set) - edit before sending."}

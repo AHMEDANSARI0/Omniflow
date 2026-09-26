@@ -73,7 +73,7 @@ export default function DashboardLoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#07111f] px-5 py-10">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-5 py-10">
       <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[640px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.07)_0%,transparent_70%)]" />
       <div className="pointer-events-none absolute -bottom-40 left-1/4 h-72 w-96 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.06)_0%,transparent_70%)]" />
 
@@ -84,21 +84,21 @@ export default function DashboardLoginPage() {
         className="relative w-full max-w-sm"
       >
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06]">
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-brand-soft">
             <span className="of-pulse h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]" />
           </div>
-          <h1 className="text-xl font-semibold tracking-[-0.03em] text-white">
-            Omni<span className="text-cyan-400">Flow</span>
+          <h1 className="text-xl font-semibold tracking-[-0.03em] text-ink">
+            Omni<span className="text-brand">Flow</span>
           </h1>
-          <p className="mt-1.5 text-xs uppercase tracking-widest text-slate-500">
+          <p className="mt-1.5 text-xs uppercase tracking-widest text-ink-3">
             Secure client portal
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 sm:p-7">
+        <div className="rounded-2xl border border-line bg-soft p-6 sm:p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-slate-400">
+              <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-ink-3">
                 Email
               </label>
               <input
@@ -110,13 +110,13 @@ export default function DashboardLoginPage() {
                 autoComplete="username"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="you@business.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-1.5 block text-xs font-medium text-slate-400">
+              <label htmlFor="password" className="mb-1.5 block text-xs font-medium text-ink-3">
                 Password
               </label>
               <input
@@ -128,13 +128,13 @@ export default function DashboardLoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="••••••••"
               />
             </div>
 
             <div>
-              <label htmlFor="workspace_id" className="mb-1.5 block text-xs font-medium text-slate-400">
+              <label htmlFor="workspace_id" className="mb-1.5 block text-xs font-medium text-ink-3">
                 Workspace ID {workspaceRequired ? "*" : "(if provided)"}
               </label>
               <input
@@ -147,7 +147,7 @@ export default function DashboardLoginPage() {
                 autoComplete="off"
                 value={workspaceId}
                 onChange={(event) => setWorkspaceId(event.target.value.replace(/\D/g, ""))}
-                className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="Only needed for multiple workspaces"
               />
             </div>
@@ -158,7 +158,7 @@ export default function DashboardLoginPage() {
                 animate={{ opacity: 1, y: 0 }}
                 role="alert"
                 aria-live="polite"
-                className="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-red-300"
+                className="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-danger"
               >
                 {error}
               </motion.p>
@@ -177,7 +177,7 @@ export default function DashboardLoginPage() {
             <p className="text-center text-xs">
               <Link
                 href="/dashboard/forgot-password"
-                className="text-cyan-400/80 transition-colors hover:text-cyan-300"
+                className="text-brand/80 transition-colors hover:text-brand"
               >
                 Forgot password?
               </Link>
@@ -185,13 +185,13 @@ export default function DashboardLoginPage() {
           </form>
         </div>
 
-        <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-600">
+        <p className="mt-5 text-center text-[11px] leading-relaxed text-ink-3">
           Access and refresh credentials stay in secure HttpOnly cookies and are
           never exposed to browser storage.
         </p>
-        <p className="mt-3 text-center text-xs text-slate-600">
+        <p className="mt-3 text-center text-xs text-ink-3">
           Need an account?{" "}
-          <Link href="/#get-started" className="text-cyan-400/80 transition-colors hover:text-cyan-300">
+          <Link href="/#get-started" className="text-brand/80 transition-colors hover:text-brand">
             Request early access
           </Link>
         </p>

@@ -21,9 +21,9 @@ export interface BusinessProfile extends Record<string, unknown> {
 const initialState: ProfileActionState = { success: false, message: "" };
 
 const inputClass =
-  "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
 
-const labelClass = "mb-1.5 block text-xs font-medium text-slate-400";
+const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
 export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
   const [state, formAction, pending] = useActionState(
@@ -34,9 +34,9 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
   return (
     <form action={formAction} className="space-y-6">
       {/* Company card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">Company</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Company</h2>
+        <p className="mb-5 text-xs text-ink-3">
           Basic information about your business.
         </p>
 
@@ -117,9 +117,9 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
       </div>
 
       {/* Availability card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">Availability</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Availability</h2>
+        <p className="mb-5 text-xs text-ink-3">
           Helps the AI answer questions about your hours correctly.
         </p>
 
@@ -148,13 +148,13 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
                 defaultValue={profile.default_language}
                 className={`${inputClass} cursor-pointer`}
               >
-                <option value="english" className="bg-[#081522]">
+                <option value="english" className="bg-white">
                   English
                 </option>
-                <option value="urdu" className="bg-[#081522]">
+                <option value="urdu" className="bg-white">
                   Urdu
                 </option>
-                <option value="both" className="bg-[#081522]">
+                <option value="both" className="bg-white">
                   Both (English + Urdu)
                 </option>
               </select>
@@ -245,7 +245,7 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
         {state.message && (
           <p
             className={`text-xs ${
-              state.success ? "text-emerald-300" : "text-red-300"
+              state.success ? "text-ok" : "text-danger"
             }`}
           >
             {state.message}

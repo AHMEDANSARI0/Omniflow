@@ -146,37 +146,37 @@ export default function SavedRepliesPicker({
           setOpen((value) => !value);
           if (!open && !loaded) void load();
         }}
-        className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white"
+        className="inline-flex items-center gap-2 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
       >
         <span aria-hidden>⚡</span>
         Saved replies
-        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-slate-500">
+        <span className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-3">
           {replies.length}
         </span>
-        <span aria-hidden className="text-[10px] text-slate-500">
+        <span aria-hidden className="text-[10px] text-ink-3">
           {open ? "▲" : "▼"}
         </span>
       </button>
 
       {open && (
-        <div className="mt-3 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+        <div className="mt-3 rounded-2xl border border-line bg-soft p-4">
           {replies.length > 0 && (
             <ul className="space-y-2">
               {replies.map((reply) => (
                 <li
                   key={reply.id}
-                  className="flex flex-col gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 rounded-xl border border-line bg-soft p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
-                    <span className="rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-cyan-300">
+                    <span className="rounded-md border border-brand/20 bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold text-brand">
                       /{reply.shortcut}
                     </span>
                     {(reply.useCount ?? 0) > 0 ? (
-                      <span className="ml-1.5 text-[10px] text-slate-500">
+                      <span className="ml-1.5 text-[10px] text-ink-3">
                         used {reply.useCount}\u00d7
                       </span>
                     ) : null}
-                    <p className="mt-1 line-clamp-2 text-xs text-slate-400">
+                    <p className="mt-1 line-clamp-2 text-xs text-ink-3">
                       {reply.body}
                     </p>
                   </div>
@@ -184,7 +184,7 @@ export default function SavedRepliesPicker({
                     <button
                       type="button"
                       onClick={() => useReply(reply)}
-                      className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-[11px] font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14]"
+                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand transition-colors duration-300 hover:bg-brand-soft"
                     >
                       Use
                     </button>
@@ -193,7 +193,7 @@ export default function SavedRepliesPicker({
                       onClick={() => removeReply(reply)}
                       disabled={busy}
                       aria-label={`Delete saved reply ${reply.shortcut}`}
-                      className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-[11px] text-slate-400 transition-colors duration-300 hover:text-white disabled:opacity-40"
+                      className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-[11px] text-ink-3 transition-colors duration-300 hover:text-ink disabled:opacity-40"
                     >
                       Delete
                     </button>
@@ -204,38 +204,38 @@ export default function SavedRepliesPicker({
           )}
 
           {replies.length === 0 && loaded && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-3">
               No saved replies yet — add your first template below (for example
               /thanks for a quick thank-you message).
             </p>
           )}
 
-          <div className="mt-3 space-y-2 border-t border-white/[0.06] pt-3">
+          <div className="mt-3 space-y-2 border-t border-line pt-3">
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 value={shortcut}
                 onChange={(event) => setShortcut(event.target.value)}
                 maxLength={24}
                 placeholder="shortcut, e.g. thanks"
-                className="w-full sm:w-56 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
               />
               <input
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
                 maxLength={1000}
                 placeholder="Message text — what gets inserted"
-                className="w-full flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
               />
               <button
                 type="button"
                 onClick={() => void addReply()}
                 disabled={busy || !shortcut.trim() || !body.trim()}
-                className="shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
               >
                 {busy ? "Working…" : "Add reply"}
               </button>
             </div>
-            {message && <p className="text-xs text-slate-400">{message}</p>}
+            {message && <p className="text-xs text-ink-3">{message}</p>}
           </div>
         </div>
       )}

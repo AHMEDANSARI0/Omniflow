@@ -143,7 +143,7 @@ export default function SelfServe({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+    <div className="mt-4 rounded-xl border border-line bg-soft p-3">
       {mode === null ? (
         <div className="flex flex-wrap items-center gap-1.5">
           {open ? (
@@ -154,7 +154,7 @@ export default function SelfServe({
                   setMode("coupon");
                   setNote("");
                 }}
-                className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.07] px-2.5 py-1.5 text-[11px] font-medium text-cyan-200 hover:bg-cyan-400/[0.15]"
+                className="rounded-lg border border-brand/25 bg-cyan-400/[0.07] px-2.5 py-1.5 text-[11px] font-medium text-brand hover:bg-brand-soft"
               >
                 Have a coupon code?
               </button>
@@ -164,7 +164,7 @@ export default function SelfServe({
                   setMode("address");
                   setNote("");
                 }}
-                className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[11px] text-slate-300 hover:bg-white/[0.06]"
+                className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-2 hover:bg-white/[0.06]"
               >
                 Change address
               </button>
@@ -174,7 +174,7 @@ export default function SelfServe({
                   setMode("cancel");
                   setNote("");
                 }}
-                className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[11px] text-slate-400 hover:border-rose-400/40 hover:text-rose-300"
+                className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 hover:border-rose-400/40 hover:text-danger"
               >
                 Cancel order
               </button>
@@ -185,7 +185,7 @@ export default function SelfServe({
               type="button"
               onClick={() => void removeCoupon()}
               disabled={busy}
-              className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/[0.06] disabled:opacity-50"
+              className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 hover:bg-white/[0.06] disabled:opacity-50"
             >
               Remove coupon
             </button>
@@ -200,20 +200,20 @@ export default function SelfServe({
             onChange={(event) => setCode(event.target.value.toUpperCase())}
             placeholder="COUPON CODE"
             maxLength={24}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs uppercase text-white outline-none focus:border-cyan-400/40"
+            className="w-full rounded-lg border border-line bg-soft px-3 py-2 text-xs uppercase text-ink outline-none focus:border-brand/40"
           />
           <button
             type="button"
             onClick={() => void applyCoupon()}
             disabled={busy}
-            className="shrink-0 rounded-lg border border-cyan-400/30 bg-cyan-400/[0.1] px-3 py-2 text-xs font-medium text-cyan-200 disabled:opacity-50"
+            className="shrink-0 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand disabled:opacity-50"
           >
             {busy ? "…" : "Apply"}
           </button>
           <button
             type="button"
             onClick={() => setMode(null)}
-            className="shrink-0 rounded-lg border border-white/[0.08] px-2 py-2 text-xs text-slate-400"
+            className="shrink-0 rounded-lg border border-line px-2 py-2 text-xs text-ink-3"
           >
             ✕
           </button>
@@ -228,28 +228,28 @@ export default function SelfServe({
             rows={2}
             maxLength={500}
             placeholder="Your correct delivery address (house, street, area, city)"
-            className="w-full resize-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+            className="w-full resize-none rounded-lg border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
           />
           <input
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             maxLength={500}
             placeholder="Note for the business (optional)"
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+            className="w-full rounded-lg border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
           />
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => void submitRequest("address")}
               disabled={busy}
-              className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.1] px-3 py-1.5 text-xs font-medium text-cyan-200 disabled:opacity-50"
+              className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand disabled:opacity-50"
             >
               {busy ? "Sending…" : "Send address change"}
             </button>
             <button
               type="button"
               onClick={() => setMode(null)}
-              className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-xs text-slate-400"
+              className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-3"
             >
               Back
             </button>
@@ -264,7 +264,7 @@ export default function SelfServe({
             onChange={(event) => setMessage(event.target.value)}
             maxLength={500}
             placeholder="Reason (optional)"
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+            className="w-full rounded-lg border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
           />
           <div className="flex items-center gap-1.5">
             <button
@@ -278,12 +278,12 @@ export default function SelfServe({
             <button
               type="button"
               onClick={() => setMode(null)}
-              className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-xs text-slate-400"
+              className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-3"
             >
               Back
             </button>
           </div>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[10px] text-ink-3">
             The business reviews every request — nothing is cancelled
             automatically.
           </p>
@@ -294,7 +294,7 @@ export default function SelfServe({
         <p
           className={
             "mt-2 text-[11px] " +
-            (noteTone === "ok" ? "text-emerald-300" : "text-rose-300")
+            (noteTone === "ok" ? "text-ok" : "text-danger")
           }
         >
           {note}

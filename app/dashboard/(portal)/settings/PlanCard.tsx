@@ -22,6 +22,7 @@ const USAGE_LABELS: Record<string, string> = {
   kb_entries: "Knowledge-base entries",
   alert_rules: "Keyword alerts",
   courier_providers: "Courier companies",
+  brands: "Brands",
 };
 
 function UsageRow({
@@ -41,12 +42,12 @@ function UsageRow({
   return (
     <li>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[11px] text-slate-400">{label}</span>
-        <span className="text-[11px] text-slate-500">
+        <span className="text-[11px] text-ink-3">{label}</span>
+        <span className="text-[11px] text-ink-3">
           {used} / {unlimited ? "\u221e" : limit}
         </span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-soft">
         <div
           className={
             "h-full rounded-full " +
@@ -114,17 +115,17 @@ export default function PlanCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+    <section className="rounded-2xl border border-line bg-soft p-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold text-white">Plan &amp; usage</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="text-xs font-semibold text-ink">Plan &amp; usage</p>
+          <p className="mt-0.5 text-[11px] text-ink-3">
             Live usage against the plan limits. Every workspace starts
             unlimited - switching is always your choice.
           </p>
         </div>
         {data ? (
-          <span className="shrink-0 rounded-full border border-cyan-400/30 bg-cyan-400/[0.08] px-3 py-1 text-[11px] text-cyan-200">
+          <span className="shrink-0 rounded-full border border-brand/30 bg-brand-soft px-3 py-1 text-[11px] text-brand">
             {data.plan === "legacy" ? "Unlimited" : data.plan}
           </span>
         ) : null}
@@ -161,8 +162,8 @@ export default function PlanCard() {
                 className={
                   "rounded-lg border px-3 py-1.5 text-[11px] disabled:opacity-40 " +
                   (entry.key === data.plan
-                    ? "border-cyan-400/40 bg-cyan-400/[0.12] text-cyan-200"
-                    : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:bg-white/[0.05]")
+                    ? "border-brand/40 bg-cyan-400/[0.12] text-brand"
+                    : "border-line bg-soft text-ink-2 hover:bg-soft")
                 }
               >
                 {entry.label}
@@ -172,7 +173,7 @@ export default function PlanCard() {
         </>
       )}
       {note ? (
-        <p className="mt-1.5 text-[11px] text-slate-300">{note}</p>
+        <p className="mt-1.5 text-[11px] text-ink-2">{note}</p>
       ) : null}
     </section>
   );

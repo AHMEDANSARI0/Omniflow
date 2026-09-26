@@ -1,275 +1,185 @@
-import Reveal from "./Reveal";
+import {
+  ArrowRight,
+  Bot,
+  GitBranch,
+  MousePointerClick,
+  Send,
+  Zap,
+} from "lucide-react";
 import type { HowItWorksContent } from "../../lib/content-defaults";
-import HexGrid from "./HexGrid";
+import Reveal from "./Reveal";
+import Section, { SectionHead } from "./ui/Section";
+import Badge from "./ui/Badge";
+import Button from "./ui/Button";
 
-const stepIcons = ["↗", "✦", "◇", "✓"];
-
-interface WorkflowStepData {
-  number: string;
-  type: string;
-  title: string;
-  description: string;
-  icon: string;
-}
-
+/**
+ * "Build once. Let OmniFlow run." — the workflow builder story:
+ * Trigger -> AI -> Condition -> Actions, drawn as builder nodes on a
+ * light canvas. Server component.
+ */
 export default function HowItWorks({
   content,
 }: {
   content: HowItWorksContent;
 }) {
-  const workflowSteps: WorkflowStepData[] = [1, 2, 3, 4].map((i, index) => ({
-    number: `0${i}`,
-    type: content[`s${i}_type`] as string,
-    title: content[`s${i}_title`] as string,
-    description: content[`s${i}_desc`] as string,
-    icon: stepIcons[index],
-  }));
+  const steps = [
+    {
+      type: content.s1_type,
+      title: content.s1_title,
+      desc: content.s1_desc,
+      Icon: MousePointerClick,
+    },
+    {
+      type: content.s2_type,
+      title: content.s2_title,
+      desc: content.s2_desc,
+      Icon: Bot,
+    },
+    {
+      type: content.s3_type,
+      title: content.s3_title,
+      desc: content.s3_desc,
+      Icon: GitBranch,
+    },
+    {
+      type: content.s4_type,
+      title: content.s4_title,
+      desc: content.s4_desc,
+      Icon: Zap,
+    },
+  ];
 
   return (
-    <section
-      id="how-it-works"
-      className="relative overflow-hidden border-t border-white/[0.05] bg-[#07111f] py-28 sm:py-36"
-    >
-      {/* Kinetic hexagon grid */}
-      <HexGrid />
+    <Section id="how-it-works" tone="white">
+      <SectionHead
+        eyebrow={content.badge}
+        title={
+          <>
+            {content.heading_line1} {content.heading_line2}
+          </>
+        }
+        copy={content.description}
+      />
 
-      {/* Background — static glows (perf-safe) */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[15%] top-[20%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(167,139,250,0.065)_0%,transparent_70%)]" />
-
-        <div className="absolute bottom-[10%] right-[10%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.045)_0%,transparent_70%)]" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-        {/* Heading */}
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal className="inline-flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-
-            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
-              {content.badge}
-            </span>
-          </Reveal>
-
-          <Reveal as="h2" className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
-            {content.heading_line1}
-            <br />
-
-            <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-300 bg-clip-text text-transparent">
-              {content.heading_line2}
-            </span>
-          </Reveal>
-
-          <Reveal as="p" className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
-            {content.description}
-          </Reveal>
-        </div>
-
-        {/* Workflow */}
-        <div className="relative mx-auto mt-20 max-w-5xl">
-          {/* Main workflow line */}
-          <div className="pointer-events-none absolute left-[31px] top-8 hidden h-[calc(100%-64px)] w-px bg-gradient-to-b from-cyan-400/30 via-blue-400/20 to-violet-400/10 md:block" />
-
-          <div className="space-y-5">
-            {workflowSteps.map((step, index) => (
-              <WorkflowStep key={step.number} step={step} index={index} />
+      {/* the builder canvas */}
+      <Reveal>
+        <div className="of-dot-grid relative mx-auto mt-14 max-w-4xl overflow-hidden rounded-xl3 border border-line bg-canvas p-5 sm:p-8">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {steps.slice(0, 2).map(({ type, title, desc, Icon }, index) => (
+              <NodeCard
+                key={type}
+                type={type}
+                title={title}
+                desc={desc}
+                Icon={Icon}
+                tone={index === 0 ? "brand" : "ai"}
+              />
             ))}
           </div>
-        </div>
 
-        {/* Mini builder preview */}
-        <Reveal className="mx-auto mt-20 max-w-5xl">
-          <div className="overflow-hidden rounded-[26px] border border-white/[0.07] bg-[#081522] shadow-2xl">
-            {/* Builder header */}
-            <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4 sm:px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-white/10" />
-                  <span className="h-2 w-2 rounded-full bg-white/10" />
-                  <span className="h-2 w-2 rounded-full bg-white/10" />
-                </div>
-
-                <span className="hidden text-[10px] text-slate-600 sm:block">
-                  Automation Builder
-                </span>
-              </div>
-
-              <div className="rounded-full border border-emerald-400/10 bg-emerald-400/[0.03] px-3 py-1">
-                <span className="text-[9px] text-emerald-300">
-                  Workflow active
-                </span>
-              </div>
-            </div>
-
-            {/* Builder body */}
-            <div className="grid min-h-[330px] lg:grid-cols-[180px_1fr]">
-              {/* Sidebar */}
-              <div className="hidden border-r border-white/[0.05] p-4 lg:block">
-                <div className="text-[9px] uppercase tracking-[0.15em] text-slate-700">
-                  Nodes
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {["Trigger", "AI action", "Condition", "Response"].map(
-                    (item) => (
-                      <div
-                        key={item}
-                        className="flex items-center gap-2 rounded-lg border border-white/[0.04] bg-white/[0.015] px-3 py-2.5"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-400/50" />
-
-                        <span className="text-[9px] text-slate-600">
-                          {item}
-                        </span>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-
-              {/* Canvas */}
-              <div className="relative overflow-hidden p-5 sm:p-7">
-                {/* Canvas grid */}
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-[0.025]"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px)",
-                    backgroundSize: "36px 36px",
-                  }}
-                />
-
-                <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-3">
-                  <BuilderNode
-                    type="TRIGGER"
-                    title="New customer message"
-                    icon="↗"
-                    active
-                  />
-
-                  <FlowLine />
-
-                  <BuilderNode
-                    type="AI"
-                    title="Understand intent"
-                    icon="✦"
-                    active
-                  />
-
-                  <FlowLine />
-
-                  <div className="grid w-full max-w-lg grid-cols-2 gap-3">
-                    <BuilderNode type="ACTION" title="High intent" icon="✓" />
-
-                    <BuilderNode type="ACTION" title="Needs support" icon="→" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Reveal>
-
-        {/* Bottom CTA statement */}
-        <Reveal className="mt-14 text-center">
-          <p className="text-xs text-slate-700">{content.bottom_note}</p>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-function WorkflowStep({
-  step,
-  index,
-}: {
-  step: WorkflowStepData;
-  index: number;
-}) {
-  return (
-    <Reveal lift className="group relative flex gap-4 md:gap-6">
-      {/* Number */}
-      <div className="relative z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/[0.07] bg-[#081522] shadow-xl transition-colors duration-300 group-hover:border-cyan-400/15">
-        <span className="text-[10px] font-medium tracking-[0.12em] text-cyan-400/60">
-          {step.number}
-        </span>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5 transition-colors duration-300 group-hover:border-white/[0.1] sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.025] text-sm text-cyan-300">
-            {step.icon}
+          {/* connector */}
+          <div className="flex items-center justify-center py-1">
+            <span aria-hidden className="h-8 w-px bg-gradient-to-b from-brand to-ai" />
           </div>
 
-          <div>
-            <div className="text-[9px] font-medium uppercase tracking-[0.16em] text-slate-700">
-              {step.type}
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-stretch">
+            <NodeCard
+              type={steps[2].type}
+              title={steps[2].title}
+              desc={steps[2].desc}
+              Icon={steps[2].Icon}
+              tone="flow"
+            />
+            <div className="hidden items-center justify-center lg:flex lg:flex-col lg:justify-center lg:gap-1">
+              <span className="rounded-lg border border-ok/25 bg-ok-soft px-2.5 py-1 text-[11px] font-semibold text-ok">
+                YES
+              </span>
+              <span aria-hidden className="h-6 w-px bg-line-2" />
+              <span className="rounded-lg border border-line bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-3">
+                NO
+              </span>
             </div>
-
-            <h3 className="mt-1 text-sm font-medium text-white sm:text-base">
-              {step.title}
-            </h3>
+            <div className="rounded-xl3 border border-ok/20 bg-ok-soft/60 p-5">
+              <div className="flex items-center gap-2">
+                <Send className="h-4 w-4 text-ok" aria-hidden />
+                <p className="text-[13px] font-semibold text-ink">
+                  Actions
+                </p>
+                <Badge tone="success" className="ml-auto">
+                  automated
+                </Badge>
+              </div>
+              <ul className="mt-3 space-y-2 text-[13px] font-medium text-ink-2">
+                <li className="flex items-center gap-2">
+                  <ArrowRight className="h-3.5 w-3.5 text-ok" aria-hidden />
+                  Send product information
+                </li>
+                <li className="flex items-center gap-2">
+                  <ArrowRight className="h-3.5 w-3.5 text-ok" aria-hidden />
+                  Send order link
+                </li>
+                <li className="flex items-center gap-2">
+                  <ArrowRight className="h-3.5 w-3.5 text-ok" aria-hidden />
+                  Schedule follow-up
+                </li>
+                <li className="flex items-center gap-2">
+                  <ArrowRight className="h-3.5 w-3.5 text-ok" aria-hidden />
+                  Notify sales for high-intent leads
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <p className="text-xs leading-6 text-slate-600 sm:ml-auto sm:max-w-sm">
-            {step.description}
+          <p className="mt-5 text-center text-[13px] text-ink-3">
+            {steps[3].type}: {steps[3].title} — {steps[3].desc}
           </p>
         </div>
-      </div>
-    </Reveal>
+      </Reveal>
+
+      <Reveal>
+        <div className="mt-10 flex flex-col items-center gap-3">
+          <p className="text-sm text-ink-2">{content.bottom_note}</p>
+          <Button href="/dashboard/login" variant="secondary" size="sm">
+            Try the builder
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Button>
+        </div>
+      </Reveal>
+    </Section>
   );
 }
 
-function FlowLine() {
-  return (
-    <div className="flex h-5 justify-center">
-      <div className="of-pulse h-full w-px bg-gradient-to-b from-cyan-400/20 to-violet-400/20" />
-    </div>
-  );
-}
-
-function BuilderNode({
+function NodeCard({
   type,
   title,
-  icon,
-  active = false,
+  desc,
+  Icon,
+  tone,
 }: {
   type: string;
   title: string;
-  icon: string;
-  active?: boolean;
+  desc: string;
+  Icon: typeof Zap;
+  tone: "brand" | "ai" | "flow";
 }) {
+  const tones = {
+    brand: "border-brand/20 bg-brand-soft text-brand-2",
+    ai: "border-ai/20 bg-ai-soft text-ai",
+    flow: "border-flow/25 bg-flow-soft text-cyan-700",
+  } as const;
   return (
-    <Reveal lift className={`relative w-full max-w-xs rounded-xl border p-3 transition-colors duration-300 ${
-        active
-          ? "border-cyan-400/15 bg-cyan-400/[0.025]"
-          : "border-white/[0.06] bg-white/[0.015]"
-      }`}>
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-8 w-8 items-center justify-center rounded-lg border text-[11px] ${
-            active
-              ? "border-cyan-400/15 bg-cyan-400/[0.05] text-cyan-300"
-              : "border-white/[0.06] bg-white/[0.02] text-slate-500"
-          }`}
+    <div className="rounded-xl3 border border-line bg-white p-5 shadow-card">
+      <div className="flex items-center justify-between">
+        <span
+          aria-hidden
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border ${tones[tone]}`}
         >
-          {icon}
-        </div>
-
-        <div>
-          <div className="text-[8px] uppercase tracking-[0.12em] text-slate-700">
-            {type}
-          </div>
-
-          <div className="mt-1 text-[10px] font-medium text-slate-300">
-            {title}
-          </div>
-        </div>
-
-        {active && (
-          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyan-400" />
-        )}
+          <Icon className="h-4.5 w-4.5" />
+        </span>
+        <Badge tone={tone === "flow" ? "flow" : tone}>{type}</Badge>
       </div>
-    </Reveal>
+      <p className="mt-3.5 text-[15px] font-semibold text-ink">{title}</p>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-ink-2">{desc}</p>
+    </div>
   );
 }

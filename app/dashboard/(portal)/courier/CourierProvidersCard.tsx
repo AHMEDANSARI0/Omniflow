@@ -171,20 +171,20 @@ export default function CourierProvidersCard() {
   const selectedAdapter = adapters.find((a) => a.key === form.adapter);
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+    <section className="rounded-2xl border border-line bg-soft p-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold text-white">
+          <p className="text-xs font-semibold text-ink">
             Courier companies
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[11px] text-ink-3">
             Add each courier once - credentials stay masked after save.
           </p>
         </div>
         <button
           onClick={() => setFormOpen(!formOpen)}
           aria-label="Add courier company"
-          className="rounded-full border border-cyan-400/30 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-400/[0.15]"
+          className="rounded-full border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-soft"
         >
           + Add courier
         </button>
@@ -197,21 +197,21 @@ export default function CourierProvidersCard() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="Company name (e.g. Leopards Karachi)"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <select
               value={form.adapter}
               onChange={(e) => setForm({ ...form,
                 adapter: e.target.value,
                 base_url: "" })}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none"
             >
-              <option value="" className="bg-[#0b1626]">
+              <option value="" className="bg-white">
                 Adapter type&hellip;
               </option>
               {adapters.map((adapter) => (
                 <option key={adapter.key} value={adapter.key}
-                  className="bg-[#0b1626]">
+                  className="bg-white">
                   {adapter.label}
                 </option>
               ))}
@@ -221,14 +221,14 @@ export default function CourierProvidersCard() {
               onChange={(e) => setForm({ ...form,
                 api_key: e.target.value })}
               placeholder="API key"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <input
               value={form.api_secret}
               onChange={(e) => setForm({ ...form,
                 api_secret: e.target.value })}
               placeholder={selectedAdapter?.secret_label ?? "API secret"}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <input
               value={form.base_url}
@@ -240,16 +240,16 @@ export default function CourierProvidersCard() {
                     selectedAdapter.default_base + ")"
                   : "Base URL"
               }
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600 sm:col-span-2"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 sm:col-span-2"
             />
             <select
               value={form.booking_mode}
               onChange={(e) => setForm({ ...form,
                 booking_mode: e.target.value })}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none sm:col-span-2"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none sm:col-span-2"
             >
               {modes.map((mode) => (
-                <option key={mode} value={mode} className="bg-[#0b1626]">
+                <option key={mode} value={mode} className="bg-white">
                   Booking mode: {mode} &mdash; {MODE_HINTS[mode] ?? ""}
                 </option>
               ))}
@@ -259,13 +259,13 @@ export default function CourierProvidersCard() {
             <button
               onClick={() => void addProvider()}
               disabled={busy || !form.name.trim() || !form.adapter}
-              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
             >
               Save courier
             </button>
             <button
               onClick={() => setFormOpen(false)}
-              className="text-[11px] text-slate-400 hover:text-slate-200"
+              className="text-[11px] text-ink-3 hover:text-ink"
             >
               Cancel
             </button>
@@ -274,7 +274,7 @@ export default function CourierProvidersCard() {
       ) : null}
 
       {providers.length === 0 ? (
-        <p className="mt-3 text-[11px] text-slate-500">
+        <p className="mt-3 text-[11px] text-ink-3">
           No courier companies yet - add your first one with the + button.
         </p>
       ) : (
@@ -282,35 +282,35 @@ export default function CourierProvidersCard() {
           {providers.map((provider) => (
             <li
               key={provider.id}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-3"
+              className="rounded-xl border border-line bg-soft p-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-xs text-slate-100">
                     {provider.name}
-                    <span className="ml-2 rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                    <span className="ml-2 rounded-full border border-line-2 bg-soft px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink-3">
                       {provider.adapter}
                     </span>
                     {provider.enabled ? (
-                      <span className="ml-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/[0.08] px-2 py-0.5 text-[10px] text-emerald-200">
+                      <span className="ml-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/[0.08] px-2 py-0.5 text-[10px] text-ok">
                         Connected
                       </span>
                     ) : null}
                     {provider.test_status === "ok" ? (
-                      <span className="ml-1.5 text-[10px] text-emerald-300">
+                      <span className="ml-1.5 text-[10px] text-ok">
                         &#10003; test passed
                       </span>
                     ) : provider.test_status === "fail" ? (
-                      <span className="ml-1.5 text-[10px] text-rose-300">
+                      <span className="ml-1.5 text-[10px] text-danger">
                         &#10007; test failed
                       </span>
                     ) : (
-                      <span className="ml-1.5 text-[10px] text-slate-500">
+                      <span className="ml-1.5 text-[10px] text-ink-3">
                         not tested
                       </span>
                     )}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
+                  <p className="mt-0.5 text-[11px] text-ink-3">
                     {provider.api_key_masked || "no key"}
                     {" \u00b7 "}
                     {provider.base_url || "default base URL"}
@@ -321,7 +321,7 @@ export default function CourierProvidersCard() {
                   <button
                     onClick={() => void testProvider(provider.id)}
                     disabled={busy}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-white/[0.05] disabled:opacity-40"
+                    className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-40"
                   >
                     Test
                   </button>
@@ -332,8 +332,8 @@ export default function CourierProvidersCard() {
                     className={
                       "rounded-lg border px-2.5 py-1 text-[11px] disabled:opacity-40 " +
                       (provider.enabled
-                        ? "border-white/[0.08] bg-white/[0.02] text-slate-400 hover:bg-white/[0.05]"
-                        : "border-emerald-400/25 bg-emerald-400/[0.07] text-emerald-200 hover:bg-emerald-400/[0.15]")
+                        ? "border-line bg-soft text-ink-3 hover:bg-soft"
+                        : "border-emerald-400/25 bg-emerald-400/[0.07] text-ok hover:bg-emerald-400/[0.15]")
                     }
                   >
                     {provider.enabled ? "Disconnect" : "Connect"}
@@ -343,12 +343,12 @@ export default function CourierProvidersCard() {
                     onChange={(e) => void patchProvider(provider.id,
                       { booking_mode: e.target.value })}
                     disabled={busy}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-1.5 py-1 text-[11px] text-slate-300 outline-none"
+                    className="rounded-lg border border-line bg-soft px-1.5 py-1 text-[11px] text-ink-2 outline-none"
                     aria-label="Booking mode"
                   >
                     {modes.map((mode) => (
                       <option key={mode} value={mode}
-                        className="bg-[#0b1626]">
+                        className="bg-white">
                         {mode}
                       </option>
                     ))}
@@ -356,14 +356,14 @@ export default function CourierProvidersCard() {
                   <button
                     onClick={() => void removeProvider(provider.id)}
                     disabled={busy}
-                    className="text-[11px] text-rose-300/80 hover:text-rose-200 disabled:opacity-40"
+                    className="text-[11px] text-danger/80 hover:text-rose-200 disabled:opacity-40"
                   >
                     Remove
                   </button>
                 </div>
               </div>
               {provider.test_message ? (
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-ink-3">
                   {provider.test_message}
                 </p>
               ) : null}
@@ -372,13 +372,13 @@ export default function CourierProvidersCard() {
         </ul>
       )}
 
-      <p className="mt-2 text-[10px] text-slate-600">
+      <p className="mt-2 text-[10px] text-ink-3">
         Booking modes: auto books instantly, draft waits for a human
         confirm on the booking, manual needs an explicit confirm every
         time.
       </p>
       {note ? (
-        <p className="mt-1.5 text-[11px] text-slate-300">{note}</p>
+        <p className="mt-1.5 text-[11px] text-ink-2">{note}</p>
       ) : null}
     </section>
   );

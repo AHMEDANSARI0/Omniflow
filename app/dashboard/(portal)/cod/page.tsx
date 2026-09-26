@@ -22,9 +22,9 @@ interface CodRow {
 const FILTERS = ["all", "pending", "confirmed", "declined"] as const;
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "border-amber-400/25 bg-amber-400/[0.07] text-amber-300",
-  confirmed: "border-emerald-400/25 bg-emerald-400/[0.07] text-emerald-300",
-  declined: "border-rose-400/25 bg-rose-400/[0.07] text-rose-300",
+  pending: "border-amber-400/25 bg-amber-400/[0.07] text-amber-600",
+  confirmed: "border-emerald-400/25 bg-emerald-400/[0.07] text-ok",
+  declined: "border-rose-400/25 bg-rose-400/[0.07] text-danger",
 };
 
 function formatWhen(value: string): string {
@@ -140,14 +140,14 @@ export default function CodPage() {
   const chipCount = (key: string) => (typeof counts[key] === "number" ? counts[key] : 0);
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
             Workspace
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">COD confirmations</h1>
-          <p className="mt-1.5 text-sm text-slate-400">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">COD confirmations</h1>
+          <p className="mt-1.5 text-sm text-ink-3">
             Hot leads get one confirmation ask automatically; their YES or NO reply is
             recorded here so delivered orders (and returns) stay visible.
           </p>
@@ -157,16 +157,16 @@ export default function CodPage() {
         <AddressCard />
 
         {loadError ? (
-          <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm text-amber-300">
+          <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm text-amber-600">
             COD confirmations are unavailable right now.
           </p>
         ) : null}
 
-        <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+        <div className="mb-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
           <label className="flex cursor-pointer items-center justify-between gap-3">
             <span>
-              <span className="block text-sm font-medium text-white">Ask for confirmation</span>
-              <span className="mt-0.5 block text-xs text-slate-500">
+              <span className="block text-sm font-medium text-ink">Ask for confirmation</span>
+              <span className="mt-0.5 block text-xs text-ink-3">
                 Sends once per customer per 24 hours, only when a chat is marked as a hot lead.
               </span>
             </span>
@@ -183,10 +183,10 @@ export default function CodPage() {
             onChange={(event) => setTemplate(event.target.value)}
             rows={3}
             maxLength={1000}
-            className="mt-3 w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="mt-3 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
             placeholder={"Use {name} and it becomes each customer's first name."}
           />
-          <p className="mt-1 text-[11px] text-slate-600">
+          <p className="mt-1 text-[11px] text-ink-3">
             Customer replies YES or NO (English or Roman Urdu both work).
           </p>
 
@@ -195,15 +195,15 @@ export default function CodPage() {
               type="button"
               onClick={() => void save()}
               disabled={busy || loading}
-              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:bg-cyan-400/25 disabled:opacity-50"
+              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
             >
               {busy ? "Saving\u2026" : "Save settings"}
             </button>
-            {note ? <p className="text-xs text-slate-400">{note}</p> : null}
+            {note ? <p className="text-xs text-ink-3">{note}</p> : null}
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-1 rounded-full border border-white/[0.06] bg-white/[0.02] p-1">
+        <div className="mb-4 flex flex-wrap gap-1 rounded-full border border-line bg-soft p-1">
           {FILTERS.map((option) => (
             <button
               key={option}
@@ -213,8 +213,8 @@ export default function CodPage() {
               className={
                 "rounded-full px-3 py-1 text-xs font-medium capitalize transition " +
                 (filter === option
-                  ? "bg-cyan-400/15 text-cyan-300"
-                  : "text-slate-400 hover:text-slate-200")
+                  ? "bg-cyan-400/15 text-brand"
+                  : "text-ink-3 hover:text-ink")
               }
             >
               {option} ({option === "all" ? requests.length : chipCount(option)})
@@ -223,9 +223,9 @@ export default function CodPage() {
         </div>
 
         {requests.length === 0 ? (
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] px-5 py-8 text-center">
-            <p className="text-sm text-slate-400">No COD requests in this view yet.</p>
-            <p className="mt-1 text-xs text-slate-600">
+          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+            <p className="text-sm text-ink-3">No COD requests in this view yet.</p>
+            <p className="mt-1 text-xs text-ink-3">
               Turn the ask on above; hot leads will be asked on their next message.
             </p>
           </div>
@@ -234,13 +234,13 @@ export default function CodPage() {
             {requests.map((row) => (
               <li
                 key={row.id}
-                className="flex flex-col gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.015] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-2xl border border-line bg-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-slate-200">
+                  <p className="truncate text-sm text-ink">
                     {row.contactName || row.contactId}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
+                  <p className="mt-0.5 text-[11px] text-ink-3">
                     Asked {formatWhen(row.createdAt)}
                     {row.answeredAt ? " \u00b7 replied " + formatWhen(row.answeredAt) : ""}
                   </p>

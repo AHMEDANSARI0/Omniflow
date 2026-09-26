@@ -79,13 +79,13 @@ export default function DigestCard() {
   if (loaded && !visible) return null;
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-5">
+    <section className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">
             Daily digest
           </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-ink-3">
             One WhatsApp a day to yourself: orders paid today, open carts and
             returns. Sent after the hour you pick.
           </p>
@@ -97,8 +97,8 @@ export default function DigestCard() {
           onClick={() => setEnabled((prev) => !prev)}
           className={`rounded-lg border px-2.5 py-1 text-[11px] ${
             enabled
-              ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+              ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+              : "border-line bg-soft text-ink-3"
           }`}
         >
           {enabled ? "Digest on" : "Digest off"}
@@ -107,7 +107,7 @@ export default function DigestCard() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-ink-3">
             Your WhatsApp number
           </span>
           <input
@@ -115,11 +115,11 @@ export default function DigestCard() {
             value={ownerContact}
             onChange={(event) => setOwnerContact(event.target.value)}
             placeholder="923001234567"
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-white/20 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-white/20 focus:outline-none"
           />
         </label>
         <label className="block">
-          <span className="text-[11px] text-slate-400">Send after (hour)</span>
+          <span className="text-[11px] text-ink-3">Send after (hour)</span>
           <input
             type="number"
             min={6}
@@ -128,7 +128,7 @@ export default function DigestCard() {
             onChange={(event) =>
               setHour(Number(event.target.value) || 0)
             }
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
           />
         </label>
       </div>
@@ -138,11 +138,11 @@ export default function DigestCard() {
           type="button"
           onClick={() => void save()}
           disabled={saving}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-200 hover:bg-white/[0.08] disabled:opacity-50"
+          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs text-ink hover:bg-white/[0.08] disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save settings"}
         </button>
-        {note ? <span className="text-[11px] text-slate-500">{note}</span> : null}
+        {note ? <span className="text-[11px] text-ink-3">{note}</span> : null}
       </div>
     </section>
   );

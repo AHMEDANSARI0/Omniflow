@@ -1,0 +1,250 @@
+"""Portal "AI agents" page ka live mirror — laptop bot ke liye.
+
+Background daemon thread har 60s Control Plane se agent config fetch karta hai:
+  GET /api/v1/connector/bot?client_id=1   (X-Omniflow-Key)
+Response (flat): {agent_name, tone, greeting, fallback, working_hours_*,
+human_handoff_enabled, updated_at}
+
+get_config() kabhi block nahi karta — hamesha aakhri known config (ya defaults).
+Network fail ho to chupchaap previous config chalti rehti hai (bot kabhi nahi rukta).
+
+Env (same as bridge): OMNIFLOW_SERVICE_KEY, OMNIFLOW_CP_BASE_URL,
+OMNIFLOW_CLIENT_ID, OMNIFLOW_AGENT_CONFIG_SECONDS (refresh interval).
+"""
+
+import json
+import os
+import threading
+import urllib.request
+
+
+DEFAULT_BASE_URL = "https://omniflow-control-plane-rho.vercel.app"
+FETCH_INTERVAL_SECONDS = 60.0
+
+DEFAULTS = {
+    "agent_name": "OmniFlow Assistant",
+    "tone": "friendly",
+    "greeting": "",
+    "fallback": "",
+    "working_hours_enabled": False,
+    "working_hours_start": "09:00",
+    "working_hours_end": "18:00",
+    "human_handoff_enabled": False,
+    "custom_instructions": "",
+    "configured": False,
+}
+
+_lock = threading.Lock()
+_current = dict(DEFAULTS)
+_started = False
+
+
+def _service_key():
+    return str(os.getenv("OMNIFLOW_SERVICE_KEY", "")).strip()
+
+
+def _base_url():
+    return str(
+        os.getenv("OMNIFLOW_CP_BASE_URL", DEFAULT_BASE_URL)
+    ).rstrip("/")
+
+
+def _client_id():
+    return int(os.getenv("OMNIFLOW_CLIENT_ID", "1"))
+
+
+def _interval():
+    return max(
+        15.0,
+        float(
+            os.getenv(
+                "OMNIFLOW_AGENT_CONFIG_SECONDS",
+                str(FETCH_INTERVAL_SECONDS),
+            )
+        ),
+    )
+
+
+def get_config():
+    with _lock:
+        return dict(_current)
+
+
+def build_directives():
+    """System prompt ke liye portal-driven instructions (string)."""
+    config = get_config()
+    lines = []
+
+    name = config.get("agent_name") or DEFAULTS["agent_name"]
+    lines.append(
+        f"You are '{name}', the WhatsApp business assistant configured by the business owner."
+    )
+
+    tone = config.get("tone") or "friendly"
+    tone_text = {
+        "friendly": "Warm, friendly and casual.",
+        "professional": "Professional and polite — clear, respectful wording.",
+        "concise": "Very brief and to the point — minimal words, no small talk.",
+    }.get(tone, "Warm, friendly and casual.")
+    lines.append(f"Reply tone: {tone_text}")
+
+    if config.get("greeting"):
+        lines.append(
+            "Business greeting (use when conversation starts or you greet): "
+            + str(config["greeting"])
+        )
+
+    if config.get("fallback"):
+        lines.append(
+            "When you do not know the answer or cannot help, reply with this "
+            "fallback message (you may rephrase it slightly in your own words): "
+            + str(config["fallback"])
+        )
+
+    if config.get("working_hours_enabled"):
+        lines.append(
+            "Business working hours are "
+            + str(config.get("working_hours_start") or "09:00")
+            + " to "
+            + str(config.get("working_hours_end") or "18:00")
+            + ". Outside these hours, politely tell the customer you will reply "
+            "the next working day."
+        )
+
+    if config.get("human_handoff_enabled"):
+        lines.append(
+            "Human handoff is ON: if the customer asks for a human agent or the "
+            "issue cannot be resolved, politely say the team will follow up — "
+            "do not argue."
+        )
+
+    if config.get("custom_instructions"):
+        lines.append("")
+        lines.append(
+            "OWNER CUSTOM INSTRUCTIONS (highest priority after the rules "
+            "above — follow them exactly):"
+        )
+        lines.append(str(config["custom_instructions"]))
+
+    return "\n".join(lines)
+
+
+def _apply(data):
+    config = dict(DEFAULTS)
+
+    if isinstance(data, dict):
+        for field in (
+            "agent_name",
+            "tone",
+            "greeting",
+            "fallback",
+        ):
+            value = data.get(field)
+
+            if isinstance(value, str) and value.strip():
+                config[field] = value.strip()
+
+        if data.get("tone") in ("friendly", "professional", "concise"):
+            config["tone"] = data["tone"]
+
+        config["working_hours_enabled"] = data.get(
+            "working_hours_enabled"
+        ) is True
+
+        config["human_handoff_enabled"] = data.get(
+            "human_handoff_enabled"
+        ) is True
+
+        for field in (
+            "working_hours_start",
+            "working_hours_end",
+        ):
+            value = data.get(field)
+
+            if isinstance(value, str) and value.strip():
+                config[field] = value.strip()
+
+        if isinstance(data.get("custom_instructions"), str):
+            config["custom_instructions"] = data["custom_instructions"].strip()
+
+        config["configured"] = data.get("updated_at") is not None
+
+    with _lock:
+        globals()["_current"] = config
+
+    return config
+
+
+def _fetch_once():
+    key = _service_key()
+
+    if not key:
+        return False
+
+    request = urllib.request.Request(
+        _base_url()
+        + "/api/v1/connector/bot?client_id="
+        + str(_client_id()),
+        headers={"X-Omniflow-Key": key},
+        method="GET",
+    )
+
+    try:
+        with urllib.request.urlopen(
+            request,
+            timeout=8,
+        ) as response:
+            data = json.loads(
+                response.read().decode("utf-8", "replace")
+            )
+    except Exception as error:
+        print(f"Agent config fetch deferred: {error}")
+        return False
+
+    config = _apply(data)
+
+    print(
+        "Agent config updated: name="
+        + config["agent_name"]
+        + ", tone="
+        + config["tone"]
+        + (", greeting=on" if config["greeting"] else "")
+        + (", fallback=on" if config["fallback"] else "")
+        + (", hours=on" if config["working_hours_enabled"] else "")
+        + (", handoff=on" if config["human_handoff_enabled"] else "")
+        + (", custom=on" if config["custom_instructions"] else "")
+    )
+
+    return True
+
+
+def _loop():
+    while True:
+        try:
+            _fetch_once()
+        except Exception as error:
+            print(f"Agent config loop warning: {error}")
+
+        threading.Event().wait(_interval())
+
+
+def start_background_refresh():
+    """Idempotent — bot ke andar aik dafa call karo."""
+    global _started
+
+    if _started:
+        return
+
+    _started = True
+
+    thread = threading.Thread(
+        target=_loop,
+        name="portal-agent-config",
+        daemon=True,
+    )
+    thread.start()
+
+    print(
+        "Agent config refresh started (every "
+        f"{_interval():g}s)"
+    )

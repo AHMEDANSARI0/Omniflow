@@ -135,16 +135,16 @@ export default function AdminCustomersPage() {
     <div className="mx-auto max-w-5xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Customers
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-ink-3">
             Client accounts — password reset and lock status (Control Plane).
           </p>
         </div>
         <button
           onClick={() => void load()}
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
         >
           Refresh
         </button>
@@ -155,7 +155,7 @@ export default function AdminCustomersPage() {
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           role="alert"
-          className="mb-4 rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-red-300"
+          className="mb-4 rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-danger"
         >
           {error}
         </motion.p>
@@ -165,14 +165,14 @@ export default function AdminCustomersPage() {
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.05] p-4"
+          className="mb-4 rounded-xl border border-brand/25 bg-cyan-400/[0.05] p-4"
         >
-          <p className="text-xs font-medium uppercase tracking-wider text-cyan-300">
+          <p className="text-xs font-medium uppercase tracking-wider text-brand">
             New temporary password — visible only once
           </p>
-          <p className="mt-1 text-sm text-slate-300">{resetResult.email}</p>
+          <p className="mt-1 text-sm text-ink-2">{resetResult.email}</p>
           <div className="mt-3 flex items-center gap-2">
-            <code className="rounded-lg border border-white/[0.08] bg-black/40 px-3 py-2 text-sm font-semibold tracking-wider text-white">
+            <code className="rounded-lg border border-line bg-canvas px-3 py-2 text-sm font-semibold tracking-wider text-ink">
               {resetResult.temp_password}
             </code>
             <button
@@ -182,7 +182,7 @@ export default function AdminCustomersPage() {
               Copy
             </button>
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-3">
             Share this password with the client over a secure channel. They can
             change it after signing in.
           </p>
@@ -195,10 +195,10 @@ export default function AdminCustomersPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/[0.04] p-4"
         >
-          <p className="text-xs font-medium uppercase tracking-wider text-amber-300">
+          <p className="text-xs font-medium uppercase tracking-wider text-amber-600">
             Recent password reset codes — test phase
           </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-1 text-[11px] leading-relaxed text-ink-3">
             Shown here because email delivery (SMTP) is not configured yet.
             Codes expire in 10 minutes and die after a single use.
           </p>
@@ -206,10 +206,10 @@ export default function AdminCustomersPage() {
             {resetCodes.map((entry) => (
               <div
                 key={`${entry.user_id}-${entry.created_at}`}
-                className="flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.05] bg-black/20 px-3 py-2"
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-canvas px-3 py-2"
               >
-                <span className="text-xs text-slate-300">{entry.email}</span>
-                <code className="rounded-md border border-white/[0.08] bg-black/40 px-2.5 py-1 text-xs font-semibold tracking-[0.3em] text-white">
+                <span className="text-xs text-ink-2">{entry.email}</span>
+                <code className="rounded-md border border-line bg-canvas px-2.5 py-1 text-xs font-semibold tracking-[0.3em] text-ink">
                   {entry.code}
                 </code>
                 <button
@@ -218,7 +218,7 @@ export default function AdminCustomersPage() {
                 >
                   Copy
                 </button>
-                <span className="ml-auto text-[10px] text-slate-500">
+                <span className="ml-auto text-[10px] text-ink-3">
                   expires {formatDate(entry.expires_at)}
                 </span>
               </div>
@@ -227,20 +227,20 @@ export default function AdminCustomersPage() {
         </motion.div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+      <div className="overflow-hidden rounded-2xl border border-line bg-soft">
         {loading ? (
-          <div className="px-5 py-10 text-center text-sm text-slate-500">
+          <div className="px-5 py-10 text-center text-sm text-ink-3">
             Loading clients…
           </div>
         ) : !users || users.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-slate-500">
+          <div className="px-5 py-10 text-center text-sm text-ink-3">
             No clients found.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-line text-[11px] uppercase tracking-wider text-ink-3">
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Status</th>
@@ -253,34 +253,34 @@ export default function AdminCustomersPage() {
                 {users.map((u) => (
                   <tr
                     key={u.id}
-                    className="border-b border-white/[0.04] last:border-0"
+                    className="border-b border-line last:border-0"
                   >
-                    <td className="px-4 py-3 text-slate-200">{u.email}</td>
-                    <td className="px-4 py-3 text-slate-400">
+                    <td className="px-4 py-3 text-ink">{u.email}</td>
+                    <td className="px-4 py-3 text-ink-3">
                       {u.display_name || "—"}
                     </td>
                     <td className="px-4 py-3">
                       {u.locked ? (
-                        <span className="rounded-md border border-red-400/25 bg-red-400/[0.07] px-2 py-0.5 text-[11px] font-medium text-red-300">
+                        <span className="rounded-md border border-red-400/25 bg-red-400/[0.07] px-2 py-0.5 text-[11px] font-medium text-danger">
                           Locked
                         </span>
                       ) : (
-                        <span className="rounded-md border border-emerald-400/20 bg-emerald-400/[0.06] px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+                        <span className="rounded-md border border-emerald-400/20 bg-emerald-400/[0.06] px-2 py-0.5 text-[11px] font-medium text-ok">
                           {u.status || "Ok"}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">
+                    <td className="px-4 py-3 text-xs text-ink-3">
                       {formatDate(u.last_login_at)}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-ink-3">
                       {u.failed_attempt_count}
                     </td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => void resetPassword(u.id, u.email)}
                         disabled={busyId === u.id}
-                        className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-1.5 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-400/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-cyan-400/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {busyId === u.id ? "Resetting…" : "Reset password"}
                       </button>

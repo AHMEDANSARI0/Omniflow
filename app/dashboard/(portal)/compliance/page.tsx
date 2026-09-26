@@ -104,28 +104,28 @@ export default function CompliancePage() {
   return (
     <div className="mx-auto max-w-3xl 2xl:max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Compliance
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-ink-3">
           Customers who asked to stop receiving messages. Automated sends to
           these contacts are blocked at the source.
         </p>
       </div>
 
-      <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
-        <p className="text-xs font-semibold text-white">Add an opt-out</p>
+      <section className="rounded-2xl border border-line bg-soft p-4">
+        <p className="text-xs font-semibold text-ink">Add an opt-out</p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             value={contact}
             onChange={(event) => setContact(event.target.value)}
             placeholder="923001234567"
-            className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder-slate-600 outline-none transition-colors focus:border-cyan-400/40"
+            className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors focus:border-brand/40"
           />
           <select
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40"
+            className="rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink outline-none focus:border-brand/40"
           >
             <option value="customer">Customer asked</option>
             <option value="merchant">Merchant decision</option>
@@ -133,27 +133,27 @@ export default function CompliancePage() {
           <button
             onClick={() => void addOptOut()}
             disabled={busy || !contact.trim()}
-            className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/[0.14] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft disabled:cursor-not-allowed disabled:opacity-50"
           >
             Add
           </button>
         </div>
-        {note ? <p className="mt-2 text-xs text-slate-400">{note}</p> : null}
+        {note ? <p className="mt-2 text-xs text-ink-3">{note}</p> : null}
       </section>
 
-      <section className="mt-4 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+      <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs font-semibold text-white">Opt-out list</p>
+          <p className="text-xs font-semibold text-ink">Opt-out list</p>
           <div className="flex items-center gap-2">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search number"
-              className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-1.5 text-sm text-white placeholder-slate-600 outline-none transition-colors focus:border-cyan-400/40 sm:w-48"
+              className="w-full rounded-xl border border-line bg-soft px-3 py-1.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors focus:border-brand/40 sm:w-48"
             />
             <button
               onClick={() => void load(query)}
-              className="shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/[0.05]"
+              className="shrink-0 rounded-xl border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:bg-soft"
             >
               Search
             </button>
@@ -162,15 +162,15 @@ export default function CompliancePage() {
 
         {loading ? (
           <div className="mt-3 animate-pulse space-y-2">
-            <div className="h-9 rounded-xl bg-white/[0.03]" />
-            <div className="h-9 rounded-xl bg-white/[0.03]" />
+            <div className="h-9 rounded-xl bg-soft" />
+            <div className="h-9 rounded-xl bg-soft" />
           </div>
         ) : failed ? (
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-ink-3">
             The opt-out list is temporarily unavailable. Try again shortly.
           </p>
         ) : rows.length === 0 ? (
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-ink-3">
             {query
               ? "No opt-outs match this search."
               : "No opt-outs yet. When a customer sends STOP, they appear here automatically."}
@@ -180,18 +180,18 @@ export default function CompliancePage() {
             {rows.map((row) => (
               <li
                 key={row.contactId}
-                className="flex flex-col gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-line bg-soft px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-slate-200">{row.contactId}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                  <p className="truncate text-sm text-ink">{row.contactId}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-ink-3">
                     {row.reason === "merchant" ? "Merchant decision" : "Customer asked"}
                   </p>
                 </div>
                 <button
                   onClick={() => void removeOptOut(row)}
                   disabled={busy}
-                  className="shrink-0 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1 text-xs text-slate-300 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-lg border border-line bg-soft px-3 py-1 text-xs text-ink-2 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Remove
                 </button>

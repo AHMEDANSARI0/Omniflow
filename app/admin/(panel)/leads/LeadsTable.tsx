@@ -11,9 +11,9 @@ import {
 import type { Lead, LeadStatus } from "./types";
 
 const statusStyles: Record<LeadStatus, string> = {
-  new: "border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-300",
-  contacted: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300",
-  closed: "border-white/[0.08] bg-white/[0.02] text-slate-500",
+  new: "border-brand/20 bg-brand-soft text-brand",
+  contacted: "border-violet-400/20 bg-violet-400/[0.06] text-ai",
+  closed: "border-line bg-soft text-ink-3",
 };
 
 function formatDate(iso: string): string {
@@ -68,18 +68,18 @@ function LeadRow({
 
   return (
     <tr
-      className={`border-b border-white/[0.04] transition-opacity ${
+      className={`border-b border-line transition-opacity ${
         pending ? "opacity-40" : ""
       }`}
     >
       <td className="px-4 py-3.5">
-        <p className="text-sm font-medium text-white">{lead.name}</p>
-        <p className="text-xs text-slate-500">{lead.email}</p>
+        <p className="text-sm font-medium text-ink">{lead.name}</p>
+        <p className="text-xs text-ink-3">{lead.email}</p>
       </td>
-      <td className="hidden px-4 py-3.5 text-sm text-slate-400 md:table-cell">
-        {lead.company ?? <span className="text-slate-600">—</span>}
+      <td className="hidden px-4 py-3.5 text-sm text-ink-3 md:table-cell">
+        {lead.company ?? <span className="text-ink-3">—</span>}
       </td>
-      <td className="hidden px-4 py-3.5 text-xs text-slate-500 sm:table-cell">
+      <td className="hidden px-4 py-3.5 text-xs text-ink-3 sm:table-cell">
         {formatDate(lead.created_at)}
       </td>
       <td className="px-4 py-3.5">
@@ -89,13 +89,13 @@ function LeadRow({
           onChange={(e) => handleStatusChange(e.target.value as LeadStatus)}
           className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs outline-none transition-colors ${statusStyles[lead.status]} bg-transparent`}
         >
-          <option value="new" className="bg-[#081522] text-slate-200">
+          <option value="new" className="bg-white text-ink">
             New
           </option>
-          <option value="contacted" className="bg-[#081522] text-slate-200">
+          <option value="contacted" className="bg-white text-ink">
             Contacted
           </option>
-          <option value="closed" className="bg-[#081522] text-slate-200">
+          <option value="closed" className="bg-white text-ink">
             Closed
           </option>
         </select>
@@ -107,7 +107,7 @@ function LeadRow({
             onClick={handleInvite}
             disabled={pending}
             title="Create client account"
-            className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.05] px-3 py-1.5 text-xs font-medium text-cyan-300 transition-colors duration-200 hover:border-cyan-400/40 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg border border-brand/20 bg-cyan-400/[0.05] px-3 py-1.5 text-xs font-medium text-brand transition-colors duration-200 hover:border-brand/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Invite
           </button>
@@ -117,7 +117,7 @@ function LeadRow({
             disabled={pending}
             title="Delete lead"
             aria-label={`Delete lead ${lead.name}`}
-            className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-500 transition-colors duration-200 hover:border-red-400/30 hover:text-red-300 disabled:cursor-not-allowed"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink-3 transition-colors duration-200 hover:border-red-400/30 hover:text-danger disabled:cursor-not-allowed"
           >
             ✕
           </button>
@@ -145,7 +145,7 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
             <div className="min-w-0 flex-1">
               <p
                 className={`text-xs font-medium ${
-                  inviteResult.success ? "text-emerald-300" : "text-red-300"
+                  inviteResult.success ? "text-ok" : "text-danger"
                 }`}
               >
                 {inviteResult.success ? "✓ " : "✕ "}
@@ -154,14 +154,14 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
 
               {inviteResult.success && inviteResult.tempPassword && (
                 <div className="mt-3 space-y-2">
-                  <code className="block select-all break-all rounded-lg border border-white/[0.08] bg-[#060f1b] px-3 py-2 font-mono text-xs text-slate-300">
+                  <code className="block select-all break-all rounded-lg border border-line bg-white px-3 py-2 font-mono text-xs text-ink-2">
                     Login: https://omniflow-bice.vercel.app/dashboard/login
                     <br />
                     Email: {inviteResult.email}
                     <br />
                     Password: {inviteResult.tempPassword}
                   </code>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-ink-3">
                     ⚠ This password will not be shown again — copy it now and
                     share it securely with the client.
                   </p>
@@ -173,7 +173,7 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
               type="button"
               onClick={() => setInviteResult(null)}
               aria-label="Dismiss"
-              className="shrink-0 rounded-lg border border-white/[0.08] px-2 py-1 text-xs text-slate-500 hover:text-white"
+              className="shrink-0 rounded-lg border border-line px-2 py-1 text-xs text-ink-3 hover:text-ink"
             >
               ✕
             </button>
@@ -181,20 +181,20 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-white/[0.015]">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-soft">
         <table className="w-full min-w-[640px] text-left">
           <thead>
-            <tr className="border-b border-white/[0.06]">
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-slate-500">
+            <tr className="border-b border-line">
+              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-ink-3">
                 Lead
               </th>
-              <th className="hidden px-4 py-3 text-xs font-medium uppercase tracking-wider text-slate-500 md:table-cell">
+              <th className="hidden px-4 py-3 text-xs font-medium uppercase tracking-wider text-ink-3 md:table-cell">
                 Company
               </th>
-              <th className="hidden px-4 py-3 text-xs font-medium uppercase tracking-wider text-slate-500 sm:table-cell">
+              <th className="hidden px-4 py-3 text-xs font-medium uppercase tracking-wider text-ink-3 sm:table-cell">
                 Date
               </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-slate-500">
+              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-ink-3">
                 Status
               </th>
               <th className="px-4 py-3" />

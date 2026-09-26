@@ -41,20 +41,20 @@ export default function CsatSummaryCard() {
   const maxCount = Math.max(1, ...summary.dist);
 
   return (
-    <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+    <div className="mt-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xs font-semibold text-white">Customer rating (CSAT)</h2>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <h2 className="text-xs font-semibold text-ink">Customer rating (CSAT)</h2>
+          <p className="mt-0.5 text-[11px] text-ink-3">
             From 1–5 replies customers send on WhatsApp.
             {summary.pending > 0
               ? " " + String(summary.pending) + " request" + (summary.pending === 1 ? "" : "s") + " waiting."
               : ""}
           </p>
         </div>
-        <p className="text-2xl font-semibold text-white">
+        <p className="text-2xl font-semibold text-ink">
           {summary.average !== null ? String(summary.average) : "—"}
-          <span className="ml-1 text-xs font-normal text-slate-500">/ 5</span>
+          <span className="ml-1 text-xs font-normal text-ink-3">/ 5</span>
         </p>
       </div>
       <div className="mt-4 space-y-1.5">
@@ -62,10 +62,10 @@ export default function CsatSummaryCard() {
           const count = summary.dist[score - 1] ?? 0;
           return (
             <div key={score} className="flex items-center gap-2">
-              <span className="w-3 shrink-0 text-right text-[10px] text-slate-600">
+              <span className="w-3 shrink-0 text-right text-[10px] text-ink-3">
                 {String(score)}
               </span>
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.04]">
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-soft">
                 <div
                   className={
                     "h-full rounded-full " +
@@ -74,7 +74,7 @@ export default function CsatSummaryCard() {
                   style={{ width: String(Math.round((count / maxCount) * 100)) + "%" }}
                 />
               </div>
-              <span className="w-6 shrink-0 text-[10px] text-slate-500">
+              <span className="w-6 shrink-0 text-[10px] text-ink-3">
                 {String(count)}
               </span>
             </div>

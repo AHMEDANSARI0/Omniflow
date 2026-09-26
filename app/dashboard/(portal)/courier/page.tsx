@@ -23,12 +23,12 @@ interface CourierBooking {
 
 const STATUS_STYLES: Record<string, string> = {
   booked: "border-sky-400/25 bg-sky-400/[0.07] text-sky-300",
-  draft: "border-violet-400/25 bg-violet-400/[0.07] text-violet-300",
-  in_transit: "border-amber-400/25 bg-amber-400/[0.07] text-amber-300",
-  delivered: "border-emerald-400/25 bg-emerald-400/[0.07] text-emerald-300",
-  returned: "border-rose-400/25 bg-rose-400/[0.07] text-rose-300",
-  undelivered: "border-rose-400/25 bg-rose-400/[0.07] text-rose-300",
-  cancelled: "border-white/[0.1] bg-white/[0.03] text-slate-400",
+  draft: "border-violet-400/25 bg-violet-400/[0.07] text-ai",
+  in_transit: "border-amber-400/25 bg-amber-400/[0.07] text-amber-600",
+  delivered: "border-emerald-400/25 bg-emerald-400/[0.07] text-ok",
+  returned: "border-rose-400/25 bg-rose-400/[0.07] text-danger",
+  undelivered: "border-rose-400/25 bg-rose-400/[0.07] text-danger",
+  cancelled: "border-line-2 bg-soft text-ink-3",
 };
 
 const EMPTY_BOOK = {
@@ -179,16 +179,16 @@ export default function CourierPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
             Workspace
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Courier
           </h1>
-          <p className="mt-1.5 text-sm text-slate-400">
+          <p className="mt-1.5 text-sm text-ink-3">
             Connect your courier accounts, then book or track parcels
             right from this page - with as much automation as you
             allow.
@@ -197,9 +197,9 @@ export default function CourierPage() {
 
         <CourierProvidersCard />
 
-        <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-          <p className="text-xs font-semibold text-white">Book parcel</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+          <p className="text-xs font-semibold text-ink">Book parcel</p>
+          <p className="mt-0.5 text-[11px] text-ink-3">
             {providers.length === 0
               ? "Connect a courier above first - then book here."
               : "Books through the selected courier - drafts land in the list below when the mode asks for a confirm."}
@@ -209,15 +209,15 @@ export default function CourierPage() {
               value={providerId}
               onChange={(event) =>
                 setProviderId(Number(event.target.value) || 0)}
-              className="mt-2 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none sm:w-auto"
+              className="mt-2 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none sm:w-auto"
               aria-label="Courier company"
             >
-              <option value={0} className="bg-[#0b1626]">
+              <option value={0} className="bg-white">
                 Default courier
               </option>
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}
-                  className="bg-[#0b1626]">
+                  className="bg-white">
                   {provider.name} ({provider.booking_mode})
                 </option>
               ))}
@@ -229,21 +229,21 @@ export default function CourierPage() {
               onChange={(e) => setBookForm({ ...bookForm,
                 customer_name: e.target.value })}
               placeholder="Customer name"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <input
               value={bookForm.phone}
               onChange={(e) => setBookForm({ ...bookForm,
                 phone: e.target.value })}
               placeholder="Phone"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <input
               value={bookForm.city}
               onChange={(e) => setBookForm({ ...bookForm,
                 city: e.target.value })}
               placeholder="City *"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <input
               value={bookForm.cod_amount}
@@ -251,33 +251,33 @@ export default function CourierPage() {
                 cod_amount: e.target.value })}
               placeholder="COD amount"
               inputMode="decimal"
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <input
               value={bookForm.address}
               onChange={(e) => setBookForm({ ...bookForm,
                 address: e.target.value })}
               placeholder="Address *"
-              className="sm:col-span-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="sm:col-span-2 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
           </div>
           <button
             onClick={() => void bookParcel()}
             disabled={busy || providers.length === 0
               || !bookForm.city.trim() || !bookForm.address.trim()}
-            className="mt-2 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+            className="mt-2 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
           >
             Book parcel
           </button>
           {bookNote ? (
-            <p className="mt-1.5 text-[11px] text-slate-300">{bookNote}</p>
+            <p className="mt-1.5 text-[11px] text-ink-2">{bookNote}</p>
           ) : null}
         </section>
 
-        <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-          <p className="text-xs font-semibold text-white">Bookings</p>
+        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+          <p className="text-xs font-semibold text-ink">Bookings</p>
           {bookings.length === 0 ? (
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[11px] text-ink-3">
               No bookings yet.
             </p>
           ) : (
@@ -285,16 +285,16 @@ export default function CourierPage() {
               {bookings.map((booking) => (
                 <li
                   key={booking.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-1.5"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-1.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-xs text-slate-200">
+                    <p className="truncate text-xs text-ink">
                       {booking.tracking_number || "(no CN)"}
-                      <span className="ml-2 text-[11px] text-slate-500">
+                      <span className="ml-2 text-[11px] text-ink-3">
                         {booking.city}
                       </span>
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-ink-3">
                       COD {booking.cod_amount} &middot; {booking.provider}
                     </p>
                   </div>
@@ -320,7 +320,7 @@ export default function CourierPage() {
                       <button
                         onClick={() => void trackBooking(booking.id)}
                         disabled={busy}
-                        className="text-[11px] text-cyan-300 hover:underline disabled:opacity-40"
+                        className="text-[11px] text-brand hover:underline disabled:opacity-40"
                       >
                         Track
                       </button>

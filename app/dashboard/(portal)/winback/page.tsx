@@ -79,37 +79,37 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
         : "quiet " + (entry.days ?? 0) + "d";
 
   return (
-    <li className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2.5">
+    <li className="rounded-xl border border-line bg-soft px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-sm font-medium text-slate-200">
+        <p className="truncate text-sm font-medium text-ink">
           {entry.name || entry.contactId}
         </p>
         <span
           className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] ${
             entry.kind === "cart"
-              ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+              ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
               : entry.kind === "reorder"
-                ? "border-cyan-400/25 bg-cyan-400/[0.08] text-cyan-300"
-                : "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
+                ? "border-brand/25 bg-brand-soft text-brand"
+                : "border-rose-400/25 bg-rose-400/[0.08] text-danger"
           }`}
         >
           {chip}
         </span>
       </div>
       {entry.item || entry.total !== null ? (
-        <p className="mt-0.5 truncate text-[11px] text-slate-500">
+        <p className="mt-0.5 truncate text-[11px] text-ink-3">
           {entry.item}
           {entry.priceText ? " · " + entry.priceText : ""}
           {entry.total !== null ? " · Rs " + entry.total : ""}
         </p>
       ) : null}
-      <p className="mt-2 rounded-lg border border-white/[0.05] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-300">
+      <p className="mt-2 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink-2">
         {entry.message}
       </p>
       <div className="mt-2 flex items-center gap-2">
         <button
           onClick={() => void copyMessage()}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-slate-300 transition-colors hover:bg-white/[0.06]"
+          className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:bg-white/[0.06]"
         >
           {copied ? "Copied" : "Copy message"}
         </button>
@@ -118,7 +118,7 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
             href={entry.waLink}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-emerald-300 transition-colors hover:bg-emerald-400/[0.14]"
+            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-ok transition-colors hover:bg-emerald-400/[0.14]"
           >
             Open WhatsApp
           </a>
@@ -126,12 +126,12 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
         <button
           onClick={() => void sendNow()}
           disabled={busy || sent}
-          className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-2.5 py-1 text-[11px] text-cyan-300 transition-colors hover:bg-cyan-400/[0.14] disabled:opacity-50"
+          className="rounded-lg border border-brand/25 bg-brand-soft px-2.5 py-1 text-[11px] text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
         >
           {sent ? "Sent" : busy ? "Sending\u2026" : "Send via WhatsApp"}
         </button>
       </div>
-      {note ? <p className="mt-1 text-[10px] text-amber-300">{note}</p> : null}
+      {note ? <p className="mt-1 text-[10px] text-amber-600">{note}</p> : null}
     </li>
   );
 }
@@ -175,10 +175,10 @@ export default function WinbackPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Win-back
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-ink-3">
           Ready-to-send recovery messages built from open carts, reorder gaps
           and quiet customers. Copy one, open WhatsApp, or send it through
           your connected number - nothing is ever sent automatically.
@@ -186,25 +186,25 @@ export default function WinbackPage() {
       </div>
 
       {failed ? (
-        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-300">
+        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-600">
           The queue is temporarily unavailable. Try again shortly.
         </p>
       ) : null}
 
-      <p className="mb-4 text-xs text-slate-500">
+      <p className="mb-4 text-xs text-ink-3">
         {counts.cart ?? 0} carts · {counts.reorder ?? 0} reorders ·{" "}
         {counts.winback ?? 0} win-backs
         {data && data.scored > 0 ? " · " + data.scored + " customers scored" : ""}
       </p>
 
       <div className="space-y-4">
-        <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
-          <p className="text-xs font-semibold text-white">Carts to recover</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+        <section className="rounded-2xl border border-line bg-soft p-4">
+          <p className="text-xs font-semibold text-ink">Carts to recover</p>
+          <p className="mt-0.5 text-[11px] text-ink-3">
             Open checkout links waiting on a confirmation.
           </p>
           {(data?.cart.length ?? 0) === 0 ? (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-ink-3">
               No open carts right now.
             </p>
           ) : (
@@ -216,13 +216,13 @@ export default function WinbackPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
-          <p className="text-xs font-semibold text-white">Reorder due</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+        <section className="rounded-2xl border border-line bg-soft p-4">
+          <p className="text-xs font-semibold text-ink">Reorder due</p>
+          <p className="mt-0.5 text-[11px] text-ink-3">
             Repeat buyers past their usual time-between-orders.
           </p>
           {(data?.reorder.length ?? 0) === 0 ? (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-ink-3">
               No reorders due yet.
             </p>
           ) : (
@@ -234,13 +234,13 @@ export default function WinbackPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
-          <p className="text-xs font-semibold text-white">Win-back</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+        <section className="rounded-2xl border border-line bg-soft p-4">
+          <p className="text-xs font-semibold text-ink">Win-back</p>
+          <p className="mt-0.5 text-[11px] text-ink-3">
             Paying customers who have gone quiet for 45+ days.
           </p>
           {(data?.winback.length ?? 0) === 0 ? (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-ink-3">
               No quiet payers right now.
             </p>
           ) : (

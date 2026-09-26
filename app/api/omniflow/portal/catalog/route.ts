@@ -49,9 +49,10 @@ function parseItemInput(payload: {
     priceText?: unknown;
     notes?: unknown;
     isActive?: unknown;
+    brand_id?: unknown;
   };
 } | null):
-  | { kind: "ok"; item: { kind: "product" | "service"; name: string; priceText: string; notes: string; isActive: boolean } }
+  | { kind: "ok"; item: { kind: "product" | "service"; name: string; priceText: string; notes: string; isActive: boolean; brandId: number | null } }
   | { kind: "error"; message: string } {
   const input = payload?.item;
   if (!input) {
@@ -71,7 +72,16 @@ function parseItemInput(payload: {
   if (notes.length > 1000) {
     return { kind: "error", message: "Notes must be 1000 characters or fewer." };
   }
-  return { kind: "ok", item: { kind, name, priceText, notes, isActive } };
+  let brandId: number | null = null;
+  if (input.brand_id !== null && input.brand_id !== undefined &&
+      input.brand_id !== "") {
+    const brand = Number(input.brand_id);
+    if (!Number.isInteger(brand) || brand < 1) {
+      return { kind: "error", message: "brand_id must be a positive id." };
+    }
+    brandId = brand;
+  }
+  return { kind: "ok", item: { kind, name, priceText, notes, isActive, brandId } };
 }
 
 export async function POST(request: Request) {

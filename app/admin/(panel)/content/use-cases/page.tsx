@@ -24,14 +24,14 @@ export default async function UseCasesContentPage() {
       <div className="mb-8">
         <Link
           href="/admin/content"
-          className="text-xs text-slate-500 transition-colors hover:text-slate-300"
+          className="text-xs text-ink-3 transition-colors hover:text-ink-2"
         >
           ← Content
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
           Use Cases section
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
+        <p className="mt-1.5 text-sm text-ink-3">
           Section heading and the 5 business use cases. The demo chat previews
           stay fixed. Changes go live immediately.
         </p>

@@ -99,6 +99,32 @@ export async function POST(request: Request) {
     items.push({ name, qty: Math.round(qty), price });
   }
 
+  let advancePercent: number | null = null;
+  const rawAdvance = body.advance_percent;
+  if (rawAdvance !== null && rawAdvance !== undefined && rawAdvance !== "") {
+    const percent = Number(rawAdvance);
+    if (!Number.isInteger(percent) || percent < 1 || percent > 90) {
+      return safeJson(
+        { error: { code: "bad_request", message: "Advance must be 1-90 percent." } },
+        400
+      );
+    }
+    advancePercent = percent;
+  }
+
+  let brandId: number | null = null;
+  const rawBrand = body.brand_id;
+  if (rawBrand !== null && rawBrand !== undefined && rawBrand !== "") {
+    const brand = Number(rawBrand);
+    if (!Number.isInteger(brand) || brand < 1) {
+      return safeJson(
+        { error: { code: "bad_request", message: "brand_id must be a positive id." } },
+        400
+      );
+    }
+    brandId = brand;
+  }
+
   const rawExpiry = body.expires_in_days;
   let expiresInDays: number | null = null;
   if (rawExpiry !== null && rawExpiry !== undefined && rawExpiry !== "") {
@@ -132,7 +158,9 @@ export async function POST(request: Request) {
       title,
       items,
       expiresInDays,
-      discountAmount
+      discountAmount,
+      advancePercent,
+      brandId
     );
     if (link === null) {
       return safeJson(

@@ -197,8 +197,8 @@ export default function ScheduleCard() {
 
   return (
     <div className="mb-5 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.025] p-4 sm:p-5">
-      <h2 className="text-sm font-semibold text-white">Schedule for later</h2>
-      <p className="mt-1 text-xs text-slate-400">
+      <h2 className="text-sm font-semibold text-ink">Schedule for later</h2>
+      <p className="mt-1 text-xs text-ink-3">
         Queue a broadcast for a future date and time. It sends automatically, as long as your
         connector laptop is online.
       </p>
@@ -207,7 +207,7 @@ export default function ScheduleCard() {
         <select
           value={audience}
           onChange={(event) => setAudience(event.target.value)}
-          className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink outline-none transition-colors duration-300 focus:border-brand/40"
         >
           {AUDIENCES.map((option) => (
             <option key={option.value} value={option.value}>
@@ -229,13 +229,13 @@ export default function ScheduleCard() {
           value={when}
           min={minLocalValue()}
           onChange={(event) => setWhen(event.target.value)}
-          className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink outline-none transition-colors duration-300 focus:border-brand/40"
         />
         <button
           type="button"
           onClick={() => void submit()}
           disabled={busy}
-          className="w-full rounded-xl bg-cyan-400/15 px-4 py-2.5 text-sm font-medium text-cyan-200 transition hover:bg-cyan-400/25 disabled:opacity-50"
+          className="w-full rounded-xl bg-cyan-400/15 px-4 py-2.5 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
         >
           {busy ? "Working…" : "Schedule broadcast"}
         </button>
@@ -247,14 +247,14 @@ export default function ScheduleCard() {
         rows={2}
         maxLength={1000}
         placeholder={"Use {name} and it becomes each customer's first name."}
-        className="mt-3 w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+        className="mt-3 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
       />
 
       {note ? (
         <p
           className={
             "mt-2 text-xs " +
-            (noteTone === "emerald" ? "text-emerald-300" : "text-amber-300")
+            (noteTone === "emerald" ? "text-ok" : "text-amber-600")
           }
         >
           {note}
@@ -262,23 +262,23 @@ export default function ScheduleCard() {
       ) : null}
 
       <div className="mt-4">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-ink-3">
           Pending schedule
         </p>
         {loading ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-ink-3">Loading…</p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing scheduled yet.</p>
+          <p className="text-sm text-ink-3">Nothing scheduled yet.</p>
         ) : (
           <ul className="space-y-2">
             {rows.map((row) => (
               <li
                 key={row.id}
-                className="flex flex-col gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-line bg-soft px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-slate-200">{row.body}</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
+                  <p className="truncate text-sm text-ink">{row.body}</p>
+                  <p className="mt-0.5 text-[11px] text-ink-3">
                     {formatWhen(row.sendAt)} \u00b7 {row.audience} \u00b7 {row.recipientCount} customers
                   </p>
                 </div>
@@ -286,7 +286,7 @@ export default function ScheduleCard() {
                   type="button"
                   onClick={() => void cancel(row.id)}
                   disabled={busy}
-                  className="shrink-0 rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:border-rose-400/40 hover:text-rose-300 disabled:opacity-50"
+                  className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger disabled:opacity-50"
                 >
                   Cancel
                 </button>

@@ -110,11 +110,11 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold text-white">Memory</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="text-xs font-semibold text-ink">Memory</p>
+          <p className="mt-0.5 text-[11px] text-ink-3">
             What the business remembers about this customer - editable,
             deletable, purgable.
           </p>
@@ -123,7 +123,7 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
           <button
             onClick={() => void purge()}
             disabled={busy}
-            className="rounded-lg border border-rose-400/20 px-2 py-1 text-[10px] text-rose-300 hover:bg-rose-400/[0.07] disabled:opacity-40"
+            className="rounded-lg border border-rose-400/20 px-2 py-1 text-[10px] text-danger hover:bg-rose-400/[0.07] disabled:opacity-40"
           >
             Forget all
           </button>
@@ -137,25 +137,25 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
               {memory.map((entry) => (
                 <li
                   key={entry.id}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                  className="rounded-xl border border-line bg-soft px-3 py-2"
                 >
                   {editingId === entry.id ? (
                     <div className="flex gap-2">
                       <input
                         value={editDraft}
                         onChange={(event) => setEditDraft(event.target.value)}
-                        className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 outline-none"
+                        className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink outline-none"
                       />
                       <button
                         onClick={() => void saveEdit(entry.id)}
                         disabled={busy}
-                        className="text-[11px] text-emerald-300 hover:underline"
+                        className="text-[11px] text-ok hover:underline"
                       >
                         Save
                       </button>
                       <button
                         onClick={() => setEditingId(0)}
-                        className="text-[11px] text-slate-500 hover:underline"
+                        className="text-[11px] text-ink-3 hover:underline"
                       >
                         Cancel
                       </button>
@@ -163,10 +163,10 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
                   ) : (
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-ink-2">
                           {entry.content}
                         </p>
-                        <p className="mt-0.5 text-[10px] text-slate-600">
+                        <p className="mt-0.5 text-[10px] text-ink-3">
                           {entry.kind}
                           {entry.created_by !== "owner"
                             ? " \u00b7 " + entry.created_by
@@ -179,13 +179,13 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
                             setEditingId(entry.id);
                             setEditDraft(entry.content);
                           }}
-                          className="text-cyan-300 hover:underline"
+                          className="text-brand hover:underline"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => void remove(entry.id)}
-                          className="text-slate-500 hover:underline"
+                          className="text-ink-3 hover:underline"
                         >
                           Delete
                         </button>
@@ -196,7 +196,7 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-ink-3">
               Nothing stored yet - add a preference or note the AI and
               automations should respect.
             </p>
@@ -208,10 +208,10 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
               onChange={(event) =>
                 setKind(event.target.value as MemoryEntry["kind"])
               }
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1.5 text-xs text-slate-300 outline-none"
+              className="rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink-2 outline-none"
             >
               {KINDS.map((option) => (
-                <option key={option} value={option} className="bg-[#101418]">
+                <option key={option} value={option} className="bg-white">
                   {option}
                 </option>
               ))}
@@ -220,19 +220,19 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder="e.g. sirf evening me delivery mangta he"
-              className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <button
               onClick={() => void add()}
               disabled={busy || !draft.trim()}
-              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
             >
               Add
             </button>
           </div>
         </>
       ) : (
-        <p className="mt-2 text-xs text-slate-500">Loading&#8230;</p>
+        <p className="mt-2 text-xs text-ink-3">Loading&#8230;</p>
       )}
     </section>
   );

@@ -21,10 +21,10 @@ export default async function MyBotPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Configure AI
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-ink-3">
           Everything about how the assistant talks and takes decisions:
           behaviour, follow-ups, and the autonomy level that decides whether
           it only suggests, drafts, or answers on its own. Business details

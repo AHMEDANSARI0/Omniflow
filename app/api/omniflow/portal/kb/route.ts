@@ -51,9 +51,10 @@ function parseEntryInput(payload: {
     content?: unknown;
     isActive?: unknown;
     lang?: unknown;
+    brand_id?: unknown;
   };
 } | null):
-  | { kind: "ok"; entry: { title: string; category: string; keywords: string; content: string; isActive: boolean; lang: "auto" | "en" | "ur" | "roman" } }
+  | { kind: "ok"; entry: { title: string; category: string; keywords: string; content: string; isActive: boolean; lang: "auto" | "en" | "ur" | "roman"; brandId: number | null } }
   | { kind: "error"; message: string } {
   const input = payload?.entry;
   if (!input) {
@@ -83,7 +84,16 @@ function parseEntryInput(payload: {
     input.lang === "en" || input.lang === "ur" || input.lang === "roman"
       ? input.lang
       : "auto";
-  return { kind: "ok", entry: { title, category, keywords, content, isActive, lang } };
+  let brandId: number | null = null;
+  if (input.brand_id !== null && input.brand_id !== undefined &&
+      input.brand_id !== "") {
+    const brand = Number(input.brand_id);
+    if (!Number.isInteger(brand) || brand < 1) {
+      return { kind: "error", message: "brand_id must be a positive id." };
+    }
+    brandId = brand;
+  }
+  return { kind: "ok", entry: { title, category, keywords, content, isActive, lang, brandId } };
 }
 
 export async function POST(request: Request) {

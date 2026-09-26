@@ -20,7 +20,7 @@ export default function DashShell({
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#06101d]">
+    <div className="flex min-h-screen bg-canvas">
       <DashSidebar
         userEmail={userEmail}
         clientId={clientId}

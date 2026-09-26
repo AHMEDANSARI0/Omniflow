@@ -77,11 +77,11 @@ export default function CheckoutReturnsCard() {
   if (loaded && !visible) return null;
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-5">
+    <section className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">Returns</h3>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-ink-3">
             Orders marked returned, newest first. Returned orders drop out of
             revenue and VIP counts automatically.
           </p>
@@ -90,18 +90,18 @@ export default function CheckoutReturnsCard() {
           <button
             type="button"
             onClick={() => void exportCsv()}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-white/[0.06]"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 hover:bg-white/[0.06]"
           >
             Export CSV
           </button>
-          <span className="rounded-md border border-rose-400/25 bg-rose-400/[0.08] px-2 py-0.5 text-[11px] text-rose-300">
+          <span className="rounded-md border border-rose-400/25 bg-rose-400/[0.08] px-2 py-0.5 text-[11px] text-danger">
             {total} total
           </span>
         </div>
       </div>
 
       {items.length === 0 ? (
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-ink-3">
           No returns yet. Mark a paid or delivered order as returned and it
           shows up here with the reason.
         </p>
@@ -110,17 +110,17 @@ export default function CheckoutReturnsCard() {
           {items.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
-                <p className="truncate text-sm text-slate-200">
+                <p className="truncate text-sm text-ink">
                   {row.title || "Order #" + row.linkId} · {row.total}
                 </p>
-                <p className="truncate text-[10px] text-slate-500">
+                <p className="truncate text-[10px] text-ink-3">
                   {row.note ? row.note + " · " : ""}
                   {row.createdAt
                     ? new Date(row.createdAt).toLocaleDateString()
                     : ""}
                 </p>
               </div>
-              <span className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[10px] text-amber-300">
+              <span className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[10px] text-amber-600">
                 {REASON_LABELS[row.reason] || row.reason}
               </span>
             </li>

@@ -17,6 +17,15 @@ const ghostBtn =
 const chipClass =
   "rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500";
 
+type KbLang = "auto" | "en" | "ur" | "roman";
+
+const LANG_LABELS: Record<KbLang, string> = {
+  auto: "Auto",
+  en: "English",
+  ur: "Urdu",
+  roman: "Roman Urdu",
+};
+
 interface KbFormState {
   id: number | null;
   title: string;
@@ -24,6 +33,13 @@ interface KbFormState {
   keywords: string;
   content: string;
   isActive: boolean;
+  lang: KbLang;
+  brandId: number | null;
+}
+
+export interface KbBrandOption {
+  id: number;
+  name: string;
 }
 
 const EMPTY_FORM: KbFormState = {
@@ -33,16 +49,22 @@ const EMPTY_FORM: KbFormState = {
   keywords: "",
   content: "",
   isActive: true,
+  lang: "auto",
+  brandId: null,
 };
 
 export default function KnowledgeBaseClient({
   initial,
+  brands = [],
 }: {
   initial: KnowledgeBaseData;
+  brands?: KbBrandOption[];
 }) {
   const [autoReply, setAutoReply] = useState(initial.settings.autoReply);
   const [entries, setEntries] = useState(initial.entries);
   const [search, setSearch] = useState("");
+  const [langFilter, setLangFilter] = useState<KbLang | "all">("all");
+  const [brandFilter, setBrandFilter] = useState<string>("all");
   const [form, setForm] = useState<KbFormState | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(
@@ -129,6 +151,8 @@ export default function KnowledgeBaseClient({
               keywords: form.keywords.trim(),
               content,
               isActive: form.isActive,
+              lang: form.lang,
+              brand_id: form.brandId,
             },
           }),
         }
@@ -194,15 +218,23 @@ export default function KnowledgeBaseClient({
 
   const visibleEntries = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return entries;
-    return entries.filter(
+    let result = entries;
+    if (langFilter !== "all") {
+      result = result.filter((entry) => (entry.lang || "auto") === langFilter);
+    }
+    if (brandFilter !== "all") {
+      const brandId = Number(brandFilter);
+      result = result.filter((entry) => entry.brandId === brandId);
+    }
+    if (!query) return result;
+    return result.filter(
       (entry) =>
         entry.title.toLowerCase().includes(query) ||
         entry.category.toLowerCase().includes(query) ||
         entry.keywords.toLowerCase().includes(query) ||
         entry.content.toLowerCase().includes(query)
     );
-  }, [entries, search]);
+  }, [entries, search, langFilter, brandFilter]);
 
   return (
     <div className="space-y-6">
@@ -248,6 +280,21 @@ export default function KnowledgeBaseClient({
           placeholder="Search entries..."
           className={inputClass + " sm:flex-1"}
         />
+        {brands.length > 0 ? (
+          <select
+            id="kbBrandFilter"
+            value={brandFilter}
+            onChange={(e) => setBrandFilter(e.target.value)}
+            className={inputClass + " sm:w-40"}
+          >
+            <option value="all">All brands</option>
+            {brands.map((brand) => (
+              <option key={brand.id} value={String(brand.id)}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -305,7 +352,51 @@ export default function KnowledgeBaseClient({
                 className={inputClass}
               />
             </div>
+            <div>
+              <label htmlFor="kbLang" className={labelClass}>
+                Language
+              </label>
+              <select
+                id="kbLang"
+                value={form.lang}
+                onChange={(e) =>
+                  setForm({ ...form, lang: e.target.value as KbLang })
+                }
+                className={inputClass}
+              >
+                {(Object.keys(LANG_LABELS) as KbLang[]).map((value) => (
+                  <option key={value} value={value}>
+                    {LANG_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+          {brands.length > 0 && (
+            <div className="mt-4">
+              <label htmlFor="kbBrand" className={labelClass}>
+                Brand (optional)
+              </label>
+              <select
+                id="kbBrand"
+                value={form.brandId === null ? "" : String(form.brandId)}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    brandId: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
+                className={inputClass}
+              >
+                <option value="">No brand</option>
+                {brands.map((brand) => (
+                  <option key={brand.id} value={String(brand.id)}>
+                    {brand.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="mt-4">
             <label htmlFor="kbKeywords" className={labelClass}>
               Trigger keywords
@@ -397,6 +488,17 @@ export default function KnowledgeBaseClient({
                       {entry.title}
                     </h3>
                     <span className={chipClass}>{entry.category}</span>
+                    {entry.brandId !== null &&
+                      brands.some((b) => b.id === entry.brandId) && (
+                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-sky-300">
+                          {brands.find((b) => b.id === entry.brandId)?.name}
+                        </span>
+                      )}
+                    {(entry.lang || "auto") !== "auto" && (
+                      <span className={chipClass}>
+                        {LANG_LABELS[entry.lang || "auto"]}
+                      </span>
+                    )}
                     {!entry.isActive && (
                       <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-amber-300/80">
                         Hidden
@@ -427,6 +529,8 @@ export default function KnowledgeBaseClient({
                         keywords: entry.keywords,
                         content: entry.content,
                         isActive: entry.isActive,
+                        lang: entry.lang || "auto",
+                        brandId: entry.brandId ?? null,
                       });
                       setMessage(null);
                     }}

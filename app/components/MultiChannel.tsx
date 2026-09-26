@@ -1,238 +1,141 @@
-import Reveal from "./Reveal";
+import { ArrowRight, Inbox, Workflow } from "lucide-react";
 import type { MultiChannelContent } from "../../lib/content-defaults";
-import HexGrid from "./HexGrid";
+import Reveal from "./Reveal";
+import Section, { SectionHead } from "./ui/Section";
+import Card from "./ui/Card";
+import Badge from "./ui/Badge";
 
-interface Channel {
-  name: string;
-  short: string;
-  description: string;
-  position: "left" | "right";
-}
-
+/**
+ * One intelligence layer, every channel. WhatsApp is live; the other
+ * channels are shown honestly as "expanding". Server component.
+ */
 export default function MultiChannel({
   content,
 }: {
   content: MultiChannelContent;
 }) {
-  const positions: ("left" | "right")[] = ["left", "right", "left", "right"];
-
-  const channels: Channel[] = [1, 2, 3, 4].map((i, index) => ({
-    name: content[`c${i}_name`] as string,
-    short: content[`c${i}_short`] as string,
-    description: content[`c${i}_desc`] as string,
-    position: positions[index],
-  }));
-
+  const channels = [
+    { name: content.c1_name, short: content.c1_short, desc: content.c1_desc },
+    { name: content.c2_name, short: content.c2_short, desc: content.c2_desc },
+    { name: content.c3_name, short: content.c3_short, desc: content.c3_desc },
+    { name: content.c4_name, short: content.c4_short, desc: content.c4_desc },
+  ];
   const actions = content.actions
     .split(",")
-    .map((a) => a.trim())
+    .map((item) => item.trim())
     .filter(Boolean);
 
   return (
-    <section
-      id="channels"
-      className="relative overflow-hidden border-t border-white/[0.05] bg-[#07111f] py-28 sm:py-36"
-    >
-      {/* Background — static glow + dot texture (perf-safe) */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-1/2 h-[550px] w-[550px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.06)_0%,transparent_70%)]" />
-
-        <div
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.8) 1px, transparent 0)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-      </div>
-
-      {/* Kinetic hexagon grid */}
-      <HexGrid opacity={0.07} />
-
-      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-        {/* Heading */}
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal className="inline-flex items-center gap-2 rounded-full border border-blue-400/10 bg-blue-400/[0.035] px-4 py-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-
-            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-blue-300/80">
-              {content.badge}
-            </span>
-          </Reveal>
-
-          <Reveal as="h2" className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
-            {content.heading_line1}
-            <br />
-
-            <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-300 bg-clip-text text-transparent">
-              {content.heading_line2}
-            </span>
-          </Reveal>
-
-          <Reveal as="p" className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
-            {content.description}
-          </Reveal>
-        </div>
-
-        {/* Main visual */}
-        <div className="relative mx-auto mt-20 max-w-5xl">
-          {/* Desktop connection lines */}
-          <div className="pointer-events-none absolute inset-0 hidden lg:block">
-            <div className="absolute left-[24%] top-1/2 h-px w-[26%] bg-gradient-to-r from-cyan-400/0 via-cyan-400/20 to-cyan-400/40" />
-
-            <div className="absolute right-[24%] top-1/2 h-px w-[26%] bg-gradient-to-l from-violet-400/0 via-violet-400/20 to-violet-400/40" />
-          </div>
-
-          <div className="grid items-center gap-10 lg:grid-cols-[1fr_240px_1fr]">
-            {/* Left channels */}
-            <div className="space-y-4">
-              {channels
-                .filter((channel) => channel.position === "left")
-                .map((channel, index) => (
-                  <ChannelCard
-                    key={channel.name}
-                    channel={channel}
-                    direction="left"
-                    delay={0.15 + index * 0.1}
-                  />
-                ))}
-            </div>
-
-            {/* Center */}
-            <Reveal className="relative mx-auto flex h-52 w-52 items-center justify-center">
-              {/* Rings — CSS spin */}
-              <div
-                className="of-spin-slow absolute inset-0 rounded-full border border-cyan-400/10"
-                style={{ animationDuration: "18s" }}
-              />
-
-              <div
-                className="of-spin-rev absolute inset-7 rounded-full border border-dashed border-blue-400/15"
-                style={{ animationDuration: "13s" }}
-              />
-
-              <div className="absolute inset-12 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.07)_0%,transparent_70%)]" />
-
-              {/* Core */}
-              <div className="relative flex h-28 w-28 flex-col items-center justify-center rounded-3xl border border-cyan-400/20 bg-[#0a1929] shadow-[0_0_70px_rgba(34,211,238,0.08)]">
-                <span className="of-pulse absolute h-14 w-14 rounded-full bg-cyan-400/[0.08] blur-xl" />
-
-                <span className="relative text-2xl text-cyan-300">✦</span>
-
-                <span className="relative mt-2 text-[9px] font-medium uppercase tracking-[0.15em] text-slate-500">
-                  OmniFlow
-                </span>
-
-                <span className="relative mt-0.5 text-[8px] text-slate-700">
-                  AI Engine
-                </span>
-              </div>
-
-              {/* Pulse ripple — CSS */}
-              <span className="of-ripple absolute h-28 w-28 rounded-full border border-cyan-400/30" />
-            </Reveal>
-
-            {/* Right channels */}
-            <div className="space-y-4">
-              {channels
-                .filter((channel) => channel.position === "right")
-                .map((channel, index) => (
-                  <ChannelCard
-                    key={channel.name}
-                    channel={channel}
-                    direction="right"
-                    delay={0.2 + index * 0.1}
-                  />
-                ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Automation strip */}
-        <Reveal className="mx-auto mt-16 max-w-4xl rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
-          <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/10 bg-cyan-400/[0.04]">
-                <span className="text-sm text-cyan-300">↗</span>
-              </div>
-
-              <div>
-                <div className="text-xs font-medium text-white">
-                  {content.workflow_title}
-                </div>
-
-                <div className="mt-1 text-[9px] text-slate-600">
-                  {content.workflow_subtitle}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-2">
-              {actions.map((action, index) => (
-                <Reveal className="rounded-full border border-white/[0.05] bg-white/[0.02] px-3 py-1.5 text-[9px] text-slate-500">
-                  {action}
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </Reveal>
-
-        {/* Bottom statement */}
-        <Reveal className="mt-14 text-center">
-          <p className="text-xs text-slate-700">{content.bottom_note}</p>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-function ChannelCard({
-  channel,
-  direction,
-  delay,
-}: {
-  channel: {
-    name: string;
-    short: string;
-    description: string;
-  };
-  direction: "left" | "right";
-  delay: number;
-}) {
-  return (
-    <Reveal lift className="group relative rounded-2xl border border-white/[0.06] bg-[#091624]/95 p-4 transition-colors duration-300 hover:border-cyan-400/10">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.025] text-xs font-semibold text-slate-400 transition-colors duration-300 group-hover:border-cyan-400/15 group-hover:text-cyan-300">
-          {channel.short}
-        </div>
-
-        <div>
-          <div className="text-xs font-medium text-slate-200">
-            {channel.name}
-          </div>
-
-          <div className="mt-1 text-[9px] text-slate-700">
-            {channel.description}
-          </div>
-        </div>
-
-        <div className="ml-auto">
-          <span
-            className="of-pulse block h-1.5 w-1.5 rounded-full bg-cyan-400"
-            style={{ animationDelay: `${delay}s` }}
-          />
-        </div>
-      </div>
-
-      {/* Connection indicator */}
-      <div
-        className={`absolute top-1/2 hidden h-px w-8 -translate-y-1/2 lg:block ${
-          direction === "left"
-            ? "-right-8 bg-gradient-to-r from-cyan-400/30 to-transparent"
-            : "-left-8 bg-gradient-to-l from-violet-400/30 to-transparent"
-        }`}
+    <Section id="channels" tone="white">
+      <SectionHead
+        eyebrow={content.badge}
+        title={
+          <>
+            {content.heading_line1} {content.heading_line2}
+          </>
+        }
+        copy={content.description}
       />
-    </Reveal>
+
+      <div className="mt-14 grid items-center gap-6 lg:grid-cols-[1fr_1.1fr]">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {channels.map(({ name, short, desc }, index) => {
+            const live = index === 0;
+            return (
+              <Reveal key={name} lift>
+                <Card
+                  className={`flex h-full items-center gap-3.5 p-4.5 ${
+                    live ? "border-ok/25" : ""
+                  }`}
+                >
+                  <span
+                    aria-hidden
+                    className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl2 border font-display text-[13px] font-bold ${
+                      live
+                        ? "border-ok/25 bg-ok-soft text-ok"
+                        : "border-line bg-soft text-ink-3"
+                    }`}
+                  >
+                    {short}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                      {name}
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${
+                          live
+                            ? "bg-ok-soft text-ok"
+                            : "bg-soft text-ink-3"
+                        }`}
+                      >
+                        {live ? "Live" : "Expanding"}
+                      </span>
+                    </p>
+                    <p className="truncate text-[12px] text-ink-3">{desc}</p>
+                  </div>
+                </Card>
+              </Reveal>
+            );
+          })}
+        </div>
+
+        <Reveal lift>
+          <Card gradientRing className="p-7">
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden
+                className="of-gradient inline-flex h-9 w-9 items-center justify-center rounded-xl"
+              >
+                <Workflow className="h-4.5 w-4.5 text-white" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-ink">
+                  {content.workflow_title}
+                </p>
+                <p className="text-[12px] text-ink-3">
+                  {content.workflow_subtitle}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center gap-3 rounded-xl2 border border-line bg-soft px-4 py-3">
+                <Inbox className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+                <p className="text-[13px] font-medium text-ink-2">
+                  Customer writes — on any connected channel
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <span aria-hidden className="h-4 w-px bg-line-2" />
+              </div>
+              <div className="of-gradient rounded-xl2 px-4 py-3.5">
+                <p className="flex items-center gap-2 text-[13px] font-semibold text-white">
+                  <Workflow className="h-4 w-4 shrink-0" aria-hidden />
+                  One OmniFlow workflow decides and acts
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {actions.map((action) => (
+                    <span
+                      key={action}
+                      className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white"
+                    >
+                      {action}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-5 flex items-center gap-2 text-[13px] text-ink-2">
+              <ArrowRight className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+              {content.bottom_note}
+            </p>
+            <div className="mt-4">
+              <Badge tone="neutral">Same AI · Same workflows · Same dashboard</Badge>
+            </div>
+          </Card>
+        </Reveal>
+      </div>
+    </Section>
   );
 }

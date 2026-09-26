@@ -82,11 +82,11 @@ export default function BrainCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+    <section className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">AI Brain</h3>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-ink-3">
             Answers from your orders, knowledge base and the conversation —
             policy-checked, with provenance traces. Never invents facts.
           </p>
@@ -94,7 +94,7 @@ export default function BrainCard() {
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-white/[0.08] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-white/[0.04] disabled:opacity-50"
+          className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
         >
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -111,19 +111,19 @@ export default function BrainCard() {
                 "block w-full rounded-xl border px-3 py-2 text-left transition-colors " +
                 (autonomy === level.value
                   ? "border-emerald-400/30 bg-emerald-400/[0.07]"
-                  : "border-white/[0.06] bg-white/[0.015] hover:bg-white/[0.03]")
+                  : "border-line bg-soft hover:bg-soft")
               }
             >
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-xs font-semibold text-ink">
                 {level.label}
               </span>
-              <span className="ml-2 text-[11px] text-slate-500">
+              <span className="ml-2 text-[11px] text-ink-3">
                 {level.hint}
               </span>
             </button>
           ))}
           <label className="block pt-1">
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-ink-3">
               Reply tone (optional)
             </span>
             <div className="mt-1 flex gap-2">
@@ -131,21 +131,21 @@ export default function BrainCard() {
                 value={tone}
                 onChange={(event) => setTone(event.target.value)}
                 placeholder="e.g. warm, concise, friendly"
-                className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-white/[0.2]"
+                className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-white/[0.2]"
               />
               <button
                 onClick={() => void save(autonomy, tone)}
                 disabled={busy}
-                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
               >
                 Save tone
               </button>
             </div>
           </label>
-          {note ? <p className="text-[11px] text-slate-400">{note}</p> : null}
+          {note ? <p className="text-[11px] text-ink-3">{note}</p> : null}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-slate-500">Loading…</p>
+        <p className="mt-3 text-xs text-ink-3">Loading…</p>
       )}
     </section>
   );

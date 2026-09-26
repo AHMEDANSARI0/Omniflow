@@ -14,15 +14,15 @@ export interface HeroContent extends Record<string, unknown> {
 }
 
 export const HERO_DEFAULTS: HeroContent = {
-  badge: "Intelligent automation platform",
-  heading_line1: "Automate",
-  heading_line2: "every conversation.",
+  badge: "AI customer automation platform",
+  heading_line1: "Your business,",
+  heading_line2: "on autopilot.",
   description:
-    "OmniFlow brings AI-powered conversations and automation into one intelligent platform — across the channels your customers already use.",
-  primary_button: "Start Building",
-  secondary_button: "See how it works",
-  channels_label: "Works across your favorite channels",
-  integrations: "WhatsApp, Instagram, Messenger, Telegram",
+    "OmniFlow connects the channels your customers already use with AI that understands your business, responds in context and triggers the right actions automatically.",
+  primary_button: "Get Started",
+  secondary_button: "See How It Works",
+  channels_label: "Works with the channels your customers already use",
+  integrations: "WhatsApp, Instagram, Messenger, Telegram, TikTok",
 };
 
 export interface FinalCtaContent extends Record<string, unknown> {
@@ -36,15 +36,15 @@ export interface FinalCtaContent extends Record<string, unknown> {
 }
 
 export const FINAL_CTA_DEFAULTS: FinalCtaContent = {
-  badge: "Early access",
-  heading_line1: "Put your conversations",
-  heading_line2: "on autopilot",
+  badge: "Get started",
+  heading_line1: "Stop managing every",
+  heading_line2: "conversation manually",
   description:
-    "OmniFlow is getting ready for its first businesses. Join early access and be among the first to automate your customer conversations.",
-  primary_button: "Get early access",
-  secondary_button: "See how it works",
+    "Let OmniFlow handle the repetitive work while your team focuses on what matters. WhatsApp automation is live today — more channels as OmniFlow expands.",
+  primary_button: "Get Started",
+  secondary_button: "See How It Works",
   notes:
-    "Pricing — coming soon | Early access opening soon | Built for multi-channel from day one",
+    "Pricing — coming soon | Early access opening soon | WhatsApp today, multi-channel by design",
 };
 export interface FooterContent extends Record<string, unknown> {
   description: string;
@@ -311,19 +311,19 @@ export interface AiIntelligenceContent extends Record<string, unknown> {
 }
 
 export const AI_INTELLIGENCE_DEFAULTS: AiIntelligenceContent = {
-  badge: "AI Intelligence",
-  heading_line1: "More than automation.",
-  heading_line2: "Intelligence behind every action.",
+  badge: "Meet OmniFlow",
+  heading_line1: "One intelligence layer for",
+  heading_line2: "customer conversations.",
   description:
-    "OmniFlow combines AI understanding, conversation context and automation logic to make every interaction feel intentional.",
+    "OmniFlow turns customer messages into understood intent, applied business context and automated action — one intelligence layer between your business and your customers.",
   i1_title: "Understand",
   i1_desc:
     "OmniFlow understands what the customer is asking instead of simply matching keywords.",
-  i1_tags: "Intent, Language, Context",
+  i1_tags: "Intent, Sentiment, Language",
   i2_title: "Decide",
   i2_desc:
-    "The AI evaluates the conversation and chooses the most appropriate response or workflow.",
-  i2_tags: "Reasoning, Rules, Memory",
+    "The AI evaluates the conversation against your business knowledge and chooses the right response or workflow.",
+  i2_tags: "Business rules, Knowledge, Memory",
   i3_title: "Act",
   i3_desc:
     "Once the decision is made, OmniFlow responds or triggers the right automation automatically.",

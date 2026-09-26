@@ -85,21 +85,21 @@ export default function AddToSequenceCard({ contactId }: { contactId: string | n
   if (!contactId || options === null || options.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+    <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xs font-semibold text-white">Add to series</h2>
+        <h2 className="text-xs font-semibold text-ink">Add to series</h2>
       </div>
-      <p className="mt-1 text-[11px] text-slate-500">
+      <p className="mt-1 text-[11px] text-ink-3">
         Start one of your enabled series for this customer right from the chat.
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
         <select
           value={picked ?? ""}
           onChange={(event) => setPicked(Number(event.target.value) || null)}
-          className="w-full rounded-lg border border-white/[0.07] bg-white/[0.02] px-2.5 py-2 text-xs text-white outline-none focus:border-cyan-400/40 sm:w-auto sm:flex-1"
+          className="w-full rounded-lg border border-line bg-soft px-2.5 py-2 text-xs text-ink outline-none focus:border-brand/40 sm:w-auto sm:flex-1"
         >
           {options.map((option) => (
-            <option key={option.id} value={option.id} className="bg-slate-900">
+            <option key={option.id} value={option.id} className="bg-soft">
               {option.name}
             </option>
           ))}
@@ -108,7 +108,7 @@ export default function AddToSequenceCard({ contactId }: { contactId: string | n
           type="button"
           onClick={() => void enroll()}
           disabled={busy || picked === null}
-          className="shrink-0 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-2 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-50"
+          className="shrink-0 rounded-lg border border-brand/25 bg-brand-soft px-3 py-2 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
         >
           {busy ? "Adding..." : "Add"}
         </button>
@@ -117,7 +117,7 @@ export default function AddToSequenceCard({ contactId }: { contactId: string | n
         <p
           className={
             "mt-2 text-[11px] " +
-            (tone === "emerald" ? "text-emerald-300" : "text-amber-300")
+            (tone === "emerald" ? "text-ok" : "text-amber-600")
           }
         >
           {message}

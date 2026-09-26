@@ -118,11 +118,11 @@ export default function WhatsAppChannelPage() {
   if (expired) {
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">Your session expired.</p>
+        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-cyan-300 transition-colors hover:text-cyan-200"
+            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
           >
             Re-authenticate →
           </a>
@@ -138,30 +138,30 @@ export default function WhatsAppChannelPage() {
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
             WhatsApp channel
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-ink-3">
             Managed connector status for your workspace — authorize once from
             mobile, OmniFlow keeps the session available.
           </p>
         </div>
         <button
           onClick={() => void refresh()}
-          className="shrink-0 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-cyan-400/40"
+          className="shrink-0 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
         >
           Refresh
         </button>
       </div>
 
       {!status ? (
-        <div className="animate-pulse rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6">
+        <div className="animate-pulse rounded-2xl border border-line bg-soft p-6">
           <div className="h-5 w-40 rounded bg-white/[0.06]" />
-          <div className="mt-4 h-3 w-64 rounded bg-white/[0.04]" />
+          <div className="mt-4 h-3 w-64 rounded bg-soft" />
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="h-16 rounded-xl bg-white/[0.03]" />
-            <div className="h-16 rounded-xl bg-white/[0.03]" />
-            <div className="h-16 rounded-xl bg-white/[0.03]" />
+            <div className="h-16 rounded-xl bg-soft" />
+            <div className="h-16 rounded-xl bg-soft" />
+            <div className="h-16 rounded-xl bg-soft" />
           </div>
         </div>
       ) : (
@@ -169,13 +169,13 @@ export default function WhatsAppChannelPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6"
+          className="rounded-2xl border border-line bg-soft p-6"
         >
           <div className="flex items-center gap-3">
             <span className={`h-2.5 w-2.5 rounded-full ${STATE_DOT[state]}`} />
             <div>
-              <p className="text-sm font-semibold text-white">{STATE_LABEL[state]}</p>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-sm font-semibold text-ink">{STATE_LABEL[state]}</p>
+              <p className="text-[11px] text-ink-3">
                 {configured ? "Live from Control Plane" : "Connector module pending on server"}
               </p>
             </div>
@@ -183,23 +183,23 @@ export default function WhatsAppChannelPage() {
 
           {state === "connected" && (
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-4 py-3">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">Phone</p>
-                <p className="mt-1 truncate text-sm text-slate-200">{status.phone || "—"}</p>
+              <div className="rounded-xl border border-line bg-soft px-4 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">Phone</p>
+                <p className="mt-1 truncate text-sm text-ink">{status.phone || "—"}</p>
               </div>
-              <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-4 py-3">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">Account</p>
-                <p className="mt-1 truncate text-sm text-slate-200">{status.accountName || "—"}</p>
+              <div className="rounded-xl border border-line bg-soft px-4 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">Account</p>
+                <p className="mt-1 truncate text-sm text-ink">{status.accountName || "—"}</p>
               </div>
-              <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-4 py-3">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">Last seen</p>
-                <p className="mt-1 truncate text-sm text-slate-200">{formatLastSeen(status.lastSeenAt)}</p>
+              <div className="rounded-xl border border-line bg-soft px-4 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">Last seen</p>
+                <p className="mt-1 truncate text-sm text-ink">{formatLastSeen(status.lastSeenAt)}</p>
               </div>
             </div>
           )}
 
           {state === "connecting" && (
-            <p className="mt-5 text-xs leading-relaxed text-amber-300/90">
+            <p className="mt-5 text-xs leading-relaxed text-amber-600/90">
               Pairing in progress — scan the QR / enter the pairing code from your
               phone. This updates automatically.
             </p>
@@ -211,14 +211,14 @@ export default function WhatsAppChannelPage() {
               <button
                 onClick={() => void runAction("disconnect")}
                 disabled={busy}
-                className="rounded-xl border border-red-400/25 bg-red-400/[0.06] px-4 py-2.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-400/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl border border-red-400/25 bg-red-400/[0.06] px-4 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-red-400/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy ? "Working…" : "Disconnect"}
               </button>
               <button
                 onClick={() => void runAction("restart")}
                 disabled={busy}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl border border-line bg-soft px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy ? "Working…" : "Restart session"}
               </button>
@@ -233,7 +233,7 @@ export default function WhatsAppChannelPage() {
               </button>
             )}
             {state === "disconnected" && configured && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-3">
                 You will pair from your phone — WhatsApp stays on the managed connector, never in the browser.
               </p>
             )}
@@ -243,7 +243,7 @@ export default function WhatsAppChannelPage() {
             <motion.p
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-4 rounded-lg border border-cyan-400/20 bg-cyan-400/[0.05] px-3 py-2 text-xs leading-relaxed text-cyan-200/90"
+              className="mt-4 rounded-lg border border-brand/20 bg-cyan-400/[0.05] px-3 py-2 text-xs leading-relaxed text-brand/90"
             >
               {notice}
             </motion.p>
@@ -252,7 +252,7 @@ export default function WhatsAppChannelPage() {
       )}
 
       <AwayChip />
-      <p className="mt-4 text-[11px] leading-relaxed text-slate-600">
+      <p className="mt-4 text-[11px] leading-relaxed text-ink-3">
         Status auto-refreshes every 15 seconds while this page is open. Session
         credentials stay in HttpOnly cookies.
       </p>
@@ -308,7 +308,7 @@ function AwayChip() {
 
   if (!awayActive) return null;
   return (
-    <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-400/25 bg-amber-400/[0.06] px-3 py-1.5 text-xs font-medium text-amber-300">
+    <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-400/25 bg-amber-400/[0.06] px-3 py-1.5 text-xs font-medium text-amber-600">
       <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
       Away replies are active until business hours
     </div>

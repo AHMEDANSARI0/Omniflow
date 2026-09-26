@@ -16,10 +16,10 @@ export default async function SeoPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           SEO settings
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
+        <p className="mt-1.5 text-sm text-ink-3">
           Control how the website appears in search engines and social shares.
           Changes go live immediately.
         </p>

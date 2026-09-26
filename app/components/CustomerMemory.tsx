@@ -1,239 +1,124 @@
-import Reveal from "./Reveal";
+import { BadgeCheck, History, Sparkles, Tag, UserRound } from "lucide-react";
 import type { CustomerMemoryContent } from "../../lib/content-defaults";
-import HexGrid from "./HexGrid";
+import Reveal from "./Reveal";
+import Section from "./ui/Section";
+import Badge from "./ui/Badge";
 
-const memoryItems = [
-  { label: "Customer", value: "Ahmed" },
-  { label: "Intent", value: "Product inquiry" },
-  { label: "Status", value: "Qualified" },
-  { label: "History", value: "12 conversations" },
-];
-
+/**
+ * Customer context: why an OmniFlow answer beats a generic chatbot
+ * answer. A realistic profile card shows what the AI knows; the copy
+ * explains why that matters. Server component with Reveal islands.
+ */
 export default function CustomerMemory({
   content,
 }: {
   content: CustomerMemoryContent;
 }) {
-  const contextItems = content.context_items
+  const items = content.context_items
     .split("|")
     .map((item) => item.trim())
     .filter(Boolean);
 
   return (
-    <section
-      id="memory"
-      className="relative overflow-hidden border-t border-white/[0.05] bg-[#06101d] py-28 sm:py-36"
-    >
-      {/* Background — static glow (perf-safe) */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute right-[5%] top-[10%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.06)_0%,transparent_70%)]" />
-      </div>
-
-      {/* Kinetic hexagon grid */}
-      <HexGrid opacity={0.07} />
-
-      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="grid items-center gap-16 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
-          {/* Left content */}
-          <div>
-            <Reveal className="inline-flex items-center gap-2 rounded-full border border-violet-400/10 bg-violet-400/[0.035] px-4 py-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-
-              <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-violet-300/80">
-                {content.badge}
-              </span>
-            </Reveal>
-
-            <Reveal as="h2" className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
-              {content.heading_line1}
-              <br />
-
-              <span className="bg-gradient-to-r from-violet-300 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                {content.heading_line2}
-              </span>
-            </Reveal>
-
-            <Reveal as="p" className="mt-6 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
-              {content.description}
-            </Reveal>
-
-            {/* Context points */}
-            <div className="mt-8 space-y-3">
-              {contextItems.map((item, index) => (
-                <Reveal className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-violet-400/10 bg-violet-400/[0.035] text-[9px] text-violet-300">
-                    ✓
-                  </span>
-
-                  <span className="text-xs text-slate-500">{item}</span>
-                </Reveal>
+    <Section id="memory" tone="canvas">
+      <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div>
+          <Reveal as="p" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand">
+            {content.badge}
+          </Reveal>
+          <Reveal as="h2" className="mt-3 font-display text-[34px] font-semibold leading-[1.12] tracking-[-0.02em] text-ink sm:text-[40px] lg:text-[44px]">
+            {content.heading_line1} {content.heading_line2}
+          </Reveal>
+          <Reveal as="p" className="mt-4 text-base leading-relaxed text-ink-2 sm:text-lg">
+            {content.description}
+          </Reveal>
+          <Reveal>
+            <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
+              {items.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-center gap-2.5 rounded-xl2 border border-line bg-white px-3.5 py-2.5 text-[13px] font-medium text-ink-2 shadow-card"
+                >
+                  <BadgeCheck className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+                  {item}
+                </li>
               ))}
-            </div>
-          </div>
-
-          {/* Memory visualization */}
-          <Reveal className="relative mx-auto w-full max-w-xl">
-            {/* Glow */}
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[350px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(167,139,250,0.065)_0%,transparent_70%)]" />
-
-            {/* Floating history card — CSS float */}
-            <div className="of-float absolute -right-2 -top-6 z-20 hidden w-44 rounded-2xl border border-white/[0.07] bg-[#0b1929] p-4 shadow-2xl sm:block">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
-                  Memory
-                </span>
-
-                <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-              </div>
-
-              <div className="mt-3 text-xs font-medium text-white">
-                Context loaded
-              </div>
-
-              <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/[0.05]">
-                <span className="of-loadbar block h-full w-full origin-left rounded-full bg-violet-400/60" />
-              </div>
-            </div>
-
-            {/* Main card */}
-            <div className="relative rounded-[28px] border border-white/[0.08] bg-[#091624]/95 p-5 shadow-2xl sm:p-7">
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-400/15 bg-violet-400/[0.05]">
-                    <span className="text-sm text-violet-300">◉</span>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-medium text-white">
-                      Customer profile
-                    </div>
-
-                    <div className="mt-1 text-[9px] text-slate-700">
-                      Context available to AI
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-full border border-emerald-400/10 bg-emerald-400/[0.03] px-2.5 py-1">
-                  <span className="text-[9px] text-emerald-300">Synced</span>
-                </div>
-              </div>
-
-              {/* Profile */}
-              <div className="mt-6 flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.07] bg-gradient-to-br from-violet-400/[0.12] to-cyan-400/[0.06]">
-                  <span className="text-lg font-semibold text-slate-300">
-                    A
-                  </span>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-white">Ahmed</div>
-
-                  <div className="mt-1 text-[10px] text-slate-600">
-                    Returning customer
-                  </div>
-                </div>
-
-                <div className="ml-auto rounded-full border border-cyan-400/10 bg-cyan-400/[0.03] px-2.5 py-1">
-                  <span className="text-[9px] text-cyan-300/80">Active</span>
-                </div>
-              </div>
-
-              {/* Memory data */}
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {memoryItems.map((item, index) => (
-                  <Reveal className="rounded-xl border border-white/[0.05] bg-white/[0.018] p-3.5">
-                    <div className="text-[9px] uppercase tracking-[0.12em] text-slate-700">
-                      {item.label}
-                    </div>
-
-                    <div className="mt-2 text-[11px] font-medium text-slate-300">
-                      {item.value}
-                    </div>
-                  </Reveal>
-                ))}
-              </div>
-
-              {/* Conversation history */}
-              <div className="mt-4 rounded-xl border border-white/[0.05] bg-white/[0.018] p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-slate-400">
-                    Recent conversation
-                  </span>
-
-                  <span className="text-[9px] text-slate-700">Just now</span>
-                </div>
-
-                <div className="mt-3 space-y-2.5">
-                  <div className="flex gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-600" />
-
-                    <span className="text-[10px] leading-5 text-slate-600">
-                      Customer asked about pricing and product details.
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400" />
-
-                    <span className="text-[10px] leading-5 text-slate-500">
-                      AI identified a high-intent sales conversation.
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI context status — CSS border pulse */}
-              <div className="of-borderpulse mt-4 flex items-center gap-3 rounded-xl border bg-violet-400/[0.025] p-3.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-400/[0.07]">
-                  <span className="text-[10px] text-violet-300">✦</span>
-                </div>
-
-                <div>
-                  <div className="text-[10px] font-medium text-slate-300">
-                    Context understood
-                  </div>
-
-                  <div className="mt-0.5 text-[9px] text-slate-700">
-                    AI can use relevant customer history
-                  </div>
-                </div>
-
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              </div>
-            </div>
-
-            {/* Floating AI card — CSS float */}
-            <div
-              className="of-float absolute -bottom-5 -left-3 z-20 hidden w-48 rounded-2xl border border-cyan-400/10 bg-[#0b1929] p-4 shadow-2xl sm:block"
-              style={{ animationDuration: "5.5s", animationDelay: "1s" }}
-            >
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-cyan-400/[0.05] text-[10px] text-cyan-300">
-                  ✦
-                </span>
-
-                <span className="text-[9px] text-slate-600">AI decision</span>
-              </div>
-
-              <div className="mt-2 text-[10px] font-medium text-cyan-300">
-                Personalized response
-              </div>
-            </div>
+            </ul>
+          </Reveal>
+          <Reveal as="p" className="mt-6 text-sm text-ink-3">
+            {content.bottom_note}
           </Reveal>
         </div>
 
-        {/* Bottom statement */}
-        <Reveal className="mx-auto mt-20 max-w-3xl text-center">
-          <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+        <Reveal lift>
+          <div className="rounded-xl3 border border-line bg-white p-6 shadow-card-hover sm:p-7">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+                Customer context
+              </p>
+              <Badge tone="success">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
+                Context available
+              </Badge>
+            </div>
 
-          <p className="mt-8 text-xs leading-6 text-slate-700">
-            {content.bottom_note}
-          </p>
+            <div className="mt-5 flex items-center gap-4">
+              <span
+                aria-hidden
+                className="of-gradient inline-flex h-12 w-12 items-center justify-center rounded-full font-display text-base font-semibold text-white"
+              >
+                AK
+              </span>
+              <div>
+                <p className="flex items-center gap-2 font-display text-base font-semibold text-ink">
+                  Ahmed
+                  <BadgeCheck className="h-4 w-4 text-ok" aria-hidden />
+                </p>
+                <p className="text-[13px] text-ink-2">Returning customer</p>
+              </div>
+            </div>
+
+            <dl className="mt-6 space-y-3">
+              <div className="flex items-center justify-between rounded-xl2 border border-line bg-soft px-4 py-3">
+                <dt className="flex items-center gap-2 text-[13px] font-medium text-ink-2">
+                  <Tag className="h-3.5 w-3.5 text-brand" aria-hidden />
+                  Intent
+                </dt>
+                <dd className="text-[13px] font-semibold text-ink">
+                  Product inquiry
+                </dd>
+              </div>
+              <div className="flex items-center justify-between rounded-xl2 border border-line bg-soft px-4 py-3">
+                <dt className="flex items-center gap-2 text-[13px] font-medium text-ink-2">
+                  <History className="h-3.5 w-3.5 text-brand" aria-hidden />
+                  History
+                </dt>
+                <dd className="text-[13px] font-semibold text-ink">
+                  12 conversations
+                </dd>
+              </div>
+              <div className="rounded-xl2 border border-line bg-soft px-4 py-3">
+                <dt className="flex items-center gap-2 text-[13px] font-medium text-ink-2">
+                  <UserRound className="h-3.5 w-3.5 text-brand" aria-hidden />
+                  Known context
+                </dt>
+                <dd className="mt-1.5 text-[13px] leading-relaxed text-ink">
+                  Interested in the black hoodie · Asked about pricing last
+                  week · Prefers evening delivery
+                </dd>
+              </div>
+            </dl>
+
+            <div className="mt-6 rounded-xl2 border border-brand/15 bg-brand-soft px-4 py-3.5">
+              <p className="flex items-start gap-2 text-[13px] leading-relaxed text-brand-2">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+                With this context, the reply already knows the product, the
+                price and the customer — no questions needed.
+              </p>
+            </div>
+          </div>
         </Reveal>
       </div>
-    </section>
+    </Section>
   );
 }

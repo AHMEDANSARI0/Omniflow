@@ -96,6 +96,7 @@ interface CheckoutComposer {
   discount: string;
   advance: string;
   expiry: string;
+  brand: string;
   busy: boolean;
 }
 
@@ -107,6 +108,7 @@ const EMPTY_COMPOSER: CheckoutComposer = {
   discount: "",
   advance: "",
   expiry: "",
+  brand: "",
   busy: false,
 }
 
@@ -115,6 +117,7 @@ interface CheckoutLink {
   token: string;
   contactId: string;
   title: string;
+  brandName?: string | null;
   total: number;
   status: string;
   items: CheckoutLinkItem[];
@@ -265,6 +268,9 @@ export default function GrowthPage() {
   const [statusNoteFor, setStatusNoteFor] = useState<number | null>(null);
   const [composer, setComposer] = useState<CheckoutComposer>(EMPTY_COMPOSER);
   const [catalogItems, setCatalogItems] = useState<CatalogPick[]>([]);
+  const [brandOptions, setBrandOptions] = useState<
+    { id: number; name: string }[]
+  >([]);
   const [changeReqs, setChangeReqs] = useState<ChangeRequestRow[]>([]);
   const [reqBusy, setReqBusy] = useState(0);
   const [changeNote, setChangeNote] = useState("");
@@ -273,17 +279,32 @@ export default function GrowthPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const [catalogRes, requestsRes] = await Promise.all([
+        const [catalogRes, requestsRes, brandsRes] = await Promise.all([
           fetch("/api/omniflow/portal/catalog", { cache: "no-store" }),
           fetch("/api/omniflow/portal/changes/requests?status=pending", {
             cache: "no-store",
           }),
+          fetch("/api/omniflow/portal/brands", { cache: "no-store" }),
         ]);
         const catalog = await catalogRes.json().catch(() => null);
         const requests = await requestsRes.json().catch(() => null);
+        const brands = await brandsRes.json().catch(() => null);
         if (cancelled) return;
         if (catalog && Array.isArray(catalog.items)) {
           setCatalogItems(catalog.items);
+        }
+        if (brands && Array.isArray(brands.brands)) {
+          setBrandOptions(
+            brands.brands
+              .filter(
+                (b: { id?: unknown; name?: unknown }) =>
+                  typeof b.id === "number" && typeof b.name === "string"
+              )
+              .map((b: { id: number; name: string }) => ({
+                id: b.id,
+                name: b.name,
+              }))
+          );
         }
         if (requests && Array.isArray(requests.requests)) {
           setChangeReqs(requests.requests);
@@ -490,6 +511,7 @@ export default function GrowthPage() {
                 ? null
                 : Math.min(90, Math.max(1,
                   Math.floor(Number(composer.advance) || 0))),
+            brand_id: composer.brand === "" ? null : Number(composer.brand),
           }),
         }
       );
@@ -1476,6 +1498,25 @@ export default function GrowthPage() {
                       className="w-24 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
                     />
                   </label>
+                  {brandOptions.length > 0 && (
+                    <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                      Brand
+                      <select
+                        value={composer.brand}
+                        onChange={(event) =>
+                          updateComposer({ brand: event.target.value })
+                        }
+                        className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                      >
+                        <option value="">No brand</option>
+                        {brandOptions.map((brand) => (
+                          <option key={brand.id} value={String(brand.id)}>
+                            {brand.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <label className="flex items-center gap-2 text-[11px] text-slate-400">
                     Expires in
                     <select
@@ -1622,6 +1663,11 @@ export default function GrowthPage() {
                         <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[10px] text-sky-300">
                           Pay Rs {link.advanceDue} now · Rs {link.codBalance}{" "}
                           on delivery
+                        </span>
+                      ) : null}
+                      {link.brandName ? (
+                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[10px] text-sky-300">
+                          {link.brandName}
                         </span>
                       ) : null}
                       {link.status === "open" ? (

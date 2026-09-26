@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#07111f] px-5 py-10">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-5 py-10">
       <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[640px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.07)_0%,transparent_70%)]" />
       <div className="pointer-events-none absolute -bottom-40 left-1/4 h-72 w-96 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.06)_0%,transparent_70%)]" />
 
@@ -71,30 +71,30 @@ export default function ForgotPasswordPage() {
         className="relative w-full max-w-sm"
       >
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06]">
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-brand-soft">
             <span className="of-pulse h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]" />
           </div>
-          <h1 className="text-xl font-semibold tracking-[-0.03em] text-white">
-            Omni<span className="text-cyan-400">Flow</span>
+          <h1 className="text-xl font-semibold tracking-[-0.03em] text-ink">
+            Omni<span className="text-brand">Flow</span>
           </h1>
-          <p className="mt-1.5 text-xs uppercase tracking-widest text-slate-500">
+          <p className="mt-1.5 text-xs uppercase tracking-widest text-ink-3">
             Reset password
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 sm:p-7">
+        <div className="rounded-2xl border border-line bg-soft p-6 sm:p-7">
           {done ? (
             <div className="space-y-4 text-center">
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-ink-2">
                 If this email is registered, a 6-digit reset code has been
                 generated.
               </p>
-              <p className="text-xs leading-relaxed text-slate-500">
+              <p className="text-xs leading-relaxed text-ink-3">
                 In this test environment the code is delivered to the server
                 logs — ask your administrator for the code, then{" "}
                 <Link
                   href="/dashboard/reset-password"
-                  className="text-cyan-400/80 hover:text-cyan-300"
+                  className="text-brand/80 hover:text-brand"
                 >
                   set a new password here
                 </Link>
@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
               </p>
               <Link
                 href="/dashboard/login"
-                className="inline-block rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-2.5 text-sm text-slate-300 transition-colors hover:border-cyan-400/40"
+                className="inline-block rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink-2 transition-colors hover:border-brand/40"
               >
                 Back to sign in
               </Link>
@@ -112,7 +112,7 @@ export default function ForgotPasswordPage() {
               <div>
                 <label
                   htmlFor="email"
-                  className="mb-1.5 block text-xs font-medium text-slate-400"
+                  className="mb-1.5 block text-xs font-medium text-ink-3"
                 >
                   Email
                 </label>
@@ -125,7 +125,7 @@ export default function ForgotPasswordPage() {
                   autoComplete="username"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
                   placeholder="you@business.com"
                 />
               </div>
@@ -136,7 +136,7 @@ export default function ForgotPasswordPage() {
                   animate={{ opacity: 1, y: 0 }}
                   role="alert"
                   aria-live="polite"
-                  className="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-red-300"
+                  className="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-danger"
                 >
                   {error}
                 </motion.p>
@@ -155,10 +155,10 @@ export default function ForgotPasswordPage() {
           )}
         </div>
 
-        <p className="mt-5 text-center text-xs text-slate-600">
+        <p className="mt-5 text-center text-xs text-ink-3">
           <Link
             href="/dashboard/login"
-            className="text-cyan-400/80 transition-colors hover:text-cyan-300"
+            className="text-brand/80 transition-colors hover:text-brand"
           >
             Back to sign in
           </Link>

@@ -87,11 +87,11 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
 
   if (loaded && cod === null && !expanded) {
     return (
-      <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+      <div className="mb-4 rounded-2xl border border-line bg-soft p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h2 className="text-xs font-semibold text-white">COD order</h2>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+            <h2 className="text-xs font-semibold text-ink">COD order</h2>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
               Send a confirmation request — the customer replies YES or NO and
               OmniFlow tracks it automatically.
             </p>
@@ -102,7 +102,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
               setExpanded(true);
               setMessage(null);
             }}
-            className="w-full shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] sm:w-auto"
+            className="w-full shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft sm:w-auto"
           >
             Send COD confirmation
           </button>
@@ -120,7 +120,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
         ? "border-emerald-400/20 bg-emerald-400/[0.05]"
         : cod?.status === "cancelled"
           ? "border-red-400/20 bg-red-400/[0.05]"
-          : "border-white/[0.06] bg-white/[0.015]";
+          : "border-line bg-soft";
   const bannerText =
     cod?.status === "pending"
       ? "Awaiting customer confirmation — the customer can reply YES or NO on WhatsApp."
@@ -142,12 +142,12 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
     <div className={"mb-4 rounded-2xl border p-4 " + banner}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-white">{bannerLabel}</p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">
+          <p className="text-xs font-semibold text-ink">{bannerLabel}</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
             {bannerText}
           </p>
           {cod?.details && (
-            <p className="mt-1 truncate text-[11px] text-slate-500">
+            <p className="mt-1 truncate text-[11px] text-ink-3">
               Order: {cod.details}
             </p>
           )}
@@ -156,7 +156,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
           type="button"
           onClick={() => sendRequest()}
           disabled={busy}
-          className="w-full shrink-0 rounded-xl border border-white/[0.1] bg-white/[0.03] px-4 py-2 text-xs font-medium text-slate-300 transition-colors duration-300 hover:bg-white/[0.06] disabled:opacity-50 sm:w-auto"
+          className="w-full shrink-0 rounded-xl border border-line-2 bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-white/[0.06] disabled:opacity-50 sm:w-auto"
         >
           {busy ? "Sending..." : "Send again"}
         </button>
@@ -170,7 +170,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
             onChange={(e) => setDetails(e.target.value)}
             maxLength={200}
             placeholder="Optional details, e.g. 2 suits, PKR 4,500"
-            className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <div className="flex gap-2">
             <button
@@ -179,7 +179,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
                 setExpanded(false);
                 setDetails("");
               }}
-              className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs font-medium text-slate-300 transition-colors duration-300 hover:bg-white/[0.05] sm:flex-none"
+              className="flex-1 rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft sm:flex-none"
             >
               Cancel
             </button>
@@ -187,7 +187,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
               type="button"
               onClick={() => sendRequest()}
               disabled={busy}
-              className="flex-1 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50 sm:flex-none"
+              className="flex-1 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50 sm:flex-none"
             >
               {busy ? "Sending..." : "Send"}
             </button>
@@ -199,7 +199,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
         <p
           className={
             "mt-2 text-[11px] " +
-            (message.kind === "ok" ? "text-emerald-300/90" : "text-red-300/90")
+            (message.kind === "ok" ? "text-ok/90" : "text-danger/90")
           }
         >
           {message.text}

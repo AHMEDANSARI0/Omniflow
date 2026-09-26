@@ -4,10 +4,10 @@ import { useCallback, useState } from "react";
 import type { AnalyticsData } from "../../../../lib/omniflow/portal";
 
 const statClass =
-  "rounded-2xl border border-white/[0.06] bg-white/[0.015] px-5 py-4";
+  "rounded-2xl border border-line bg-soft px-5 py-4";
 
-const statLabel = "text-[10px] uppercase tracking-wider text-slate-600";
-const statValue = "mt-1 text-lg font-semibold text-white";
+const statLabel = "text-[10px] uppercase tracking-wider text-ink-3";
+const statValue = "mt-1 text-lg font-semibold text-ink";
 
 const chipBtn =
   "rounded-xl border px-3.5 py-1.5 text-xs font-medium transition-colors duration-300";
@@ -84,8 +84,8 @@ export default function AnalyticsClient({
               chipBtn +
               " " +
               (data.days === days
-                ? "border-cyan-400/25 bg-cyan-400/[0.08] text-cyan-200"
-                : "border-white/[0.08] bg-white/[0.02] text-slate-400 hover:bg-white/[0.05]") +
+                ? "border-brand/25 bg-brand-soft text-brand"
+                : "border-line bg-soft text-ink-3 hover:bg-soft") +
               (loading ? " opacity-50" : "")
             }
           >
@@ -96,9 +96,9 @@ export default function AnalyticsClient({
       </div>
 
       {isEmpty ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-8 text-center">
-          <p className="text-sm text-slate-400">No data yet</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+        <div className="rounded-2xl border border-line bg-soft p-8 text-center">
+          <p className="text-sm text-ink-3">No data yet</p>
+          <p className="mt-1 text-xs leading-relaxed text-ink-3">
             Numbers appear here automatically as customers start chatting on
             WhatsApp.
           </p>
@@ -113,7 +113,7 @@ export default function AnalyticsClient({
             <div className={statClass}>
               <p className={statLabel}>Conversations</p>
               <p className={statValue}>{totals.conversations}</p>
-              <p className="text-[10px] text-slate-600">
+              <p className="text-[10px] text-ink-3">
                 {totals.conversationsClosed} closed
               </p>
             </div>
@@ -127,12 +127,12 @@ export default function AnalyticsClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
+          <div className="rounded-2xl border border-line bg-soft p-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-white">
+              <h2 className="text-sm font-semibold text-ink">
                 Messages per day
               </h2>
-              <div className="flex items-center gap-3 text-[10px] text-slate-500">
+              <div className="flex items-center gap-3 text-[10px] text-ink-3">
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-cyan-400" /> In
                 </span>
@@ -174,7 +174,7 @@ export default function AnalyticsClient({
               {data.perDay.map((point, index) => (
                 <div key={point.day} className="flex-1 text-center">
                   {index % dayLabelStep === 0 ? (
-                    <span className="text-[9px] text-slate-600">
+                    <span className="text-[9px] text-ink-3">
                       {point.day.slice(8)}
                     </span>
                   ) : null}
@@ -187,27 +187,27 @@ export default function AnalyticsClient({
             <div className={statClass}>
               <p className={statLabel}>Instant answers</p>
               <p className={statValue}>{window.instantAnswers}</p>
-              <p className="text-[10px] text-slate-600">
+              <p className="text-[10px] text-ink-3">
                 Knowledge-base replies
               </p>
             </div>
             <div className={statClass}>
               <p className={statLabel}>Follow-ups delivered</p>
               <p className={statValue}>{window.followupsDelivered}</p>
-              <p className="text-[10px] text-slate-600">
+              <p className="text-[10px] text-ink-3">
                 After customers went silent
               </p>
             </div>
             <div className={statClass}>
               <p className={statLabel}>Replies queued</p>
               <p className={statValue}>{window.repliesQueued}</p>
-              <p className="text-[10px] text-slate-600">Manual team replies</p>
+              <p className="text-[10px] text-ink-3">Manual team replies</p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-            <h2 className="text-sm font-semibold text-white">Service level</h2>
-            <p className="mt-0.5 text-xs text-slate-600">
+          <div className="rounded-2xl border border-line bg-soft p-6">
+            <h2 className="text-sm font-semibold text-ink">Service level</h2>
+            <p className="mt-0.5 text-xs text-ink-3">
               How fast the team responds and how many chats get resolved.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -218,7 +218,7 @@ export default function AnalyticsClient({
                     ? data.service.resolutionRate.toFixed(1) + "%"
                     : "—"}
                 </p>
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-ink-3">
                   Chats created in this window that are now closed
                 </p>
               </div>
@@ -227,7 +227,7 @@ export default function AnalyticsClient({
                 <p className={statValue}>
                   {formatSeconds(data.service?.frtAvgSeconds)}
                 </p>
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-ink-3">
                   First inbound message → first reply
                 </p>
               </div>
@@ -236,7 +236,7 @@ export default function AnalyticsClient({
                 <p className={statValue}>
                   {formatSeconds(data.service?.frtMedianSeconds)}
                 </p>
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-ink-3">
                   {data.service?.answeredConversations
                     ? data.service.answeredConversations + " chats answered in this window"
                     : "No replies yet in this window"}
@@ -245,12 +245,12 @@ export default function AnalyticsClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-            <h2 className="text-sm font-semibold text-white">
+          <div className="rounded-2xl border border-line bg-soft p-6">
+            <h2 className="text-sm font-semibold text-ink">
               What customers ask about
             </h2>
             {data.intents.length === 0 ? (
-              <p className="mt-3 text-xs text-slate-600">
+              <p className="mt-3 text-xs text-ink-3">
                 No classified messages in this window yet.
               </p>
             ) : (
@@ -258,12 +258,12 @@ export default function AnalyticsClient({
                 {data.intents.map((item) => (
                   <li key={item.intent}>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-300">
+                      <span className="text-ink-2">
                         {intentLabel(item.intent)}
                       </span>
-                      <span className="text-slate-500">{item.count}</span>
+                      <span className="text-ink-3">{item.count}</span>
                     </div>
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-soft">
                       <div
                         className="h-full rounded-full bg-cyan-400/70"
                         style={{
@@ -277,12 +277,12 @@ export default function AnalyticsClient({
             )}
           </div>
 
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-            <h2 className="text-sm font-semibold text-white">
+          <div className="rounded-2xl border border-line bg-soft p-6">
+            <h2 className="text-sm font-semibold text-ink">
               Most-used answers
             </h2>
             {data.topEntries.length === 0 ? (
-              <p className="mt-3 text-xs text-slate-600">
+              <p className="mt-3 text-xs text-ink-3">
                 No knowledge-base answers have been sent yet.
               </p>
             ) : (
@@ -292,10 +292,10 @@ export default function AnalyticsClient({
                     key={entry.title}
                     className="flex items-center justify-between gap-4 text-xs"
                   >
-                    <span className="min-w-0 truncate text-slate-300">
+                    <span className="min-w-0 truncate text-ink-2">
                       {entry.title}
                     </span>
-                    <span className="shrink-0 text-slate-500">
+                    <span className="shrink-0 text-ink-3">
                       sent {entry.usageCount}{" "}
                       {entry.usageCount === 1 ? "time" : "times"}
                     </span>

@@ -178,15 +178,15 @@ export default function SavedRepliesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
           Workspace
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Quick replies
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
+        <p className="mt-1.5 text-sm text-ink-3">
           Canned messages your team types as /shortcut in any conversation. Up to
           30 per workspace.
         </p>
@@ -196,7 +196,7 @@ export default function SavedRepliesPage() {
             className={
               "mt-4 rounded-lg border px-3 py-2 text-xs " +
               (noteTone === "emerald"
-                ? "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-200"
+                ? "border-emerald-400/20 bg-emerald-400/[0.05] text-ok"
                 : "border-amber-400/20 bg-amber-400/[0.05] text-amber-200")
             }
           >
@@ -204,38 +204,38 @@ export default function SavedRepliesPage() {
           </p>
         ) : null}
 
-        <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-          <p className="text-xs font-semibold text-white">Add a reply</p>
+        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+          <p className="text-xs font-semibold text-ink">Add a reply</p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
               value={shortcut}
               onChange={(event) => setShortcut(event.target.value)}
               placeholder="shortcut e.g. pricing"
-              className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/40 sm:w-56"
+              className="w-full rounded-xl border border-line bg-soft px-3 py-2.5 text-sm text-ink outline-none focus:border-brand/40 sm:w-56"
             />
             <input
               value={body}
               onChange={(event) => setBody(event.target.value)}
               placeholder="Message text (max 1000 characters)"
-              className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/40"
+              className="flex-1 rounded-xl border border-line bg-soft px-3 py-2.5 text-sm text-ink outline-none focus:border-brand/40"
             />
           </div>
           <button
             type="button"
             onClick={() => void createReply()}
             disabled={busy}
-            className="mt-2 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-40"
+            className="mt-2 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-40"
           >
             {busy ? "Saving\\u2026" : "Save reply"}
           </button>
         </section>
 
         {replies === null ? (
-          <p className="mt-4 text-sm text-slate-500">
+          <p className="mt-4 text-sm text-ink-3">
             Quick replies are unavailable right now.
           </p>
         ) : replies.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-500">
+          <p className="mt-4 text-sm text-ink-3">
             No quick replies yet — add your first one above.
           </p>
         ) : (
@@ -243,34 +243,34 @@ export default function SavedRepliesPage() {
             {replies.map((reply) => (
               <li
                 key={reply.id}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4"
+                className="rounded-2xl border border-line bg-soft p-4"
               >
                 {editId === reply.id ? (
                   <div className="flex flex-col gap-2">
                     <input
                       value={editShortcut}
                       onChange={(event) => setEditShortcut(event.target.value)}
-                      className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40 sm:w-56"
+                      className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink outline-none focus:border-brand/40 sm:w-56"
                     />
                     <textarea
                       value={editBody}
                       onChange={(event) => setEditBody(event.target.value)}
                       rows={3}
-                      className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40"
+                      className="rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink outline-none focus:border-brand/40"
                     />
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => void saveEdit()}
                         disabled={busy}
-                        className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-40"
+                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs text-brand transition hover:bg-brand-soft disabled:opacity-40"
                       >
                         Save
                       </button>
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-400 transition hover:text-white"
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
                       >
                         Cancel
                       </button>
@@ -279,13 +279,13 @@ export default function SavedRepliesPage() {
                 ) : (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <span className="rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-cyan-300">
+                      <span className="rounded-md border border-brand/20 bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold text-brand">
                         /{reply.shortcut}
                       </span>
-                      <p className="mt-1 line-clamp-2 text-xs text-slate-400">
+                      <p className="mt-1 line-clamp-2 text-xs text-ink-3">
                         {reply.body}
                       </p>
-                      <p className="mt-1 text-[10px] text-slate-600">
+                      <p className="mt-1 text-[10px] text-ink-3">
                         Used {reply.useCount} time{reply.useCount === 1 ? "" : "s"}
                         {" \\u00b7 "}last {when(reply.lastUsedAt)}
                       </p>
@@ -294,7 +294,7 @@ export default function SavedRepliesPage() {
                       <button
                         type="button"
                         onClick={() => startEdit(reply)}
-                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-[11px] text-slate-300 transition hover:text-white"
+                        className="rounded-lg border border-line px-3 py-1.5 text-[11px] text-ink-2 transition hover:text-ink"
                       >
                         Edit
                       </button>
@@ -302,7 +302,7 @@ export default function SavedRepliesPage() {
                         type="button"
                         onClick={() => void removeReply(reply)}
                         disabled={busy}
-                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-[11px] text-slate-400 transition hover:text-rose-300 disabled:opacity-40"
+                        className="rounded-lg border border-line px-3 py-1.5 text-[11px] text-ink-3 transition hover:text-danger disabled:opacity-40"
                       >
                         Delete
                       </button>

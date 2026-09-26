@@ -7,9 +7,9 @@ import type { HeroContent } from "../../../../../lib/content-defaults";
 const initialState: ContentActionState = { success: false, message: "" };
 
 const inputClass =
-  "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
 
-const labelClass = "mb-1.5 block text-xs font-medium text-slate-400";
+const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
 export default function HeroForm({ content }: { content: HeroContent }) {
   const [state, formAction, pending] = useActionState(
@@ -20,9 +20,9 @@ export default function HeroForm({ content }: { content: HeroContent }) {
   return (
     <form action={formAction} className="space-y-6">
       {/* Headline card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">Headline</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Headline</h2>
+        <p className="mb-5 text-xs text-ink-3">
           The main heading. Line 2 is shown with the gradient color.
         </p>
 
@@ -83,9 +83,9 @@ export default function HeroForm({ content }: { content: HeroContent }) {
       </div>
 
       {/* Buttons card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">Buttons</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Buttons</h2>
+        <p className="mb-5 text-xs text-ink-3">
           Labels only — where they link stays fixed.
         </p>
 
@@ -118,9 +118,9 @@ export default function HeroForm({ content }: { content: HeroContent }) {
       </div>
 
       {/* Channels card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">Channels strip</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Channels strip</h2>
+        <p className="mb-5 text-xs text-ink-3">
           The small label and channel chips under the buttons.
         </p>
 
@@ -165,7 +165,7 @@ export default function HeroForm({ content }: { content: HeroContent }) {
         {state.message && (
           <p
             className={`text-xs ${
-              state.success ? "text-emerald-300" : "text-red-300"
+              state.success ? "text-ok" : "text-danger"
             }`}
           >
             {state.message}

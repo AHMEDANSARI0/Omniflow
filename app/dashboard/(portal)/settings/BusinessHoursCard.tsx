@@ -111,9 +111,9 @@ export default function BusinessHoursCard() {
 
   if (!config) {
     return (
-      <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-        <h2 className="text-sm font-semibold text-white">Business hours</h2>
-        <p className="mt-2 text-xs text-slate-600">Loading…</p>
+      <section className="rounded-2xl border border-line bg-soft p-5">
+        <h2 className="text-sm font-semibold text-ink">Business hours</h2>
+        <p className="mt-2 text-xs text-ink-3">Loading…</p>
       </section>
     );
   }
@@ -121,23 +121,23 @@ export default function BusinessHoursCard() {
   const open = isOpenNow(config);
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+    <section className="rounded-2xl border border-line bg-soft p-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-white">Business hours</h2>
+        <h2 className="text-sm font-semibold text-ink">Business hours</h2>
         {config.enabled && (
           <span
             className={
               "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider " +
               (open
-                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300")
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600")
             }
           >
             {open ? "Open now" : "Closed now"}
           </span>
         )}
       </div>
-      <label className="mt-4 flex items-center gap-3 text-xs text-slate-300">
+      <label className="mt-4 flex items-center gap-3 text-xs text-ink-2">
         <input
           type="checkbox"
           checked={config.enabled}
@@ -149,17 +149,17 @@ export default function BusinessHoursCard() {
         Enabled outside these hours, show an away message to customers
       </label>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="block text-xs text-slate-400">
+        <label className="block text-xs text-ink-3">
           Timezone (IANA name)
           <input
             value={config.timezone}
             onChange={(event) =>
               setConfig({ ...config, timezone: event.target.value })
             }
-            className="mt-1 w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="mt-1 w-full rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none transition-colors duration-300 focus:border-brand/40"
           />
         </label>
-        <label className="block text-xs text-slate-400">
+        <label className="block text-xs text-ink-3">
           Away message
           <textarea
             value={config.away_message}
@@ -168,10 +168,10 @@ export default function BusinessHoursCard() {
             }
             rows={3}
             maxLength={500}
-            className="mt-1 w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="mt-1 w-full resize-none rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none transition-colors duration-300 focus:border-brand/40"
           />
         </label>
-        <label className="block text-xs text-slate-400">
+        <label className="block text-xs text-ink-3">
           Away message — Urdu (optional, sent to customers who write in Urdu
           script)
           <textarea
@@ -182,10 +182,10 @@ export default function BusinessHoursCard() {
             rows={2}
             maxLength={500}
             placeholder="اگر خالی چھوڑا تو انگریزی والا پیغام جائے گا"
-            className="mt-1 w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="mt-1 w-full resize-none rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none transition-colors duration-300 focus:border-brand/40"
           />
         </label>
-        <label className="block text-xs text-slate-400">
+        <label className="block text-xs text-ink-3">
           Away message — Roman Urdu (optional, sent to customers who write
           Roman Urdu)
           <textarea
@@ -196,7 +196,7 @@ export default function BusinessHoursCard() {
             rows={2}
             maxLength={500}
             placeholder="Khali chhora to English wala message jayega"
-            className="mt-1 w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="mt-1 w-full resize-none rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none transition-colors duration-300 focus:border-brand/40"
           />
         </label>
       </div>
@@ -204,7 +204,7 @@ export default function BusinessHoursCard() {
         {config.days.map((day, index) => (
           <div
             key={DAY_LABELS[index]}
-            className="flex items-center gap-3 text-xs text-slate-300"
+            className="flex items-center gap-3 text-xs text-ink-2"
           >
             <input
               type="checkbox"
@@ -220,20 +220,20 @@ export default function BusinessHoursCard() {
               value={day.start}
               disabled={!day.enabled}
               onChange={(event) => patchDay(index, { start: event.target.value })}
-              className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1 text-xs text-white outline-none disabled:opacity-40"
+              className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink outline-none disabled:opacity-40"
             />
-            <span className="text-slate-600">to</span>
+            <span className="text-ink-3">to</span>
             <input
               type="time"
               value={day.end}
               disabled={!day.enabled}
               onChange={(event) => patchDay(index, { end: event.target.value })}
-              className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1 text-xs text-white outline-none disabled:opacity-40"
+              className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink outline-none disabled:opacity-40"
             />
           </div>
         ))}
       </div>
-      {notice && <p className="mt-3 text-[11px] text-amber-300">{notice}</p>}
+      {notice && <p className="mt-3 text-[11px] text-amber-600">{notice}</p>}
       <button
         type="button"
         onClick={() => void save()}

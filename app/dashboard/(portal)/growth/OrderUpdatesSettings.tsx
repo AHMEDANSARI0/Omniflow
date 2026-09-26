@@ -33,7 +33,7 @@ const EMPTY: NotifySettings = {
 };
 
 const FIELD_BASE =
-  "mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-white/20 focus:outline-none";
+  "mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-white/20 focus:outline-none";
 
 export default function OrderUpdatesSettings() {
   const [settings, setSettings] = useState<NotifySettings>(EMPTY);
@@ -128,13 +128,13 @@ export default function OrderUpdatesSettings() {
   if (loaded && !visible) return null;
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-5">
+    <section className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">
             Order status updates
           </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-ink-3">
             When you mark a checkout link paid, shipped or delivered, the
             customer gets a WhatsApp update automatically.
           </p>
@@ -151,8 +151,8 @@ export default function OrderUpdatesSettings() {
           }
           className={`rounded-lg border px-2.5 py-1 text-[11px] ${
             settings.notifyEnabled
-              ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+              ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+              : "border-line bg-soft text-ink-3"
           }`}
         >
           {settings.notifyEnabled ? "Updates on" : "Updates off"}
@@ -161,7 +161,7 @@ export default function OrderUpdatesSettings() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="text-[11px] text-slate-400">Paid message</span>
+          <span className="text-[11px] text-ink-3">Paid message</span>
           <textarea
             rows={3}
             value={settings.tplPaid}
@@ -173,7 +173,7 @@ export default function OrderUpdatesSettings() {
           />
         </label>
         <label className="block">
-          <span className="text-[11px] text-slate-400">Shipped message</span>
+          <span className="text-[11px] text-ink-3">Shipped message</span>
           <textarea
             rows={3}
             value={settings.tplShipped}
@@ -188,7 +188,7 @@ export default function OrderUpdatesSettings() {
           />
         </label>
         <label className="block">
-          <span className="text-[11px] text-slate-400">Delivered message</span>
+          <span className="text-[11px] text-ink-3">Delivered message</span>
           <textarea
             rows={3}
             value={settings.tplDelivered}
@@ -203,7 +203,7 @@ export default function OrderUpdatesSettings() {
           />
         </label>
         <label className="block">
-          <span className="text-[11px] text-slate-400">Returned message</span>
+          <span className="text-[11px] text-ink-3">Returned message</span>
           <textarea
             rows={3}
             value={settings.tplReturned}
@@ -218,18 +218,18 @@ export default function OrderUpdatesSettings() {
           />
         </label>
       </div>
-      <p className="mt-2 text-[10px] text-slate-600">
+      <p className="mt-2 text-[10px] text-ink-3">
         Use {"{name}"}, {"{title}"} and {"{total}"} as placeholders. Leave a
         box empty to use the default message.
       </p>
 
-      <div className="mt-5 border-t border-white/[0.06] pt-4">
+      <div className="mt-5 border-t border-line pt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h4 className="text-sm font-semibold text-slate-100">
               Cart recovery
             </h4>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className="mt-0.5 text-xs text-ink-3">
               Up to three automatic WhatsApp reminders for checkout links
               still open after each delay. Stops the moment a link is paid
               or cancelled.
@@ -247,8 +247,8 @@ export default function OrderUpdatesSettings() {
             }
             className={`rounded-lg border px-2.5 py-1 text-[11px] ${
               settings.cartEnabled
-                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line bg-soft text-ink-3"
             }`}
           >
             {settings.cartEnabled ? "Recovery on" : "Recovery off"}
@@ -259,7 +259,7 @@ export default function OrderUpdatesSettings() {
           <>
             <div className="mt-3 grid grid-cols-3 gap-2 sm:max-w-xs">
               <label className="block">
-                <span className="text-[11px] text-slate-400">After (1)</span>
+                <span className="text-[11px] text-ink-3">After (1)</span>
                 <input
                   type="number"
                   min={1}
@@ -275,7 +275,7 @@ export default function OrderUpdatesSettings() {
                 />
               </label>
               <label className="block">
-                <span className="text-[11px] text-slate-400">Then (2)</span>
+                <span className="text-[11px] text-ink-3">Then (2)</span>
                 <input
                   type="number"
                   min={1}
@@ -291,7 +291,7 @@ export default function OrderUpdatesSettings() {
                 />
               </label>
               <label className="block">
-                <span className="text-[11px] text-slate-400">Then (3)</span>
+                <span className="text-[11px] text-ink-3">Then (3)</span>
                 <input
                   type="number"
                   min={1}
@@ -307,12 +307,12 @@ export default function OrderUpdatesSettings() {
                 />
               </label>
             </div>
-            <p className="mt-1 text-[10px] text-slate-600">
+            <p className="mt-1 text-[10px] text-ink-3">
               Hours after the checkout link was created (1-168).
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <label className="block">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-ink-3">
                   Reminder 1
                 </span>
                 <textarea
@@ -329,7 +329,7 @@ export default function OrderUpdatesSettings() {
                 />
               </label>
               <label className="block">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-ink-3">
                   Reminder 2
                 </span>
                 <textarea
@@ -346,7 +346,7 @@ export default function OrderUpdatesSettings() {
                 />
               </label>
               <label className="block">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-ink-3">
                   Reminder 3
                 </span>
                 <textarea
@@ -372,11 +372,11 @@ export default function OrderUpdatesSettings() {
           type="button"
           onClick={() => void save()}
           disabled={saving}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-200 hover:bg-white/[0.08] disabled:opacity-50"
+          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs text-ink hover:bg-white/[0.08] disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save settings"}
         </button>
-        {note ? <span className="text-[11px] text-slate-500">{note}</span> : null}
+        {note ? <span className="text-[11px] text-ink-3">{note}</span> : null}
       </div>
     </section>
   );

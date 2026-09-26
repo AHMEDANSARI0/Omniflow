@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import type { OrderRow } from "../../../../lib/omniflow/portal";
 
 const inputClass =
-  "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 
 const chipClass =
-  "rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500";
+  "rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-3";
 
 interface ParsedOrder {
   code: string;
@@ -137,9 +137,9 @@ export default function OrdersSection() {
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-      <h2 className="text-sm font-semibold text-white">Order tracking</h2>
-      <p className="mt-1 text-xs leading-relaxed text-slate-500">
+    <div className="rounded-2xl border border-line bg-soft p-6">
+      <h2 className="text-sm font-semibold text-ink">Order tracking</h2>
+      <p className="mt-1 text-xs leading-relaxed text-ink-3">
         Paste your orders — when a customer asks about their order on
         WhatsApp and mentions the order code, the assistant answers with the
         status instantly, day and night.
@@ -161,7 +161,7 @@ export default function OrdersSection() {
         >
           {busy ? "Importing..." : "Import / update orders"}
         </button>
-        <p className="text-[11px] leading-relaxed text-slate-600">
+        <p className="text-[11px] leading-relaxed text-ink-3">
           One order per line: code, status, note. Re-importing the same code
           updates it.
         </p>
@@ -172,7 +172,7 @@ export default function OrdersSection() {
           className={
             "mt-4 rounded-xl border px-4 py-3 text-xs leading-relaxed " +
             (message.kind === "ok"
-              ? "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-200/90"
+              ? "border-emerald-400/20 bg-emerald-400/[0.05] text-ok/90"
               : "border-red-400/20 bg-red-400/[0.05] text-red-200/90")
           }
         >
@@ -181,9 +181,9 @@ export default function OrdersSection() {
       )}
 
       {!loaded ? (
-        <p className="mt-4 text-xs text-slate-600">Loading orders...</p>
+        <p className="mt-4 text-xs text-ink-3">Loading orders...</p>
       ) : items.length === 0 ? (
-        <p className="mt-4 text-xs leading-relaxed text-slate-600">
+        <p className="mt-4 text-xs leading-relaxed text-ink-3">
           No orders yet — paste your list above to enable instant order
           status replies.
         </p>
@@ -192,17 +192,17 @@ export default function OrdersSection() {
           {items.map((order) => (
             <div
               key={order.id}
-              className="flex flex-col gap-2 rounded-xl border border-white/[0.05] bg-white/[0.01] p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-xl border border-line bg-white/[0.01] p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-mono text-xs font-semibold text-white">
+                  <p className="font-mono text-xs font-semibold text-ink">
                     {order.code}
                   </p>
                   <span className={chipClass}>{order.statusText}</span>
                 </div>
                 {order.note && (
-                  <p className="mt-1 truncate text-[11px] text-slate-500">
+                  <p className="mt-1 truncate text-[11px] text-ink-3">
                     {order.note}
                   </p>
                 )}
@@ -211,7 +211,7 @@ export default function OrdersSection() {
                 type="button"
                 onClick={() => removeOrder(order.id)}
                 disabled={busy}
-                className="w-full shrink-0 rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-2 text-xs font-medium text-red-300/80 transition-colors duration-300 hover:bg-red-400/[0.09] disabled:opacity-50 sm:w-auto"
+                className="w-full shrink-0 rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-2 text-xs font-medium text-danger/80 transition-colors duration-300 hover:bg-red-400/[0.09] disabled:opacity-50 sm:w-auto"
               >
                 Remove
               </button>

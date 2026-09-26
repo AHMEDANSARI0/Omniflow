@@ -147,23 +147,23 @@ export default function CustomersImport({
           setFileName("");
           if (fileRef.current) fileRef.current.value = "";
         }}
-        className="ml-auto rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white"
+        className="ml-auto rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
       >
         Import CSV
       </button>
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-soft p-4"
           role="dialog"
           aria-modal="true"
           onClick={(event) => {
             if (event.target === event.currentTarget) setOpen(false);
           }}
         >
-          <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0b1626] p-5">
-            <h2 className="text-sm font-semibold text-white">Import customers</h2>
-            <p className="mt-1 text-xs text-slate-500">
+          <div className="w-full max-w-md rounded-2xl border border-line bg-white p-5">
+            <h2 className="text-sm font-semibold text-ink">Import customers</h2>
+            <p className="mt-1 text-xs text-ink-3">
               Pick a CSV with name and phone columns. Pakistani numbers in any
               format work (0300…, 92 300…, +92 300…). Up to 300 per import.
             </p>
@@ -176,24 +176,24 @@ export default function CustomersImport({
                 const file = event.target.files?.[0];
                 if (file) void handleFile(file);
               }}
-              className="mt-3 block w-full cursor-pointer rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-slate-300 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cyan-400/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-cyan-200"
+              className="mt-3 block w-full cursor-pointer rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink-2 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cyan-400/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand"
             />
             {fileName ? (
-              <p className="mt-1.5 text-[11px] text-slate-500">
+              <p className="mt-1.5 text-[11px] text-ink-3">
                 {fileName} - {preview.length} customer{preview.length === 1 ? "" : "s"} ready.
               </p>
             ) : null}
 
             {preview.length > 0 ? (
-              <ul className="mt-3 max-h-36 space-y-1 overflow-y-auto rounded-xl border border-white/[0.06] bg-white/[0.015] p-2.5">
+              <ul className="mt-3 max-h-36 space-y-1 overflow-y-auto rounded-xl border border-line bg-soft p-2.5">
                 {preview.slice(0, 8).map((row, index) => (
-                  <li key={String(index)} className="flex justify-between gap-2 text-[11px] text-slate-400">
+                  <li key={String(index)} className="flex justify-between gap-2 text-[11px] text-ink-3">
                     <span className="truncate">{row.name || "(no name)"}</span>
                     <span className="shrink-0 font-mono">{row.phone}</span>
                   </li>
                 ))}
                 {preview.length > 8 ? (
-                  <li className="text-[11px] text-slate-600">
+                  <li className="text-[11px] text-ink-3">
                     + {preview.length - 8} more
                   </li>
                 ) : null}
@@ -204,7 +204,7 @@ export default function CustomersImport({
               <p
                 className={
                   "mt-3 text-xs " +
-                  (noteTone === "emerald" ? "text-emerald-300" : "text-amber-300")
+                  (noteTone === "emerald" ? "text-ok" : "text-amber-600")
                 }
               >
                 {note}
@@ -215,7 +215,7 @@ export default function CustomersImport({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
               >
                 Close
               </button>
@@ -223,7 +223,7 @@ export default function CustomersImport({
                 type="button"
                 onClick={() => void submit()}
                 disabled={busy || preview.length === 0}
-                className="rounded-lg bg-cyan-400/15 px-4 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/25 disabled:opacity-40"
+                className="rounded-lg bg-cyan-400/15 px-4 py-1.5 text-xs font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-40"
               >
                 {busy ? "Importing\u2026" : "Import " + preview.length}
               </button>

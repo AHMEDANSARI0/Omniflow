@@ -92,8 +92,8 @@ export default function SetupChecklist() {
     <div className="mb-8 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.03] p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold text-white">Setup progress</h2>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <h2 className="text-sm font-semibold text-ink">Setup progress</h2>
+          <p className="mt-0.5 text-xs text-ink-3">
             {doneCount === total
               ? "All set \u2014 every feature is configured."
               : String(doneCount) + " of " + String(total) + " steps done"}
@@ -102,13 +102,13 @@ export default function SetupChecklist() {
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
         >
           Recheck
         </button>
       </div>
 
-      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-soft">
         <div
           className={
             "h-full rounded-full transition-all duration-500 " +
@@ -129,15 +129,15 @@ export default function SetupChecklist() {
                   "flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 transition-colors duration-300 " +
                   (done
                     ? "border-emerald-400/15 bg-emerald-400/[0.04]"
-                    : "border-white/[0.06] bg-white/[0.01] hover:border-cyan-400/25")
+                    : "border-line bg-white/[0.01] hover:border-brand/25")
                 }
               >
                 <span
                   className={
                     "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] " +
                     (done
-                      ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-300"
-                      : "border-white/15 text-slate-600")
+                      ? "border-emerald-400/40 bg-emerald-400/15 text-ok"
+                      : "border-white/15 text-ink-3")
                   }
                   aria-hidden
                 >
@@ -146,12 +146,12 @@ export default function SetupChecklist() {
                 <span className="min-w-0">
                   <span
                     className={
-                      "block text-sm " + (done ? "text-slate-400 line-through" : "text-slate-200")
+                      "block text-sm " + (done ? "text-ink-3 line-through" : "text-ink")
                     }
                   >
                     {item.label}
                   </span>
-                  <span className="mt-0.5 block truncate text-[11px] text-slate-600">
+                  <span className="mt-0.5 block truncate text-[11px] text-ink-3">
                     {item.hint}
                   </span>
                 </span>

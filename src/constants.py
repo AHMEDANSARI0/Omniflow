@@ -1,0 +1,11 @@
+APP_NAME = "WhatsApp AI Assistant"
+
+VERSION = "1.0.0"
+
+AUTHOR = "Ahmed"
+
+MEMORY_LIMIT = 10
+
+MAX_TYPING_SECONDS = 8
+
+MIN_TYPING_SECONDS = 1.5

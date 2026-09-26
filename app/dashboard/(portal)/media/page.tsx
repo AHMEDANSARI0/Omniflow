@@ -14,8 +14,8 @@ interface MediaAsset {
 
 const KIND_STYLES: Record<string, string> = {
   image: "border-sky-400/25 bg-sky-400/[0.07] text-sky-300",
-  document: "border-amber-400/25 bg-amber-400/[0.07] text-amber-300",
-  audio: "border-violet-400/25 bg-violet-400/[0.07] text-violet-300",
+  document: "border-amber-400/25 bg-amber-400/[0.07] text-amber-600",
+  audio: "border-violet-400/25 bg-violet-400/[0.07] text-ai",
 };
 
 function formatSize(bytes: number): string {
@@ -170,16 +170,16 @@ export default function MediaPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
             Workspace
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Media &amp; voice
           </h1>
-          <p className="mt-1.5 text-sm text-slate-400">
+          <p className="mt-1.5 text-sm text-ink-3">
             Store images, PDFs and audio - send them to customers on
             WhatsApp or turn voice notes into text. Uploads and the
             library always work; sending needs OMNIFLOW_WA_CLOUD_URL
@@ -188,41 +188,41 @@ export default function MediaPage() {
           </p>
         </div>
 
-        <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-          <p className="text-xs font-semibold text-white">Upload</p>
+        <section className="rounded-2xl border border-line bg-soft p-4">
+          <p className="text-xs font-semibold text-ink">Upload</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input
               ref={fileInput}
               type="file"
               accept="image/png,image/jpeg,image/webp,application/pdf,audio/*"
-              className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-300 file:mr-2 file:rounded file:border-0 file:bg-white/[0.06] file:px-2 file:py-0.5 file:text-xs file:text-slate-200"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink-2 file:mr-2 file:rounded file:border-0 file:bg-white/[0.06] file:px-2 file:py-0.5 file:text-xs file:text-ink"
             />
             <input
               value={caption}
               onChange={(event) => setCaption(event.target.value)}
               placeholder="caption (optional)"
-              className="w-44 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+              className="w-44 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
             />
             <button
               onClick={() => void upload()}
               disabled={busy}
-              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
             >
               Upload
             </button>
           </div>
-          <p className="mt-1 text-[11px] text-slate-500">
+          <p className="mt-1 text-[11px] text-ink-3">
             Images, PDF, audio - max 8 MB.
           </p>
           {uploadNote ? (
-            <p className="mt-1.5 text-[11px] text-slate-300">{uploadNote}</p>
+            <p className="mt-1.5 text-[11px] text-ink-2">{uploadNote}</p>
           ) : null}
         </section>
 
-        <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-          <p className="text-xs font-semibold text-white">Library</p>
+        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+          <p className="text-xs font-semibold text-ink">Library</p>
           {assets.length === 0 ? (
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[11px] text-ink-3">
               No files yet - upload one above.
             </p>
           ) : (
@@ -230,7 +230,7 @@ export default function MediaPage() {
               {assets.map((asset) => (
                 <li
                   key={asset.id}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-3"
+                  className="rounded-xl border border-line bg-soft p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
@@ -242,10 +242,10 @@ export default function MediaPage() {
                       >
                         {asset.kind}
                       </span>
-                      <p className="min-w-0 truncate text-xs text-slate-200">
+                      <p className="min-w-0 truncate text-xs text-ink">
                         {asset.filename}
                       </p>
-                      <span className="shrink-0 text-[11px] text-slate-500">
+                      <span className="shrink-0 text-[11px] text-ink-3">
                         {formatSize(asset.size_bytes)}
                       </span>
                     </div>
@@ -253,7 +253,7 @@ export default function MediaPage() {
                       <a
                         href={"/api/omniflow/portal/media/" + asset.id
                           + "/download"}
-                        className="text-[11px] text-cyan-300 hover:underline"
+                        className="text-[11px] text-brand hover:underline"
                       >
                         Download
                       </a>
@@ -262,7 +262,7 @@ export default function MediaPage() {
                           setSendFor(sendFor === asset.id ? null : asset.id);
                           setSendNote(null);
                         }}
-                        className="text-[11px] text-emerald-300 hover:underline"
+                        className="text-[11px] text-ok hover:underline"
                       >
                         Send
                       </button>
@@ -270,7 +270,7 @@ export default function MediaPage() {
                         <button
                           onClick={() => void transcribe(asset.id)}
                           disabled={busy}
-                          className="text-[11px] text-violet-300 hover:underline disabled:opacity-40"
+                          className="text-[11px] text-ai hover:underline disabled:opacity-40"
                         >
                           Transcribe
                         </button>
@@ -278,43 +278,43 @@ export default function MediaPage() {
                       <button
                         onClick={() => void remove(asset.id)}
                         disabled={busy}
-                        className="text-[11px] text-slate-500 hover:text-rose-300 disabled:opacity-40"
+                        className="text-[11px] text-ink-3 hover:text-danger disabled:opacity-40"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
                   {asset.caption ? (
-                    <p className="mt-1 truncate text-[11px] text-slate-500">
+                    <p className="mt-1 truncate text-[11px] text-ink-3">
                       {asset.caption}
                     </p>
                   ) : null}
 
                   {sendFor === asset.id ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-soft p-2">
                       <input
                         value={contactId}
                         onChange={(event) => setContactId(event.target.value)}
                         placeholder="customer number e.g. 92300..."
-                        className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+                        className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
                       />
                       <input
                         value={sendCaption}
                         onChange={(event) => setSendCaption(event.target.value)}
                         placeholder="caption (optional)"
-                        className="w-40 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+                        className="w-40 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
                       />
                       <button
                         onClick={() => void send(asset.id)}
                         disabled={busy || !contactId.trim()}
-                        className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 disabled:opacity-40"
+                        className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok disabled:opacity-40"
                       >
                         Send now
                       </button>
                     </div>
                   ) : null}
                   {sendFor === asset.id && sendNote ? (
-                    <p className="mt-1 text-[11px] text-slate-300">
+                    <p className="mt-1 text-[11px] text-ink-2">
                       {sendNote}
                     </p>
                   ) : null}
@@ -326,7 +326,7 @@ export default function MediaPage() {
                       </p>
                       <button
                         onClick={() => void copyText(transcripts[asset.id])}
-                        className="shrink-0 text-[11px] text-slate-400 hover:underline"
+                        className="shrink-0 text-[11px] text-ink-3 hover:underline"
                       >
                         Copy
                       </button>

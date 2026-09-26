@@ -34,9 +34,9 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#07111f] px-5">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-5">
       {/* Background glows */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[640px] -translate-x-1/2 rounded-full bg-cyan-500/[0.05] blur-3xl" />
+      <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[640px] -translate-x-1/2 rounded-full bg-brand/[0.05] blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 left-1/4 h-72 w-96 rounded-full bg-violet-500/[0.04] blur-3xl" />
 
       <motion.div
@@ -47,28 +47,28 @@ export default function AdminLoginPage() {
       >
         {/* Brand */}
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06]">
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-brand-soft">
             <motion.span
               animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1, 0.9] }}
               transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
               className="h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]"
             />
           </div>
-          <h1 className="text-xl font-semibold tracking-[-0.03em] text-white">
-            Omni<span className="text-cyan-400">Flow</span>
+          <h1 className="text-xl font-semibold tracking-[-0.03em] text-ink">
+            Omni<span className="text-brand">Flow</span>
           </h1>
-          <p className="mt-1.5 text-xs uppercase tracking-widest text-slate-500">
+          <p className="mt-1.5 text-xs uppercase tracking-widest text-ink-3">
             Admin panel
           </p>
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 backdrop-blur-sm sm:p-7">
+        <div className="rounded-2xl border border-line bg-soft p-6 backdrop-blur-sm sm:p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label
                 htmlFor="email"
-                className="mb-1.5 block text-xs font-medium text-slate-400"
+                className="mb-1.5 block text-xs font-medium text-ink-3"
               >
                 Email
               </label>
@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="you@example.com"
               />
             </div>
@@ -87,7 +87,7 @@ export default function AdminLoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="mb-1.5 block text-xs font-medium text-slate-400"
+                className="mb-1.5 block text-xs font-medium text-ink-3"
               >
                 Password
               </label>
@@ -98,7 +98,7 @@ export default function AdminLoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="••••••••"
               />
             </div>
@@ -107,7 +107,7 @@ export default function AdminLoginPage() {
               <motion.p
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-red-300"
+                className="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-danger"
               >
                 {error}
               </motion.p>
@@ -125,7 +125,7 @@ export default function AdminLoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-600">
+        <p className="mt-6 text-center text-xs text-ink-3">
           Restricted area — authorized access only.
         </p>
       </motion.div>

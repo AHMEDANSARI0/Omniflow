@@ -39,9 +39,9 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
   return (
     <div className="space-y-6">
       {/* API key card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">API key</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">API key</h2>
+        <p className="mb-5 text-xs text-ink-3">
           Read-only key for your own integrations — it reads your bot config,
           profile and conversations from the OmniFlow API. Keep it secret.
         </p>
@@ -49,10 +49,10 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
         {/* Newly generated key — shown once */}
         {genState.success && genState.newKey && (
           <div className="mb-5 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-4">
-            <p className="text-xs font-medium text-emerald-300">
+            <p className="text-xs font-medium text-ok">
               ✓ {genState.message}
             </p>
-            <code className="mt-3 block select-all break-all rounded-lg border border-white/[0.08] bg-[#060f1b] px-3 py-2.5 font-mono text-xs text-cyan-300">
+            <code className="mt-3 block select-all break-all rounded-lg border border-line bg-white px-3 py-2.5 font-mono text-xs text-brand">
               {genState.newKey}
             </code>
           </div>
@@ -60,40 +60,40 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
 
         {/* Current key status */}
         {hasActiveKey && !genState.newKey ? (
-          <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3">
+          <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-line bg-soft px-4 py-3">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Key
               </p>
-              <p className="mt-0.5 font-mono text-xs text-slate-300">
+              <p className="mt-0.5 font-mono text-xs text-ink-2">
                 {keyInfo.key_prefix}••••••••
               </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Created
               </p>
-              <p className="mt-0.5 text-xs text-slate-400">
+              <p className="mt-0.5 text-xs text-ink-3">
                 {formatDate(keyInfo.created_at)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Last used
               </p>
-              <p className="mt-0.5 text-xs text-slate-400">
+              <p className="mt-0.5 text-xs text-ink-3">
                 {keyInfo.last_used_at
                   ? formatDate(keyInfo.last_used_at)
                   : "Never"}
               </p>
             </div>
-            <span className="ml-auto flex items-center gap-1.5 text-[11px] text-emerald-300">
+            <span className="ml-auto flex items-center gap-1.5 text-[11px] text-ok">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               Active
             </span>
           </div>
         ) : !hasActiveKey && !genState.newKey ? (
-          <p className="mb-5 text-xs text-slate-500">
+          <p className="mb-5 text-xs text-ink-3">
             {keyInfo?.revoked
               ? "Your key was revoked. Generate a new one to reconnect your bot."
               : "No API key yet. Generate one to connect your bot."}
@@ -120,7 +120,7 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
               <button
                 type="submit"
                 disabled={revokePending}
-                className="rounded-xl border border-red-400/20 bg-red-400/[0.04] px-5 py-2.5 text-sm font-medium text-red-300 transition-colors duration-300 hover:border-red-400/40 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl border border-red-400/20 bg-red-400/[0.04] px-5 py-2.5 text-sm font-medium text-danger transition-colors duration-300 hover:border-red-400/40 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {revokePending ? "Revoking…" : "Revoke key"}
               </button>
@@ -128,12 +128,12 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
           )}
 
           {!genState.success && genState.message && (
-            <p className="text-xs text-red-300">{genState.message}</p>
+            <p className="text-xs text-danger">{genState.message}</p>
           )}
           {revokeState.message && (
             <p
               className={`text-xs ${
-                revokeState.success ? "text-emerald-300" : "text-red-300"
+                revokeState.success ? "text-ok" : "text-danger"
               }`}
             >
               {revokeState.message}
@@ -141,28 +141,28 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
           )}
         </div>
 
-        <p className="mt-4 text-[11px] text-slate-600">
+        <p className="mt-4 text-[11px] text-ink-3">
           ⚠ Regenerating or revoking immediately disconnects any bot using the
           old key.
         </p>
       </div>
 
       {/* Integration guide card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">
           Connect your bot
         </h2>
-        <p className="mb-5 text-xs text-slate-500">
+        <p className="mb-5 text-xs text-ink-3">
           Works with any stack — Python, Node.js, n8n or anything that can
           make HTTP requests.
         </p>
 
         <div className="space-y-4">
           <div>
-            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-3">
               1 · Read your AI agent configuration
             </p>
-            <code className="block overflow-x-auto rounded-lg border border-white/[0.06] bg-[#060f1b] px-3 py-2.5 font-mono text-[11px] leading-relaxed text-slate-400">
+            <code className="block overflow-x-auto rounded-lg border border-line bg-white px-3 py-2.5 font-mono text-[11px] leading-relaxed text-ink-3">
               GET https://omniflow-control-plane-rho.vercel.app/api/v1/portal/bot
               <br />
               Authorization: Bearer ofk_your_key
@@ -170,18 +170,18 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
           </div>
 
           <div>
-            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-ink-3">
               2 · Read your business profile
             </p>
-            <code className="block overflow-x-auto rounded-lg border border-white/[0.06] bg-[#060f1b] px-3 py-2.5 font-mono text-[11px] leading-relaxed text-slate-400">
+            <code className="block overflow-x-auto rounded-lg border border-line bg-white px-3 py-2.5 font-mono text-[11px] leading-relaxed text-ink-3">
               GET https://omniflow-control-plane-rho.vercel.app/api/v1/portal/profile
               <br />
               Authorization: Bearer ofk_your_key
             </code>
           </div>
 
-          <p className="text-[11px] leading-relaxed text-slate-600">
-            Keys are tenant-scoped and <span className="text-slate-400">read-only</span>{" "}
+          <p className="text-[11px] leading-relaxed text-ink-3">
+            Keys are tenant-scoped and <span className="text-ink-3">read-only</span>{" "}
             — perfect for dashboards and custom integrations. Your managed
             connector (laptop) uses its own service key.
           </p>

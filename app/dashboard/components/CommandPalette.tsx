@@ -188,14 +188,14 @@ export default function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-black/60 px-4 pt-[10vh]"
+      className="fixed inset-0 z-[60] bg-soft px-4 pt-[10vh]"
       onClick={close}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a1626] shadow-2xl"
+        className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <input
@@ -215,11 +215,11 @@ export default function CommandPalette() {
             }
           }}
           placeholder="Search pages, chats, customers..."
-          className="w-full border-b border-white/[0.06] bg-transparent px-4 py-3.5 text-sm text-white placeholder:text-slate-600 outline-none"
+          className="w-full border-b border-line bg-transparent px-4 py-3.5 text-sm text-ink placeholder:text-ink-3 outline-none"
         />
         <div className="max-h-[50vh] overflow-y-auto py-2">
           {results.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-slate-500">
+            <p className="px-4 py-6 text-center text-xs text-ink-3">
               No matches for &ldquo;{query}&rdquo;
             </p>
           ) : (
@@ -229,7 +229,7 @@ export default function CommandPalette() {
               return (
                 <div key={item.group + "-" + item.href + "-" + item.label}>
                   {showGroup ? (
-                    <p className="px-4 pb-1 pt-2 text-[10px] uppercase tracking-[0.2em] text-slate-600">
+                    <p className="px-4 pb-1 pt-2 text-[10px] uppercase tracking-[0.2em] text-ink-3">
                       {item.group}
                     </p>
                   ) : null}
@@ -240,13 +240,13 @@ export default function CommandPalette() {
                     className={
                       "flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors " +
                       (index === activeIndex
-                        ? "bg-cyan-400/[0.08] text-white"
-                        : "text-slate-300")
+                        ? "bg-brand-soft text-ink"
+                        : "text-ink-2")
                     }
                   >
                     <span className="truncate">{item.label}</span>
                     {item.sub ? (
-                      <span className="hidden max-w-[45%] truncate text-[11px] text-slate-600 sm:block">
+                      <span className="hidden max-w-[45%] truncate text-[11px] text-ink-3 sm:block">
                         {item.sub}
                       </span>
                     ) : null}
@@ -256,7 +256,7 @@ export default function CommandPalette() {
             })
           )}
         </div>
-        <div className="hidden items-center gap-4 border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600 sm:flex">
+        <div className="hidden items-center gap-4 border-t border-line px-4 py-2 text-[10px] text-ink-3 sm:flex">
           <span>&uarr;&darr; navigate</span>
           <span>Enter open</span>
           <span>Esc close</span>

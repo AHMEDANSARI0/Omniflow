@@ -53,12 +53,12 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-xl border border-white/[0.05] bg-white/[0.02] px-4 py-3 text-left transition-colors hover:border-white/[0.1]"
+      className="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-soft px-4 py-3 text-left transition-colors hover:border-line-2"
       aria-pressed={checked}
     >
       <span>
-        <span className="block text-sm text-slate-200">{label}</span>
-        {hint && <span className="mt-0.5 block text-[11px] text-slate-500">{hint}</span>}
+        <span className="block text-sm text-ink">{label}</span>
+        {hint && <span className="mt-0.5 block text-[11px] text-ink-3">{hint}</span>}
       </span>
       <span
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
@@ -157,8 +157,8 @@ export default function BotForm({
   }
 
   const inputClass =
-    "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-200 focus:border-cyan-400/40";
-  const labelClass = "mb-1.5 block text-xs font-medium text-slate-400";
+    "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-200 focus:border-brand/40";
+  const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
   return (
     <motion.form
@@ -169,13 +169,13 @@ export default function BotForm({
       className="space-y-5"
     >
       {!serverConfigured && (
-        <p className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] px-4 py-3 text-xs leading-relaxed text-cyan-200/90">
+        <p className="rounded-xl border border-brand/20 bg-cyan-400/[0.05] px-4 py-3 text-xs leading-relaxed text-brand/90">
           Backend module pending — you can configure everything now; settings are
           kept as a local draft and sync to the server automatically later.
         </p>
       )}
 
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6">
+      <div className="rounded-2xl border border-line bg-soft p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="agentName" className={labelClass}>
@@ -201,7 +201,7 @@ export default function BotForm({
               onChange={(e) => update("tone", e.target.value as BotConfigView["tone"])}
             >
               {TONES.map((t) => (
-                <option key={t.value} value={t.value} className="bg-[#0b1626]">
+                <option key={t.value} value={t.value} className="bg-white">
                   {t.label}
                 </option>
               ))}
@@ -249,13 +249,13 @@ export default function BotForm({
             onChange={(e) => update("customInstructions", e.target.value)}
             placeholder={"Example: Always offer free delivery on orders above 10,000 PKR. Never share supplier prices with customers."}
           />
-          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-1.5 text-[11px] leading-relaxed text-ink-3">
             The assistant follows these instructions with the highest priority in every conversation.
           </p>
         </div>
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6">
+      <div className="space-y-3 rounded-2xl border border-line bg-soft p-6">
         <Toggle
           checked={config.workingHoursEnabled}
           onChange={(v) => update("workingHoursEnabled", v)}
@@ -309,10 +309,10 @@ export default function BotForm({
           role="status"
           className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
             message.kind === "ok"
-              ? "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-300"
+              ? "border-emerald-400/20 bg-emerald-400/[0.06] text-ok"
               : message.kind === "info"
-                ? "border-cyan-400/20 bg-cyan-400/[0.05] text-cyan-200/90"
-                : "border-red-400/20 bg-red-400/[0.06] text-red-300"
+                ? "border-brand/20 bg-cyan-400/[0.05] text-brand/90"
+                : "border-red-400/20 bg-red-400/[0.06] text-danger"
           }`}
         >
           {message.text}
@@ -327,7 +327,7 @@ export default function BotForm({
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
-        <span className="text-[11px] text-slate-600">
+        <span className="text-[11px] text-ink-3">
           {serverConfigured ? "Synced with Control Plane" : "Draft mode (device only)"}
         </span>
       </div>

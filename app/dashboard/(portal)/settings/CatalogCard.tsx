@@ -9,6 +9,25 @@ interface CatalogRow {
   priceText: string;
   notes: string;
   isActive: boolean;
+  price?: number;
+  stock?: number;
+  source?: string;
+  brand_id?: number | null;
+  brand_name?: string | null;
+}
+
+interface CatalogBrand {
+  id: number;
+  name: string;
+}
+
+interface SyncSettings {
+  source: string;
+  base_url: string;
+  api_key_masked: string;
+  api_secret_masked: string;
+  last_sync_at: string | null;
+  last_sync_count: number;
 }
 
 interface FormState {
@@ -16,6 +35,7 @@ interface FormState {
   name: string;
   priceText: string;
   notes: string;
+  brandId: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -23,26 +43,48 @@ const EMPTY_FORM: FormState = {
   name: "",
   priceText: "",
   notes: "",
+  brandId: "",
 };
 
 export default function CatalogCard() {
   const [rows, setRows] = useState<CatalogRow[]>([]);
+  const [brands, setBrands] = useState<CatalogBrand[]>([]);
+  const [brandFilter, setBrandFilter] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState(0);
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [sync, setSync] = useState<SyncSettings | null>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncForm, setSyncForm] = useState({
+    source: "woo", base_url: "", api_key: "", api_secret: "",
+  });
+  const [syncNote, setSyncNote] = useState("");
+  const [syncBusy, setSyncBusy] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (brandFilter?: string) => {
     try {
-      const response = await fetch("/api/omniflow/portal/catalog", {
-        cache: "no-store",
-      });
+      const [response, brandsRes] = await Promise.all([
+        fetch(
+          brandFilter
+            ? "/api/omniflow/portal/catalog?brand_id=" + brandFilter
+            : "/api/omniflow/portal/catalog",
+          { cache: "no-store" }
+        ),
+        fetch("/api/omniflow/portal/brands", { cache: "no-store" }),
+      ]);
       const payload = (await response.json().catch(() => null)) as {
         items?: CatalogRow[];
       } | null;
       if (payload && Array.isArray(payload.items)) setRows(payload.items);
+      const brandsPayload = (await brandsRes.json().catch(() => null)) as {
+        brands?: CatalogBrand[];
+      } | null;
+      if (brandsPayload && Array.isArray(brandsPayload.brands)) {
+        setBrands(brandsPayload.brands);
+      }
     } catch {
       // transient - the list can be reloaded
     } finally {
@@ -50,9 +92,89 @@ export default function CatalogCard() {
     }
   }, []);
 
+  const loadSync = useCallback(async () => {
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/catalog/sync/settings",
+        { cache: "no-store" }
+      );
+      if (response.ok) {
+        setSync((await response.json()) as SyncSettings);
+      }
+    } catch {
+      /* the import panel simply stays closed */
+    }
+  }, []);
+
+  async function saveSyncSettings() {
+    if (!syncForm.base_url.trim()) return;
+    setSyncBusy(true);
+    setSyncNote("");
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/catalog/sync/settings",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source: syncForm.source,
+            base_url: syncForm.base_url.trim(),
+            api_key: syncForm.api_key.trim() || undefined,
+            api_secret: syncForm.api_secret.trim() || undefined,
+          }),
+        }
+      );
+      if (response.ok) {
+        setSyncNote("Import source saved.");
+        setSyncForm({ ...syncForm, api_key: "", api_secret: "" });
+        await loadSync();
+      } else {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        setSyncNote(payload?.error?.message ?? "Could not save.");
+      }
+    } catch {
+      setSyncNote("Could not save - try again.");
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  async function runSync() {
+    setSyncBusy(true);
+    setSyncNote("");
+    try {
+      const response = await fetch("/api/omniflow/portal/catalog/sync",
+        { method: "POST" });
+      const payload = (await response.json().catch(() => null)) as
+        | { imported?: number; updated?: number;
+            error?: { message?: string } }
+        | null;
+      if (response.ok && payload?.imported !== undefined) {
+        setSyncNote("Imported " + payload.imported + " new, updated "
+          + (payload.updated ?? 0) + " existing.");
+        await load();
+        await loadSync();
+      } else {
+        setSyncNote(payload?.error?.message ?? "Import failed.");
+      }
+    } catch {
+      setSyncNote("Import failed - try again.");
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadSync();
+  }, [load, loadSync]);
+
+  useEffect(() => {
+    void load(brandFilter || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandFilter]);
 
   async function create() {
     if (busy) return;
@@ -73,6 +195,7 @@ export default function CatalogCard() {
             price_text: form.priceText.trim(),
             notes: form.notes.trim(),
             is_active: true,
+            brand_id: form.brandId === "" ? null : Number(form.brandId),
           },
         }),
       });
@@ -114,6 +237,7 @@ export default function CatalogCard() {
               price_text: editForm.priceText.trim(),
               notes: editForm.notes.trim(),
               is_active: true,
+              brand_id: editForm.brandId === "" ? null : Number(editForm.brandId),
             },
           }),
         }
@@ -166,6 +290,86 @@ export default function CatalogCard() {
         Products and services you sell again and again. The checkout link
         builder picks items from here with one tap, and recommendations read
         the same list.
+      <button
+        onClick={() => setSyncOpen(!syncOpen)}
+        className="mt-2 text-[11px] text-cyan-300 hover:underline"
+      >
+        Import from store {sync?.source
+          ? "(" + sync.source + ")"
+          : ""}
+      </button>
+      {syncOpen ? (
+        <div className="mt-2 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.03] p-3">
+          <p className="text-[11px] text-slate-400">
+            One-way import from WooCommerce or Shopify - names, prices,
+            stock and images. Your manual items are never touched, and
+            re-importing updates the same products in place.
+          </p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <select
+              value={syncForm.source}
+              onChange={(e) => setSyncForm({ ...syncForm,
+                source: e.target.value })}
+              className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+              aria-label="Store platform"
+            >
+              <option value="woo">WooCommerce</option>
+              <option value="shopify">Shopify</option>
+            </select>
+            <input
+              value={syncForm.base_url}
+              onChange={(e) => setSyncForm({ ...syncForm,
+                base_url: e.target.value })}
+              placeholder={sync?.base_url
+                || "Store URL (e.g. https://mystore.com)"}
+              className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+            />
+            <input
+              value={syncForm.api_key}
+              onChange={(e) => setSyncForm({ ...syncForm,
+                api_key: e.target.value })}
+              placeholder={sync?.api_key_masked
+                || (syncForm.source === "woo"
+                  ? "Consumer key"
+                  : "Admin API access token")}
+              className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+            />
+            {syncForm.source === "woo" ? (
+              <input
+                value={syncForm.api_secret}
+                onChange={(e) => setSyncForm({ ...syncForm,
+                  api_secret: e.target.value })}
+                placeholder={sync?.api_secret_masked || "Consumer secret"}
+                className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+              />
+            ) : null}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => void saveSyncSettings()}
+              disabled={syncBusy || !syncForm.base_url.trim()}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-300 hover:bg-white/[0.05] disabled:opacity-40"
+            >
+              Save source
+            </button>
+            <button
+              onClick={() => void runSync()}
+              disabled={syncBusy}
+              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-[11px] text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+            >
+              Import now
+            </button>
+            {sync?.last_sync_at ? (
+              <span className="text-[10px] text-slate-600">
+                Last import: {sync.last_sync_count} products
+              </span>
+            ) : null}
+          </div>
+          {syncNote ? (
+            <p className="mt-1.5 text-[11px] text-slate-300">{syncNote}</p>
+          ) : null}
+        </div>
+      ) : null}
       </p>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-[7rem_1fr_9rem]">
@@ -193,6 +397,20 @@ export default function CatalogCard() {
           maxLength={40}
           className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
         />
+        {brands.length > 0 && (
+          <select
+            value={form.brandId}
+            onChange={(event) => setForm({ ...form, brandId: event.target.value })}
+            className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          >
+            <option value="">No brand</option>
+            {brands.map((brand) => (
+              <option key={brand.id} value={String(brand.id)}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       <div className="mt-2 flex items-center gap-2">
         <input
@@ -214,6 +432,25 @@ export default function CatalogCard() {
 
       {note ? <p className="mt-2 text-[11px] text-amber-300">{note}</p> : null}
 
+
+      {brands.length > 0 ? (
+        <div className="mt-3">
+          <select
+            id="catalogBrandFilter"
+            value={brandFilter}
+            onChange={(event) => setBrandFilter(event.target.value)}
+            className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-400/40"
+          >
+            <option value="">All brands</option>
+            {brands.map((brand) => (
+              <option key={brand.id} value={String(brand.id)}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
       <div className="mt-4">
         {loaded && rows.length === 0 ? (
           <p className="text-xs text-slate-500">
@@ -221,12 +458,26 @@ export default function CatalogCard() {
           </p>
         ) : null}
         {active.length > 0 ? (
+
           <ul className="space-y-1.5">
             {active.map((row) => (
               <li
                 key={row.id}
                 className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
               >
+                <span className="float-right flex items-center gap-1.5">
+                  {row.brand_name ? (
+                    <span className="rounded-full border border-sky-400/25 bg-sky-400/[0.08] px-2 py-0.5 text-[9px] uppercase tracking-wide text-sky-300">
+                      {row.brand_name}
+                    </span>
+                  ) : null}
+                  {row.source && row.source !== "manual" ? (
+                    <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[9px] uppercase tracking-wide text-slate-400">
+                      {row.source}
+                      {(row.stock ?? 0) > 0 ? " · stock " + row.stock : ""}
+                    </span>
+                  ) : null}
+                </span>
                 {editingId === row.id ? (
                   <div className="grid gap-2 sm:grid-cols-[7rem_1fr_9rem]">
                     <select
@@ -258,6 +509,25 @@ export default function CatalogCard() {
                       maxLength={40}
                       className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
                     />
+                    {brands.length > 0 && (
+                      <select
+                        value={editForm.brandId}
+                        onChange={(event) =>
+                          setEditForm({
+                            ...editForm,
+                            brandId: event.target.value,
+                          })
+                        }
+                        className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none sm:col-span-3"
+                      >
+                        <option value="">No brand</option>
+                        {brands.map((brand) => (
+                          <option key={brand.id} value={String(brand.id)}>
+                            {brand.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <div className="flex items-center gap-1.5 sm:col-span-3">
                       <button
                         type="button"
@@ -302,6 +572,7 @@ export default function CatalogCard() {
                             name: row.name,
                             priceText: row.priceText,
                             notes: row.notes,
+                            brandId: row.brand_id ? String(row.brand_id) : "",
                           });
                         }}
                         className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"

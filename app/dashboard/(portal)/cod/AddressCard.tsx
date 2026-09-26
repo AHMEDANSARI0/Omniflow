@@ -53,9 +53,9 @@ export default function AddressCard() {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-      <p className="text-xs font-semibold text-white">Address check</p>
-      <p className="mt-0.5 text-[11px] text-slate-500">
+    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+      <p className="text-xs font-semibold text-ink">Address check</p>
+      <p className="mt-0.5 text-[11px] text-ink-3">
         Paste an address - it is cleaned, the city and phone are
         extracted, and ready-to-send questions cover anything
         missing.
@@ -65,31 +65,31 @@ export default function AddressCard() {
           value={address}
           onChange={(event) => setAddress(event.target.value)}
           placeholder="e.g. hno 12 blk c gulshan-e-iqbal karachi 03001234567"
-          className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+          className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
         />
         <button
           onClick={() => void normalize()}
           disabled={busy || !address.trim()}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
         >
           Check address
         </button>
       </div>
 
       {intel ? (
-        <div className="mt-3 space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
+        <div className="mt-3 space-y-2 rounded-xl border border-line bg-soft p-3">
           <div className="flex items-start justify-between gap-2">
-            <p className="min-w-0 break-words text-xs text-slate-200">
+            <p className="min-w-0 break-words text-xs text-ink">
               {intel.normalized}
             </p>
             <button
               onClick={() => void copy("norm", intel.normalized)}
-              className="shrink-0 text-[11px] text-cyan-300 hover:underline"
+              className="shrink-0 text-[11px] text-brand hover:underline"
             >
               {copied === "norm" ? "Copied" : "Copy"}
             </button>
           </div>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-ink-3">
             City: {intel.city ?? "not found"} &middot; Phone:{" "}
             {intel.phone ?? "not found"}
           </p>
@@ -105,7 +105,7 @@ export default function AddressCard() {
                   </span>
                   <button
                     onClick={() => void copy(index + prompt, prompt)}
-                    className="shrink-0 text-[11px] text-slate-400 hover:underline"
+                    className="shrink-0 text-[11px] text-ink-3 hover:underline"
                   >
                     {copied === index + prompt ? "Copied" : "Copy"}
                   </button>
@@ -113,7 +113,7 @@ export default function AddressCard() {
               ))}
             </ul>
           ) : (
-            <p className="text-[11px] text-emerald-300">
+            <p className="text-[11px] text-ok">
               Address looks complete - nothing to ask.
             </p>
           )}

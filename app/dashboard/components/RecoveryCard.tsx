@@ -96,13 +96,13 @@ export default function RecoveryCard() {
   const open = items.filter((item) => item.status === "open");
 
   return (
-    <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold text-white">
+          <p className="text-xs font-semibold text-ink">
             Revenue recovery
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[11px] text-ink-3">
             Abandoned checkouts, unconfirmed COD, price objections and
             quiet big buyers - one follow-up each, fixed polite copy.
           </p>
@@ -112,8 +112,8 @@ export default function RecoveryCard() {
           className={
             "rounded-full border px-3 py-1 text-[11px] transition-colors " +
             (auto
-              ? "border-emerald-400/40 bg-emerald-400/[0.12] text-emerald-200"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-400 hover:bg-white/[0.05]")
+              ? "border-emerald-400/40 bg-emerald-400/[0.12] text-ok"
+              : "border-line bg-soft text-ink-3 hover:bg-soft")
           }
         >
           Auto: {auto ? "on" : "off"}
@@ -126,16 +126,16 @@ export default function RecoveryCard() {
             {open.slice(0, 5).map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-xs text-slate-200">
+                  <p className="truncate text-xs text-ink">
                     {KIND_LABEL[item.kind] ?? item.kind}
-                    <span className="ml-2 text-[10px] text-slate-600">
+                    <span className="ml-2 text-[10px] text-ink-3">
                       {item.contact_id}
                     </span>
                   </p>
-                  <p className="truncate text-[10px] text-slate-500">
+                  <p className="truncate text-[10px] text-ink-3">
                     {item.note}
                   </p>
                 </div>
@@ -143,14 +143,14 @@ export default function RecoveryCard() {
                   <button
                     onClick={() => void act(item.id, "followup")}
                     disabled={busyId === item.id}
-                    className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2.5 py-1 text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+                    className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2.5 py-1 text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
                   >
                     Follow up
                   </button>
                   <button
                     onClick={() => void act(item.id, "dismiss")}
                     disabled={busyId === item.id}
-                    className="text-slate-500 hover:underline disabled:opacity-40"
+                    className="text-ink-3 hover:underline disabled:opacity-40"
                   >
                     Dismiss
                   </button>
@@ -159,12 +159,12 @@ export default function RecoveryCard() {
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-ink-3">
             All clear - nothing needs a follow-up right now.
           </p>
         )
       ) : (
-        <p className="mt-3 text-xs text-slate-500">Loading&#8230;</p>
+        <p className="mt-3 text-xs text-ink-3">Loading&#8230;</p>
       )}
     </section>
   );

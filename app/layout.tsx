@@ -3,7 +3,7 @@ import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 
 export const viewport: Viewport = {
-  themeColor: "#07111f",
+  themeColor: "#F8FAFC",
   viewportFit: "cover",
 };
 import { getSiteSettings } from "../lib/settings";

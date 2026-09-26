@@ -1,4 +1,4 @@
-import { getKnowledgeBase } from "../../../../lib/omniflow/portal";
+import { getKnowledgeBase, listBrands } from "../../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../../lib/omniflow/session-cookies";
 import KnowledgeBaseClient from "./KnowledgeBaseClient";
 import KbGapsCard from "./KbGapsCard";
@@ -8,7 +8,10 @@ export const dynamic = "force-dynamic";
 
 export default async function KnowledgeBasePage() {
   const { accessToken } = await readSessionCookies();
-  const data = accessToken ? await getKnowledgeBase(accessToken) : null;
+  const [data, brands] = await Promise.all([
+    accessToken ? getKnowledgeBase(accessToken) : Promise.resolve(null),
+    accessToken ? listBrands(accessToken) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -33,7 +36,10 @@ export default async function KnowledgeBasePage() {
       ) : (
         <>
           <KbGapsCard />
-          <KnowledgeBaseClient initial={data} />
+          <KnowledgeBaseClient
+            initial={data}
+            brands={(brands ?? []).map((b) => ({ id: b.id, name: b.name }))}
+          />
         </>
       )}
     </div>

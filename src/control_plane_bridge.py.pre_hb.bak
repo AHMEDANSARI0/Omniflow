@@ -1,0 +1,390 @@
+"""Control Plane bridge for the laptop WhatsApp connector.
+
+Reports session status, ingests inbound/outbound messages and polls
+portal commands from the OmniFlow Control Plane API (Vercel).
+
+Stdlib only (urllib) — no new dependencies. Every network call is
+failure-tolerant: bridge kabhi bot loop ko nahi girata.
+
+Env (from .env, loaded by run_channel.py):
+  OMNIFLOW_SERVICE_KEY          (zaroori — oflow_service_key.txt wali value)
+  OMNIFLOW_CP_BASE_URL          (optional, default: production Control Plane)
+  OMNIFLOW_CLIENT_ID            (optional, default: 1)
+  OMNIFLOW_COMMAND_POLL_SECONDS (optional, default: 15)
+"""
+
+import json
+import os
+import threading
+import urllib.error
+import urllib.request
+
+
+DEFAULT_BASE_URL = "https://omniflow-control-plane-rho.vercel.app"
+
+
+class ControlPlaneBridge:
+    """Failure-tolerant HTTP reporter/poller for the Control Plane."""
+
+    def __init__(self, account_name=None):
+        self.base_url = str(
+            os.getenv("OMNIFLOW_CP_BASE_URL", DEFAULT_BASE_URL)
+        ).rstrip("/")
+
+        self.service_key = str(
+            os.getenv("OMNIFLOW_SERVICE_KEY", "")
+        ).strip()
+
+        if not self.service_key:
+            raise RuntimeError(
+                "OMNIFLOW_SERVICE_KEY .env me nahi mila — "
+                "oflow_service_key.txt ki value .env me daalo"
+            )
+
+        self.client_id = int(
+            os.getenv("OMNIFLOW_CLIENT_ID", "1")
+        )
+
+        self.command_poll_seconds = max(
+            5.0,
+            float(
+                os.getenv(
+                    "OMNIFLOW_COMMAND_POLL_SECONDS",
+                    "15",
+                )
+            ),
+        )
+
+        self.timeout_seconds = max(
+            3.0,
+            float(
+                os.getenv(
+                    "OMNIFLOW_HTTP_TIMEOUT_SECONDS",
+                    "8",
+                )
+            ),
+        )
+
+        self.max_batch = 100
+
+        self.account_name = (
+            str(account_name).strip()
+            if account_name
+            else None
+        )
+
+        self._pending = []
+        self._lock = threading.Lock()
+
+        print(
+            "CP bridge: "
+            + self.base_url
+            + " (client_id="
+            + str(self.client_id)
+            + ")"
+        )
+
+    # ---------- low level ----------
+
+    def _request(self, method, path, payload=None):
+        data = None
+        headers = {
+            "X-Omniflow-Key": self.service_key,
+        }
+
+        if payload is not None:
+            data = json.dumps(payload).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+
+        request = urllib.request.Request(
+            self.base_url + path,
+            data=data,
+            headers=headers,
+            method=method,
+        )
+
+        try:
+            with urllib.request.urlopen(
+                request,
+                timeout=self.timeout_seconds,
+            ) as response:
+                body = response.read().decode(
+                    "utf-8",
+                    "replace",
+                )
+
+                return (
+                    response.status,
+                    ControlPlaneBridge._parse(body),
+                )
+
+        except urllib.error.HTTPError as error:
+            try:
+                body = error.read().decode(
+                    "utf-8",
+                    "replace",
+                )
+            except Exception:
+                body = ""
+
+            return (
+                error.code,
+                ControlPlaneBridge._parse(body),
+            )
+
+        except Exception as error:
+            print(
+                "CP bridge network warning: "
+                f"{error}"
+            )
+
+            return 0, {}
+
+    @staticmethod
+    def _parse(body):
+        try:
+            parsed = json.loads(body)
+
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+
+        return {}
+
+    # ---------- status ----------
+
+    def report_status(self, state, phone=None):
+        payload = {
+            "client_id": self.client_id,
+            "state": state,
+            "account_name": self.account_name,
+        }
+
+        if phone:
+            payload["phone"] = str(phone)
+
+        status, _ = self._request(
+            "POST",
+            "/api/v1/connector/whatsapp/status",
+            payload,
+        )
+
+        if status == 200:
+            print(f"CP bridge status: {state}")
+
+            return True
+
+        print(
+            "CP bridge status deferred (HTTP "
+            f"{status})"
+        )
+
+        return False
+
+    # ---------- message ingest ----------
+
+    def ingest_message(
+        self,
+        external_user_id,
+        body,
+        direction="in",
+        display_name=None,
+    ):
+        item = {
+            "from": str(external_user_id or "").strip(),
+            "body": "" if body is None else str(body),
+            "direction": (
+                "out" if direction == "out" else "in"
+            ),
+        }
+
+        if not item["from"]:
+            return
+
+        if (
+            display_name
+            and item["direction"] == "in"
+        ):
+            item["name"] = str(display_name)
+
+        with self._lock:
+            if len(self._pending) >= self.max_batch:
+                dropped = self._pending.pop(0)
+
+                print(
+                    "CP bridge backlog full — oldest message dropped: "
+                    f"{dropped.get('from')}"
+                )
+
+            self._pending.append(item)
+
+        try:
+            self.flush()
+        except Exception as flush_error:
+            print(
+                "CP bridge ingest warning: "
+                f"{flush_error}"
+            )
+
+    def flush(self):
+        with self._lock:
+            batch = list(self._pending[: self.max_batch])
+
+        if not batch:
+            return True
+
+        status, data = self._request(
+            "POST",
+            "/api/v1/connector/whatsapp/messages",
+            {
+                "client_id": self.client_id,
+                "messages": batch,
+            },
+        )
+
+        if status == 200:
+            inserted = data.get("inserted")
+
+            with self._lock:
+                del self._pending[: len(batch)]
+
+            print(
+                "CP bridge ingest: "
+                f"{inserted if inserted is not None else len(batch)}"
+                " message(s) stored"
+            )
+
+            return True
+
+        print(
+            "CP bridge ingest deferred (HTTP "
+            f"{status})"
+        )
+
+        return False
+
+    # ---------- commands ----------
+
+    def fetch_commands(self, limit=10):
+        status, data = self._request(
+            "GET",
+            "/api/v1/connector/whatsapp/commands?client_id="
+            + str(self.client_id)
+            + "&limit="
+            + str(max(1, min(50, int(limit)))),
+        )
+
+        try:
+            if status != 200:
+                return []
+
+            commands = data.get("commands")
+
+            if not isinstance(commands, list):
+                return []
+
+            return commands
+        except Exception:
+            return []
+
+    def acknowledge_command(
+        self,
+        command_id,
+        ok,
+        note=None,
+    ):
+        if not isinstance(command_id, int):
+            return
+
+        status, _ = self._request(
+            "POST",
+            "/api/v1/connector/whatsapp/commands/ack",
+            {
+                "client_id": self.client_id,
+                "command_id": command_id,
+                "ok": bool(ok),
+                "note": note,
+            },
+        )
+
+        if status != 200:
+            print(
+                "CP bridge ack deferred (HTTP "
+                f"{status})"
+            )
+
+    def run_due_commands(
+        self,
+        adapter,
+        stop_requested=None,
+    ):
+        commands = self.fetch_commands()
+
+        for command in commands:
+            command_id = command.get("id")
+
+            if not isinstance(command_id, int):
+                continue
+
+            action = str(
+                command.get("action") or ""
+            ).strip().lower()
+
+            ok = True
+            note = None
+
+            try:
+                if action == "connect":
+                    note = (
+                        "Connector session already active."
+                    )
+
+                elif action == "disconnect":
+                    if stop_requested is not None:
+                        stop_requested.set()
+
+                        note = (
+                            "Stop requested from portal."
+                        )
+
+                    else:
+                        ok = False
+                        note = (
+                            "No stop handle available."
+                        )
+
+                elif action == "restart":
+                    adapter.stop()
+                    adapter.start()
+                    self.report_status("connected")
+
+                    note = "Session restarted."
+
+                else:
+                    ok = False
+                    note = (
+                        "Unsupported action on connector: "
+                        + action
+                    )
+
+            except Exception as error:
+                ok = False
+                note = f"Execution failed: {error}"
+
+            self.acknowledge_command(
+                command_id,
+                ok,
+                note,
+            )
+
+            print(
+                "CP bridge command "
+                f"{command_id} ({action}): "
+                + ("done" if ok else "failed")
+                + (
+                    " — " + note
+                    if note
+                    else ""
+                )
+            )

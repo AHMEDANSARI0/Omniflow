@@ -100,17 +100,24 @@ const sections: ContentSection[] = [
     icon: "◉",
     enabled: true,
   },
-    
+
+  {
+    href: "/admin/content/blog",
+    label: "Blog",
+    icon: "✎",
+    description: "Write, publish and manage blog articles.",
+    enabled: true,
+  },
 ];
 
 export default function ContentHubPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Content
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
+        <p className="mt-1.5 text-sm text-ink-3">
           Edit website sections without touching code. More sections are being
           made editable step by step.
         </p>
@@ -122,20 +129,20 @@ export default function ContentHubPage() {
             return (
               <div
                 key={section.href}
-                className="cursor-not-allowed rounded-2xl border border-white/[0.05] bg-white/[0.01] p-5 opacity-50"
+                className="cursor-not-allowed rounded-2xl border border-line bg-white/[0.01] p-5 opacity-50"
               >
                 <div className="mb-4 flex items-start justify-between">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.02] text-sm text-slate-500">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-soft text-sm text-ink-3">
                     {section.icon}
                   </div>
-                  <span className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-600">
+                  <span className="rounded-md border border-line bg-soft px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-3">
                     Soon
                   </span>
                 </div>
-                <h2 className="text-sm font-semibold text-slate-400">
+                <h2 className="text-sm font-semibold text-ink-3">
                   {section.label}
                 </h2>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
                   {section.description}
                 </p>
               </div>
@@ -146,20 +153,20 @@ export default function ContentHubPage() {
             <Link
               key={section.href}
               href={section.href}
-              className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5 transition-colors duration-300 hover:border-cyan-400/20"
+              className="group rounded-2xl border border-line bg-soft p-5 transition-colors duration-300 hover:border-brand/20"
             >
               <div className="mb-4 flex items-start justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] text-sm text-cyan-300">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
                   {section.icon}
                 </div>
-                <span className="text-slate-600 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-cyan-300">
+                <span className="text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-brand">
                   →
                 </span>
               </div>
-              <h2 className="text-sm font-semibold text-white">
+              <h2 className="text-sm font-semibold text-ink">
                 {section.label}
               </h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
                 {section.description}
               </p>
             </Link>

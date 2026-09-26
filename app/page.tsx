@@ -2,10 +2,11 @@ import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import ProblemSolution from "./components/ProblemSolution";
 import AIIntelligence from "./components/AIIntelligence";
-import MultiChannel from "./components/MultiChannel";
 import CustomerMemory from "./components/CustomerMemory";
 import HowItWorks from "./components/HowItWorks";
+import DashboardShowcase from "./components/DashboardShowcase";
 import Features from "./components/Features";
+import MultiChannel from "./components/MultiChannel";
 import UseCases from "./components/UseCases";
 import WhyOmniFlow from "./components/WhyOmniFlow";
 import Trust from "./components/Trust";
@@ -83,7 +84,7 @@ export default async function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#07111f]">
+    <div className="min-h-screen bg-canvas">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }}
@@ -93,19 +94,22 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
       <Navbar />
-      <Hero content={heroContent} />
-      <ProblemSolution content={problemSolutionContent} />
-      <AIIntelligence content={aiIntelligenceContent} />
-      <MultiChannel content={multiChannelContent} />
-      <CustomerMemory content={customerMemoryContent} />
-      <HowItWorks content={howItWorksContent} />
-      <Features content={featuresContent} />
-      <UseCases content={useCasesContent} />
-      <WhyOmniFlow content={whyOmniFlowContent} />
-      <Trust content={trustContent} />
-      <FAQ content={faqContent} />
-      <FinalCTA content={finalCtaContent} />
+      <main>
+        <Hero content={heroContent} />
+        <ProblemSolution content={problemSolutionContent} />
+        <AIIntelligence content={aiIntelligenceContent} />
+        <CustomerMemory content={customerMemoryContent} />
+        <HowItWorks content={howItWorksContent} />
+        <Features content={featuresContent} />
+        <DashboardShowcase />
+        <MultiChannel content={multiChannelContent} />
+        <UseCases content={useCasesContent} />
+        <WhyOmniFlow content={whyOmniFlowContent} />
+        <Trust content={trustContent} />
+        <FAQ content={faqContent} />
+        <FinalCTA content={finalCtaContent} />
+      </main>
       <Footer content={footerContent} />
-    </main>
+    </div>
   );
 }

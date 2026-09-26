@@ -928,11 +928,11 @@ export default function InboxClient({
   if (expired) {
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">Your session expired.</p>
+        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-cyan-300 transition-colors hover:text-cyan-200"
+            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
           >
             Re-authenticate →
           </a>
@@ -945,16 +945,16 @@ export default function InboxClient({
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Conversations
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-ink-3">
             Tenant-isolated WhatsApp conversations with AI outcomes.
           </p>
         </div>
         <button
           onClick={() => void refresh()}
-          className="shrink-0 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-cyan-400/40"
+          className="shrink-0 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
         >
           Refresh
         </button>
@@ -973,8 +973,8 @@ export default function InboxClient({
               }}
               className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
                 intentFilter === entry.intent
-                  ? "border-cyan-400/40 bg-cyan-400/[0.12] text-cyan-200"
-                  : "border-cyan-400/15 bg-cyan-400/[0.04] text-cyan-300/70 hover:bg-cyan-400/[0.09]"
+                  ? "border-brand/40 bg-cyan-400/[0.12] text-brand"
+                  : "border-cyan-400/15 bg-cyan-400/[0.04] text-brand/70 hover:bg-cyan-400/[0.09]"
               }`}
             >
               {entry.intent.replace(/_/g, " ")} · {entry.conversations}
@@ -987,7 +987,7 @@ export default function InboxClient({
                 setIntentFilter("all");
                 void refresh();
               }}
-              className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:text-white"
+              className="rounded-full border border-line bg-soft px-2.5 py-1 text-[10px] font-medium text-ink-3 transition-colors hover:text-ink"
             >
               Clear ✕
             </button>
@@ -1002,7 +1002,7 @@ export default function InboxClient({
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search by contact name, number, or message text"
-          className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          className="w-full rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
         />
       </div>
 
@@ -1017,8 +1017,8 @@ export default function InboxClient({
             }}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
               channelFilter === value
-                ? "border-violet-400/30 bg-violet-400/[0.08] text-violet-200"
-                : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+                ? "border-ai/30 bg-violet-400/[0.08] text-violet-200"
+                : "border-line bg-soft text-ink-3 hover:text-ink"
             }`}
           >
             {value === "all" ? "All channels" : value}
@@ -1035,12 +1035,12 @@ export default function InboxClient({
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             replyFilter === "1"
               ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
-              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+              : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Needs reply
           {chipCounts.needsReply > 0 && (
-            <span className="ml-1.5 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
+            <span className="ml-1.5 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
               {chipCounts.needsReply}
             </span>
           )}
@@ -1056,12 +1056,12 @@ export default function InboxClient({
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             replyFilter === "overdue"
               ? "border-red-400/30 bg-red-400/[0.08] text-red-200"
-              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+              : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Overdue
           {chipCounts.overdue > 0 && (
-            <span className="ml-1.5 rounded-md bg-red-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-300">
+            <span className="ml-1.5 rounded-md bg-red-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-danger">
               {chipCounts.overdue}
             </span>
           )}
@@ -1075,8 +1075,8 @@ export default function InboxClient({
           }}
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             oldestFirst
-              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+              ? "border-brand/30 bg-brand-soft text-brand"
+              : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Oldest first
@@ -1092,7 +1092,7 @@ export default function InboxClient({
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             assignedFilter === "unassigned"
               ? "border-sky-400/30 bg-sky-400/[0.08] text-sky-200"
-              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+              : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Unassigned
@@ -1112,8 +1112,8 @@ export default function InboxClient({
           }}
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             assignedFilter === "me"
-              ? "border-indigo-400/30 bg-indigo-400/[0.08] text-indigo-200"
-              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+              ? "border-brand/30 bg-indigo-400/[0.08] text-indigo-200"
+              : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Mine
@@ -1125,7 +1125,7 @@ export default function InboxClient({
             setDaysFilter(event.target.value);
             void refresh();
           }}
-          className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-xs font-medium text-slate-300 outline-none transition-colors focus:border-cyan-400/40"
+          className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs font-medium text-ink-2 outline-none transition-colors focus:border-brand/40"
         >
           <option value="">Any time</option>
           <option value="1">Last 24 hours</option>
@@ -1142,8 +1142,8 @@ export default function InboxClient({
           }}
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             unreadFilter === "1"
-              ? "border-violet-400/30 bg-violet-400/[0.08] text-violet-200"
-              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+              ? "border-ai/30 bg-violet-400/[0.08] text-violet-200"
+              : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Unread
@@ -1159,7 +1159,7 @@ export default function InboxClient({
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             starredFilter === "1"
               ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
-              : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+              : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Starred
@@ -1168,7 +1168,7 @@ export default function InboxClient({
           type="button"
           onClick={() => resetFilters()}
           title="Clear every filter and sort back to the default view"
-          className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-white"
+          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-3 transition-colors hover:text-ink"
         >
           Reset
         </button>
@@ -1188,7 +1188,7 @@ export default function InboxClient({
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                 tagFilter === entry.tag
                   ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
-                  : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+                  : "border-line bg-soft text-ink-3 hover:text-ink"
               }`}
             >
               #{entry.tag} · {entry.count}
@@ -1208,8 +1208,8 @@ export default function InboxClient({
             }}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
               statusFilter === value
-                ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-                : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+                ? "border-brand/30 bg-brand-soft text-brand"
+                : "border-line bg-soft text-ink-3 hover:text-ink"
             }`}
           >
             {value}
@@ -1225,8 +1225,8 @@ export default function InboxClient({
           }
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
             soundEnabled
-              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:text-white"
+              ? "border-brand/30 bg-brand-soft text-brand"
+              : "border-line bg-soft text-ink-2 hover:text-ink"
           }`}
         >
           {soundEnabled ? "Sound on" : "Sound off"}
@@ -1245,8 +1245,8 @@ export default function InboxClient({
           }
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
             liveMode
-              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:text-white"
+              ? "border-brand/30 bg-brand-soft text-brand"
+              : "border-line bg-soft text-ink-2 hover:text-ink"
           }`}
         >
           {liveMode ? "Live" : "Paused"}
@@ -1256,11 +1256,11 @@ export default function InboxClient({
           onClick={() => void refresh()}
           disabled={pending}
           title="Refresh now"
-          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
         >
           {pending ? "Refreshing" : "Refresh"}
         </button>
-        <span className="text-[10px] text-slate-600">
+        <span className="text-[10px] text-ink-3">
           {syncedAt ? "Updated " + syncedAt.toLocaleTimeString() : ""}
         </span>
         <button
@@ -1273,8 +1273,8 @@ export default function InboxClient({
           }
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
             compactList
-              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:text-white"
+              ? "border-brand/30 bg-brand-soft text-brand"
+              : "border-line bg-soft text-ink-2 hover:text-ink"
           }`}
         >
           {compactList ? "Compact" : "Cozy"}
@@ -1283,7 +1283,7 @@ export default function InboxClient({
           type="button"
           onClick={() => setHelpOpen((open) => !open)}
           title="Keyboard shortcuts"
-          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:text-white"
+          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink"
         >
           ?
         </button>
@@ -1297,8 +1297,8 @@ export default function InboxClient({
           }
           className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
             alertEnabled
-              ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:text-white"
+              ? "border-brand/30 bg-brand-soft text-brand"
+              : "border-line bg-soft text-ink-2 hover:text-ink"
           }`}
         >
           {alertEnabled ? "Alerts on" : "Alerts off"}
@@ -1308,7 +1308,7 @@ export default function InboxClient({
           onClick={() => void markAllRead()}
           disabled={bulkBusy || !chipCounts.unread}
           title="Mark every open conversation as read"
-          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
+          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
         >
           Mark all read
         </button>
@@ -1316,15 +1316,15 @@ export default function InboxClient({
           type="button"
           onClick={() => void exportCsv()}
           disabled={exporting || !items || items.length === 0}
-          className="ml-auto rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
+          className="ml-auto rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
         >
           {exporting ? "Preparing…" : "Export CSV"}
         </button>
       </div>
 
       {selectedIds.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] px-3 py-2">
-          <span className="text-xs font-medium text-cyan-200">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand/20 bg-cyan-400/[0.04] px-3 py-2">
+          <span className="text-xs font-medium text-brand">
             {selectedIds.length} selected
           </span>
           <button
@@ -1332,7 +1332,7 @@ export default function InboxClient({
             onClick={() => setSelectedIds((items ?? []).map((item) => item.id))}
             disabled={bulkBusy}
             title="Select every conversation in the current view"
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
           >
             Select all
           </button>
@@ -1340,7 +1340,7 @@ export default function InboxClient({
             type="button"
             onClick={() => setSelectedIds([])}
             disabled={bulkBusy}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
           >
             Clear
           </button>
@@ -1348,7 +1348,7 @@ export default function InboxClient({
             type="button"
             onClick={() => void exportCsv(selectedIds)}
             disabled={bulkBusy || exporting}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
           >
             Export selected
           </button>
@@ -1356,7 +1356,7 @@ export default function InboxClient({
             type="button"
             onClick={() => void bulkAction("close")}
             disabled={bulkBusy}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
           >
             Close
           </button>
@@ -1364,7 +1364,7 @@ export default function InboxClient({
             type="button"
             onClick={() => void bulkAction("reopen")}
             disabled={bulkBusy}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
           >
             Reopen
           </button>
@@ -1376,7 +1376,7 @@ export default function InboxClient({
               setAssignTarget("");
               if (email) void bulkAction("assign", email);
             }}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 disabled:opacity-40"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 disabled:opacity-40"
           >
             <option value="">Assign to...</option>
             {teamMembers.map((member) => (
@@ -1389,14 +1389,14 @@ export default function InboxClient({
             type="button"
             onClick={() => void bulkAction("unassign")}
             disabled={bulkBusy}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
           >
             Unassign
           </button>
           <button
             type="button"
             onClick={() => setSelectedIds([])}
-            className="ml-auto rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-xs font-medium text-slate-400 transition-colors hover:text-white"
+            className="ml-auto rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink"
           >
             Clear
           </button>
@@ -1408,7 +1408,7 @@ export default function InboxClient({
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className="h-20 rounded-2xl border border-white/[0.06] bg-white/[0.015]"
+              className="h-20 rounded-2xl border border-line bg-soft"
             />
           ))}
         </div>
@@ -1417,16 +1417,16 @@ export default function InboxClient({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center"
+          className="rounded-2xl border border-line bg-soft px-6 py-12 text-center"
         >
-          <p className="text-sm font-medium text-slate-200">
+          <p className="text-sm font-medium text-ink">
             {pending
               ? "The conversations module is rolling out on the server."
               : search
                 ? "No conversations match your search."
                 : "No conversations yet."}
           </p>
-          <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          <p className="mt-2 text-xs leading-relaxed text-ink-3">
             {pending
               ? "It lights up automatically right after the backend deploy."
               : "Messages appear here as soon as your WhatsApp connector is linked and customers start chatting."}
@@ -1445,7 +1445,7 @@ export default function InboxClient({
             <button
               type="button"
               onClick={() => resetFilters()}
-              className="mt-4 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:text-white"
+              className="mt-4 rounded-lg border border-line bg-soft px-4 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink"
             >
               Clear filters
             </button>
@@ -1469,7 +1469,7 @@ export default function InboxClient({
                   ? "border-l-2 border-l-amber-400/60 "
                   : "") +
                 (activeRowIndex >= 0 && items[activeRowIndex]?.id === item.id
-                  ? "ring-1 ring-cyan-400/40"
+                  ? "ring-1 ring-brand/40"
                   : "")
               }
             >
@@ -1485,15 +1485,15 @@ export default function InboxClient({
               <Link
                 href={`/dashboard/conversations/${item.id}`}
                 prefetch={false}
-                className={`block min-w-0 flex-1 rounded-2xl border border-white/[0.06] bg-white/[0.015] ${compactList ? "p-2.5" : "p-4"} transition-colors duration-300 hover:border-cyan-400/30 hover:bg-white/[0.025]`}
+                className={`block min-w-0 flex-1 rounded-2xl border border-line bg-soft ${compactList ? "p-2.5" : "p-4"} transition-colors duration-300 hover:border-brand/30 hover:bg-white/[0.025]`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] text-xs font-semibold text-cyan-300">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-xs font-semibold text-brand">
                       {(item.contactName || item.contactId || "?").slice(0, 2).toUpperCase()}
                     </span>
                     <div className="min-w-0">
-                      <p className="flex items-center gap-2 truncate text-sm font-medium text-white">
+                      <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
                         <span className="truncate">
                           {item.contactName || item.contactId || "Unknown contact"}
                         </span>
@@ -1505,7 +1505,7 @@ export default function InboxClient({
                         )}
                         {item.needsReply && (
                           <span
-                            className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
+                            className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600"
                             title="Customer sent the last message — waiting for a reply"
                           >
                             awaiting reply
@@ -1514,7 +1514,7 @@ export default function InboxClient({
                       </p>
                         {item.vip && (
                           <span
-                            className="shrink-0 rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-300"
+                            className="shrink-0 rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-ok"
                             title={"VIP — " + item.paidOrders + " paid orders"}
                           >
                             ★ vip
@@ -1527,12 +1527,12 @@ export default function InboxClient({
                             void navigator.clipboard.writeText(item.contactId ?? "")
                           }
                           title="Copy number"
-                          className="truncate text-left text-xs text-slate-500 transition-colors hover:text-slate-300"
+                          className="truncate text-left text-xs text-ink-3 transition-colors hover:text-ink-2"
                         >
                           {item.contactId}
                         </button>
                       ) : (
-                        <p className="truncate text-xs text-slate-500">—</p>
+                        <p className="truncate text-xs text-ink-3">—</p>
                       )}
                     </div>
                   </div>
@@ -1543,8 +1543,8 @@ export default function InboxClient({
                       onClick={() => void toggleStar(item.id)}
                       className={`text-base leading-none transition-transform hover:scale-110 ${
                         item.starred
-                          ? "text-amber-300"
-                          : "text-slate-600 hover:text-slate-400"
+                          ? "text-amber-600"
+                          : "text-ink-3 hover:text-ink-3"
                       }`}
                     >
                       {item.starred ? "\u2605" : "\u2606"}
@@ -1557,7 +1557,7 @@ export default function InboxClient({
                           ? "Close this conversation"
                           : "Reopen this conversation"
                       }
-                      className="rounded-md border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400 transition-colors hover:text-white"
+                      className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:text-ink"
                     >
                       {item.status === "open" ? "Close" : "Reopen"}
                     </button>
@@ -1565,13 +1565,13 @@ export default function InboxClient({
                     <span
                       className={`rounded-md border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
                         item.status === "open"
-                          ? "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-300"
-                          : "border-white/[0.06] bg-white/[0.02] text-slate-500"
+                          ? "border-emerald-400/20 bg-emerald-400/[0.06] text-ok"
+                          : "border-line bg-soft text-ink-3"
                       }`}
                     >
                       {item.status}
                     </span>
-                    <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-600">
+                    <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-ink-3">
                       <span
                         className={
                           "inline-block h-1.5 w-1.5 rounded-full " +
@@ -1585,8 +1585,8 @@ export default function InboxClient({
                     <p
                       className={`mt-1 text-[10px] ${
                         item.needsReply && item.status === "open" && item.lastMessageAt
-                          ? "text-amber-300/80"
-                          : "text-slate-600"
+                          ? "text-amber-600/80"
+                          : "text-ink-3"
                       }`}
                     >
                       {item.needsReply && item.status === "open" && item.lastMessageAt
@@ -1597,7 +1597,7 @@ export default function InboxClient({
                   </div>
                 </div>
                 {item.lastMessagePreview && (
-                  <p className="mt-3 truncate text-xs text-slate-400">
+                  <p className="mt-3 truncate text-xs text-ink-3">
                     {item.lastMessagePreview}
                   </p>
                 )}
@@ -1607,17 +1607,17 @@ export default function InboxClient({
                   item.tags.length > 0) && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {item.lastIntent && item.lastIntent !== "general" && (
-                      <span className="inline-block rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-cyan-300/70">
+                      <span className="inline-block rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-brand/70">
                         {item.lastIntent.replace(/_/g, " ")}
                       </span>
                     )}
                     {item.leadTemp === "hot" && (
-                      <span className="inline-block rounded-md border border-orange-400/25 bg-orange-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-orange-300">
+                      <span className="inline-block rounded-md border border-orange-400/25 bg-orange-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600">
                         Hot lead
                       </span>
                     )}
                     {item.assigneeName && (
-                      <span className="inline-block rounded-md border border-violet-400/25 bg-violet-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-300">
+                      <span className="inline-block rounded-md border border-violet-400/25 bg-violet-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-ai">
                         {item.assigneeName}
                       </span>
                     )}
@@ -1635,7 +1635,7 @@ export default function InboxClient({
                       </span>
                     ))}
                     {item.tags.length > 2 && (
-                      <span className="inline-block rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-slate-400">
+                      <span className="inline-block rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] text-ink-3">
                         +{item.tags.length - 2}
                       </span>
                     )}
@@ -1653,7 +1653,7 @@ export default function InboxClient({
                             void quickAssign(item.id, event.target.value)
                           }
                           aria-label="Assign conversation"
-                          className="max-w-[130px] rounded-md border border-violet-400/25 bg-violet-400/[0.06] px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-300 outline-none"
+                          className="max-w-[130px] rounded-md border border-violet-400/25 bg-violet-400/[0.06] px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-ai outline-none"
                         >
                           <option value="">Unassigned</option>
                           {teamMembers.map((member) => (
@@ -1673,17 +1673,17 @@ export default function InboxClient({
       )}
       {helpOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-soft p-4"
           onClick={() => setHelpOpen(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0b1829] p-5"
+            className="w-full max-w-sm rounded-2xl border border-line bg-white p-5"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 className="text-sm font-semibold text-white">
+            <h2 className="text-sm font-semibold text-ink">
               Keyboard shortcuts
             </h2>
-            <ul className="mt-3 space-y-2 text-xs text-slate-300">
+            <ul className="mt-3 space-y-2 text-xs text-ink-2">
               <li className="flex items-center justify-between gap-6">
                 <span>Focus search</span>
                 <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">/</kbd>
@@ -1728,7 +1728,7 @@ export default function InboxClient({
             <button
               type="button"
               onClick={() => setHelpOpen(false)}
-              className="mt-4 w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs font-medium text-slate-300 transition-colors hover:text-white"
+              className="mt-4 w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors hover:text-ink"
             >
               Got it
             </button>
@@ -1744,7 +1744,7 @@ export default function InboxClient({
               pageRef.current += 1;
               void refresh();
             }}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white"
+            className="rounded-lg border border-line bg-soft px-4 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
           >
             Load more
           </button>

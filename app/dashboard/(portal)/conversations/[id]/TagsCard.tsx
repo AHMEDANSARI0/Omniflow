@@ -90,14 +90,14 @@ export default function TagsCard({
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+    <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xs font-semibold text-white">Labels</h2>
-        <span className="text-[10px] text-slate-500">
+        <h2 className="text-xs font-semibold text-ink">Labels</h2>
+        <span className="text-[10px] text-ink-3">
           {tags.length}/{MAX_TAGS}
         </span>
       </div>
-      <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+      <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
         Group chats your own way — labels show as chips in the inbox and become
         filters.
       </p>
@@ -144,19 +144,19 @@ export default function TagsCard({
             tags.length >= MAX_TAGS ? "Label limit reached" : "e.g. wholesale"
           }
           disabled={tags.length >= MAX_TAGS}
-          className="w-full flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40 disabled:opacity-50"
+          className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40 disabled:opacity-50"
         />
         <button
           type="button"
           onClick={() => void addTag()}
           disabled={busy || tags.length >= MAX_TAGS || !value.trim()}
-          className="shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+          className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
         >
           {busy ? "Working…" : "Add label"}
         </button>
       </div>
 
-      {message && <p className="mt-2 text-xs text-slate-400">{message}</p>}
+      {message && <p className="mt-2 text-xs text-ink-3">{message}</p>}
     </div>
   );
 }

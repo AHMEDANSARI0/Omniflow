@@ -26,7 +26,7 @@ interface RiskTask {
 const RECO: Record<string, { label: string; cls: string }> = {
   proceed: {
     label: "Proceed",
-    cls: "border-emerald-400/30 bg-emerald-400/[0.08] text-emerald-200",
+    cls: "border-emerald-400/30 bg-emerald-400/[0.08] text-ok",
   },
   collect_advance: {
     label: "Collect advance",
@@ -148,9 +148,9 @@ export default function RiskCard() {
   const reco = result ? RECO[result.recommendation] : null;
 
   return (
-    <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-      <p className="text-xs font-semibold text-white">COD risk check</p>
-      <p className="mt-0.5 text-[11px] text-slate-500">
+    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+      <p className="text-xs font-semibold text-ink">COD risk check</p>
+      <p className="mt-0.5 text-[11px] text-ink-3">
         RTO score 0-100 from this customer&apos;s own history - returns,
         confirm speed, order value, city. Advisory by default; nothing
         is blocked automatically.
@@ -161,30 +161,30 @@ export default function RiskCard() {
           value={contact}
           onChange={(event) => setContact(event.target.value)}
           placeholder="customer number e.g. 92300..."
-          className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+          className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
         />
         <input
           value={total}
           onChange={(event) => setTotal(event.target.value)}
           placeholder="order value"
           inputMode="decimal"
-          className="w-28 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+          className="w-28 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
         />
         <button
           onClick={() => void check()}
           disabled={busy || !contact.trim()}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
         >
           Check risk
         </button>
       </div>
 
       {result ? (
-        <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3">
+        <div className="mt-3 rounded-xl border border-line bg-soft p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-2xl font-semibold text-white">
+            <p className="text-2xl font-semibold text-ink">
               {result.score}
-              <span className="ml-1 text-[11px] font-normal text-slate-500">
+              <span className="ml-1 text-[11px] font-normal text-ink-3">
                 / 100 risk
               </span>
             </p>
@@ -204,17 +204,17 @@ export default function RiskCard() {
                 key={factor.key}
                 className="flex items-baseline justify-between gap-2 text-[11px]"
               >
-                <span className="min-w-0 text-slate-400">
+                <span className="min-w-0 text-ink-3">
                   {factor.note}
                 </span>
                 <span
                   className={
                     "shrink-0 font-medium " +
                     (factor.points > 0
-                      ? "text-rose-300"
+                      ? "text-danger"
                       : factor.points < 0
-                        ? "text-emerald-300"
-                        : "text-slate-600")
+                        ? "text-ok"
+                        : "text-ink-3")
                   }
                 >
                   {factor.points > 0 ? "+" : ""}
@@ -224,26 +224,26 @@ export default function RiskCard() {
             ))}
           </ul>
           {result.task_created ? (
-            <p className="mt-2 text-[11px] text-amber-300">
+            <p className="mt-2 text-[11px] text-amber-600">
               Staff task created - it is in the list below.
             </p>
           ) : null}
         </div>
       ) : null}
-      {note ? <p className="mt-2 text-[11px] text-slate-400">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] text-ink-3">{note}</p> : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/[0.05] pt-2">
-        <span className="text-[11px] text-slate-400">Hold threshold</span>
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-2">
+        <span className="text-[11px] text-ink-3">Hold threshold</span>
         <input
           value={threshold}
           onChange={(event) => setThreshold(event.target.value)}
           inputMode="numeric"
-          className="w-16 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 outline-none"
+          className="w-16 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink outline-none"
         />
         <button
           onClick={() => void saveSettings(threshold, staffTasks)}
           disabled={busy}
-          className="text-[11px] text-cyan-300 hover:underline disabled:opacity-40"
+          className="text-[11px] text-brand hover:underline disabled:opacity-40"
         >
           Save
         </button>
@@ -253,8 +253,8 @@ export default function RiskCard() {
           className={
             "ml-auto rounded-full border px-3 py-1 text-[11px] " +
             (staffTasks
-              ? "border-emerald-400/40 bg-emerald-400/[0.12] text-emerald-200"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-400")
+              ? "border-emerald-400/40 bg-emerald-400/[0.12] text-ok"
+              : "border-line bg-soft text-ink-3")
           }
         >
           Staff tasks: {staffTasks ? "on" : "off"}
@@ -274,7 +274,7 @@ export default function RiskCard() {
               <button
                 onClick={() => void completeTask(task.id)}
                 disabled={busy}
-                className="shrink-0 text-[11px] text-slate-400 hover:underline disabled:opacity-40"
+                className="shrink-0 text-[11px] text-ink-3 hover:underline disabled:opacity-40"
               >
                 Done
               </button>

@@ -2,6 +2,7 @@
 // assistant keeps a single setup surface.
 import { redirect } from "next/navigation";
 import ApiKeyCard from "./ApiKeyCard";
+import BrandsCard from "./BrandsCard";
 import BusinessHoursCard from "./BusinessHoursCard";
 import WidgetSettingsCard from "./WidgetSettingsCard";
 import PaymentsCard from "./PaymentsCard";
@@ -71,6 +72,7 @@ export default async function ClientSettingsPage() {
       <NegotiationCard />
       <PerfCard />
       <PlanCard />
+      <BrandsCard />
     </div>
   );
 }

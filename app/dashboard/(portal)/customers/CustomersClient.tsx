@@ -405,11 +405,11 @@ export default function CustomersClient({
 
   if (expired) {
     return (
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-        <p className="text-sm text-slate-300">Session expired.</p>
+      <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <p className="text-sm text-ink-2">Session expired.</p>
         <Link
           href="/dashboard"
-          className="mt-3 inline-block rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200"
+          className="mt-3 inline-block rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand"
         >
           Back to dashboard
         </Link>
@@ -419,15 +419,15 @@ export default function CustomersClient({
 
   return (
     <div>
-      <h1 className="text-base font-semibold text-white">Customers</h1>
-      <p className="mt-0.5 text-xs text-slate-500">
+      <h1 className="text-base font-semibold text-ink">Customers</h1>
+      <p className="mt-0.5 text-xs text-ink-3">
         Every contact across WhatsApp and the website — search, filter, and
         jump straight into their chats.
       </p>
 
       {topCustomers.length > 0 ? (
         <div className="mt-4">
-          <p className="text-[10px] font-semibold text-slate-400">
+          <p className="text-[10px] font-semibold text-ink-3">
             Top customers
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -436,12 +436,12 @@ export default function CustomersClient({
                 key={entry.contactId}
                 href={"/dashboard/customers/profile?contact=" +
                   encodeURIComponent(entry.contactId)}
-                className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-2.5 py-1.5 transition-colors hover:bg-white/[0.05]"
+                className="rounded-xl border border-line bg-soft px-2.5 py-1.5 transition-colors hover:bg-soft"
               >
-                <p className="text-xs text-slate-200">
+                <p className="text-xs text-ink">
                   {entry.name || entry.contactId}
                 </p>
-                <p className="text-[10px] text-emerald-300">
+                <p className="text-[10px] text-ok">
                   Rs {entry.totalSpent.toLocaleString()} ·{" "}
                   {entry.orders} orders
                 </p>
@@ -456,7 +456,7 @@ export default function CustomersClient({
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search by name or contact…"
-          className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+          className="w-full rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
         />
       </div>
 
@@ -471,8 +471,8 @@ export default function CustomersClient({
             }}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
               channelFilter === value
-                ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-                : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white"
+                ? "border-brand/30 bg-brand-soft text-brand"
+                : "border-line bg-soft text-ink-3 hover:text-ink"
             }`}
           >
             {value === "all" ? "All channels" : value}
@@ -483,7 +483,7 @@ export default function CustomersClient({
           type="button"
           onClick={() => exportCustomers()}
           disabled={!customers || customers.length === 0}
-          className="ml-auto rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
+          className="ml-auto rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
         >
           Export CSV
         </button>
@@ -494,13 +494,13 @@ export default function CustomersClient({
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className="h-20 rounded-2xl border border-white/[0.06] bg-white/[0.015]"
+              className="h-20 rounded-2xl border border-line bg-soft"
             />
           ))}
         </div>
       ) : customers.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">
+        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">
             {pending
               ? "Connecting to the inbox — customers appear in a minute."
               : search
@@ -513,7 +513,7 @@ export default function CustomersClient({
           {customers.map((customer) => (
             <li
               key={customer.contactId}
-              className="overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.015]"
+              className="overflow-hidden rounded-2xl border border-line bg-soft"
             >
               <div className="flex items-stretch">
               <Link
@@ -522,18 +522,18 @@ export default function CustomersClient({
                   "/dashboard/conversations?q=" +
                   encodeURIComponent(customer.contactId)
                 }
-                className="min-w-0 flex-1 p-4 transition-colors duration-300 hover:bg-white/[0.03]"
+                className="min-w-0 flex-1 p-4 transition-colors duration-300 hover:bg-soft"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-400/[0.06] text-sm font-semibold text-cyan-200">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand/20 bg-brand-soft text-sm font-semibold text-brand">
                       {(customer.name || customer.contactId || "?")
                         .trim()
                         .charAt(0)
                         .toUpperCase()}
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-white">
+                      <p className="truncate text-sm font-medium text-ink">
                         {customer.name || customer.contactId}
                       </p>
                       {customer.name && (
@@ -541,7 +541,7 @@ export default function CustomersClient({
                           type="button"
                           onClick={() => copyContact(customer.contactId)}
                           title="Copy number"
-                          className="truncate text-left text-[11px] text-slate-500 transition-colors hover:text-slate-300"
+                          className="truncate text-left text-[11px] text-ink-3 transition-colors hover:text-ink-2"
                         >
                           {customer.contactId}
                         </button>
@@ -568,7 +568,7 @@ export default function CustomersClient({
                     </div>
                   </div>
                   <div className="shrink-0 sm:text-right">
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-ink-3">
                       {customer.conversationCount}{" "}
                       {customer.conversationCount === 1 ? "chat" : "chats"}
                       {customer.openCount > 0 &&
@@ -577,11 +577,11 @@ export default function CustomersClient({
                       {customer.channels.join(", ")}
                     </p>
                     {customer.lastMessagePreview && (
-                      <p className="mt-0.5 max-w-xs truncate text-xs text-slate-300 sm:ml-auto">
+                      <p className="mt-0.5 max-w-xs truncate text-xs text-ink-2 sm:ml-auto">
                         {customer.lastMessagePreview}
                       </p>
                     )}
-                    <p className="mt-0.5 text-[10px] text-slate-600">
+                    <p className="mt-0.5 text-[10px] text-ink-3">
                       {formatWhen(customer.lastMessageAt)}
                     </p>
                   </div>
@@ -592,7 +592,7 @@ export default function CustomersClient({
                       className={
                         "inline-block rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider " +
                         (customer.leadTemp === "hot"
-                          ? "border-orange-400/25 bg-orange-400/[0.08] text-orange-300"
+                          ? "border-orange-400/25 bg-orange-400/[0.08] text-amber-600"
                           : "border-amber-400/20 bg-amber-400/[0.05] text-amber-200/80")
                       }
                     >
@@ -601,11 +601,11 @@ export default function CustomersClient({
                   </div>
                 )}
               </Link>
-                <div className="flex w-14 shrink-0 flex-col border-l border-white/[0.05] sm:w-16">
+                <div className="flex w-14 shrink-0 flex-col border-l border-line sm:w-16">
                   <a
                     href={`/dashboard/customers/profile?contact=${encodeURIComponent(customer.contactId)}`}
                     title="Open customer 360"
-                    className="border-b border-white/[0.05] py-2 text-[10px] font-semibold uppercase tracking-wider text-cyan-300/90 transition-colors duration-300 hover:text-cyan-200"
+                    className="border-b border-line py-2 text-[10px] font-semibold uppercase tracking-wider text-brand/90 transition-colors duration-300 hover:text-brand"
                   >
                     360
                   </a>
@@ -617,7 +617,7 @@ export default function CustomersClient({
                       setMergeNote("");
                     }}
                     title="Merge duplicate contact"
-                    className="border-b border-white/[0.05] py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 transition-colors duration-300 hover:text-white"
+                    className="border-b border-line py-2 text-[10px] font-semibold uppercase tracking-wider text-ink-3 transition-colors duration-300 hover:text-ink"
                   >
                     Merge
                   </button>
@@ -626,7 +626,7 @@ export default function CustomersClient({
                     target="_blank"
                     rel="noreferrer"
                     title="Open in WhatsApp"
-                    className="flex-1 border-b border-white/[0.05] text-[10px] font-semibold uppercase tracking-wider text-emerald-300/90 transition-colors duration-300 hover:text-emerald-200"
+                    className="flex-1 border-b border-line text-[10px] font-semibold uppercase tracking-wider text-ok/90 transition-colors duration-300 hover:text-ok"
                   >
                     Chat
                   </a>
@@ -636,8 +636,8 @@ export default function CustomersClient({
                     className={
                       "flex-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
                       (notesOpenFor === customer.contactId
-                        ? "bg-cyan-400/[0.08] text-cyan-200"
-                        : "text-slate-500 hover:text-white")
+                        ? "bg-brand-soft text-brand"
+                        : "text-ink-3 hover:text-ink")
                     }
                   >
                     Notes
@@ -650,10 +650,10 @@ export default function CustomersClient({
                       setMsgOpenFor(msgOpenFor === customer.contactId ? null : customer.contactId);
                     }}
                     className={
-                      "flex-1 border-t border-white/[0.05] text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+                      "flex-1 border-t border-line text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
                       (msgOpenFor === customer.contactId
-                        ? "bg-cyan-400/[0.08] text-cyan-200"
-                        : "text-slate-500 hover:text-white")
+                        ? "bg-brand-soft text-brand"
+                        : "text-ink-3 hover:text-ink")
                     }
                   >
                     Message
@@ -661,11 +661,11 @@ export default function CustomersClient({
                 </div>
               </div>
               {mergeOpenFor === customer.contactId && (
-                <div className="border-t border-white/[0.05] p-4">
-                  <p className="text-xs font-semibold text-white">
+                <div className="border-t border-line p-4">
+                  <p className="text-xs font-semibold text-ink">
                     Merge duplicates into {customer.name || customer.contactId}
                   </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
+                  <p className="mt-1 text-[11px] text-ink-3">
                     All chats, pipeline stages and COD orders of the duplicate
                     move here. This cannot be undone.
                   </p>
@@ -673,16 +673,16 @@ export default function CustomersClient({
                     <select
                       value={mergeKeep}
                       onChange={(event) => setMergeKeep(event.target.value)}
-                      className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40 sm:w-72"
+                      className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink outline-none focus:border-brand/40 sm:w-72"
                     >
-                      <option value="" className="bg-slate-900">
+                      <option value="" className="bg-soft">
                         Keep which contact?
                       </option>
                       {customers.map((option) => (
                         <option
                           key={option.contactId}
                           value={option.contactId}
-                          className="bg-slate-900"
+                          className="bg-soft"
                         >
                           {option.name || option.contactId}
                           {option.contactId === customer.contactId
@@ -695,22 +695,22 @@ export default function CustomersClient({
                       type="button"
                       onClick={() => void mergeContact(customer.contactId)}
                       disabled={mergeBusy}
-                      className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-40"
+                      className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-40"
                     >
                       {mergeBusy ? "Merging\u2026" : "Merge"}
                     </button>
                   </div>
                   {mergeNote ? (
-                    <p className="mt-2 text-[11px] text-amber-300">{mergeNote}</p>
+                    <p className="mt-2 text-[11px] text-amber-600">{mergeNote}</p>
                   ) : null}
                 </div>
               )}
               {notesOpenFor === customer.contactId && (
-                <div className="border-t border-white/[0.05] p-4">
+                <div className="border-t border-line p-4">
                   {notesByContact[customer.contactId] === undefined ? (
-                    <p className="text-[11px] text-slate-600">Loading notes…</p>
+                    <p className="text-[11px] text-ink-3">Loading notes…</p>
                   ) : (notesByContact[customer.contactId] || []).length === 0 ? (
-                    <p className="text-[11px] text-slate-600">
+                    <p className="text-[11px] text-ink-3">
                       No notes yet — add context your team should always see
                       for this customer.
                     </p>
@@ -719,21 +719,21 @@ export default function CustomersClient({
                       {(notesByContact[customer.contactId] || []).map((note) => (
                         <li
                           key={"note-" + String(note.id)}
-                          className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2"
+                          className="rounded-xl border border-line bg-white/[0.01] px-3 py-2"
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <p className="min-w-0 whitespace-pre-wrap break-words text-xs text-slate-300">
+                            <p className="min-w-0 whitespace-pre-wrap break-words text-xs text-ink-2">
                               {note.body}
                             </p>
                             <button
                               type="button"
                               onClick={() => void removeNote(customer.contactId, note.id)}
-                              className="shrink-0 text-[10px] text-slate-600 transition-colors duration-300 hover:text-red-300"
+                              className="shrink-0 text-[10px] text-ink-3 transition-colors duration-300 hover:text-danger"
                             >
                               Delete
                             </button>
                           </div>
-                          <p className="mt-1 text-[10px] text-slate-600">
+                          <p className="mt-1 text-[10px] text-ink-3">
                             {note.authorName || note.authorEmail || "Team"}
                             {note.createdAt ? " · " + formatWhen(note.createdAt) : ""}
                           </p>
@@ -747,47 +747,47 @@ export default function CustomersClient({
                       onChange={(event) => setNoteDraft(event.target.value)}
                       maxLength={1000}
                       placeholder="Add a note about this customer…"
-                      className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                      className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
                     />
                     <button
                       type="button"
                       onClick={() => void addNote(customer.contactId)}
                       disabled={noteBusy || !noteDraft.trim()}
-                      className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                      className="rounded-xl border border-brand/25 bg-brand-soft px-3 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
                     >
                       {noteBusy ? "Saving…" : "Add note"}
                     </button>
                   </div>
                   {noteError && (
-                    <p className="mt-2 text-[11px] text-red-300">{noteError}</p>
+                    <p className="mt-2 text-[11px] text-danger">{noteError}</p>
                   )}
                 </div>
               )}
               {msgOpenFor === customer.contactId && (
-                <div className="border-t border-white/[0.05] p-4">
+                <div className="border-t border-line p-4">
                   <textarea
                     value={msgDraft}
                     onChange={(event) => setMsgDraft(event.target.value)}
                     maxLength={1000}
                     rows={3}
                     placeholder="Type your message..."
-                    className="w-full resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                    className="w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
                   />
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-[10px] text-slate-600">
+                    <span className="text-[10px] text-ink-3">
                       {msgDraft.trim().length}/1000
                     </span>
                     <button
                       type="button"
                       onClick={() => void sendMessage(customer.contactId)}
                       disabled={msgBusy || !msgDraft.trim()}
-                      className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                      className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
                     >
                       {msgBusy ? "Sending..." : "Send message"}
                     </button>
                   </div>
                   {msgStatus && (
-                    <p className="mt-2 text-[11px] text-slate-400">{msgStatus}</p>
+                    <p className="mt-2 text-[11px] text-ink-3">{msgStatus}</p>
                   )}
                 </div>
               )}

@@ -223,26 +223,26 @@ export default function IntegrationsPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
             Workspace
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Integrations</h1>
-          <p className="mt-1.5 text-sm text-slate-400">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Integrations</h1>
+          <p className="mt-1.5 text-sm text-ink-3">
             Get OmniFlow events pushed to your own endpoint - Google Sheets
             bridges, Zapier, or your own tools. Every request is signed.
           </p>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
-          <h2 className="text-sm font-semibold text-white">Add an endpoint</h2>
+        <div className="mb-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-ink">Add an endpoint</h2>
           <input
             value={url}
             onChange={(event) => setUrl(event.target.value)}
             placeholder="https://your-service.example.com/omniflow"
-            className="mt-3 w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="mt-3 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <div className="mt-3 flex flex-wrap gap-2">
             {EVENT_OPTIONS.map((option) => (
@@ -254,8 +254,8 @@ export default function IntegrationsPage() {
                 className={
                   "rounded-lg border px-3 py-1.5 text-xs font-medium transition " +
                   (picked.includes(option.value)
-                    ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-                    : "border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white")
+                    ? "border-brand/30 bg-brand-soft text-brand"
+                    : "border-line bg-soft text-ink-3 hover:text-ink")
                 }
               >
                 {option.label}
@@ -267,7 +267,7 @@ export default function IntegrationsPage() {
               type="button"
               onClick={() => void create()}
               disabled={busy}
-              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:bg-cyan-400/25 disabled:opacity-50"
+              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
             >
               {busy ? "Working\u2026" : "Add endpoint"}
             </button>
@@ -275,7 +275,7 @@ export default function IntegrationsPage() {
               <p
                 className={
                   "text-xs " +
-                  (noteTone === "emerald" ? "text-emerald-300" : "text-amber-300")
+                  (noteTone === "emerald" ? "text-ok" : "text-amber-600")
                 }
               >
                 {note}
@@ -284,10 +284,10 @@ export default function IntegrationsPage() {
           </div>
           {newSecret ? (
             <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-3.5 py-3">
-              <p className="text-[11px] uppercase tracking-wider text-emerald-300/80">
+              <p className="text-[11px] uppercase tracking-wider text-ok/80">
                 Signing secret (shown once)
               </p>
-              <code className="mt-1 block break-all font-mono text-xs text-emerald-200">
+              <code className="mt-1 block break-all font-mono text-xs text-ok">
                 {newSecret}
               </code>
             </div>
@@ -295,11 +295,11 @@ export default function IntegrationsPage() {
         </div>
 
         {webhooks === null ? (
-          <p className="text-sm text-slate-500">Loading\u2026</p>
+          <p className="text-sm text-ink-3">Loading\u2026</p>
         ) : webhooks.length === 0 ? (
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] px-5 py-8 text-center">
-            <p className="text-sm text-slate-400">No endpoints yet.</p>
-            <p className="mt-1 text-xs text-slate-600">
+          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+            <p className="text-sm text-ink-3">No endpoints yet.</p>
+            <p className="mt-1 text-xs text-ink-3">
               Add one above and COD or broadcast events will arrive there signed.
             </p>
           </div>
@@ -308,12 +308,12 @@ export default function IntegrationsPage() {
             {webhooks.map((row) => (
               <li
                 key={row.id}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4"
+                className="rounded-2xl border border-line bg-soft p-4"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-slate-200">{row.url}</p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">
+                    <p className="truncate text-sm text-ink">{row.url}</p>
+                    <p className="mt-0.5 text-[11px] text-ink-3">
                       {eventsLabel(row.events)}
                       {row.lastStatusCode !== null
                         ? " \u00b7 last status " + String(row.lastStatusCode)
@@ -325,40 +325,40 @@ export default function IntegrationsPage() {
                       type="button"
                       onClick={() => void runTest(row)}
                       disabled={testBusy}
-                      className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
                     >
                       {testBusy ? "Testing..." : "Send test"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void setEnabled(row, !row.enabled)}
-                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {row.enabled ? "Pause" : "Resume"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void showLog(row.id)}
-                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:text-white"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {openLog === row.id ? "Hide log" : "Deliveries"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void remove(row)}
-                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:border-rose-400/40 hover:text-rose-300"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
                 {testNote ? (
-                  <p className="mt-2 text-[11px] text-slate-400">{testNote}</p>
+                  <p className="mt-2 text-[11px] text-ink-3">{testNote}</p>
                 ) : null}
                 {openLog === row.id ? (
-                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
                     {deliveries.length === 0 ? (
-                      <p className="text-xs text-slate-500">No deliveries yet.</p>
+                      <p className="text-xs text-ink-3">No deliveries yet.</p>
                     ) : (
                       <ul className="space-y-1.5">
                         {deliveries.map((delivery) => (
@@ -366,12 +366,12 @@ export default function IntegrationsPage() {
                             key={delivery.id}
                             className="flex items-center justify-between gap-2 text-xs"
                           >
-                            <span className="text-slate-300">{delivery.event}</span>
+                            <span className="text-ink-2">{delivery.event}</span>
                             <span
                               className={
                                 delivery.deliveredAt
-                                  ? "text-emerald-300"
-                                  : "text-amber-300"
+                                  ? "text-ok"
+                                  : "text-amber-600"
                               }
                             >
                               {delivery.deliveredAt
@@ -387,7 +387,7 @@ export default function IntegrationsPage() {
                                 onClick={() =>
                                   void retryDelivery(row.id, delivery.id)
                                 }
-                                className="text-[11px] text-slate-500 transition hover:text-cyan-300"
+                                className="text-[11px] text-ink-3 transition hover:text-brand"
                               >
                                 Retry now
                               </button>

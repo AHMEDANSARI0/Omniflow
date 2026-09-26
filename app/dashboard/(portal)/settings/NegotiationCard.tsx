@@ -107,13 +107,13 @@ export default function NegotiationCard() {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+    <section className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">
             Negotiation bounds
           </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-ink-3">
             The floor is computed from these numbers - the assistant can
             never cross it, only word the offer.
           </p>
@@ -124,8 +124,8 @@ export default function NegotiationCard() {
           className={
             "rounded-full border px-3 py-1 text-[11px] " +
             (enabled
-              ? "border-emerald-400/40 bg-emerald-400/[0.12] text-emerald-200"
-              : "border-white/[0.08] bg-white/[0.02] text-slate-400")
+              ? "border-emerald-400/40 bg-emerald-400/[0.12] text-ok"
+              : "border-line bg-soft text-ink-3")
           }
         >
           {enabled ? "Enabled" : "Disabled"}
@@ -134,34 +134,34 @@ export default function NegotiationCard() {
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <label className="block">
-          <span className="text-[11px] text-slate-400">Min price (RS)</span>
+          <span className="text-[11px] text-ink-3">Min price (RS)</span>
           <input
             value={minPrice}
             onChange={(event) => setMinPrice(event.target.value)}
             inputMode="decimal"
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none"
           />
         </label>
         <label className="block">
-          <span className="text-[11px] text-slate-400">Max discount (%)</span>
+          <span className="text-[11px] text-ink-3">Max discount (%)</span>
           <input
             value={maxPct}
             onChange={(event) => setMaxPct(event.target.value)}
             inputMode="decimal"
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none"
           />
         </label>
       </div>
       <button
         onClick={() => void saveBounds(enabled)}
         disabled={busy}
-        className="mt-2 rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 hover:bg-white/[0.04] disabled:opacity-50"
+        className="mt-2 rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-soft disabled:opacity-50"
       >
         Save bounds
       </button>
 
-      <div className="mt-4 border-t border-white/[0.05] pt-3">
-        <p className="text-[11px] font-semibold text-slate-300">
+      <div className="mt-4 border-t border-line pt-3">
+        <p className="text-[11px] font-semibold text-ink-2">
           Quick check
         </p>
         <div className="mt-1.5 flex gap-2">
@@ -170,46 +170,46 @@ export default function NegotiationCard() {
             onChange={(event) => setPrice(event.target.value)}
             placeholder="asking price"
             inputMode="decimal"
-            className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+            className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
           />
           <input
             value={offer}
             onChange={(event) => setOffer(event.target.value)}
             placeholder="customer offer"
             inputMode="decimal"
-            className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-600"
+            className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3"
           />
           <button
             onClick={() => void decide()}
             disabled={busy || !price || !offer}
-            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
           >
             Decide
           </button>
         </div>
         {result ? (
-          <div className="mt-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
-            <p className="text-xs text-slate-200">
+          <div className="mt-2 rounded-xl border border-line bg-soft px-3 py-2">
+            <p className="text-xs text-ink">
               <span
                 className={
                   result.decision === "accept"
-                    ? "text-emerald-300"
+                    ? "text-ok"
                     : result.decision === "counter"
-                      ? "text-amber-300"
-                      : "text-rose-300"
+                      ? "text-amber-600"
+                      : "text-danger"
                 }
               >
                 {result.decision.toUpperCase()}
               </span>
               {" \u00b7 floor " + result.floor}
             </p>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-[11px] text-ink-3">
               {result.message}
             </p>
           </div>
         ) : null}
       </div>
-      {note ? <p className="mt-2 text-[11px] text-slate-400">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] text-ink-3">{note}</p> : null}
     </section>
   );
 }

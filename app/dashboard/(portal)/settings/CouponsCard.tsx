@@ -150,9 +150,9 @@ export default function CouponsCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-      <h2 className="text-sm font-semibold text-white">Coupon codes</h2>
-      <p className="mt-1 text-xs text-slate-500">
+    <section className="rounded-2xl border border-line bg-soft p-5">
+      <h2 className="text-sm font-semibold text-ink">Coupon codes</h2>
+      <p className="mt-1 text-xs text-ink-3">
         Discount codes your customers apply on the order page. Percent codes
         take 1-90%; fixed codes are rupee amounts. Usage counts update every
         time a customer applies one.
@@ -164,14 +164,14 @@ export default function CouponsCard() {
           onChange={(event) => setCode(event.target.value.toUpperCase())}
           placeholder="CODE (e.g. EID25)"
           maxLength={24}
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs uppercase text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs uppercase text-ink outline-none focus:border-brand/40"
         />
         <select
           value={kind}
           onChange={(event) =>
             setKind(event.target.value === "fixed" ? "fixed" : "percent")
           }
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         >
           <option value="percent">% off</option>
           <option value="fixed">Rs off</option>
@@ -181,7 +181,7 @@ export default function CouponsCard() {
           onChange={(event) => setValue(event.target.value)}
           placeholder={kind === "percent" ? "Value (1-90)" : "Amount"}
           inputMode="decimal"
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         />
       </div>
       <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_8rem_8rem_auto]">
@@ -190,21 +190,21 @@ export default function CouponsCard() {
           onChange={(event) => setMinTotal(event.target.value)}
           placeholder="Min order (optional)"
           inputMode="decimal"
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         />
         <input
           value={usageLimit}
           onChange={(event) => setUsageLimit(event.target.value)}
           placeholder="Max uses"
           inputMode="numeric"
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         />
         <input
           value={expiresDays}
           onChange={(event) => setExpiresDays(event.target.value)}
           placeholder="Days valid"
           inputMode="numeric"
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         />
         <button
           type="button"
@@ -216,11 +216,11 @@ export default function CouponsCard() {
         </button>
       </div>
 
-      {note ? <p className="mt-2 text-[11px] text-amber-300">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] text-amber-600">{note}</p> : null}
 
       <div className="mt-4">
         {loaded && rows.length === 0 ? (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-3">
             No coupons yet — create your first code above.
           </p>
         ) : null}
@@ -229,15 +229,15 @@ export default function CouponsCard() {
             {rows.map((row) => (
               <li
                 key={row.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-xs text-slate-200">
+                  <p className="truncate text-xs text-ink">
                     <span className="font-semibold">{row.code}</span> ·{" "}
                     {couponValue(row)}
                     {row.minTotal > 0 ? " · min " + row.minTotal : ""}
                   </p>
-                  <p className="truncate text-[10px] text-slate-500">
+                  <p className="truncate text-[10px] text-ink-3">
                     {expiryLabel(row)} · used {row.usedCount}
                     {row.usageLimit !== null ? "/" + row.usageLimit : ""}
                   </p>
@@ -247,8 +247,8 @@ export default function CouponsCard() {
                     className={
                       "rounded-md border px-1.5 py-0.5 text-[10px] " +
                       (row.isActive
-                        ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                        : "border-white/[0.08] bg-white/[0.02] text-slate-500")
+                        ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                        : "border-line bg-soft text-ink-3")
                     }
                   >
                     {row.isActive ? "Active" : "Paused"}
@@ -257,7 +257,7 @@ export default function CouponsCard() {
                     type="button"
                     onClick={() => void setActive(row, !row.isActive)}
                     disabled={busy}
-                    className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06] disabled:opacity-50"
+                    className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
                   >
                     {row.isActive ? "Pause" : "Resume"}
                   </button>
@@ -265,7 +265,7 @@ export default function CouponsCard() {
                     type="button"
                     onClick={() => void remove(row)}
                     disabled={busy}
-                    className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] text-slate-400 hover:border-rose-400/40 hover:text-rose-300 disabled:opacity-50"
+                    className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-3 hover:border-rose-400/40 hover:text-danger disabled:opacity-50"
                   >
                     Delete
                   </button>

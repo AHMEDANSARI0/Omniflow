@@ -1,139 +1,68 @@
-import Reveal from "./Reveal";
+import { Eye, Hand, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import type { TrustContent } from "../../lib/content-defaults";
+import Reveal from "./Reveal";
+import Section, { SectionHead } from "./ui/Section";
+import Card from "./ui/Card";
+import Badge from "./ui/Badge";
 
-/* ============================================================
-   Types
-   ============================================================ */
-
-type Accent = "cyan" | "blue" | "violet";
-
-interface TrustPillar {
-  icon: string;
-  title: string;
-  description: string;
-  accent: Accent;
-}
-
-/* ============================================================
-   Data
-   ============================================================ */
-
-const pillarMeta: { icon: string; accent: Accent }[] = [
-  { icon: "◇", accent: "cyan" },
-  { icon: "◎", accent: "blue" },
-  { icon: "✦", accent: "violet" },
-  { icon: "◆", accent: "cyan" },
-];
-
-/* ============================================================
-   Accent styling (full literal classes — Tailwind-safe)
-   ============================================================ */
-
-const accentStyles: Record<
-  Accent,
-  { iconBox: string; dot: string; hoverBorder: string }
-> = {
-  cyan: {
-    iconBox: "border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-300",
-    dot: "bg-cyan-400",
-    hoverBorder: "hover:border-cyan-400/20",
-  },
-  blue: {
-    iconBox: "border-blue-400/20 bg-blue-400/[0.06] text-blue-300",
-    dot: "bg-blue-400",
-    hoverBorder: "hover:border-blue-400/20",
-  },
-  violet: {
-    iconBox: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300",
-    dot: "bg-violet-400",
-    hoverBorder: "hover:border-violet-400/20",
-  },
-};
-
-/* ============================================================
-   Section
-   ============================================================ */
-
+/**
+ * Automation without losing control — the honest trust section.
+ * Only claims the product actually stands behind. Server component.
+ */
 export default function Trust({ content }: { content: TrustContent }) {
-  const pillars: TrustPillar[] = pillarMeta.map((meta, index) => ({
-    ...meta,
-    title: content[`p${index + 1}_title`] as string,
-    description: content[`p${index + 1}_desc`] as string,
-  }));
-
+  const points = [
+    { title: content.p1_title, desc: content.p1_desc, Icon: SlidersHorizontal },
+    { title: content.p2_title, desc: content.p2_desc, Icon: Hand },
+    { title: content.p3_title, desc: content.p3_desc, Icon: Eye },
+    { title: content.p4_title, desc: content.p4_desc, Icon: ShieldCheck },
+  ];
   const principles = content.principles
     .split("|")
     .map((item) => item.trim())
     .filter(Boolean);
 
   return (
-    <section id="trust" className="relative overflow-hidden py-24 sm:py-32">
-      {/* Background glow */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[380px] w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/[0.03] blur-3xl" />
+    <Section id="trust" tone="soft">
+      <SectionHead
+        eyebrow={content.badge}
+        title={
+          <>
+            {content.heading_line1} {content.heading_line2}
+          </>
+        }
+        copy={content.description}
+      />
 
-      <div className="relative mx-auto max-w-6xl px-5 sm:px-8">
-        {/* Section header */}
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.02] px-3.5 py-1.5">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400" />
-            </span>
-            <span className="text-xs font-medium uppercase tracking-widest text-slate-400">
-              {content.badge}
-            </span>
-          </div>
-
-          <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]">
-            {content.heading_line1}{" "}
-            <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-violet-300 bg-clip-text text-transparent">
-              {content.heading_line2}
-            </span>
-          </h2>
-          <p className="mt-4 text-base leading-relaxed text-slate-400 sm:text-lg">
-            {content.description}
-          </p>
-        </Reveal>
-
-        {/* Pillar cards */}
-        <div className="mt-14 grid gap-4 sm:mt-16 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
-          {pillars.map((pillar, index) => {
-            const accent = accentStyles[pillar.accent];
-            return (
-              <Reveal className={`rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-colors duration-300 ${accent.hoverBorder}`}>
-                <div
-                  className={`mb-5 flex h-10 w-10 items-center justify-center rounded-xl border text-base ${accent.iconBox}`}
-                >
-                  {pillar.icon}
-                </div>
-                <h3 className="text-base font-semibold text-white">
-                  {pillar.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                  {pillar.description}
-                </p>
-              </Reveal>
-            );
-          })}
-        </div>
-
-        {/* Principles strip */}
-        <Reveal className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:mt-12">
-          {principles.map((principle, i) => (
-            <div key={principle} className="flex items-center gap-2">
+      <div className="mt-14 grid gap-5 sm:grid-cols-2">
+        {points.map(({ title, desc, Icon }) => (
+          <Reveal key={title} lift>
+            <Card className="flex h-full gap-4 p-6">
               <span
-                className={`of-pulse h-1 w-1 rounded-full ${
-                  accentStyles[(["cyan", "blue", "violet"] as Accent[])[i % 3]].dot
-                }`}
-                style={{ animationDelay: `${i * 0.4}s`, animationDuration: "2.6s" }}
-              />
-              <span className="text-xs text-slate-500 sm:text-sm">
-                {principle}
+                aria-hidden
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl2 border border-brand/15 bg-brand-soft text-brand"
+              >
+                <Icon className="h-5 w-5" />
               </span>
-            </div>
-          ))}
-        </Reveal>
+              <div>
+                <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2">
+                  {desc}
+                </p>
+              </div>
+            </Card>
+          </Reveal>
+        ))}
       </div>
-    </section>
+
+      <Reveal>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
+          {principles.map((item) => (
+            <Badge key={item} tone="brand">
+              {item}
+            </Badge>
+          ))}
+        </div>
+      </Reveal>
+    </Section>
   );
 }

@@ -35,7 +35,8 @@ export default function PaymentsCard() {
         }
         const data = payload.settings as PaymentSettings;
         setSettings(data);
-        setProvider(data.provider || "jazzcash");
+        setProvider(data.provider === "stripe" ? "jazzcash"
+          : data.provider || "jazzcash");
         setEnabled(data.enabled);
         setSandbox(data.sandbox);
       })
@@ -94,22 +95,22 @@ export default function PaymentsCard() {
   }
 
   const inputClass =
-    "mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none";
+    "mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none";
 
   return (
-    <section className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+    <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-medium text-slate-200">
+          <h2 className="text-sm font-medium text-ink">
             Online payments
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-ink-3">
             JazzCash / Easypaisa hosted checkout on your order links. The
             customer pays from the link; the payment lands on the order
             automatically.
           </p>
         </div>
-        <label className="flex items-center gap-2 text-xs text-slate-400">
+        <label className="flex items-center gap-2 text-xs text-ink-3">
           <input
             type="checkbox"
             checked={enabled}
@@ -120,7 +121,7 @@ export default function PaymentsCard() {
       </div>
 
       {settings ? (
-        <p className="mt-2 text-[11px] text-slate-500">
+        <p className="mt-2 text-[11px] text-ink-3">
           {settings.configured
             ? "Configured" + (settings.sandbox ? " (sandbox)" : "") +
               " - merchant " + settings.merchantIdMask +
@@ -131,7 +132,7 @@ export default function PaymentsCard() {
 
       <div className="mt-3 grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="text-[11px] text-slate-400">Provider</span>
+          <span className="text-[11px] text-ink-3">Provider</span>
           <select
             value={provider}
             onChange={(event) => setProvider(event.target.value)}
@@ -141,7 +142,7 @@ export default function PaymentsCard() {
             <option value="easypaisa">Easypaisa</option>
           </select>
         </label>
-        <label className="flex items-end gap-2 pb-1 text-xs text-slate-400">
+        <label className="flex items-end gap-2 pb-1 text-xs text-ink-3">
           <input
             type="checkbox"
             checked={sandbox}
@@ -149,10 +150,16 @@ export default function PaymentsCard() {
           />
           Sandbox (test mode)
         </label>
+        <p className="col-span-2 rounded-xl border border-line bg-soft px-3 py-2 text-[11px] text-ink-3">
+          Pakistan gateways — the workspace uses its OWN merchant keys:
+          JazzCash (Merchant ID + password + integrity salt) or Easypaisa
+          (Store ID + hash key in the salt field). Sandbox tick stays on
+          the provider&apos;s test gateway until you go live.
+        </p>
         {provider === "jazzcash" ? (
           <>
             <label className="block">
-              <span className="text-[11px] text-slate-400">Merchant ID</span>
+              <span className="text-[11px] text-ink-3">Merchant ID</span>
               <input
                 type="text"
                 value={merchantId}
@@ -162,7 +169,7 @@ export default function PaymentsCard() {
               />
             </label>
             <label className="block">
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-ink-3">
                 Integration password
               </span>
               <input
@@ -173,7 +180,7 @@ export default function PaymentsCard() {
               />
             </label>
             <label className="block col-span-2">
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-ink-3">
                 Integrity salt
               </span>
               <input
@@ -186,7 +193,7 @@ export default function PaymentsCard() {
           </>
         ) : (
           <label className="block col-span-2">
-            <span className="text-[11px] text-slate-400">Store ID</span>
+            <span className="text-[11px] text-ink-3">Store ID</span>
             <input
               type="text"
               value={storeId}
@@ -202,12 +209,12 @@ export default function PaymentsCard() {
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.08] px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-400/[0.15] disabled:opacity-50"
+          className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs text-brand hover:bg-brand-soft disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save payment settings"}
         </button>
         {note ? (
-          <span className="text-[11px] text-slate-400">{note}</span>
+          <span className="text-[11px] text-ink-3">{note}</span>
         ) : null}
       </div>
     </section>

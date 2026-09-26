@@ -10,9 +10,9 @@ import type { ProblemSolutionContent } from "../../../../../lib/content-defaults
 const initialState: ContentActionState = { success: false, message: "" };
 
 const inputClass =
-  "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
 
-const labelClass = "mb-1.5 block text-xs font-medium text-slate-400";
+const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
 export default function ProblemSolutionForm({
   content,
@@ -33,9 +33,9 @@ export default function ProblemSolutionForm({
   return (
     <form action={formAction} className="space-y-6">
       {/* Section heading card */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">Section heading</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Section heading</h2>
+        <p className="mb-5 text-xs text-ink-3">
           Line 2 is shown with the gradient color.
         </p>
 
@@ -96,17 +96,17 @@ export default function ProblemSolutionForm({
       </div>
 
       {/* Comparison cards */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">
           Comparison cards
         </h2>
-        <p className="mb-5 text-xs text-slate-500">
+        <p className="mb-5 text-xs text-ink-3">
           Separate list items with a “|” character.
         </p>
 
         <div className="space-y-5">
-          <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-4">
-            <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-slate-600">
+          <div className="rounded-xl border border-line bg-soft p-4">
+            <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
               Problem card (Without OmniFlow)
             </p>
             <div className="space-y-3">
@@ -139,8 +139,8 @@ export default function ProblemSolutionForm({
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-4">
-            <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-slate-600">
+          <div className="rounded-xl border border-line bg-soft p-4">
+            <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
               Solution card (With OmniFlow)
             </p>
             <div className="space-y-3">
@@ -176,9 +176,9 @@ export default function ProblemSolutionForm({
       </div>
 
       {/* Metrics */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">Metrics strip</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Metrics strip</h2>
+        <p className="mb-5 text-xs text-ink-3">
           The 4 stats under the comparison (value + label each).
         </p>
 
@@ -186,9 +186,9 @@ export default function ProblemSolutionForm({
           {metrics.map((m) => (
             <div
               key={m.i}
-              className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-4"
+              className="rounded-xl border border-line bg-soft p-4"
             >
-              <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-slate-600">
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
                 Metric 0{m.i}
               </p>
               <div className="space-y-3">
@@ -237,7 +237,7 @@ export default function ProblemSolutionForm({
         {state.message && (
           <p
             className={`text-xs ${
-              state.success ? "text-emerald-300" : "text-red-300"
+              state.success ? "text-ok" : "text-danger"
             }`}
           >
             {state.message}

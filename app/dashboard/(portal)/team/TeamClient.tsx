@@ -37,23 +37,23 @@ interface PerfData {
 }
 
 function perfStatClass(value: number): string {
-  return value > 0 ? "text-white" : "text-slate-600";
+  return value > 0 ? "text-ink" : "text-ink-3";
 }
 
 const inputClass =
-  "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 
 function roleChipClass(role: string): string {
   if (role === "owner") {
-    return "border-cyan-400/25 bg-cyan-400/[0.08] text-cyan-300";
+    return "border-brand/25 bg-brand-soft text-brand";
   }
   if (role === "admin") {
-    return "border-violet-400/25 bg-violet-400/[0.08] text-violet-300";
+    return "border-violet-400/25 bg-violet-400/[0.08] text-ai";
   }
-  return "border-white/[0.08] bg-white/[0.03] text-slate-400";
+  return "border-line bg-soft text-ink-3";
 }
 
 export default function TeamClient({
@@ -235,11 +235,11 @@ export default function TeamClient({
   if (expired) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">Your session expired.</p>
+        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-cyan-300 transition-colors hover:text-cyan-200"
+            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
           >
             Re-authenticate →
           </a>
@@ -251,55 +251,55 @@ export default function TeamClient({
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">Team</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Team</h1>
+        <p className="mt-1 text-sm text-ink-3">
           Add teammates, assign conversations and keep internal notes — notes
           are never sent to customers.
         </p>
       </div>
 
       {perf && (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+        <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">
               Performance
             </h2>
-            <span className="text-[10px] text-slate-600">
+            <span className="text-[10px] text-ink-3">
               Last {perf.windowDays} {perf.windowDays === 1 ? "day" : "days"}
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Open chats
               </p>
               <p className={"mt-0.5 text-lg font-semibold " + perfStatClass(perf.board.openConversations)}>
                 {perf.board.openConversations}
               </p>
             </div>
-            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Unassigned
               </p>
               <p className={"mt-0.5 text-lg font-semibold " + perfStatClass(perf.board.unassignedOpen)}>
                 {perf.board.unassignedOpen}
               </p>
             </div>
-            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Team replies
               </p>
               <p className={"mt-0.5 text-lg font-semibold " + perfStatClass(perf.board.repliesSent)}>
                 {perf.board.repliesSent}
               </p>
             </div>
-            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 CSAT avg
               </p>
-              <p className="mt-0.5 text-lg font-semibold text-white">
+              <p className="mt-0.5 text-lg font-semibold text-ink">
                 {perf.board.csatAvg !== null ? perf.board.csatAvg.toFixed(1) : "—"}
-                <span className="ml-1 text-[10px] font-normal text-slate-600">
+                <span className="ml-1 text-[10px] font-normal text-ink-3">
                   {perf.board.csatAnswered > 0
                     ? "(" + perf.board.csatAnswered + ")"
                     : ""}
@@ -309,7 +309,7 @@ export default function TeamClient({
           </div>
           {perf.board.csatAnswered > 0 && (
             <div className="mt-3">
-              <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/[0.04]">
+              <div className="flex h-2 w-full overflow-hidden rounded-full bg-soft">
                 {[0, 1, 2, 3, 4].map((index) => {
                   const share =
                     (perf.board.csatDist[index] / perf.board.csatAnswered) * 100;
@@ -329,7 +329,7 @@ export default function TeamClient({
                   ) : null;
                 })}
               </div>
-              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-600">
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-ink-3">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <span key={"star-label-" + String(star)}>
                     {star}★ {perf.board.csatDist[star - 1]}
@@ -337,7 +337,7 @@ export default function TeamClient({
                 ))}
               </div>
               {perf.board.csatLow.length > 0 && (
-                <p className="mt-2 text-[11px] text-red-300">
+                <p className="mt-2 text-[11px] text-danger">
                   {perf.board.csatLow
                     .map((bucket) => bucket.count + "× " + bucket.score + "★")
                     .join(", ")}
@@ -345,7 +345,7 @@ export default function TeamClient({
                 </p>
               )}
               {perf.board.csatRecent.length > 0 && (
-                <p className="mt-1 text-[10px] text-slate-600">
+                <p className="mt-1 text-[10px] text-ink-3">
                   Latest:{" "}
                   {perf.board.csatRecent
                     .map(
@@ -362,28 +362,28 @@ export default function TeamClient({
               {perf.members.map((member) => (
                 <li
                   key={"perf-" + String(member.id)}
-                  className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-3"
+                  className="rounded-xl border border-line bg-white/[0.01] p-3"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-xs font-semibold text-slate-300">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-soft text-xs font-semibold text-ink-2">
                         {(member.name || member.email).slice(0, 1).toUpperCase()}
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-white">
+                        <p className="truncate text-sm font-medium text-ink">
                           {member.name || member.email}
                           {member.role === "owner" && (
-                            <span className="ml-1.5 text-[9px] font-semibold uppercase tracking-wider text-cyan-300">
+                            <span className="ml-1.5 text-[9px] font-semibold uppercase tracking-wider text-brand">
                               owner
                             </span>
                           )}
                         </p>
-                        <p className="truncate text-[10px] text-slate-600">
+                        <p className="truncate text-[10px] text-ink-3">
                           {member.email}
                         </p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 sm:justify-end">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-3 sm:justify-end">
                       <span>
                         <span className={perfStatClass(member.repliesSent) + " font-semibold"}>
                           {member.repliesSent}
@@ -418,8 +418,8 @@ export default function TeamClient({
       )}
 
       {canManage && (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
-          <h2 className="text-xs font-semibold text-white">Add teammate</h2>
+        <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+          <h2 className="text-xs font-semibold text-ink">Add teammate</h2>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
               value={name}
@@ -460,7 +460,7 @@ export default function TeamClient({
         <p
           className={
             "mt-4 text-xs " +
-            (message.kind === "ok" ? "text-emerald-300" : "text-red-300")
+            (message.kind === "ok" ? "text-ok" : "text-danger")
           }
         >
           {message.text}
@@ -468,17 +468,17 @@ export default function TeamClient({
       )}
 
       <div className="mt-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">
           Members
         </h2>
         {loading ? (
           <div className="mt-3 animate-pulse space-y-3">
-            <div className="h-16 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
-            <div className="h-16 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
+            <div className="h-16 rounded-2xl border border-line bg-soft" />
+            <div className="h-16 rounded-2xl border border-line bg-soft" />
           </div>
         ) : loadError ? (
-          <div className="mt-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5 py-6 text-center">
-            <p className="text-sm text-slate-300">
+          <div className="mt-3 rounded-2xl border border-line bg-soft px-5 py-6 text-center">
+            <p className="text-sm text-ink-2">
               The team module is rolling out on the server — try again in a
               couple of minutes.
             </p>
@@ -490,18 +490,18 @@ export default function TeamClient({
               return (
                 <li
                   key={member.id}
-                  className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4"
+                  className="rounded-2xl border border-line bg-soft p-4"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-sm font-semibold text-slate-300">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-soft text-sm font-semibold text-ink-2">
                         {(member.name || member.email).slice(0, 1).toUpperCase()}
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-white">
+                        <p className="truncate text-sm font-medium text-ink">
                           {member.name || member.email}
                         </p>
-                        <p className="truncate text-[11px] text-slate-500">{member.email}</p>
+                        <p className="truncate text-[11px] text-ink-3">{member.email}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -517,8 +517,8 @@ export default function TeamClient({
                         className={
                           "rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider " +
                           (member.status === "active"
-                            ? "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-300"
-                            : "border-white/[0.08] bg-white/[0.03] text-slate-500")
+                            ? "border-emerald-400/20 bg-emerald-400/[0.06] text-ok"
+                            : "border-line bg-soft text-ink-3")
                         }
                       >
                         {member.status}
@@ -526,14 +526,14 @@ export default function TeamClient({
                     </div>
                   </div>
                   {canManage && !locked && (
-                    <div className="mt-3 flex flex-col gap-2 border-t border-white/[0.06] pt-3 sm:flex-row sm:items-center sm:justify-end">
+                    <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3 sm:flex-row sm:items-center sm:justify-end">
                       <select
                         value={member.role}
                         onChange={(event) =>
                           patchMember(member.id, { role: event.target.value })
                         }
                         disabled={busy}
-                        className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none transition-colors duration-300 focus:border-cyan-400/40 disabled:opacity-50 sm:w-44"
+                        className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none transition-colors duration-300 focus:border-brand/40 disabled:opacity-50 sm:w-44"
                       >
                         <option value="agent">Agent</option>
                         <option value="admin">Admin</option>
@@ -546,7 +546,7 @@ export default function TeamClient({
                           })
                         }
                         disabled={busy}
-                        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs font-medium text-slate-300 transition-colors duration-300 hover:bg-white/[0.05] disabled:opacity-50 sm:w-auto"
+                        className="w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
                       >
                         {member.status === "active" ? "Disable" : "Enable"}
                       </button>
@@ -555,7 +555,7 @@ export default function TeamClient({
                           type="button"
                           onClick={() => removeMember(member.id)}
                           disabled={busy}
-                          className="w-full rounded-xl border border-red-400/25 bg-red-400/[0.08] px-4 py-2 text-xs font-medium text-red-300 transition-colors duration-300 hover:bg-red-400/[0.14] disabled:opacity-50 sm:w-auto"
+                          className="w-full rounded-xl border border-red-400/25 bg-red-400/[0.08] px-4 py-2 text-xs font-medium text-danger transition-colors duration-300 hover:bg-red-400/[0.14] disabled:opacity-50 sm:w-auto"
                         >
                           Confirm remove
                         </button>
@@ -564,7 +564,7 @@ export default function TeamClient({
                           type="button"
                           onClick={() => setConfirmRemoveId(member.id)}
                           disabled={busy}
-                          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs font-medium text-slate-400 transition-colors duration-300 hover:border-red-400/25 hover:text-red-300 disabled:opacity-50 sm:w-auto"
+                          className="w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-3 transition-colors duration-300 hover:border-red-400/25 hover:text-danger disabled:opacity-50 sm:w-auto"
                         >
                           Remove
                         </button>
@@ -578,19 +578,19 @@ export default function TeamClient({
         )}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
-        <h2 className="text-xs font-semibold text-white">How roles work</h2>
-        <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-slate-500">
+      <div className="mt-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <h2 className="text-xs font-semibold text-ink">How roles work</h2>
+        <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-ink-3">
           <li>
-            <span className="font-semibold text-slate-300">Owner</span> — you.
+            <span className="font-semibold text-ink-2">Owner</span> — you.
             Manages the team; the owner seat cannot be removed by mistake.
           </li>
           <li>
-            <span className="font-semibold text-slate-300">Admin</span> — can
+            <span className="font-semibold text-ink-2">Admin</span> — can
             also add/remove teammates and change roles.
           </li>
           <li>
-            <span className="font-semibold text-slate-300">Agent</span> — works
+            <span className="font-semibold text-ink-2">Agent</span> — works
             conversations: assignment and internal notes.
           </li>
         </ul>

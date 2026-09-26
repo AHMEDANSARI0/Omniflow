@@ -79,13 +79,13 @@ export default function KbGapsCard() {
   return (
     <div className="mb-6 rounded-2xl border border-amber-400/15 bg-amber-400/[0.03] p-4 sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xs font-semibold text-white">
+        <h2 className="text-xs font-semibold text-ink">
           Knowledge gaps
-          <span className="ml-2 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300">
+          <span className="ml-2 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600">
             {String(openCount)} open
           </span>
         </h2>
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-ink-3">
           Customer questions no KB entry could answer — add an answer, then
           resolve.
         </p>
@@ -94,18 +94,18 @@ export default function KbGapsCard() {
         {gaps.slice(0, 5).map((gap) => (
           <li
             key={gap.id}
-            className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
+            className="rounded-xl border border-line bg-soft px-3 py-2.5"
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="break-words text-xs text-slate-200">{gap.question}</p>
-                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-slate-600">
+                <p className="break-words text-xs text-ink">{gap.question}</p>
+                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-3">
                   {gap.intent.replace(/_/g, " ")}
                   {gap.createdAt ? " · " + formatWhen(gap.createdAt) : ""}
                   {" · "}
                   <a
                     href={"/dashboard/conversations/" + String(gap.conversationId)}
-                    className="text-cyan-300/80 transition-colors hover:text-cyan-200"
+                    className="text-brand/80 transition-colors hover:text-brand"
                   >
                     open chat
                   </a>
@@ -115,7 +115,7 @@ export default function KbGapsCard() {
                 type="button"
                 onClick={() => resolve(gap.id)}
                 disabled={busyId !== null}
-                className="w-full shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors duration-300 hover:bg-white/[0.05] disabled:opacity-50 sm:w-auto"
+                className="w-full shrink-0 rounded-xl border border-line bg-soft px-3 py-1.5 text-[11px] font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
               >
                 {busyId === gap.id ? "…" : "Resolve"}
               </button>

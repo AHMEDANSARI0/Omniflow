@@ -97,31 +97,31 @@ export default function AlertsBell() {
       <button
         onClick={() => setOpen(!open)}
         aria-label="Alerts"
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-white/[0.03] hover:text-slate-200"
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink"
       >
         <span aria-hidden>(&#8977;)</span>
         {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold text-ink">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
       </button>
       {open ? (
-        <div className="absolute bottom-10 right-0 z-50 w-80 rounded-2xl border border-white/[0.08] bg-[#101418] p-3 shadow-2xl">
+        <div className="absolute bottom-10 right-0 z-50 w-80 rounded-2xl border border-line bg-white p-3 shadow-2xl">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-slate-200">Alerts</p>
+            <p className="text-xs font-semibold text-ink">Alerts</p>
             <div className="flex gap-2 text-[10px]">
               <button
                 onClick={() => void markAll()}
                 disabled={busy || unread === 0}
-                className="text-cyan-300 hover:underline disabled:opacity-40"
+                className="text-brand hover:underline disabled:opacity-40"
               >
                 Mark all read
               </button>
               <button
                 onClick={() => void toggleAlerts()}
                 disabled={busy}
-                className="text-slate-500 hover:underline disabled:opacity-40"
+                className="text-ink-3 hover:underline disabled:opacity-40"
               >
                 {alertsOn ? "Turn off" : "Turn on"}
               </button>
@@ -129,7 +129,7 @@ export default function AlertsBell() {
           </div>
           <div className="mt-2 max-h-72 space-y-1.5 overflow-y-auto">
             {alerts.length === 0 ? (
-              <p className="rounded-xl border border-white/[0.06] px-3 py-4 text-center text-[11px] text-slate-500">
+              <p className="rounded-xl border border-line px-3 py-4 text-center text-[11px] text-ink-3">
                 All clear — no failure alerts.
               </p>
             ) : (
@@ -139,23 +139,23 @@ export default function AlertsBell() {
                   className={
                     "rounded-xl border px-3 py-2 " +
                     (alert.is_read
-                      ? "border-white/[0.05] bg-transparent"
-                      : "border-white/[0.1] bg-white/[0.03]")
+                      ? "border-line bg-transparent"
+                      : "border-line-2 bg-soft")
                   }
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 truncate text-xs text-slate-200">
+                    <p className="min-w-0 truncate text-xs text-ink">
                       {alert.severity === "revenue" ? (
-                        <span className="mr-1 text-rose-400">&#9679;</span>
+                        <span className="mr-1 text-danger">&#9679;</span>
                       ) : null}
                       {alert.title}
                     </p>
-                    <span className="shrink-0 text-[9px] text-slate-600">
+                    <span className="shrink-0 text-[9px] text-ink-3">
                       {formatWhen(alert.created_at)}
                     </span>
                   </div>
                   {alert.detail ? (
-                    <p className="mt-0.5 truncate text-[10px] text-slate-500">
+                    <p className="mt-0.5 truncate text-[10px] text-ink-3">
                       {alert.detail}
                     </p>
                   ) : null}

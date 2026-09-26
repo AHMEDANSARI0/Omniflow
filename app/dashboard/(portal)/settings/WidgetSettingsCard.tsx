@@ -22,10 +22,10 @@ const ACCENT_PRESETS = [
 ];
 
 const inputClass =
-  "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 
 export default function WidgetSettingsCard() {
   const [settings, setSettings] = useState<WidgetSettings | null>(null);
@@ -121,17 +121,17 @@ export default function WidgetSettingsCard() {
 
   if (!loaded && !loadError) {
     return (
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
-        <div className="h-4 w-40 animate-pulse rounded bg-white/[0.05]" />
-        <div className="mt-3 h-10 animate-pulse rounded bg-white/[0.03]" />
+      <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="h-4 w-40 animate-pulse rounded bg-soft" />
+        <div className="mt-3 h-10 animate-pulse rounded bg-soft" />
       </div>
     );
   }
 
   if (loadError || !settings) {
     return (
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5 py-6 text-center">
-        <p className="text-sm text-slate-300">
+      <div className="rounded-2xl border border-line bg-soft px-5 py-6 text-center">
+        <p className="text-sm text-ink-2">
           The widget control is rolling out on the server — try again in a
           couple of minutes.
         </p>
@@ -140,25 +140,25 @@ export default function WidgetSettingsCard() {
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-5">
+    <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-xs font-semibold text-white">
+            <h2 className="text-xs font-semibold text-ink">
               Website chat widget
             </h2>
             <span
               className={
                 "rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider " +
                 (settings.enabled
-                  ? "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-300"
-                  : "border-white/[0.08] bg-white/[0.03] text-slate-500")
+                  ? "border-emerald-400/20 bg-emerald-400/[0.06] text-ok"
+                  : "border-line bg-soft text-ink-3")
               }
             >
               {settings.enabled ? "Live" : "Off"}
             </span>
           </div>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
             Visitors chat from your website straight into the same inbox —
             replies reach them inside the widget, never on WhatsApp.
           </p>
@@ -170,8 +170,8 @@ export default function WidgetSettingsCard() {
           className={
             "w-full shrink-0 rounded-xl px-4 py-2 text-xs font-medium transition-colors duration-300 disabled:opacity-50 sm:w-auto " +
             (settings.enabled
-              ? "border border-red-400/25 bg-red-400/[0.06] text-red-300 hover:bg-red-400/[0.12]"
-              : "border border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300 hover:bg-emerald-400/[0.14]")
+              ? "border border-red-400/25 bg-red-400/[0.06] text-danger hover:bg-red-400/[0.12]"
+              : "border border-emerald-400/25 bg-emerald-400/[0.08] text-ok hover:bg-emerald-400/[0.14]")
           }
         >
           {settings.enabled ? "Disable widget" : "Enable widget"}
@@ -179,9 +179,9 @@ export default function WidgetSettingsCard() {
       </div>
 
       {settings.enabled && (
-        <div className="mt-4 space-y-3 border-t border-white/[0.06] pt-4">
+        <div className="mt-4 space-y-3 border-t border-line pt-4">
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
               Business name (widget header)
             </label>
             <input
@@ -195,7 +195,7 @@ export default function WidgetSettingsCard() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
               Welcome message
             </label>
             <textarea
@@ -210,7 +210,7 @@ export default function WidgetSettingsCard() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
               Accent colour
             </label>
             <div className="flex flex-wrap items-center gap-2">
@@ -232,7 +232,7 @@ export default function WidgetSettingsCard() {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
               Bubble position (desktop)
             </label>
             <div className="flex gap-2">
@@ -244,8 +244,8 @@ export default function WidgetSettingsCard() {
                   className={
                     "rounded-xl border px-4 py-2 text-xs font-medium capitalize transition-colors duration-300 " +
                     (settings.position === value
-                      ? "border-cyan-400/30 bg-cyan-400/[0.08] text-cyan-200"
-                      : "border-white/[0.08] bg-white/[0.02] text-slate-400 hover:text-white")
+                      ? "border-brand/30 bg-brand-soft text-brand"
+                      : "border-line bg-soft text-ink-3 hover:text-ink")
                   }
                 >
                   {value === "left" ? "Bottom left" : "Bottom right"}
@@ -254,7 +254,7 @@ export default function WidgetSettingsCard() {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-3">
               Launcher label (optional)
             </label>
             <input
@@ -284,7 +284,7 @@ export default function WidgetSettingsCard() {
         <p
           className={
             "mt-3 text-xs " +
-            (message.kind === "ok" ? "text-emerald-300" : "text-red-300")
+            (message.kind === "ok" ? "text-ok" : "text-danger")
           }
         >
           {message.text}

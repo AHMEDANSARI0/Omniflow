@@ -1,194 +1,104 @@
-import Reveal from "./Reveal";
+import { Check, X } from "lucide-react";
 import type { ProblemSolutionContent } from "../../lib/content-defaults";
-import HexGrid from "./HexGrid";
+import Reveal from "./Reveal";
+import Section, { SectionHead } from "./ui/Section";
+import Card from "./ui/Card";
+import Badge from "./ui/Badge";
 
+/**
+ * The before/after story: a chaotic inbox vs one automation layer.
+ * Server component — scroll reveals only, no client JS.
+ */
 export default function ProblemSolution({
   content,
 }: {
   content: ProblemSolutionContent;
 }) {
-  const problems = content.problems
-    .split("|")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  const solutions = content.solutions
-    .split("|")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  const metrics = [1, 2, 3, 4].map((i) => ({
-    value: content[`m${i}_value`] as string,
-    label: content[`m${i}_label`] as string,
-  }));
+  const problems = content.problems.split("|").map((item) => item.trim());
+  const solutions = content.solutions.split("|").map((item) => item.trim());
+  const metrics = [
+    { value: content.m1_value, label: content.m1_label },
+    { value: content.m2_value, label: content.m2_label },
+    { value: content.m3_value, label: content.m3_label },
+    { value: content.m4_value, label: content.m4_label },
+  ];
 
   return (
-    <section
-      id="solution"
-      className="relative overflow-hidden border-t border-white/[0.05] bg-[#07111f] py-28 sm:py-36"
-    >
-      <HexGrid />
-      {/* Background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-10%] top-[20%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(239,68,68,0.035)_0%,transparent_70%)]" />
-
-        <div className="absolute right-[-10%] bottom-[10%] h-[450px] w-[450px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.045)_0%,transparent_70%)]" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-        {/* Heading */}
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal className="inline-flex rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2">
-            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
-              {content.badge}
-            </span>
-          </Reveal>
-
-          <Reveal as="h2" className="mt-6 font-[var(--font-heading)] text-4xl font-semibold leading-tight tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl">
-            {content.heading_line1}
-            <br />
-            <span className="bg-gradient-to-r from-slate-300 via-cyan-300 to-slate-300 bg-clip-text text-transparent">
-              {content.heading_line2}
-            </span>
-          </Reveal>
-
-          <Reveal as="p" className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
-            {content.description}
-          </Reveal>
-        </div>
-
-        {/* Main comparison */}
-        <div className="relative mx-auto mt-16 max-w-6xl">
-          {/* Connecting line */}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-px w-[70%] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent lg:block" />
-
-          <div className="grid gap-5 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-            {/* Problem */}
-            <ComparisonCard
-              eyebrow="Without OmniFlow"
-              title={content.problem_title}
-              items={problems}
-              variant="problem"
-              delay={0.1}
-            />
-
-            {/* Center */}
-            <Reveal className="relative z-10 flex justify-center">
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-cyan-400/20 bg-[#0a1727] shadow-[0_0_50px_rgba(34,211,238,0.08)]">
-                <div
-                  className="of-spin-slow absolute inset-1 rounded-full border border-dashed border-cyan-400/15"
-                  style={{ animationDuration: "8s" }}
-                />
-
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06]">
-                  <span className="of-pulse h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)]" />
-                </div>
-              </div>
-            </Reveal>
-
-            {/* Solution */}
-            <ComparisonCard
-              eyebrow="With OmniFlow"
-              title={content.solution_title}
-              items={solutions}
-              variant="solution"
-              delay={0.2}
-            />
-          </div>
-        </div>
-
-        {/* Bottom metrics */}
-        <Reveal className="mx-auto mt-14 grid max-w-4xl grid-cols-2 divide-x divide-white/[0.06] border-y border-white/[0.06] py-7 sm:grid-cols-4">
-          {metrics.map((metric) => (
-            <Metric key={metric.label} value={metric.value} label={metric.label} />
-          ))}
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-function ComparisonCard({
-  eyebrow,
-  title,
-  items,
-  variant,
-  delay,
-}: {
-  eyebrow: string;
-  title: string;
-  items: string[];
-  variant: "problem" | "solution";
-  delay: number;
-}) {
-  const isSolution = variant === "solution";
-
-  return (
-    <Reveal lift className={`relative overflow-hidden rounded-3xl border p-6 transition-colors duration-500 sm:p-8 ${
-        isSolution
-          ? "border-cyan-400/10 bg-cyan-400/[0.025] hover:border-cyan-400/20"
-          : "border-white/[0.06] bg-white/[0.015] hover:border-white/[0.1]"
-      }`}>
-      {/* Top glow */}
-      <div
-        className={`absolute left-0 top-0 h-px w-full ${
-          isSolution
-            ? "bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent"
-            : "bg-gradient-to-r from-transparent via-white/10 to-transparent"
-        }`}
+    <Section id="product" tone="white">
+      <SectionHead
+        eyebrow={content.badge}
+        title={
+          <>
+            {content.heading_line1} {content.heading_line2}
+          </>
+        }
+        copy={content.description}
       />
 
-      <div className="flex items-center gap-2">
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            isSolution ? "bg-cyan-400" : "bg-slate-600"
-          }`}
-        />
+      <div className="mt-14 grid gap-5 lg:grid-cols-2">
+        <Reveal lift>
+          <Card className="h-full p-7">
+            <Badge tone="neutral">{content.problem_title}</Badge>
+            <ul className="mt-5 space-y-3.5">
+              {problems.map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-danger/20 bg-danger-soft"
+                  >
+                    <X className="h-3 w-3 text-danger" />
+                  </span>
+                  <span className="text-[15px] leading-relaxed text-ink-2">
+                    {item}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 rounded-xl2 border border-line bg-soft px-4 py-3 text-[13px] text-ink-3">
+              Every message becomes manual work for your team.
+            </div>
+          </Card>
+        </Reveal>
 
-        <span
-          className={`text-[10px] font-medium uppercase tracking-[0.18em] ${
-            isSolution ? "text-cyan-400/70" : "text-slate-600"
-          }`}
-        >
-          {eyebrow}
-        </span>
+        <Reveal lift>
+          <Card gradientRing className="h-full p-7">
+            <Badge tone="brand">{content.solution_title}</Badge>
+            <ul className="mt-5 space-y-3.5">
+              {solutions.map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-ok/20 bg-ok-soft"
+                  >
+                    <Check className="h-3 w-3 text-ok" />
+                  </span>
+                  <span className="text-[15px] leading-relaxed text-ink">
+                    {item}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 rounded-xl2 border border-brand/15 bg-brand-soft px-4 py-3 text-[13px] text-brand-2">
+              Every conversation becomes an automated workflow.
+            </div>
+          </Card>
+        </Reveal>
       </div>
 
-      <h3 className="mt-5 font-[var(--font-heading)] text-2xl font-semibold tracking-[-0.03em] text-white">
-        {title}
-      </h3>
-
-      <div className="mt-7 space-y-3">
-        {items.map((item, index) => (
-          <Reveal className="flex items-center gap-3">
-            <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] ${
-                isSolution
-                  ? "border-cyan-400/15 bg-cyan-400/[0.05] text-cyan-300"
-                  : "border-white/[0.06] bg-white/[0.02] text-slate-600"
-              }`}
-            >
-              {isSolution ? "✓" : "×"}
-            </span>
-
-            <span className="text-sm text-slate-400">{item}</span>
+      <div className="mt-12 grid grid-cols-2 gap-5 lg:grid-cols-4">
+        {metrics.map((metric) => (
+          <Reveal key={metric.label}>
+            <div className="rounded-xl2 border border-line bg-white px-5 py-6 text-center shadow-card">
+              <p className="of-gradient bg-clip-text font-display text-3xl font-semibold text-transparent">
+                {metric.value}
+              </p>
+              <p className="mt-1.5 text-[13px] font-medium text-ink-2">
+                {metric.label}
+              </p>
+            </div>
           </Reveal>
         ))}
       </div>
-    </Reveal>
-  );
-}
-
-function Metric({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="px-3 text-center">
-      <div className="font-[var(--font-heading)] text-xl font-semibold tracking-[-0.03em] text-white sm:text-2xl">
-        {value}
-      </div>
-
-      <div className="mt-1 text-[9px] uppercase tracking-[0.12em] text-slate-600 sm:text-[10px]">
-        {label}
-      </div>
-    </div>
+    </Section>
   );
 }

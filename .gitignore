@@ -43,3 +43,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 *.pre_*.bak
+/whatsapp_sessions/
+/src/whatsapp_session/
+/logs/
+/src/logs/
+/hide/
+/Omniflow/
+*.dir_conflict.bak/

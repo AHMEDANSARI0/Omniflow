@@ -9,17 +9,17 @@ const initialState: SeoActionState = { success: false, message: "" };
 function Counter({ value, max }: { value: number; max: number }) {
   const over = value > max;
   return (
-    <span className={`text-[10px] ${over ? "text-amber-400" : "text-slate-600"}`}>
+    <span className={`text-[10px] ${over ? "text-amber-600" : "text-ink-3"}`}>
       {value}/{max}
     </span>
   );
 }
 
 const inputClass =
-  "w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const labelClass =
-  "mb-1.5 flex items-center justify-between text-xs font-medium text-slate-400";
+  "mb-1.5 flex items-center justify-between text-xs font-medium text-ink-3";
 
 export default function SeoForm({ settings }: { settings: SiteSettings }) {
   const [state, formAction, pending] = useActionState(
@@ -35,11 +35,11 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
   return (
     <form action={formAction} className="space-y-6">
       {/* Search engine section */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">
           Search engine listing
         </h2>
-        <p className="mb-5 text-xs text-slate-500">
+        <p className="mb-5 text-xs text-ink-3">
           How the website appears in Google and other search engines.
         </p>
 
@@ -79,7 +79,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
           <div>
             <label htmlFor="keywords" className={labelClass}>
               <span>Keywords</span>
-              <span className="text-[10px] text-slate-600">comma separated</span>
+              <span className="text-[10px] text-ink-3">comma separated</span>
             </label>
             <input
               id="keywords"
@@ -93,11 +93,11 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
       </div>
 
       {/* Social sharing section */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">
           Social sharing (Open Graph)
         </h2>
-        <p className="mb-5 text-xs text-slate-500">
+        <p className="mb-5 text-xs text-ink-3">
           How links look when shared on WhatsApp, LinkedIn, X and Facebook.
         </p>
 
@@ -131,9 +131,9 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
       </div>
 
       {/* Site section */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6">
-        <h2 className="mb-1 text-sm font-semibold text-white">Site</h2>
-        <p className="mb-5 text-xs text-slate-500">
+      <div className="rounded-2xl border border-line bg-soft p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Site</h2>
+        <p className="mb-5 text-xs text-ink-3">
           The canonical URL of the website (used in metadata).
         </p>
 
@@ -166,7 +166,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
         {state.message && (
           <p
             className={`text-xs ${
-              state.success ? "text-emerald-300" : "text-red-300"
+              state.success ? "text-ok" : "text-danger"
             }`}
           >
             {state.message}

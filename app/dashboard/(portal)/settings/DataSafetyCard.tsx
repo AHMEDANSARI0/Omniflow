@@ -86,12 +86,12 @@ export default function DataSafetyCard() {
   }
 
   const inputClass =
-    "mt-1 w-24 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none";
+    "mt-1 w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none";
 
   return (
-    <section className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-      <h2 className="text-sm font-medium text-slate-200">Data &amp; backup</h2>
-      <p className="mt-0.5 text-xs text-slate-500">
+    <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+      <h2 className="text-sm font-medium text-ink">Data &amp; backup</h2>
+      <p className="mt-0.5 text-xs text-ink-3">
         Download everything (contacts, conversations, orders, returns) as one
         JSON file, and set how long idle chats and rejected requests stick
         around.
@@ -99,7 +99,7 @@ export default function DataSafetyCard() {
 
       <div className="mt-3 flex flex-wrap items-end gap-4">
         <label className="block">
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-ink-3">
             Close idle chats after (days)
           </span>
           <input
@@ -112,7 +112,7 @@ export default function DataSafetyCard() {
           />
         </label>
         <label className="block">
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-ink-3">
             Purge rejected requests after (days)
           </span>
           <input
@@ -127,25 +127,25 @@ export default function DataSafetyCard() {
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.08] px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-400/[0.15] disabled:opacity-50"
+          className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs text-brand hover:bg-brand-soft disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save retention"}
         </button>
         <button
           onClick={() => void runNow()}
           disabled={busy}
-          className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 hover:bg-white/[0.06] disabled:opacity-50"
+          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
         >
           Run cleanup now
         </button>
         <button
           onClick={download}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/[0.15]"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15]"
         >
           Download backup (JSON)
         </button>
       </div>
-      {note ? <p className="mt-2 text-[11px] text-slate-400">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] text-ink-3">{note}</p> : null}
     </section>
   );
 }

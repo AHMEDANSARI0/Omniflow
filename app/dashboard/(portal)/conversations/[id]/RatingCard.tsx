@@ -74,11 +74,11 @@ export default function RatingCard({ conversationId }: { conversationId: number 
 
   if (loaded && csat === null) {
     return (
-      <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
+      <div className="mb-4 rounded-2xl border border-line bg-soft p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h2 className="text-xs font-semibold text-white">Customer rating</h2>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+            <h2 className="text-xs font-semibold text-ink">Customer rating</h2>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
               Ask the customer to rate this chat from 1 to 5 — the reply is
               recorded automatically.
             </p>
@@ -87,7 +87,7 @@ export default function RatingCard({ conversationId }: { conversationId: number 
             type="button"
             onClick={sendRequest}
             disabled={busy}
-            className="w-full shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors duration-300 hover:bg-cyan-400/[0.14] disabled:opacity-50 sm:w-auto"
+            className="w-full shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50 sm:w-auto"
           >
             {busy ? "Sending…" : "Ask for rating"}
           </button>
@@ -96,7 +96,7 @@ export default function RatingCard({ conversationId }: { conversationId: number 
           <p
             className={
               "mt-2 text-[11px] " +
-              (message.kind === "ok" ? "text-emerald-300" : "text-red-300")
+              (message.kind === "ok" ? "text-ok" : "text-danger")
             }
           >
             {message.text}
@@ -121,8 +121,8 @@ export default function RatingCard({ conversationId }: { conversationId: number 
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-xs font-semibold text-white">Customer rating</h2>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">
+          <h2 className="text-xs font-semibold text-ink">Customer rating</h2>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">
             {answered
               ? "Customer rated this chat " + String(csat?.score) + "/5."
               : "Waiting for the customer's 1–5 reply (valid 48 hours)."}
@@ -132,7 +132,7 @@ export default function RatingCard({ conversationId }: { conversationId: number 
           type="button"
           onClick={sendRequest}
           disabled={busy}
-          className="w-full shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs font-medium text-slate-300 transition-colors duration-300 hover:bg-white/[0.05] disabled:opacity-50 sm:w-auto"
+          className="w-full shrink-0 rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
         >
           {busy ? "Sending…" : "Ask again"}
         </button>
@@ -141,7 +141,7 @@ export default function RatingCard({ conversationId }: { conversationId: number 
         <p
           className={
             "mt-2 text-[11px] " +
-            (message.kind === "ok" ? "text-emerald-300" : "text-red-300")
+            (message.kind === "ok" ? "text-ok" : "text-danger")
           }
         >
           {message.text}

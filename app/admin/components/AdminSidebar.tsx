@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { label: "Content", href: "/admin/content", icon: "✦", enabled: true },
   { label: "Leads", href: "/admin/leads", icon: "◇", enabled: true },
   { label: "Customers", href: "/admin/customers", icon: "◉", enabled: true },
+  { label: "Integrations", href: "/admin/integrations", icon: "◍", enabled: true },
   { label: "Settings", href: "/admin/settings", icon: "⌘", enabled: true },
 ];
 

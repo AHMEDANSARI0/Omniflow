@@ -13,7 +13,7 @@ export default function AdminShell({
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#06101d]">
+    <div className="flex min-h-screen bg-canvas">
       <AdminSidebar
         userEmail={userEmail}
         collapsed={collapsed}

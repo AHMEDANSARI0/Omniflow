@@ -104,49 +104,49 @@ export default function WatiCard() {
 
   if (!loaded) {
     return (
-      <section className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-        <h2 className="text-sm font-medium text-slate-200">WATI templates</h2>
-        <p className="mt-0.5 text-xs text-slate-500">Loading...</p>
+      <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+        <h2 className="text-sm font-medium text-ink">WATI templates</h2>
+        <p className="mt-0.5 text-xs text-ink-3">Loading...</p>
       </section>
     );
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-      <h2 className="text-sm font-medium text-slate-200">WATI templates</h2>
-      <p className="mt-0.5 text-xs text-slate-500">
+    <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+      <h2 className="text-sm font-medium text-ink">WATI templates</h2>
+      <p className="mt-0.5 text-xs text-ink-3">
         WATI pe approved templates se direct WhatsApp messages bhejein. Token
         sirf masked save hota hai.
       </p>
 
       <div className="mt-3 flex flex-wrap items-end gap-4">
         <label className="block">
-          <span className="text-[11px] text-slate-400">Enabled</span>
+          <span className="text-[11px] text-ink-3">Enabled</span>
           <button
             onClick={() => setEnabled((value) => !value)}
             className={
               "mt-1 block rounded-lg border px-3 py-1.5 text-xs "
               + (enabled
-                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-200"
-                : "border-white/[0.08] text-slate-400")
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line text-ink-3")
             }
           >
             {enabled ? "On" : "Off"}
           </button>
         </label>
         <label className="block flex-1 min-w-56">
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-ink-3">
             WATI tenant URL (e.g. https://live-mt-server.wati.io/12345)
           </span>
           <input
             value={baseUrl}
             onChange={(event) => setBaseUrl(event.target.value)}
             placeholder="https://live-mt-server.wati.io/xxxxx"
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
           />
         </label>
         <label className="block flex-1 min-w-56">
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-ink-3">
             API token {tokenMasked ? "(saved: " + tokenMasked + ")" : ""}
           </span>
           <input
@@ -154,20 +154,20 @@ export default function WatiCard() {
             value={tokenInput}
             onChange={(event) => setTokenInput(event.target.value)}
             placeholder={tokenMasked ? "Unchanged - bas badalna ho to likhein" : "Paste API token"}
-            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
           />
         </label>
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.08] px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-400/[0.15] disabled:opacity-50"
+          className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs text-brand hover:bg-brand-soft disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save"}
         </button>
         <button
           onClick={() => void sync()}
           disabled={busy || !enabled}
-          className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 hover:bg-white/[0.06] disabled:opacity-50"
+          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
         >
           Sync approved templates
         </button>
@@ -178,19 +178,19 @@ export default function WatiCard() {
           {templates.map((template) => (
             <span
               key={template.name}
-              className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] text-slate-300"
+              className="rounded-md border border-line bg-soft px-2 py-0.5 text-[10px] text-ink-2"
             >
               {template.name}
             </span>
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-[11px] text-slate-500">
+        <p className="mt-3 text-[11px] text-ink-3">
           Abhi koi approved template sync nahi hua. Sync dabane par WATI se
           approved templates yahan aa jayenge - phir chats se bhej sakte hain.
         </p>
       )}
-      {note ? <p className="mt-2 text-[11px] text-slate-400">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] text-ink-3">{note}</p> : null}
     </section>
   );
 }

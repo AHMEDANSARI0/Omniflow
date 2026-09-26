@@ -4,6 +4,7 @@ import {
   getPublicPayInfo,
 } from "../../../lib/omniflow/portal";
 import SelfServe from "./SelfServe";
+import PayGate from "./PayGate";
 
 
 export default async function PublicCheckoutPage({
@@ -18,8 +19,8 @@ export default async function PublicCheckoutPage({
   if (!view) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-xl font-semibold text-white">Link not found</h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <h1 className="text-xl font-semibold text-ink">Link not found</h1>
+        <p className="mt-2 text-sm text-ink-3">
           This order link is not valid. Please ask the business for a fresh
           link.
         </p>
@@ -29,10 +30,10 @@ export default async function PublicCheckoutPage({
 
   return (
     <main className="mx-auto max-w-md px-6 py-12">
-      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
-        OmniFlow order summary
+      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+        {view.brandName ? view.brandName + " · order summary" : "Order summary"}
       </p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
         {view.title || "Your order"}
       </h1>
       <div className="mt-4 flex items-center gap-1.5">
@@ -49,8 +50,8 @@ export default async function PublicCheckoutPage({
               key={step}
               className={`rounded-full border px-2 py-0.5 text-[10px] capitalize ${
                 done
-                  ? "border-emerald-400/30 bg-emerald-400/[0.1] text-emerald-300"
-                  : "border-white/[0.08] bg-white/[0.02] text-slate-500"
+                  ? "border-emerald-400/30 bg-emerald-400/[0.1] text-ok"
+                  : "border-line bg-soft text-ink-3"
               }`}
             >
               {step}
@@ -63,13 +64,13 @@ export default async function PublicCheckoutPage({
         {view.items.map((item, index) => (
           <li
             key={index}
-            className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3"
+            className="flex items-center justify-between rounded-xl border border-line bg-soft px-4 py-3"
           >
             <div>
-              <p className="text-sm text-slate-200">{item.name}</p>
-              <p className="text-[11px] text-slate-500">Qty {item.qty}</p>
+              <p className="text-sm text-ink">{item.name}</p>
+              <p className="text-[11px] text-ink-3">Qty {item.qty}</p>
             </div>
-            <p className="text-sm font-medium text-white">
+            <p className="text-sm font-medium text-ink">
               {item.price * item.qty}
             </p>
           </li>
@@ -85,18 +86,18 @@ export default async function PublicCheckoutPage({
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-center justify-between rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3">
-        <p className="text-sm font-medium text-cyan-200">Total</p>
-        <p className="text-lg font-semibold text-white">{view.total}</p>
+      <div className="mt-4 flex items-center justify-between rounded-xl border border-brand/20 bg-brand-soft px-4 py-3">
+        <p className="text-sm font-medium text-brand">Total</p>
+        <p className="text-lg font-semibold text-ink">{view.total}</p>
       </div>
 
       {view.couponCode ? (
         <div className="mt-2 flex items-center justify-between rounded-xl border border-cyan-400/15 bg-cyan-400/[0.04] px-4 py-2">
-          <p className="text-xs text-cyan-200">
+          <p className="text-xs text-brand">
             Coupon <span className="font-semibold">{view.couponCode}</span>{" "}
             applied
           </p>
-          <p className="text-xs font-medium text-cyan-200">
+          <p className="text-xs font-medium text-brand">
             −{view.couponDiscount}
           </p>
         </div>
@@ -105,7 +106,7 @@ export default async function PublicCheckoutPage({
       {view.payment ? (
         <div className="mt-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-4 py-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-emerald-200">
+            <p className="text-xs text-ok">
               Advance received: {view.payment.paidAmount}
             </p>
           </div>
@@ -113,7 +114,7 @@ export default async function PublicCheckoutPage({
             <p className="text-sm font-medium text-emerald-100">
               Due on delivery
             </p>
-            <p className="text-base font-semibold text-white">
+            <p className="text-base font-semibold text-ink">
               {view.payment.due}
             </p>
           </div>
@@ -121,11 +122,11 @@ export default async function PublicCheckoutPage({
       ) : null}
 
       {view.trackingNumber ? (
-        <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-          <p className="text-xs text-slate-400">
+        <div className="mt-2 rounded-xl border border-line bg-soft px-4 py-3">
+          <p className="text-xs text-ink-3">
             Courier: {view.courier || "-"}
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-200">
+          <p className="mt-1 text-sm font-medium text-ink">
             Tracking #: {view.trackingNumber}
           </p>
         </div>
@@ -133,12 +134,12 @@ export default async function PublicCheckoutPage({
 
       {payInfo && payInfo.enabled && view.payment
         && view.payment.due > 0 ? (
-        <a
-          href={"/api/omniflow/public/checkout/" + token + "/pay"}
-          className="mt-3 block rounded-xl border border-emerald-400/30 bg-emerald-400/[0.1] px-4 py-3 text-center text-sm font-semibold text-emerald-200 hover:bg-emerald-400/[0.18]"
-        >
-          Pay {view.payment.due} online
-        </a>
+        <PayGate
+          token={token}
+          due={view.payment.due}
+          phoneVerification={view.phoneVerification === true}
+          status={view.status}
+        />
       ) : null}
 
       <SelfServe
@@ -148,12 +149,12 @@ export default async function PublicCheckoutPage({
       />
 
       {view.status === "paid" ? (
-        <p className="mt-3 rounded-xl border border-emerald-400/25 bg-emerald-400/[0.08] px-4 py-2.5 text-center text-sm font-medium text-emerald-300">
+        <p className="mt-3 rounded-xl border border-emerald-400/25 bg-emerald-400/[0.08] px-4 py-2.5 text-center text-sm font-medium text-ok">
           Paid in full — thank you!
         </p>
       ) : null}
 
-      <p className="mt-6 text-xs text-slate-500">
+      <p className="mt-6 text-xs text-ink-3">
         Confirm or ask questions by replying to the business on WhatsApp —
         this link always shows the latest status of your order. If the link
         has expired, ask the business for a fresh one.
@@ -161,7 +162,7 @@ export default async function PublicCheckoutPage({
 
       <Link
         href="/"
-        className="mt-8 inline-block text-xs text-slate-600 transition-colors hover:text-slate-400"
+        className="mt-8 inline-block text-xs text-ink-3 transition-colors hover:text-ink-3"
       >
         Powered by OmniFlow
       </Link>

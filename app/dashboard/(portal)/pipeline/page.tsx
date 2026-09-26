@@ -18,21 +18,21 @@ interface Column {
 }
 
 const STAGES = [
-  { value: "new", label: "New", dot: "bg-slate-400", text: "text-slate-300" },
+  { value: "new", label: "New", dot: "bg-slate-400", text: "text-ink-2" },
   {
     value: "interested",
     label: "Interested",
     dot: "bg-cyan-400",
-    text: "text-cyan-300",
+    text: "text-brand",
   },
   {
     value: "negotiating",
     label: "Negotiating",
     dot: "bg-amber-400",
-    text: "text-amber-300",
+    text: "text-amber-600",
   },
-  { value: "won", label: "Won", dot: "bg-emerald-400", text: "text-emerald-300" },
-  { value: "lost", label: "Lost", dot: "bg-rose-400", text: "text-rose-300" },
+  { value: "won", label: "Won", dot: "bg-emerald-400", text: "text-ok" },
+  { value: "lost", label: "Lost", dot: "bg-rose-400", text: "text-danger" },
 ];
 
 const EMPTY_BOARD: Column[] = STAGES.map((stage) => ({
@@ -127,19 +127,19 @@ export default function PipelinePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold text-white">Pipeline</h1>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <h1 className="text-lg font-semibold text-ink">Pipeline</h1>
+            <p className="mt-0.5 text-xs text-ink-3">
               Move customers through New, Interested, Negotiating, Won or Lost.
             </p>
           </div>
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/[0.03] hover:text-white"
+            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:bg-soft hover:text-ink"
           >
             Refresh
           </button>
@@ -152,7 +152,7 @@ export default function PipelinePage() {
         ) : null}
 
         {columns === null ? (
-          <p className="mt-6 text-sm text-slate-500">
+          <p className="mt-6 text-sm text-ink-3">
             Pipeline is not available right now.
           </p>
         ) : (
@@ -164,10 +164,10 @@ export default function PipelinePage() {
               return (
                 <section
                   key={column.stage}
-                  className="flex w-60 shrink-0 flex-col rounded-2xl border border-white/[0.06] bg-white/[0.015]"
+                  className="flex w-60 shrink-0 flex-col rounded-2xl border border-line bg-soft"
                 >
-                  <div className="flex items-center justify-between gap-2 border-b border-white/[0.05] px-3 py-2.5">
-                    <span className="flex items-center gap-2 text-xs font-semibold text-white">
+                  <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2.5">
+                    <span className="flex items-center gap-2 text-xs font-semibold text-ink">
                       <span
                         className={"h-1.5 w-1.5 rounded-full " + meta.dot}
                       />
@@ -175,7 +175,7 @@ export default function PipelinePage() {
                     </span>
                     <span
                       className={
-                        "rounded-md border border-white/[0.08] px-1.5 py-0.5 text-[10px] " +
+                        "rounded-md border border-line px-1.5 py-0.5 text-[10px] " +
                         meta.text
                       }
                     >
@@ -183,7 +183,7 @@ export default function PipelinePage() {
                     </span>
                   </div>
                   {column.contacts.length === 0 ? (
-                    <p className="px-3 py-4 text-[11px] text-slate-600">
+                    <p className="px-3 py-4 text-[11px] text-ink-3">
                       No contacts here yet.
                     </p>
                   ) : (
@@ -191,7 +191,7 @@ export default function PipelinePage() {
                       {column.contacts.map((contact) => (
                         <li
                           key={contact.contactId}
-                          className="rounded-xl border border-white/[0.05] bg-white/[0.01] p-2"
+                          className="rounded-xl border border-line bg-white/[0.01] p-2"
                         >
                           <Link
                             prefetch={false}
@@ -199,11 +199,11 @@ export default function PipelinePage() {
                               "/dashboard/customers/profile?contact=" +
                               encodeURIComponent(contact.contactId)
                             }
-                            className="block truncate text-xs font-medium text-slate-200 transition hover:text-cyan-200"
+                            className="block truncate text-xs font-medium text-ink transition hover:text-brand"
                           >
                             {contact.name || contact.contactId}
                           </Link>
-                          <p className="mt-0.5 text-[10px] text-slate-500">
+                          <p className="mt-0.5 text-[10px] text-ink-3">
                             {contact.chats} chat{contact.chats === 1 ? "" : "s"}
                             {" \\u00b7 "}{contact.leadTemp} lead
                           </p>
@@ -212,7 +212,7 @@ export default function PipelinePage() {
                             onChange={(event) =>
                               void move(contact.contactId, event.target.value)
                             }
-                            className="mt-1.5 w-full rounded-lg border border-white/[0.08] bg-[#0b1626] px-1.5 py-1 text-[10px] text-slate-300 outline-none"
+                            className="mt-1.5 w-full rounded-lg border border-line bg-white px-1.5 py-1 text-[10px] text-ink-2 outline-none"
                           >
                             {STAGES.map((stage) => (
                               <option key={stage.value} value={stage.value}>

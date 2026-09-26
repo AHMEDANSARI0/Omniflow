@@ -1,0 +1,563 @@
+{
+  "assignment_count": 0,
+  "existing_accounts": [
+    {
+      "account_mode": "local_web",
+      "account_status": "active",
+      "channel_account_id": 1,
+      "client_id": 1,
+      "connection_mode": "local_web",
+      "connection_status": "created",
+      "connector_node_id": null,
+      "platform": "whatsapp"
+    },
+    {
+      "account_mode": "local_web",
+      "account_status": "active",
+      "channel_account_id": 4,
+      "client_id": 4,
+      "connection_mode": "local_web",
+      "connection_status": "created",
+      "connector_node_id": null,
+      "platform": "whatsapp"
+    }
+  ],
+  "managed_existing_account_count": 0,
+  "node": {
+    "active_sessions": 0,
+    "last_heartbeat_at": null,
+    "max_sessions": 5,
+    "node_id": "8cb0da0a-3fe7-4af0-8d03-5a14cd5ca405",
+    "node_name": "omniflow-local-trial-1",
+    "region": "pk-khi",
+    "reserved_sessions": 0,
+    "status": "offline"
+  },
+  "read_only": true,
+  "schema": {
+    "channel_accounts": [
+      {
+        "data_type": "bigint",
+        "default": "nextval('channel_accounts_id_seq'::regclass)",
+        "name": "id",
+        "nullable": false,
+        "position": 1,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "bigint",
+        "default": null,
+        "name": "client_id",
+        "nullable": false,
+        "position": 2,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "external_account_id",
+        "nullable": false,
+        "position": 3,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "account_name",
+        "nullable": true,
+        "position": 4,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": "'active'::character varying",
+        "name": "status",
+        "nullable": false,
+        "position": 5,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "timestamp without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "created_at",
+        "nullable": false,
+        "position": 6,
+        "udt_name": "timestamp"
+      },
+      {
+        "data_type": "timestamp without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "updated_at",
+        "nullable": false,
+        "position": 7,
+        "udt_name": "timestamp"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "platform",
+        "nullable": false,
+        "position": 8,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "jsonb",
+        "default": "'{}'::jsonb",
+        "name": "metadata",
+        "nullable": false,
+        "position": 9,
+        "udt_name": "jsonb"
+      },
+      {
+        "data_type": "character varying",
+        "default": "'local_web'::character varying",
+        "name": "connection_mode",
+        "nullable": false,
+        "position": 10,
+        "udt_name": "varchar"
+      }
+    ],
+    "channel_connections": [
+      {
+        "data_type": "bigint",
+        "default": null,
+        "name": "channel_account_id",
+        "nullable": false,
+        "position": 1,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "bigint",
+        "default": null,
+        "name": "client_id",
+        "nullable": false,
+        "position": 2,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "connection_mode",
+        "nullable": false,
+        "position": 3,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": "'created'::character varying",
+        "name": "status",
+        "nullable": false,
+        "position": 4,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "uuid",
+        "default": null,
+        "name": "connector_node_id",
+        "nullable": true,
+        "position": 5,
+        "udt_name": "uuid"
+      },
+      {
+        "data_type": "bigint",
+        "default": "0",
+        "name": "assignment_generation",
+        "nullable": false,
+        "position": 6,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "session_locator",
+        "nullable": true,
+        "position": 7,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "integer",
+        "default": null,
+        "name": "session_key_version",
+        "nullable": true,
+        "position": 8,
+        "udt_name": "int4"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": null,
+        "name": "connected_at",
+        "nullable": true,
+        "position": 9,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": null,
+        "name": "disconnected_at",
+        "nullable": true,
+        "position": 10,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": null,
+        "name": "last_seen_at",
+        "nullable": true,
+        "position": 11,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "text",
+        "default": null,
+        "name": "last_error",
+        "nullable": true,
+        "position": 12,
+        "udt_name": "text"
+      },
+      {
+        "data_type": "jsonb",
+        "default": "'{}'::jsonb",
+        "name": "metadata",
+        "nullable": false,
+        "position": 13,
+        "udt_name": "jsonb"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "created_at",
+        "nullable": false,
+        "position": 14,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "updated_at",
+        "nullable": false,
+        "position": 15,
+        "udt_name": "timestamptz"
+      }
+    ],
+    "client_memberships": [
+      {
+        "data_type": "bigint",
+        "default": "nextval('client_memberships_id_seq'::regclass)",
+        "name": "id",
+        "nullable": false,
+        "position": 1,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "bigint",
+        "default": null,
+        "name": "client_id",
+        "nullable": false,
+        "position": 2,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "bigint",
+        "default": null,
+        "name": "user_id",
+        "nullable": false,
+        "position": 3,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "character varying",
+        "default": "'owner'::character varying",
+        "name": "role",
+        "nullable": false,
+        "position": 4,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": "'active'::character varying",
+        "name": "status",
+        "nullable": false,
+        "position": 5,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "created_at",
+        "nullable": false,
+        "position": 6,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "updated_at",
+        "nullable": false,
+        "position": 7,
+        "udt_name": "timestamptz"
+      }
+    ],
+    "clients": [
+      {
+        "data_type": "bigint",
+        "default": "nextval('clients_id_seq'::regclass)",
+        "name": "id",
+        "nullable": false,
+        "position": 1,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "business_name",
+        "nullable": false,
+        "position": 2,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "owner_name",
+        "nullable": true,
+        "position": 3,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "email",
+        "nullable": true,
+        "position": 4,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "phone_number",
+        "nullable": true,
+        "position": 5,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": "'active'::character varying",
+        "name": "status",
+        "nullable": false,
+        "position": 6,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "timestamp without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "created_at",
+        "nullable": false,
+        "position": 7,
+        "udt_name": "timestamp"
+      },
+      {
+        "data_type": "timestamp without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "updated_at",
+        "nullable": false,
+        "position": 8,
+        "udt_name": "timestamp"
+      }
+    ],
+    "connector_nodes": [
+      {
+        "data_type": "uuid",
+        "default": null,
+        "name": "id",
+        "nullable": false,
+        "position": 1,
+        "udt_name": "uuid"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "node_name",
+        "nullable": false,
+        "position": 2,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "region",
+        "nullable": false,
+        "position": 3,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": "'offline'::character varying",
+        "name": "status",
+        "nullable": false,
+        "position": 4,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "version",
+        "nullable": true,
+        "position": 5,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "text",
+        "default": null,
+        "name": "public_key",
+        "nullable": true,
+        "position": 6,
+        "udt_name": "text"
+      },
+      {
+        "data_type": "text",
+        "default": null,
+        "name": "credential_hash",
+        "nullable": false,
+        "position": 7,
+        "udt_name": "text"
+      },
+      {
+        "data_type": "integer",
+        "default": "1",
+        "name": "max_sessions",
+        "nullable": false,
+        "position": 8,
+        "udt_name": "int4"
+      },
+      {
+        "data_type": "integer",
+        "default": "0",
+        "name": "active_sessions",
+        "nullable": false,
+        "position": 9,
+        "udt_name": "int4"
+      },
+      {
+        "data_type": "integer",
+        "default": "0",
+        "name": "reserved_sessions",
+        "nullable": false,
+        "position": 10,
+        "udt_name": "int4"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": null,
+        "name": "last_heartbeat_at",
+        "nullable": true,
+        "position": 11,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "text",
+        "default": null,
+        "name": "last_error",
+        "nullable": true,
+        "position": 12,
+        "udt_name": "text"
+      },
+      {
+        "data_type": "jsonb",
+        "default": "'{}'::jsonb",
+        "name": "metadata",
+        "nullable": false,
+        "position": 13,
+        "udt_name": "jsonb"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "created_at",
+        "nullable": false,
+        "position": 14,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "updated_at",
+        "nullable": false,
+        "position": 15,
+        "udt_name": "timestamptz"
+      }
+    ],
+    "platform_users": [
+      {
+        "data_type": "bigint",
+        "default": "nextval('platform_users_id_seq'::regclass)",
+        "name": "id",
+        "nullable": false,
+        "position": 1,
+        "udt_name": "int8"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "email",
+        "nullable": false,
+        "position": 2,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": null,
+        "name": "display_name",
+        "nullable": true,
+        "position": 3,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "character varying",
+        "default": "'active'::character varying",
+        "name": "status",
+        "nullable": false,
+        "position": 4,
+        "udt_name": "varchar"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": null,
+        "name": "email_verified_at",
+        "nullable": true,
+        "position": 5,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": null,
+        "name": "last_login_at",
+        "nullable": true,
+        "position": 6,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "jsonb",
+        "default": "'{}'::jsonb",
+        "name": "metadata",
+        "nullable": false,
+        "position": 7,
+        "udt_name": "jsonb"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "created_at",
+        "nullable": false,
+        "position": 8,
+        "udt_name": "timestamptz"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "name": "updated_at",
+        "nullable": false,
+        "position": 9,
+        "udt_name": "timestamptz"
+      }
+    ]
+  }
+}

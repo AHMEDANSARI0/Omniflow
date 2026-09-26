@@ -56,12 +56,12 @@ function StatTile({
   sub?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] px-4 py-3.5">
-      <p className="text-[10px] uppercase tracking-wider text-slate-600">
+    <div className="rounded-2xl border border-line bg-soft px-4 py-3.5">
+      <p className="text-[10px] uppercase tracking-wider text-ink-3">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
-      {sub ? <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p> : null}
+      <p className="mt-1 text-2xl font-semibold text-ink">{value}</p>
+      {sub ? <p className="mt-0.5 text-[10px] text-ink-3">{sub}</p> : null}
     </div>
   );
 }
@@ -116,13 +116,13 @@ export default async function ClientDashboardPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-8">
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-cyan-400/70">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
           Workspace {principal.clientId}
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Welcome{principal.displayName ? `, ${principal.displayName}` : ""}
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
+        <p className="mt-1.5 text-sm text-ink-3">
           Your tenant-isolated OmniFlow workspace is authenticated and ready.
         </p>
       </div>
@@ -140,13 +140,13 @@ export default async function ClientDashboardPage() {
           {plans && (
             <Link
               href="/dashboard/settings"
-              className="block rounded-2xl border border-white/[0.06] bg-white/[0.015] px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
+              className="block rounded-2xl border border-line bg-soft px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   Plan &amp; usage
                 </p>
-                <span className="rounded-full border border-cyan-400/30 bg-cyan-400/[0.08] px-2 py-0.5 text-[10px] text-cyan-200">
+                <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[10px] text-brand">
                   {plans.plan === "legacy" ? "Unlimited" : plans.plan}
                 </span>
               </div>
@@ -159,15 +159,15 @@ export default async function ClientDashboardPage() {
                       key={row.key}
                       className="flex items-center justify-between gap-2 text-[11px]"
                     >
-                      <span className="text-slate-400">{row.label}</span>
-                      <span className="text-slate-300">
+                      <span className="text-ink-3">{row.label}</span>
+                      <span className="text-ink-2">
                         {used} / {limit === null ? "\u221e" : limit}
                       </span>
                     </li>
                   );
                 })}
               </ul>
-              <p className="mt-2 text-[10px] text-slate-600">
+              <p className="mt-2 text-[10px] text-ink-3">
                 Manage in Settings &gt; Plan &amp; usage
               </p>
             </Link>
@@ -175,15 +175,15 @@ export default async function ClientDashboardPage() {
           {cod && (
             <Link
               href="/dashboard/cod"
-              className="block rounded-2xl border border-white/[0.06] bg-white/[0.015] px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
+              className="block rounded-2xl border border-line bg-soft px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
             >
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+              <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 COD confirmations
               </p>
-              <p className="mt-1 text-2xl font-semibold text-white">
+              <p className="mt-1 text-2xl font-semibold text-ink">
                 {cod.counts.pending ?? 0}
               </p>
-              <p className="mt-0.5 text-[10px] text-slate-500">
+              <p className="mt-0.5 text-[10px] text-ink-3">
                 orders waiting for the customer to confirm
               </p>
             </Link>
@@ -225,7 +225,7 @@ export default async function ClientDashboardPage() {
                 {overview.needsReplyOverdue}{" "}
                 {overview.needsReplyOverdue === 1 ? "customer is" : "customers are"} waiting longer than the reply SLA.
               </span>
-              <span className="shrink-0 text-xs font-medium text-red-300">
+              <span className="shrink-0 text-xs font-medium text-danger">
                 Review overdue →
               </span>
             </Link>
@@ -240,15 +240,15 @@ export default async function ClientDashboardPage() {
                 {overview.unassignedOpen === 1 ? "chat has" : "chats have"} no
                 assignee — pick it up before it waits any longer.
               </span>
-              <span className="shrink-0 text-xs font-medium text-amber-300">
+              <span className="shrink-0 text-xs font-medium text-amber-600">
                 Open inbox →
               </span>
             </Link>
           )}
           {overview.hotLeads.length > 0 && (
-            <div className="mb-8 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-              <h2 className="text-sm font-semibold text-white">Hot leads</h2>
-              <p className="mt-1 text-xs text-slate-500">
+            <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
+              <h2 className="text-sm font-semibold text-ink">Hot leads</h2>
+              <p className="mt-1 text-xs text-ink-3">
                 Open chats flagged hot — reply before they cool down.
               </p>
               <ul className="mt-4 space-y-2">
@@ -259,30 +259,30 @@ export default async function ClientDashboardPage() {
                         "/dashboard/conversations?q=" +
                         encodeURIComponent(lead.contactId)
                       }
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-3.5 py-2.5 transition-colors duration-300 hover:border-amber-400/25"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white/[0.01] px-3.5 py-2.5 transition-colors duration-300 hover:border-amber-400/25"
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-400/25 bg-amber-400/[0.08] text-sm">
                           🔥
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-xs font-medium text-white">
+                          <span className="block truncate text-xs font-medium text-ink">
                             {lead.contactName || lead.contactId}
                           </span>
                           {lead.preview && (
-                            <span className="block truncate text-[10px] text-slate-500">
+                            <span className="block truncate text-[10px] text-ink-3">
                               {lead.preview}
                             </span>
                           )}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">
-                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-amber-600">
                           {lead.leadScore !== null
                             ? "score " + lead.leadScore
                             : "hot"}
                         </span>
-                        <span className="block text-[10px] text-slate-600">
+                        <span className="block text-[10px] text-ink-3">
                           {whenLabel(lead.lastMessageAt)}
                         </span>
                       </span>
@@ -296,9 +296,9 @@ export default async function ClientDashboardPage() {
       )}
 
       {activity && activity.length > 0 && (
-        <div className="mb-8 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-          <h2 className="text-sm font-semibold text-white">Recent activity</h2>
-          <p className="mt-1 text-xs text-slate-500">
+        <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
+          <h2 className="text-sm font-semibold text-ink">Recent activity</h2>
+          <p className="mt-1 text-xs text-ink-3">
             Live audit trail of what your assistant and team did across
             conversations.
           </p>
@@ -308,13 +308,13 @@ export default async function ClientDashboardPage() {
                 key={item.id}
                 className="flex items-center justify-between gap-4 text-xs"
               >
-                <span className="min-w-0 truncate text-slate-300">
+                <span className="min-w-0 truncate text-ink-2">
                   {item.label}
                   {item.note ? (
-                    <span className="text-slate-600"> — {item.note}</span>
+                    <span className="text-ink-3"> — {item.note}</span>
                   ) : null}
                 </span>
-                <span className="shrink-0 text-slate-600">{item.timeAgo}</span>
+                <span className="shrink-0 text-ink-3">{item.timeAgo}</span>
               </li>
             ))}
           </ul>
@@ -326,12 +326,12 @@ export default async function ClientDashboardPage() {
           <Link
             key={link.title}
             href={link.href}
-            className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4 transition-colors duration-300 hover:border-cyan-400/25 hover:bg-cyan-400/[0.04]"
+            className="rounded-2xl border border-line bg-soft p-4 transition-colors duration-300 hover:border-brand/25 hover:bg-cyan-400/[0.04]"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] text-sm text-cyan-300">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
               {link.icon}
             </div>
-            <p className="mt-3 text-xs font-medium text-white">{link.title}</p>
+            <p className="mt-3 text-xs font-medium text-ink">{link.title}</p>
           </Link>
         ))}
       </div>

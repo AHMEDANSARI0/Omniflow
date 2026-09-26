@@ -1,289 +1,122 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ArrowRight, Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import Button from "./ui/Button";
+import Logo from "./ui/Logo";
 
-const navItems = [
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Features", href: "#features" },
-  { label: "Use cases", href: "#use-cases" },
-  { label: "Why OmniFlow", href: "#why-omniflow" },
+const LINKS = [
+  { label: "Product", href: "/#product" },
+  { label: "Solutions", href: "/use-cases" },
+  { label: "Features", href: "/features" },
+  { label: "Resources", href: "/blog" },
+  { label: "Pricing", href: "/pricing" },
 ];
 
+/**
+ * The floating SaaS navbar: transparent over the hero, then a
+ * translucent white surface with a hairline border once the page
+ * scrolls. Same hierarchy on mobile behind an animated panel.
+ */
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-
-    handleScroll();
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleNavClick = () => {
-    setMobileOpen(false);
-  };
+  const surface = scrolled
+    ? "border-b border-line/80 bg-white/85 shadow-[0_8px_30px_-24px_rgba(11,18,32,0.35)] backdrop-blur-xl"
+    : "border-b border-transparent bg-transparent";
 
   return (
-    <>
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{
-          duration: 0.7,
-          ease: [0.22, 1, 0.36, 1],
-        }}
-        className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8"
+    <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${surface}`}>
+      <nav
+        aria-label="Main"
+        className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-6 lg:px-8"
       >
-        <motion.nav
-          animate={{
-            backgroundColor: scrolled
-              ? "rgba(7, 17, 31, 0.35)"
-              : "rgba(7, 17, 31, 0)",
-            borderColor: scrolled
-              ? "rgba(255, 255, 255, 0.08)"
-              : "rgba(255, 255, 255, 0.04)",
-            boxShadow: scrolled
-              ? "0 15px 50px rgba(0, 0, 0, 0.15)"
-              : "0 0 0 rgba(0, 0, 0, 0)",
-          }}
-          transition={{
-            duration: 0.35,
-            ease: "easeOut",
-          }}
-          className="mx-auto max-w-7xl rounded-2xl border px-4 py-3 backdrop-blur-md sm:px-5"
+        <a href="/" aria-label="OmniFlow home" className="shrink-0">
+          <Logo />
+        </a>
+
+        <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
+          {LINKS.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-soft hover:text-ink"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+
+        <div className="hidden items-center gap-2 lg:flex">
+          <a
+            href="/dashboard/login"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:text-ink"
+          >
+            Login
+          </a>
+          <Button href="/dashboard/login" size="sm">
+            Get Started
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Button>
+        </div>
+
+        <button
+          type="button"
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white/80 text-ink lg:hidden"
         >
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <motion.a
-              href="#"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="group flex items-center gap-2"
-              onClick={handleNavClick}
-            >
-              <div className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06]">
-                <motion.span
-                  animate={{
-                    opacity: [0.5, 1, 0.5],
-                    scale: [0.9, 1, 0.9],
-                  }}
-                  transition={{
-                    duration: 2.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]"
-                />
-              </div>
+          {open ? (
+            <X className="h-5 w-5" aria-hidden />
+          ) : (
+            <Menu className="h-5 w-5" aria-hidden />
+          )}
+        </button>
+      </nav>
 
-              <span className="font-[var(--font-heading)] text-lg font-semibold tracking-[-0.03em] text-white">
-                Omni<span className="text-cyan-400">Flow</span>
-              </span>
-            </motion.a>
-
-            {/* Desktop Navigation */}
-            <div className="hidden items-center gap-6 md:flex lg:gap-8">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                />
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="border-b border-line bg-white/95 backdrop-blur-xl lg:hidden"
+          >
+            <div className="mx-auto w-full max-w-6xl space-y-1 px-5 pb-5 pt-2 sm:px-6">
+              {LINKS.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  className="block rounded-xl px-3 py-2.5 text-[15px] font-medium text-ink transition-colors hover:bg-soft"
+                >
+                  {link.label}
+                </a>
               ))}
-            </div>
-
-            {/* Desktop CTA */}
-            <div className="hidden items-center gap-5 md:flex">
-              <a
-                href="/dashboard/login"
-                className="text-sm text-slate-400 transition-colors duration-300 hover:text-white"
-              >
-                Login
-              </a>
-              <motion.a
-                href="#get-started"
-                whileHover={{
-                  y: -2,
-                  scale: 1.02,
-                }}
-                whileTap={{
-                  scale: 0.97,
-                }}
-                className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-semibold text-[#07111f]"
-              >
-                <span className="relative z-10">Get Started</span>
-
-                <span className="relative z-10 transition-transform duration-300 group-hover:translate-x-0.5">
-                  →
-                </span>
-
-                <span className="absolute inset-0 -translate-x-full bg-white/20 transition-transform duration-500 group-hover:translate-x-0" />
-              </motion.a>
-            </div>
-
-            {/* Mobile button */}
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setMobileOpen((current) => !current)}
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              aria-expanded={mobileOpen}
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] md:hidden"
-            >
-              <div className="flex w-4 flex-col gap-1.5">
-                <motion.span
-                  animate={
-                    mobileOpen
-                      ? {
-                        rotate: 45,
-                        y: 4,
-                      }
-                      : {
-                        rotate: 0,
-                        y: 0,
-                      }
-                  }
-                  transition={{ duration: 0.25 }}
-                  className="block h-px w-full bg-slate-300"
-                />
-
-                <motion.span
-                  animate={{
-                    opacity: mobileOpen ? 0 : 1,
-                    x: mobileOpen ? 5 : 0,
-                  }}
-                  transition={{ duration: 0.2 }}
-                  className="block h-px w-full bg-slate-300"
-                />
-
-                <motion.span
-                  animate={
-                    mobileOpen
-                      ? {
-                        rotate: -45,
-                        y: -4,
-                      }
-                      : {
-                        rotate: 0,
-                        y: 0,
-                      }
-                  }
-                  transition={{ duration: 0.25 }}
-                  className="block h-px w-full bg-slate-300"
-                />
+              <div className="flex flex-col gap-2 pt-3">
+                <Button href="/dashboard/login" variant="secondary" onClick={() => setOpen(false)}>
+                  Login
+                </Button>
+                <Button href="/dashboard/login" onClick={() => setOpen(false)}>
+                  Get Started
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Button>
               </div>
-            </motion.button>
-          </div>
-
-          {/* Mobile Navigation */}
-          <AnimatePresence>
-            {mobileOpen && (
-              <motion.div
-                initial={{
-                  height: 0,
-                  opacity: 0,
-                }}
-                animate={{
-                  height: "auto",
-                  opacity: 1,
-                }}
-                exit={{
-                  height: 0,
-                  opacity: 0,
-                }}
-                transition={{
-                  duration: 0.3,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                className="overflow-hidden md:hidden"
-              >
-                <div className="mt-4 border-t border-white/[0.06] pt-4">
-                  <div className="space-y-1">
-                    {navItems.map((item, index) => (
-                      <motion.a
-                        key={item.href}
-                        href={item.href}
-                        initial={{
-                          opacity: 0,
-                          x: -10,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          x: 0,
-                        }}
-                        transition={{
-                          delay: index * 0.05,
-                        }}
-                        onClick={handleNavClick}
-                        className="block rounded-xl px-3 py-3 text-sm text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-white"
-                      >
-                        {item.label}
-                      </motion.a>
-                    ))}
-                                        <motion.a
-                      href="/dashboard/login"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.12 }}
-                      onClick={handleNavClick}
-                      className="block rounded-xl px-3 py-3 text-sm text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-white"
-                    >
-                      Login
-                    </motion.a>
-                    <motion.a
-                      href="#get-started"
-                      initial={{
-                        opacity: 0,
-                        y: 10,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                      }}
-                      transition={{
-                        delay: 0.15,
-                      }}
-                      onClick={handleNavClick}
-                      className="mt-2 flex items-center justify-center rounded-xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-[#07111f]"
-                    >
-                      Get Started →
-                    </motion.a>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.nav>
-      </motion.header>
-    </>
-  );
-}
-
-function NavLink({
-  href,
-  label,
-}: {
-  href: string;
-  label: string;
-}) {
-  return (
-    <motion.a
-      href={href}
-      whileHover={{ y: -1 }}
-      className="group relative py-2 text-sm text-slate-400 transition-colors duration-300 hover:text-white"
-    >
-      {label}
-
-      <span className="absolute bottom-0 left-0 h-px w-0 bg-cyan-400 transition-all duration-300 group-hover:w-full" />
-    </motion.a>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </header>
   );
 }

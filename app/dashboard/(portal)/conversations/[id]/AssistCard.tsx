@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 interface AssistSentiment {
   label: string;
   score: number;
+  engine: "llm" | "lexicon";
   positive: string[];
   negative: string[];
 }
@@ -26,9 +27,20 @@ interface AssistResult {
 }
 
 
+interface BrainDraft {
+  decision: string;
+  draft: string;
+  kbEntry?: { title: string; content: string } | null;
+}
+
 export default function AssistCard({ conversationId }: { conversationId: number }) {
   const [assist, setAssist] = useState<AssistResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<BrainDraft | null>(null);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [draftNote, setDraftNote] = useState<{ text: string; ok: boolean } | null>(
+    null
+  );
 
   const load = useCallback(async () => {
     if (!Number.isFinite(conversationId) || conversationId <= 0) return;
@@ -53,6 +65,79 @@ export default function AssistCard({ conversationId }: { conversationId: number 
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function makeDraft() {
+    if (draftBusy) return;
+    setDraftBusy(true);
+    setDraftNote(null);
+    try {
+      const response = await fetch(
+        `/api/omniflow/portal/conversations/${conversationId}/draft`,
+        { method: "POST", headers: { "Content-Type": "application/json" } }
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        draft?: BrainDraft;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload && payload.ok && payload.draft) {
+        setDraft(payload.draft);
+        setDraftNote(null);
+      } else {
+        setDraftNote({
+          text:
+            payload && payload.error
+              ? (payload.error.message || "Please try again.")
+              : "Could not draft right now.",
+          ok: false,
+        });
+      }
+    } catch {
+      setDraftNote({ text: "Could not draft right now.", ok: false });
+    } finally {
+      setDraftBusy(false);
+    }
+  }
+
+  async function saveDraftToKb() {
+    if (!draft?.kbEntry) return;
+    setDraftBusy(true);
+    setDraftNote(null);
+    try {
+      const response = await fetch("/api/omniflow/portal/kb", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entry: {
+            title: draft.kbEntry.title,
+            content: draft.kbEntry.content,
+            isActive: true,
+            lang: "auto",
+          },
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { message?: string };
+      } | null;
+      if (response.ok && payload && payload.ok) {
+        setDraftNote({ text: "Saved to the knowledge base.", ok: true });
+        setDraft((prev) => (prev ? { ...prev, kbEntry: null } : prev));
+      } else {
+        setDraftNote({
+          text:
+            payload && payload.error
+              ? (payload.error.message || "Please try again.")
+              : "Could not save — try again.",
+          ok: false,
+        });
+      }
+    } catch {
+      setDraftNote({ text: "Could not save — try again.", ok: false });
+    } finally {
+      setDraftBusy(false);
+    }
+  }
 
   if (!assist) return null;
   const sentiment = assist.sentiment?.label ?? null;
@@ -91,6 +176,7 @@ export default function AssistCard({ conversationId }: { conversationId: number 
             }`}
           >
             Sentiment: {sentiment}
+            {assist.sentiment?.engine === "llm" ? " · AI" : ""}
           </span>
         ) : null}
         {assist.language ? (
@@ -138,6 +224,47 @@ export default function AssistCard({ conversationId }: { conversationId: number 
           No knowledge-base matches for the latest messages.
         </p>
       )}
+
+      <div className="mt-4 border-t border-white/[0.06] pt-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void makeDraft()}
+            disabled={draftBusy}
+            className="rounded-xl border border-violet-400/30 bg-violet-400/[0.08] px-3 py-1.5 text-[11px] font-medium text-violet-200 transition-colors hover:bg-violet-400/[0.14] disabled:opacity-50"
+          >
+            {draftBusy ? "Working…" : "Draft with AI"}
+          </button>
+          {draftNote ? (
+            <span
+              className={
+                "text-[11px] " +
+                (draftNote.ok ? "text-emerald-300" : "text-rose-300")
+              }
+            >
+              {draftNote.text}
+            </span>
+          ) : null}
+        </div>
+        {draft ? (
+          <div className="mt-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">
+              {draft.decision} draft
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-xs text-slate-200">
+              {draft.draft}
+            </p>
+            {draft.kbEntry ? (
+              <button
+                onClick={() => void saveDraftToKb()}
+                disabled={draftBusy}
+                className="mt-2 rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-emerald-200 transition-colors hover:bg-emerald-400/[0.14] disabled:opacity-50"
+              >
+                Save as KB answer
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

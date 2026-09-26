@@ -66,6 +66,113 @@ async function adminRequest(
   return response;
 }
 
+export type AdminProviderGroup =
+  | "email"
+  | "llm"
+  | "flags"
+  | "voice"
+  | "video"
+  | "payments"
+  | "whatsapp_e2e";
+
+export interface AdminProviderGroups {
+  [group: string]: {
+    [key: string]: string | boolean;
+  } & { configured: boolean };
+}
+
+export interface AdminProvidersPayload {
+  groups: AdminProviderGroups;
+}
+
+export interface AdminProviderSaveResult {
+  ok: boolean;
+  kept_blank: string[];
+  configured: boolean;
+}
+
+export async function getAdminProviders(): Promise<AdminProvidersPayload> {
+  const response = await adminRequest("api/v1/admin/providers", {
+    method: "GET",
+  });
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("groups" in payload) ||
+    typeof (payload as { groups: unknown }).groups !== "object"
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminProvidersPayload;
+}
+
+export async function putAdminProviders(
+  group: AdminProviderGroup,
+  values: Record<string, string>
+): Promise<AdminProviderSaveResult> {
+  const response = await adminRequest("api/v1/admin/providers", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ group, values }),
+  });
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("ok" in payload)
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminProviderSaveResult;
+}
+
+export interface AdminEmailActionResult {
+  ok: boolean;
+  detail: string;
+  clients?: number;
+}
+
+export async function sendAdminTestEmail(
+  to: string
+): Promise<AdminEmailActionResult> {
+  const response = await adminRequest("api/v1/admin/email/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to }),
+  });
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("ok" in payload) ||
+    typeof (payload as { ok: unknown }).ok !== "boolean"
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminEmailActionResult;
+}
+
+export async function sendAdminWeeklyReport(
+  to: string
+): Promise<AdminEmailActionResult> {
+  const response = await adminRequest("api/v1/admin/weekly-report/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to }),
+  });
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("ok" in payload) ||
+    typeof (payload as { ok: unknown }).ok !== "boolean"
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminEmailActionResult;
+}
+
 export interface AdminClientUser {
   id: number;
   email: string;

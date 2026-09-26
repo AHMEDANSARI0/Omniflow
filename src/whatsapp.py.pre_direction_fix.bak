@@ -1,0 +1,2255 @@
+import base64
+import json
+import re
+import uuid
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+from config import AUDIO_TEMP_DIR, BASE_DIR
+from logger import Logger
+from typing_engine import TypingEngine
+
+
+class WhatsAppBot:
+    def __init__(self, session_path):
+        self.session_path = session_path
+        self.playwright = None
+        self.context = None
+        self.page = None
+
+        self._last_react_identity_candidates = []
+        self._last_chat_identity_debug_message_id = None
+        self._chat_identifier_cache = {}
+        self.last_unread_count = 1
+
+        self.logger = Logger()
+        self.typing = TypingEngine()
+
+    # ---------------------------------
+    # Start Browser
+    # ---------------------------------
+    def start(self):
+        self.logger.log("Starting WhatsApp...")
+
+        self.playwright = sync_playwright().start()
+        self.context = self.playwright.chromium.launch_persistent_context(
+            user_data_dir=self.session_path,
+            headless=False
+        )
+
+        if self.context.pages:
+            self.page = self.context.pages[0]
+        else:
+            self.page = self.context.new_page()
+
+        self.logger.log("Browser Started")
+
+        return self.page
+
+    # ---------------------------------
+    # Open WhatsApp
+    # ---------------------------------
+    def open_whatsapp(self, url):
+        self.page.goto(url)
+        self.page.wait_for_timeout(5000)
+
+        self.logger.log("WhatsApp Opened")
+
+    # ---------------------------------
+    # Search Contact
+    # ---------------------------------
+    def search_contact(self, contact_name):
+        """Open a sidebar search result with bounded, layout-tolerant waits."""
+        contact_name = str(
+            contact_name or ""
+        ).strip()
+
+        if not contact_name:
+            return False
+
+        self.logger.log(
+            f"Searching Contact: {contact_name}"
+        )
+
+        try:
+            search = None
+            search_locators = [
+                self.page.locator(
+                    "#side [role='textbox'][contenteditable='true']"
+                ),
+                self.page.locator(
+                    "#side div[contenteditable='true'][data-tab]"
+                ),
+                self.page.get_by_role(
+                    "textbox",
+                    name="Search or start a new chat"
+                ),
+                self.page.get_by_role(
+                    "textbox",
+                    name="Search input textbox"
+                ),
+                self.page.locator(
+                    "[data-testid='chat-list-search'] [contenteditable='true']"
+                ),
+            ]
+
+            for locator in search_locators:
+                candidate = self._last_visible_locator(
+                    locator
+                )
+
+                if candidate:
+                    search = candidate
+                    break
+
+            if search is None:
+                trigger_selectors = [
+                    "#side button[aria-label='Search']",
+                    "#side [role='button'][aria-label='Search']",
+                    "#side [data-icon='search']",
+                    "#side [data-testid='search']",
+                ]
+
+                for selector in trigger_selectors:
+                    trigger = self._last_visible_locator(
+                        self.page.locator(selector)
+                    )
+
+                    if trigger is None:
+                        continue
+
+                    parent = trigger.locator(
+                        "xpath=ancestor-or-self::*[self::button or @role='button'][1]"
+                    )
+                    (
+                        parent.first
+                        if parent.count() > 0
+                        else trigger
+                    ).click(
+                        force=True,
+                        timeout=3000
+                    )
+                    self.page.wait_for_timeout(400)
+                    break
+
+                for locator in search_locators:
+                    candidate = self._last_visible_locator(
+                        locator
+                    )
+
+                    if candidate:
+                        search = candidate
+                        break
+
+            if search is None:
+                raise RuntimeError(
+                    "WhatsApp sidebar search textbox was not found"
+                )
+
+            search.click(
+                force=True,
+                timeout=3000
+            )
+
+            try:
+                search.fill(
+                    "",
+                    timeout=3000
+                )
+                search.fill(
+                    contact_name,
+                    timeout=3000
+                )
+            except Exception:
+                self.page.keyboard.press("Control+A")
+                self.page.keyboard.press("Backspace")
+                self.page.keyboard.type(
+                    contact_name,
+                    delay=25
+                )
+
+            self.page.wait_for_timeout(1500)
+            normalized_target = contact_name.casefold()
+            result = None
+
+            # Current WhatsApp builds commonly place the visible chat name in
+            # a title attribute. Compare the full title before opening its row.
+            title_nodes = self.page.locator(
+                "#pane-side [title], #side [title]"
+            )
+
+            for index in range(title_nodes.count()):
+                node = title_nodes.nth(index)
+
+                try:
+                    if not node.is_visible():
+                        continue
+
+                    title = str(
+                        node.get_attribute("title")
+                        or ""
+                    ).strip()
+
+                    if title.casefold() != normalized_target:
+                        continue
+
+                    row = node.locator(
+                        "xpath=ancestor-or-self::*["
+                        "@data-testid='cell-frame-container' or "
+                        "@role='listitem' or @role='button' or "
+                        "@tabindex='-1'][1]"
+                    )
+                    result = (
+                        row.first
+                        if row.count() > 0
+                        else node
+                    )
+                    break
+
+                except Exception:
+                    continue
+
+            # Fallback for builds without title attributes. Matching a row's
+            # text may locate a same-name candidate, but the adapter still
+            # verifies its stable JID/LID before any message can be sent.
+            if result is None:
+                row_selectors = [
+                    "#pane-side [data-testid='cell-frame-container']",
+                    "#pane-side [role='listitem']",
+                    "#side [role='listitem']",
+                ]
+
+                for selector in row_selectors:
+                    rows = self.page.locator(selector)
+
+                    for index in range(rows.count()):
+                        row = rows.nth(index)
+
+                        try:
+                            if not row.is_visible():
+                                continue
+
+                            row_text = str(
+                                row.inner_text(timeout=1000)
+                                or ""
+                            ).strip()
+
+                            if normalized_target in row_text.casefold():
+                                result = row
+                                break
+
+                        except Exception:
+                            continue
+
+                    if result is not None:
+                        break
+
+            if result is None:
+                raise RuntimeError(
+                    "No visible WhatsApp sidebar result matched the "
+                    f"routing name: {contact_name}"
+                )
+
+            result.click(
+                force=True,
+                timeout=5000
+            )
+            self.page.wait_for_timeout(1200)
+
+            self.logger.log(
+                f"Chat Opened: {contact_name}"
+            )
+            return True
+
+        except Exception as error:
+            self.logger.log(
+                f"Search Contact Error: {error}"
+            )
+
+            try:
+                debug_data = self.page.evaluate(
+                    """() => ({
+                        sideText: (document.querySelector('#side')?.innerText || '')
+                            .slice(0, 4000),
+                        paneText: (document.querySelector('#pane-side')?.innerText || '')
+                            .slice(0, 4000),
+                        textboxes: [...document.querySelectorAll('[role=textbox]')]
+                            .map((node) => ({
+                                ariaLabel: node.getAttribute('aria-label'),
+                                contenteditable: node.getAttribute('contenteditable'),
+                                dataTab: node.getAttribute('data-tab'),
+                                visible: !!(node.offsetWidth || node.offsetHeight)
+                            })),
+                        titledNodes: [...document.querySelectorAll(
+                            '#side [title], #pane-side [title]'
+                        )].slice(0, 200).map((node) => ({
+                            title: node.getAttribute('title'),
+                            text: (node.innerText || '').slice(0, 200),
+                            visible: !!(node.offsetWidth || node.offsetHeight)
+                        }))
+                    })"""
+                )
+                debug_data["searchedContact"] = contact_name
+                output_path = (
+                    Path(BASE_DIR)
+                    / "recovery_search_debug.json"
+                )
+                output_path.write_text(
+                    json.dumps(debug_data, indent=2),
+                    encoding="utf-8"
+                )
+                self.logger.log(
+                    f"Recovery search debug saved: {output_path}"
+                )
+            except Exception as debug_error:
+                self.logger.log(
+                    f"Recovery Search Debug Error: {debug_error}"
+                )
+
+            return False
+
+    # ---------------------------------
+    # Find Unread Chat
+    # ---------------------------------
+    def find_unread_chat(self):
+        try:
+            selectors = [
+                "span[aria-label*='unread']",
+                "span[data-testid='icon-unread-count']",
+                "span[aria-label*='Unread']",
+                "[data-testid='cell-unread-count']"
+            ]
+
+            unread_element = None
+
+            for selector in selectors:
+                element = self.page.locator(selector)
+
+                if element.count() > 0:
+                    unread_element = element.first
+                    break
+
+            if unread_element is None:
+                return None
+
+            self.last_unread_count = 1
+
+            try:
+                unread_text = " ".join(
+                    value
+                    for value in (
+                        unread_element.inner_text(),
+                        unread_element.get_attribute(
+                            "aria-label"
+                        ),
+                    )
+                    if value
+                )
+                numbers = [
+                    int(value)
+                    for value in re.findall(
+                        r"\d+",
+                        unread_text
+                    )
+                ]
+
+                if numbers:
+                    self.last_unread_count = max(
+                        1,
+                        max(numbers)
+                    )
+            except Exception:
+                self.last_unread_count = 1
+
+            self.logger.log(
+                "Unread indicator found: "
+                f"count={self.last_unread_count}"
+            )
+
+            parent_selectors = [
+                "xpath=ancestor::*[@data-testid='cell-frame-container'][1]",
+                "xpath=ancestor::*[@role='listitem'][1]",
+                "xpath=ancestor::*[@role='button'][1]",
+                "xpath=ancestor::*[@tabindex='-1'][1]"
+            ]
+
+            for selector in parent_selectors:
+                parent = unread_element.locator(selector)
+
+                if parent.count() > 0:
+                    return parent.first
+
+            return unread_element
+
+        except Exception as error:
+            self.logger.log(
+                f"Unread Detection Error: {error}"
+            )
+
+            return None
+
+    # ---------------------------------
+    # Open Chat
+    # ---------------------------------
+    def open_chat(self, chat):
+        try:
+            chat.click(
+                force=True,
+                timeout=5000
+            )
+
+            self.page.wait_for_timeout(1200)
+
+            self.logger.log("Chat Opened")
+
+            return True
+
+        except Exception as error:
+            self.logger.log(
+                f"Open Chat Error: {error}"
+            )
+
+            return False
+
+    # ---------------------------------
+    # Get Current Chat Name
+    # ---------------------------------
+    def get_current_chat_name(self):
+        try:
+            header_selectors = [
+                "[data-testid='conversation-header']",
+                "#main header"
+            ]
+
+            for selector in header_selectors:
+                header = self.page.locator(selector)
+
+                if header.count() == 0:
+                    continue
+
+                name_parts = header.locator("span[dir='auto']")
+
+                if name_parts.count() > 0:
+                    name = name_parts.first.inner_text().strip()
+
+                    if name:
+                        return name
+
+                name = header.first.inner_text().strip()
+
+                if name:
+                    return name
+
+            return ""
+
+        except Exception as error:
+            self.logger.log(
+                f"Chat Name Error: {error}"
+            )
+
+            return ""
+
+    # ---------------------------------
+    # Read Latest Visible Chat Message
+    # ---------------------------------
+    @staticmethod
+    def _extract_message_text(container):
+        text_parts = container.locator(
+            "span.selectable-text"
+        )
+
+        if text_parts.count() > 0:
+            parts = [
+                text.strip()
+                for text in text_parts.all_inner_texts()
+                if text.strip()
+            ]
+
+            if parts:
+                return "\n".join(parts)
+
+        return container.inner_text().strip()
+
+    @staticmethod
+    def _get_message_id(container, message, count):
+        message_id_candidates = []
+
+        direct_message_id = container.get_attribute("data-id")
+
+        if direct_message_id:
+            message_id_candidates.append(
+                direct_message_id
+            )
+
+        # Depending on the current WhatsApp Web rollout, data-id may be on
+        # an ancestor or on an element inside msg-container.
+        ancestor = container.locator(
+            "xpath=ancestor-or-self::*[@data-id][1]"
+        )
+
+        if ancestor.count() > 0:
+            ancestor_id = ancestor.get_attribute("data-id")
+
+            if ancestor_id:
+                message_id_candidates.append(
+                    ancestor_id
+                )
+
+        descendants = container.locator("[data-id]")
+        descendant_count = min(
+            descendants.count(),
+            30
+        )
+
+        for index in range(descendant_count):
+            descendant_id = descendants.nth(
+                index
+            ).get_attribute("data-id")
+
+            if descendant_id:
+                message_id_candidates.append(
+                    descendant_id
+                )
+
+        # Prefer a WhatsApp message ID containing a JID.
+        message_id = next(
+            (
+                candidate
+                for candidate in message_id_candidates
+                if "@" in candidate
+            ),
+            None
+        )
+
+        if not message_id and message_id_candidates:
+            message_id = message_id_candidates[0]
+
+        metadata = container.locator(
+            "[data-pre-plain-text]"
+        ).first
+
+        metadata_text = ""
+
+        if metadata.count() > 0:
+            metadata_text = (
+                metadata.get_attribute(
+                    "data-pre-plain-text"
+                )
+                or ""
+            )
+
+        if not message_id:
+            message_id = f"{count}|{metadata_text}|{message}"
+
+        return message_id
+
+    @staticmethod
+    def _extract_chat_identifier(message_id):
+        """
+        Extract a stable WhatsApp contact identifier from a message data-id.
+
+        Direct chats return the phone number. LID and group chats receive
+        explicit prefixes so they cannot collide with phone numbers.
+        """
+        if not message_id:
+            return ""
+
+        match = re.search(
+            (
+                r"([0-9][0-9:-]*@"
+                r"(?:c\.us|s\.whatsapp\.net|lid|g\.us))"
+            ),
+            message_id,
+            flags=re.IGNORECASE
+        )
+
+        if not match:
+            return ""
+
+        jid = match.group(1).lower()
+        local_part, domain = jid.rsplit("@", 1)
+
+        if domain in {
+            "c.us",
+            "s.whatsapp.net"
+        }:
+            # Remove a possible multi-device suffix such as :12.
+            phone_number = local_part.split(":", 1)[0]
+
+            return "".join(
+                character
+                for character in phone_number
+                if character.isdigit()
+            )
+
+        if domain == "lid":
+            return f"lid:{local_part}"
+
+        if domain == "g.us":
+            return f"group:{local_part}"
+
+        return ""
+
+    def _get_direct_react_chat_identifier(self, container):
+        """
+        Read the nearest chat JID/LID from React fiber keys.
+
+        This intentionally walks only upward through the current message's
+        fiber chain. It does not traverse child/sibling collections, which can
+        contain WhatsApp's entire contact store and create false ambiguity.
+        """
+        try:
+            raw_identifier = container.evaluate(
+                """(element) => {
+                    const jidPattern =
+                        /[0-9][0-9:-]*@(?:c\\.us|s\\.whatsapp\\.net|lid|g\\.us)/i;
+
+                    const extract = (value) => {
+                        if (typeof value !== "string") {
+                            return "";
+                        }
+
+                        const match = value.match(jidPattern);
+                        return match ? match[0] : "";
+                    };
+
+                    let currentElement = element;
+
+                    for (
+                        let elementDepth = 0;
+                        currentElement && elementDepth < 10;
+                        elementDepth += 1
+                    ) {
+                        let propertyNames = [];
+
+                        try {
+                            propertyNames = Object.getOwnPropertyNames(
+                                currentElement
+                            );
+                        } catch (error) {
+                            propertyNames = [];
+                        }
+
+                        for (const propertyName of propertyNames) {
+                            if (!propertyName.startsWith("__reactFiber$")) {
+                                continue;
+                            }
+
+                            let fiber;
+
+                            try {
+                                fiber = currentElement[propertyName];
+                            } catch (error) {
+                                fiber = null;
+                            }
+
+                            for (
+                                let fiberDepth = 0;
+                                fiber && fiberDepth < 24;
+                                fiberDepth += 1
+                            ) {
+                                const directKey = extract(fiber.key);
+
+                                if (directKey) {
+                                    return directKey;
+                                }
+
+                                const props = [
+                                    fiber.memoizedProps,
+                                    fiber.pendingProps
+                                ];
+
+                                for (const value of props) {
+                                    if (!value || typeof value !== "object") {
+                                        continue;
+                                    }
+
+                                    const targetedValues = [
+                                        value.chatId,
+                                        value.chatJid,
+                                        value.remoteJid,
+                                        value.contactId,
+                                        value.jid,
+                                        value.wid,
+                                        value.id?._serialized,
+                                        value.chat?.id?._serialized,
+                                        value.contact?.id?._serialized
+                                    ];
+
+                                    for (const targetedValue of targetedValues) {
+                                        const identifier = extract(
+                                            targetedValue
+                                        );
+
+                                        if (identifier) {
+                                            return identifier;
+                                        }
+                                    }
+                                }
+
+                                fiber = fiber.return;
+                            }
+                        }
+
+                        currentElement = currentElement.parentElement;
+                    }
+
+                    return "";
+                }"""
+            )
+
+        except Exception:
+            return ""
+
+        return self._extract_chat_identifier(
+            raw_identifier
+        )
+
+    def _get_react_identity_candidates(self, container):
+        """
+        Inspect React props/fibers attached to the active message and header.
+
+        New WhatsApp Web versions expose only an opaque message hash in the
+        DOM. The chat JID may still be present in the React component data.
+        """
+        try:
+            return container.evaluate(
+                """(messageElement) => {
+                    const jidPattern =
+                        /[0-9][0-9:-]*@(?:c\\.us|s\\.whatsapp\\.net|lid|g\\.us)/ig;
+                    const results = [];
+                    const resultKeys = new Set();
+                    const visited = new WeakSet();
+                    let inspectedObjects = 0;
+                    const maxObjects = 18000;
+                    const maxDepth = 13;
+
+                    const recordString = (value, path, source) => {
+                        if (typeof value !== "string") {
+                            return;
+                        }
+
+                        const matches = value.match(jidPattern) || [];
+
+                        for (const match of matches) {
+                            const key = `${source}|${path}|${match}`;
+
+                            if (!resultKeys.has(key)) {
+                                resultKeys.add(key);
+                                results.push({
+                                    value: match,
+                                    path,
+                                    source
+                                });
+                            }
+                        }
+                    };
+
+                    const scan = (value, path, source, depth) => {
+                        if (
+                            inspectedObjects >= maxObjects ||
+                            depth > maxDepth ||
+                            value === null ||
+                            value === undefined
+                        ) {
+                            return;
+                        }
+
+                        if (typeof value === "string") {
+                            recordString(value, path, source);
+                            return;
+                        }
+
+                        if (
+                            typeof value !== "object" &&
+                            typeof value !== "function"
+                        ) {
+                            return;
+                        }
+
+                        if (visited.has(value)) {
+                            return;
+                        }
+
+                        visited.add(value);
+                        inspectedObjects += 1;
+
+                        let keys = [];
+
+                        try {
+                            keys = Object.keys(value);
+                        } catch (error) {
+                            return;
+                        }
+
+                        const priorityFragments = [
+                            "remote",
+                            "chat",
+                            "contact",
+                            "sender",
+                            "from",
+                            "to",
+                            "wid",
+                            "serialized",
+                            "jid",
+                            "id",
+                            "model",
+                            "message"
+                        ];
+
+                        keys.sort((left, right) => {
+                            const leftKey = left.toLowerCase();
+                            const rightKey = right.toLowerCase();
+                            const leftPriority = priorityFragments.some(
+                                (fragment) => leftKey.includes(fragment)
+                            );
+                            const rightPriority = priorityFragments.some(
+                                (fragment) => rightKey.includes(fragment)
+                            );
+
+                            return Number(rightPriority) - Number(leftPriority);
+                        });
+
+                        for (const key of keys.slice(0, 160)) {
+                            let child;
+
+                            try {
+                                child = value[key];
+                            } catch (error) {
+                                continue;
+                            }
+
+                            scan(
+                                child,
+                                `${path}.${key}`,
+                                source,
+                                depth + 1
+                            );
+
+                            if (inspectedObjects >= maxObjects) {
+                                return;
+                            }
+                        }
+                    };
+
+                    const inspectElement = (element, source) => {
+                        if (!element) {
+                            return;
+                        }
+
+                        let current = element;
+
+                        for (
+                            let elementDepth = 0;
+                            current && elementDepth < 12;
+                            elementDepth += 1
+                        ) {
+                            let propertyNames = [];
+
+                            try {
+                                propertyNames = Object.getOwnPropertyNames(
+                                    current
+                                );
+                            } catch (error) {
+                                propertyNames = [];
+                            }
+
+                            for (const propertyName of propertyNames) {
+                                if (!propertyName.startsWith("__react")) {
+                                    continue;
+                                }
+
+                                let reactValue;
+
+                                try {
+                                    reactValue = current[propertyName];
+                                } catch (error) {
+                                    continue;
+                                }
+
+                                scan(
+                                    reactValue,
+                                    `${source}.${propertyName}`,
+                                    source,
+                                    0
+                                );
+                            }
+
+                            current = current.parentElement;
+                        }
+                    };
+
+                    inspectElement(messageElement, "message");
+
+                    const header = document.querySelector(
+                        "[data-testid='conversation-header'], #main header"
+                    );
+
+                    inspectElement(header, "header");
+
+                    if (header) {
+                        const headerChildren = header.querySelectorAll("*");
+                        const limit = Math.min(headerChildren.length, 80);
+
+                        for (let index = 0; index < limit; index += 1) {
+                            inspectElement(
+                                headerChildren[index],
+                                "header-child"
+                            );
+                        }
+                    }
+
+                    return results.slice(0, 250);
+                }"""
+            )
+
+        except Exception as error:
+            self.logger.log(
+                f"React Identity Inspection Error: {error}"
+            )
+
+            return []
+
+    def _choose_react_chat_identifier(self, candidates):
+        """Return a React-derived identifier only when selection is safe."""
+        if not candidates:
+            return ""
+
+        normalized_candidates = []
+
+        for candidate in candidates:
+            identifier = self._extract_chat_identifier(
+                candidate.get("value", "")
+            )
+
+            if identifier:
+                normalized_candidates.append(
+                    {
+                        "identifier": identifier,
+                        "path": candidate.get("path", "").lower(),
+                        "source": candidate.get("source", "").lower()
+                    }
+                )
+
+        if not normalized_candidates:
+            return ""
+
+        # The React subtree attached to msg-container represents the active
+        # conversation. Prefer it when all message-scoped candidates agree.
+        # Header fibers can include WhatsApp's entire contact collection, so
+        # they must not override one unique message-scoped LID/JID.
+        message_identifiers = {
+            item["identifier"]
+            for item in normalized_candidates
+            if item["source"] == "message"
+        }
+
+        if len(message_identifiers) == 1:
+            return next(iter(message_identifiers))
+
+        # Use header component data only when it also resolves to exactly one
+        # identifier. Some WhatsApp versions attach the global contact store
+        # to the header, which correctly remains ambiguous and is rejected.
+        header_identifiers = {
+            item["identifier"]
+            for item in normalized_candidates
+            if item["source"].startswith("header")
+        }
+
+        if len(header_identifiers) == 1:
+            return next(iter(header_identifiers))
+
+        # Otherwise prefer explicit active-chat/remote-JID paths, again only
+        # when all strong candidates agree.
+        strong_path_fragments = (
+            "remotejid",
+            "remote_jid",
+            "chatid",
+            "chat_id",
+            "activechat",
+            "active_chat",
+            "conversationid",
+            "conversation_id"
+        )
+
+        strong_identifiers = {
+            item["identifier"]
+            for item in normalized_candidates
+            if any(
+                fragment in item["path"]
+                for fragment in strong_path_fragments
+            )
+        }
+
+        if len(strong_identifiers) == 1:
+            return next(iter(strong_identifiers))
+
+        all_identifiers = {
+            item["identifier"]
+            for item in normalized_candidates
+        }
+
+        if len(all_identifiers) == 1:
+            return next(iter(all_identifiers))
+
+        # Ambiguous data is deliberately rejected to prevent cross-contact
+        # memory contamination.
+        return ""
+
+    def _extract_chat_identifier_from_container(
+        self,
+        container,
+        message_id
+    ):
+        """
+        Resolve the chat identity from all safe DOM locations used by
+        different WhatsApp Web rollouts.
+        """
+        identifier = self._extract_chat_identifier(
+            message_id
+        )
+
+        if identifier:
+            return identifier
+
+        direct_react_identifier = (
+            self._get_direct_react_chat_identifier(
+                container
+            )
+        )
+
+        if direct_react_identifier:
+            return direct_react_identifier
+
+        try:
+            attribute_candidates = container.evaluate(
+                """(element) => {
+                    const values = [];
+                    const seen = new Set();
+
+                    const addAttributes = (node) => {
+                        if (!node || !node.attributes) {
+                            return;
+                        }
+
+                        for (const attribute of node.attributes) {
+                            const value = attribute.value || "";
+                            const name = attribute.name || "";
+                            const lowerValue = value.toLowerCase();
+                            const lowerName = name.toLowerCase();
+
+                            const mayContainIdentity =
+                                lowerValue.includes("@c.us") ||
+                                lowerValue.includes("@s.whatsapp.net") ||
+                                lowerValue.includes("@lid") ||
+                                lowerValue.includes("@g.us") ||
+                                lowerName.includes("jid") ||
+                                lowerName.includes("chat-id") ||
+                                lowerName.includes("message-id") ||
+                                lowerName === "data-id";
+
+                            if (
+                                mayContainIdentity &&
+                                value &&
+                                !seen.has(value)
+                            ) {
+                                seen.add(value);
+                                values.push(value);
+                            }
+                        }
+                    };
+
+                    let current = element;
+
+                    for (
+                        let depth = 0;
+                        current && depth < 10;
+                        depth += 1
+                    ) {
+                        addAttributes(current);
+                        current = current.parentElement;
+                    }
+
+                    const descendants = element.querySelectorAll("*");
+                    const limit = Math.min(descendants.length, 400);
+
+                    for (let index = 0; index < limit; index += 1) {
+                        addAttributes(descendants[index]);
+                    }
+
+                    return values;
+                }"""
+            )
+
+        except Exception:
+            attribute_candidates = []
+
+        for candidate in attribute_candidates:
+            identifier = self._extract_chat_identifier(
+                candidate
+            )
+
+            if identifier:
+                return identifier
+
+        # Final DOM fallback: inspect data-id/JID attributes elsewhere inside
+        # the currently open conversation only.
+        try:
+            page_candidates = self.page.locator(
+                "#main [data-id], "
+                "#main [data-jid], "
+                "#main [data-chat-id], "
+                "#main [data-message-id]"
+            )
+
+            candidate_count = page_candidates.count()
+            start_index = max(
+                0,
+                candidate_count - 100
+            )
+
+            for index in range(
+                candidate_count - 1,
+                start_index - 1,
+                -1
+            ):
+                candidate = page_candidates.nth(index)
+
+                for attribute_name in (
+                    "data-id",
+                    "data-jid",
+                    "data-chat-id",
+                    "data-message-id"
+                ):
+                    value = candidate.get_attribute(
+                        attribute_name
+                    )
+
+                    identifier = self._extract_chat_identifier(
+                        value
+                    )
+
+                    if identifier:
+                        return identifier
+
+        except Exception:
+            pass
+
+        react_candidates = self._get_react_identity_candidates(
+            container
+        )
+        self._last_react_identity_candidates = (
+            react_candidates
+        )
+
+        return self._choose_react_chat_identifier(
+            react_candidates
+        )
+
+    def _save_chat_identity_debug(
+        self,
+        container,
+        message_id
+    ):
+        """Save DOM/React details once when no stable chat ID is found."""
+        # This is diagnostic output, not a per-message log. Save it only once
+        # per bot run so temporary React rerenders do not spam the console and
+        # disk every polling cycle.
+        if self._last_chat_identity_debug_message_id is not None:
+            return
+
+        self._last_chat_identity_debug_message_id = message_id
+
+        try:
+            debug_data = container.evaluate(
+                """(element) => {
+                    const describe = (node) => {
+                        const attributes = {};
+
+                        for (const attribute of node.attributes || []) {
+                            attributes[attribute.name] = attribute.value;
+                        }
+
+                        return {
+                            tag: node.tagName,
+                            attributes
+                        };
+                    };
+
+                    const ancestors = [];
+                    let current = element;
+
+                    for (
+                        let depth = 0;
+                        current && depth < 10;
+                        depth += 1
+                    ) {
+                        ancestors.push(describe(current));
+                        current = current.parentElement;
+                    }
+
+                    const descendants = [
+                        ...element.querySelectorAll("*")
+                    ]
+                        .slice(0, 400)
+                        .map(describe)
+                        .filter((item) => {
+                            const values = Object.values(
+                                item.attributes
+                            ).join(" ").toLowerCase();
+
+                            return (
+                                values.includes("@") ||
+                                values.includes("id") ||
+                                values.includes("jid") ||
+                                values.includes("message")
+                            );
+                        });
+
+                    return {
+                        ancestors,
+                        descendants
+                    };
+                }"""
+            )
+
+            debug_data["resolvedMessageId"] = message_id
+            debug_data["reactIdentityCandidates"] = (
+                self._last_react_identity_candidates
+            )
+            output_path = Path(BASE_DIR) / (
+                "chat_identity_debug.json"
+            )
+            output_path.write_text(
+                json.dumps(debug_data, indent=2),
+                encoding="utf-8"
+            )
+
+            self.logger.log(
+                f"Chat identity debug saved: {output_path}"
+            )
+
+        except Exception as error:
+            self.logger.log(
+                f"Chat Identity Debug Error: {error}"
+            )
+
+    @staticmethod
+    def _is_voice_note(container):
+        voice_selectors = [
+            "audio",
+            "[data-testid='audio-play']",
+            "[data-testid='audio-play-icon']",
+            "[data-testid*='audio']",
+            "[data-icon='audio-play']",
+            "[aria-label*='voice message' i]"
+        ]
+
+        for selector in voice_selectors:
+            if container.locator(selector).count() > 0:
+                return True
+
+        return False
+
+    def _get_last_message_container(self):
+        messages = self.page.locator(
+            "[data-testid='msg-container']"
+        )
+
+        count = messages.count()
+
+        if count == 0:
+            return None, 0
+
+        return messages.nth(count - 1), count
+
+    @staticmethod
+    def _get_message_direction(container):
+        """Return inbound/outbound from WhatsApp DOM without using text."""
+        try:
+            direction = container.evaluate(
+                """(element) => {
+                    const candidates = [
+                        element,
+                        element.closest('.message-in, .message-out'),
+                        element.querySelector('.message-in, .message-out')
+                    ].filter(Boolean);
+
+                    for (const node of candidates) {
+                        if (node.classList?.contains('message-out')) {
+                            return 'outbound';
+                        }
+                        if (node.classList?.contains('message-in')) {
+                            return 'inbound';
+                        }
+                    }
+
+                    const idNodes = [
+                        element,
+                        ...element.querySelectorAll('[data-id]')
+                    ];
+
+                    for (const node of idNodes) {
+                        const value = String(
+                            node.getAttribute?.('data-id') || ''
+                        ).toLowerCase();
+
+                        if (value.startsWith('true_')) {
+                            return 'outbound';
+                        }
+                        if (value.startsWith('false_')) {
+                            return 'inbound';
+                        }
+                    }
+
+                    return 'unknown';
+                }"""
+            )
+            return direction or "unknown"
+        except Exception:
+            return "unknown"
+
+    def _parse_message_container(
+        self,
+        container,
+        position,
+        fallback_chat_identifier="",
+        save_identity_debug=False
+    ):
+        is_voice = self._is_voice_note(container)
+        message = self._extract_message_text(container)
+
+        if not message and not is_voice:
+            return None
+
+        message_id = self._get_message_id(
+            container,
+            message,
+            position
+        )
+
+        if message_id in self._chat_identifier_cache:
+            chat_identifier = self._chat_identifier_cache[
+                message_id
+            ]
+        else:
+            chat_identifier = (
+                self._extract_chat_identifier_from_container(
+                    container,
+                    message_id
+                )
+            )
+
+            if chat_identifier:
+                self._chat_identifier_cache[
+                    message_id
+                ] = chat_identifier
+
+                if len(self._chat_identifier_cache) > 500:
+                    oldest_message_id = next(
+                        iter(self._chat_identifier_cache)
+                    )
+                    self._chat_identifier_cache.pop(
+                        oldest_message_id,
+                        None
+                    )
+
+        if (
+            not chat_identifier
+            and fallback_chat_identifier
+        ):
+            chat_identifier = str(
+                fallback_chat_identifier
+            ).strip()
+
+        if (
+            not chat_identifier
+            and save_identity_debug
+        ):
+            self._save_chat_identity_debug(
+                container,
+                message_id
+            )
+
+        return {
+            "id": message_id,
+            "chat_identifier": chat_identifier,
+            "text": message,
+            "kind": "voice" if is_voice else "text",
+            "direction": self._get_message_direction(
+                container
+            ),
+        }
+
+    def get_visible_chat_messages(
+        self,
+        fallback_chat_identifier="",
+        limit=100
+    ):
+        """Return visible chat messages oldest-to-newest for burst recovery."""
+        try:
+            containers = self.page.locator(
+                "[data-testid='msg-container']"
+            )
+            total = containers.count()
+
+            if total == 0:
+                return []
+
+            limit = max(1, int(limit))
+            start = max(0, total - limit)
+
+            latest = self._parse_message_container(
+                containers.nth(total - 1),
+                total,
+                fallback_chat_identifier=(
+                    fallback_chat_identifier
+                ),
+                save_identity_debug=True
+            )
+
+            resolved_chat_identifier = str(
+                (
+                    latest.get("chat_identifier")
+                    if latest
+                    else ""
+                )
+                or fallback_chat_identifier
+                or ""
+            ).strip()
+
+            parsed_messages = []
+
+            for index in range(start, total):
+                parsed = self._parse_message_container(
+                    containers.nth(index),
+                    index + 1,
+                    fallback_chat_identifier=(
+                        resolved_chat_identifier
+                    ),
+                    save_identity_debug=(
+                        index == total - 1
+                    )
+                )
+
+                if parsed is not None:
+                    parsed_messages.append(parsed)
+
+            return parsed_messages
+
+        except Exception as error:
+            self.logger.log(
+                f"Visible Messages Read Error: {error}"
+            )
+            return []
+
+    def get_latest_chat_message(
+        self,
+        fallback_chat_identifier=""
+    ):
+        """Return the newest visible message for compatibility callers."""
+        messages = self.get_visible_chat_messages(
+            fallback_chat_identifier=(
+                fallback_chat_identifier
+            ),
+            limit=1
+        )
+
+        if not messages:
+            return None
+
+        return messages[-1]
+
+    # ---------------------------------
+    # Voice Note Download Helpers
+    # ---------------------------------
+    @staticmethod
+    def _audio_extension_from_mime(mime_type):
+        mime_type = (mime_type or "").lower()
+
+        if "webm" in mime_type:
+            return ".webm"
+        if "mpeg" in mime_type or "mp3" in mime_type:
+            return ".mp3"
+        if "wav" in mime_type:
+            return ".wav"
+
+        return ".ogg"
+
+    def _find_voice_audio_element(self, message_container):
+        """
+        Some WhatsApp Web versions create the <audio> element only after the
+        Play button is clicked. Try direct, global, then playback activation.
+        """
+        direct_audio = message_container.locator("audio")
+
+        if direct_audio.count() > 0:
+            return direct_audio.first
+
+        page_audio = self.page.locator("#main audio")
+
+        if page_audio.count() > 0:
+            return page_audio.last
+
+        play_selectors = [
+            "[data-testid='audio-play']",
+            "[data-testid='audio-play-icon']",
+            "[data-icon='audio-play']",
+            "button[aria-label*='Play']"
+        ]
+
+        for selector in play_selectors:
+            play_button = message_container.locator(selector)
+
+            if play_button.count() == 0:
+                continue
+
+            try:
+                play_button.first.click(force=True)
+            except Exception:
+                continue
+
+            # Wait briefly for WhatsApp to create/load its audio player.
+            for _ in range(5):
+                self.page.wait_for_timeout(300)
+
+                direct_audio = message_container.locator("audio")
+
+                if direct_audio.count() > 0:
+                    return direct_audio.first
+
+                page_audio = self.page.locator("#main audio")
+
+                if page_audio.count() > 0:
+                    return page_audio.last
+
+        return None
+
+    def _save_audio_payload(self, payload):
+        if not payload or not payload.get("base64"):
+            return ""
+
+        audio_dir = Path(AUDIO_TEMP_DIR)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        mime_type = payload.get("mimeType", "audio/ogg")
+        extension = self._audio_extension_from_mime(mime_type)
+
+        output_path = audio_dir / (
+            f"incoming_{uuid.uuid4().hex}{extension}"
+        )
+
+        output_path.write_bytes(
+            base64.b64decode(payload["base64"])
+        )
+
+        self.logger.log(
+            f"Voice note downloaded: {output_path.name}"
+        )
+
+        return str(output_path)
+
+    def _save_downloaded_voice(self, download):
+        audio_dir = Path(AUDIO_TEMP_DIR)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        suffix = Path(
+            download.suggested_filename or "voice.ogg"
+        ).suffix or ".ogg"
+
+        output_path = audio_dir / (
+            f"incoming_{uuid.uuid4().hex}{suffix}"
+        )
+
+        download.save_as(str(output_path))
+
+        self.logger.log(
+            f"Voice note downloaded: {output_path.name}"
+        )
+
+        return str(output_path)
+
+    def _click_and_save_download(self, locator):
+        """Click a visible Download control and save the browser download."""
+        count = locator.count()
+
+        for index in range(count - 1, -1, -1):
+            candidate = locator.nth(index)
+
+            try:
+                if not candidate.is_visible():
+                    continue
+
+                with self.page.expect_download(timeout=10000) as info:
+                    candidate.click(force=True)
+
+                return self._save_downloaded_voice(info.value)
+
+            except Exception:
+                continue
+
+        return ""
+
+    def _download_voice_via_ui(self, message_container):
+        """
+        Fallback for WhatsApp layouts with no exposed <audio> element.
+
+        Current WhatsApp Web shows the message dropdown as
+        data-testid='icon-down-context'. The Download action lives inside that
+        dropdown, not inside the voice player itself.
+        """
+        try:
+            message_container.hover()
+        except Exception:
+            pass
+
+        # Some WhatsApp layouts expose a Download control directly on hover.
+        direct_downloads = [
+            message_container.locator("[data-testid='download']"),
+            message_container.locator("[data-icon='download']"),
+            message_container.locator("button[aria-label*='Download']"),
+        ]
+
+        for locator in direct_downloads:
+            saved_path = self._click_and_save_download(locator)
+
+            if saved_path:
+                return saved_path
+
+        # The actual DOM report from this WhatsApp Web session includes this
+        # context-menu button for the voice note.
+        context_menu = message_container.locator(
+            "[data-testid='icon-down-context']"
+        )
+
+        if context_menu.count() == 0:
+            return ""
+
+        try:
+            context_menu.last.click(force=True)
+            self.page.wait_for_timeout(400)
+
+        except Exception:
+            return ""
+
+        # WhatsApp may render the menu item as a menuitem, button, plain text,
+        # or an icon depending on its current rollout.
+        menu_downloads = [
+            self.page.get_by_role("menuitem", name="Download"),
+            self.page.get_by_role("button", name="Download"),
+            self.page.get_by_text("Download", exact=True),
+            self.page.locator("[data-testid='mi-download']"),
+            self.page.locator("[data-icon='download']"),
+        ]
+
+        for locator in menu_downloads:
+            saved_path = self._click_and_save_download(locator)
+
+            if saved_path:
+                return saved_path
+
+        try:
+            self.page.keyboard.press("Escape")
+        except Exception:
+            pass
+
+        return ""
+
+    # ---------------------------------
+    # Download Latest Voice Note
+    # ---------------------------------
+    def download_latest_voice_note(self, expected_message_id):
+        try:
+            message_container, count = self._get_last_message_container()
+
+            if message_container is None:
+                return ""
+
+            message_text = self._extract_message_text(message_container)
+            current_message_id = self._get_message_id(
+                message_container,
+                message_text,
+                count
+            )
+
+            if current_message_id != expected_message_id:
+                self.logger.log(
+                    "Voice note changed before it could be downloaded"
+                )
+
+                return ""
+
+            audio = self._find_voice_audio_element(
+                message_container
+            )
+
+            if audio:
+                payload = audio.evaluate(
+                    """async (element) => {
+                        const source = element.currentSrc || element.src;
+
+                        if (!source) {
+                            return null;
+                        }
+
+                        try {
+                            const response = await fetch(source);
+
+                            if (!response.ok) {
+                                return null;
+                            }
+
+                            const blob = await response.blob();
+                            const buffer = await blob.arrayBuffer();
+                            const bytes = new Uint8Array(buffer);
+                            const chunkSize = 0x8000;
+                            let binary = "";
+
+                            for (let index = 0; index < bytes.length; index += chunkSize) {
+                                binary += String.fromCharCode(
+                                    ...bytes.subarray(index, index + chunkSize)
+                                );
+                            }
+
+                            element.pause();
+
+                            return {
+                                base64: btoa(binary),
+                                mimeType: blob.type || "audio/ogg"
+                            };
+                        } catch (error) {
+                            return null;
+                        }
+                    }"""
+                )
+
+                saved_path = self._save_audio_payload(payload)
+
+                if saved_path:
+                    return saved_path
+
+            # Last fallback: WhatsApp's visible message download control.
+            saved_path = self._download_voice_via_ui(
+                message_container
+            )
+
+            if saved_path:
+                return saved_path
+
+            self._save_voice_dom_debug(message_container)
+
+            self.logger.log(
+                "Voice note audio element and download control not found"
+            )
+
+            return ""
+
+        except Exception as error:
+            self.logger.log(
+                f"Voice Download Error: {error}"
+            )
+
+            return ""
+
+    def _save_voice_dom_debug(self, message_container):
+        """
+        Save selector information for the current voice-note bubble.
+        This is only used when WhatsApp Web does not expose an audio source.
+        """
+        try:
+            debug_data = message_container.evaluate(
+                """(element) => {
+                    const readAttributes = (node) => ({
+                        tag: node.tagName,
+                        testid: node.getAttribute('data-testid'),
+                        icon: node.getAttribute('data-icon'),
+                        ariaLabel: node.getAttribute('aria-label'),
+                        title: node.getAttribute('title'),
+                        role: node.getAttribute('role'),
+                        accept: node.getAttribute('accept'),
+                        src: node.getAttribute('src'),
+                        className: typeof node.className === 'string'
+                            ? node.className
+                            : ''
+                    });
+
+                    const interesting = [...element.querySelectorAll('*')]
+                        .filter((node) => {
+                            const values = [
+                                node.getAttribute('data-testid'),
+                                node.getAttribute('data-icon'),
+                                node.getAttribute('aria-label'),
+                                node.getAttribute('title'),
+                                node.tagName
+                            ].filter(Boolean).join(' ').toLowerCase();
+
+                            return values.includes('audio') ||
+                                values.includes('voice') ||
+                                values.includes('play') ||
+                                values.includes('download') ||
+                                node.tagName === 'AUDIO' ||
+                                node.tagName === 'BUTTON';
+                        })
+                        .slice(0, 80)
+                        .map(readAttributes);
+
+                    const clone = element.cloneNode(true);
+                    const walker = document.createTreeWalker(
+                        clone,
+                        NodeFilter.SHOW_TEXT
+                    );
+                    const textNodes = [];
+                    let current;
+
+                    while ((current = walker.nextNode())) {
+                        textNodes.push(current);
+                    }
+
+                    for (const textNode of textNodes) {
+                        textNode.data = '[text removed]';
+                    }
+
+                    return {
+                        container: readAttributes(element),
+                        audioCount: element.querySelectorAll('audio').length,
+                        interestingElements: interesting,
+                        sanitizedHtml: clone.outerHTML.slice(0, 14000)
+                    };
+                }"""
+            )
+
+            output_path = Path(BASE_DIR) / "voice_dom_debug.json"
+            output_path.write_text(
+                json.dumps(debug_data, indent=2),
+                encoding="utf-8"
+            )
+
+            self.logger.log(
+                f"Voice DOM debug saved: {output_path}"
+            )
+
+        except Exception as error:
+            self.logger.log(
+                f"Voice DOM Debug Error: {error}"
+            )
+
+    # Compatibility for any old caller.
+    def read_last_message(self):
+        latest = self.get_latest_chat_message()
+
+        if latest:
+            return latest["text"]
+
+        return ""
+
+    # ---------------------------------
+    # Send Text Message
+    # ---------------------------------
+    def send_message(self, message):
+        self.typing.thinking_delay()
+        self.typing.typing_delay(message)
+
+        try:
+            message_box = self.page.get_by_test_id(
+                "conversation-compose-box-input"
+            )
+
+            message_box.click()
+            message_box.fill(message)
+
+            self._click_send_button()
+
+            self.logger.log(
+                f"Message Sent: {message}"
+            )
+
+            return True
+
+        except Exception as error:
+            self.logger.log(
+                f"Send Message Error: {error}"
+            )
+
+            return False
+
+    # ---------------------------------
+    # Send Voice Reply
+    # ---------------------------------
+    def _last_visible_locator(self, locator):
+        for index in range(locator.count() - 1, -1, -1):
+            candidate = locator.nth(index)
+
+            try:
+                if candidate.is_visible():
+                    return candidate
+            except Exception:
+                continue
+
+        return None
+
+    def _get_attachment_button(self):
+        attachment_selectors = [
+            "[data-testid='conversation-clip']",
+            "[data-testid='attach-menu-plus']",
+            "[data-icon='plus-rounded']",
+            "[aria-label='Attach']",
+            "button[aria-label='Attach']",
+        ]
+
+        for selector in attachment_selectors:
+            button = self._last_visible_locator(
+                self.page.locator(selector)
+            )
+
+            if button:
+                return button
+
+        return None
+
+    def _get_attach_menu_item(self, name):
+        """Return a visible WhatsApp attachment-menu button by its label."""
+        locators = [
+            self.page.get_by_role(
+                "menuitem",
+                name=name,
+                exact=True
+            ),
+            self.page.locator(
+                f"button[aria-label='{name}']"
+            ),
+        ]
+
+        for locator in locators:
+            item = self._last_visible_locator(locator)
+
+            if item:
+                return item
+
+        return None
+
+    def _choose_file_from_attach_menu(self, menu_name, audio_path):
+        """Open an Attach menu item and hand the generated file to its picker."""
+        menu_item = self._get_attach_menu_item(menu_name)
+
+        if menu_item is None:
+            return False
+
+        try:
+            with self.page.expect_file_chooser(timeout=5000) as info:
+                menu_item.click(force=True)
+
+            file_chooser = info.value
+            file_chooser.set_files(audio_path)
+
+            self.logger.log(
+                f"Voice file selected through Attach -> {menu_name}"
+            )
+
+            return True
+
+        except Exception:
+            # Some WhatsApp builds render a file input inside the menu item
+            # instead of raising a browser file chooser event.
+            nested_input = menu_item.locator("input[type='file']")
+
+            if nested_input.count() > 0:
+                try:
+                    nested_input.last.set_input_files(audio_path)
+
+                    self.logger.log(
+                        f"Voice file selected through Attach -> {menu_name}"
+                    )
+
+                    return True
+
+                except Exception:
+                    pass
+
+            return False
+
+    @staticmethod
+    def _file_input_details(file_input):
+        return file_input.evaluate(
+            """(input) => Array.from(input.files || []).map((file) => ({
+                name: file.name,
+                size: file.size,
+                type: file.type
+            }))"""
+        )
+
+    def _current_last_message_id(self):
+        latest = self.get_latest_chat_message()
+
+        if latest:
+            return latest["id"]
+
+        return ""
+
+    def _wait_for_new_message(self, previous_message_id):
+        """Verify that WhatsApp actually added an outgoing message."""
+        for _ in range(20):
+            self.page.wait_for_timeout(500)
+
+            current_message_id = self._current_last_message_id()
+
+            if current_message_id and current_message_id != previous_message_id:
+                return True
+
+        return False
+
+    def _get_attachment_send_button(self):
+        """Find the visible Send button from the attachment preview."""
+        selectors = [
+            "[role='dialog'] [data-testid='send']",
+            "[role='dialog'] [aria-label='Send']",
+            "[role='dialog'] [data-icon='wds-ic-send-filled']",
+            "[role='dialog'] [data-icon='send']",
+            "[role='dialog'] [data-icon='send-light']",
+            "div[role='button'][aria-label='Send']",
+            "button[aria-label='Send']",
+            "[data-testid='send']",
+            "[data-icon='wds-ic-send-filled']",
+            "[data-icon='send']",
+            "[data-icon='send-light']",
+        ]
+
+        for selector in selectors:
+            element = self._last_visible_locator(
+                self.page.locator(selector)
+            )
+
+            if not element:
+                continue
+
+            # If the selector found an SVG/span icon, click its button parent.
+            button_parent = element.locator(
+                "xpath=ancestor-or-self::*[@role='button' or self::button][1]"
+            )
+
+            if button_parent.count() > 0:
+                return button_parent
+
+            return element
+
+        return None
+
+    def _save_voice_send_debug(self, audio_path):
+        """Save UI selector details if an attachment remains stuck."""
+        try:
+            debug_data = self.page.evaluate(
+                """() => {
+                    const visible = (node) => {
+                        const style = window.getComputedStyle(node);
+                        const rect = node.getBoundingClientRect();
+                        return style.display !== 'none' &&
+                            style.visibility !== 'hidden' &&
+                            rect.width > 0 && rect.height > 0;
+                    };
+
+                    const describe = (node) => ({
+                        tag: node.tagName,
+                        testid: node.getAttribute('data-testid'),
+                        icon: node.getAttribute('data-icon'),
+                        ariaLabel: node.getAttribute('aria-label'),
+                        role: node.getAttribute('role'),
+                        accept: node.getAttribute('accept'),
+                        type: node.getAttribute('type'),
+                        visible: visible(node),
+                        text: (node.innerText || '').slice(0, 80)
+                    });
+
+                    return {
+                        fileInputs: [...document.querySelectorAll('input[type=file]')]
+                            .map(describe),
+                        dialogs: [...document.querySelectorAll('[role=dialog]')]
+                            .filter(visible)
+                            .map(describe),
+                        visibleButtons: [...document.querySelectorAll(
+                            'button, [role=button], [data-testid], [data-icon]'
+                        )]
+                            .filter(visible)
+                            .slice(-120)
+                            .map(describe)
+                    };
+                }"""
+            )
+
+            debug_data["audioFile"] = Path(audio_path).name
+            output_path = Path(BASE_DIR) / "voice_send_debug.json"
+            output_path.write_text(
+                json.dumps(debug_data, indent=2),
+                encoding="utf-8"
+            )
+
+            self.logger.log(
+                f"Voice send debug saved: {output_path}"
+            )
+
+        except Exception as error:
+            self.logger.log(
+                f"Voice Send Debug Error: {error}"
+            )
+
+    def _click_send_button(self):
+        send_button = self._get_attachment_send_button()
+
+        if send_button:
+            send_button.click()
+            return
+
+        self.page.get_by_role(
+            "button",
+            name="Send"
+        ).click()
+
+    def _close_attachment_preview(self):
+        """Close a stuck attachment preview before any text fallback."""
+        close_selectors = [
+            "[aria-label='Close']",
+            "[aria-label='Cancel']",
+            "[data-testid='x-alt']",
+            "[data-icon='x-alt']",
+            "[data-icon='x']",
+        ]
+
+        for selector in close_selectors:
+            button = self._last_visible_locator(
+                self.page.locator(selector)
+            )
+
+            if button:
+                try:
+                    button.click(force=True)
+                    self.page.wait_for_timeout(300)
+                    return
+                except Exception:
+                    pass
+
+        try:
+            self.page.keyboard.press("Escape")
+        except Exception:
+            pass
+
+    def send_voice_message(self, audio_path):
+        """
+        Open WhatsApp's real Attach -> Document flow, attach the OGG/Opus
+        file, click the preview Send button, and verify a new message appears.
+        """
+        self.typing.thinking_delay()
+
+        try:
+            previous_message_id = self._current_last_message_id()
+            attachment_button = self._get_attachment_button()
+
+            if attachment_button is None:
+                raise RuntimeError(
+                    "WhatsApp attachment button was not found."
+                )
+
+            attachment_button.click(force=True)
+            self.page.wait_for_timeout(500)
+
+            # The actual debug DOM shows an Audio menu item. Use it first so
+            # WhatsApp treats the generated OGG as audio, not a generic file.
+            attached = self._choose_file_from_attach_menu(
+                "Audio",
+                audio_path
+            )
+
+            # Older layouts may not expose Audio; Document is a delivery
+            # fallback, though it can display as a regular attachment.
+            if not attached:
+                attached = self._choose_file_from_attach_menu(
+                    "Document",
+                    audio_path
+                )
+
+            if not attached:
+                raise RuntimeError(
+                    "WhatsApp Audio/Document attachment option was not found."
+                )
+
+            self.page.wait_for_timeout(1800)
+
+            send_button = self._get_attachment_send_button()
+
+            if send_button:
+                send_button.click(force=True)
+
+                if self._wait_for_new_message(previous_message_id):
+                    self.logger.log(
+                        f"Voice Reply Sent: {Path(audio_path).name}"
+                    )
+
+                    return True
+
+            self._save_voice_send_debug(audio_path)
+            self._close_attachment_preview()
+
+            self.logger.log(
+                "Voice reply was attached but WhatsApp did not confirm send"
+            )
+
+            return False
+
+        except Exception as error:
+            self._save_voice_send_debug(audio_path)
+            self._close_attachment_preview()
+
+            self.logger.log(
+                f"Send Voice Error: {error}"
+            )
+
+            return False
+
+    # ---------------------------------
+    # Close Browser
+    # ---------------------------------
+    def stop(self):
+        self.logger.log("Closing Browser")
+
+        context = self.context
+        playwright = self.playwright
+
+        # Clear references first so shutdown is idempotent even when WhatsApp,
+        # the user, or the supervisor already closed a page/context.
+        self.page = None
+        self.context = None
+        self.playwright = None
+
+        if context:
+            try:
+                context.close()
+            except Exception as error:
+                error_text = str(error)
+
+                if not any(
+                    marker in error_text
+                    for marker in (
+                        "Target page, context or browser has been closed",
+                        "Browser has been closed",
+                        "Connection closed",
+                    )
+                ):
+                    self.logger.log(
+                        f"Browser Context Close Warning: {error}"
+                    )
+
+        if playwright:
+            try:
+                playwright.stop()
+            except Exception as error:
+                error_text = str(error)
+
+                if not any(
+                    marker in error_text
+                    for marker in (
+                        "Target page, context or browser has been closed",
+                        "Browser has been closed",
+                        "Connection closed",
+                    )
+                ):
+                    self.logger.log(
+                        f"Playwright Stop Warning: {error}"
+                    )

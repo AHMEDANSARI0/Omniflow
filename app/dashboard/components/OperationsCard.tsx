@@ -21,13 +21,13 @@ function Tile({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] px-3.5 py-3">
-      <p className="text-[10px] uppercase tracking-wider text-slate-600">
+    <div className="rounded-xl border border-line bg-white/[0.01] px-3.5 py-3">
+      <p className="text-[10px] uppercase tracking-wider text-ink-3">
         {label}
       </p>
-      <p className="mt-1 text-xl font-semibold text-white">{value}</p>
+      <p className="mt-1 text-xl font-semibold text-ink">{value}</p>
       {sub ? (
-        <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p>
+        <p className="mt-0.5 text-[10px] text-ink-3">{sub}</p>
       ) : null}
     </div>
   );
@@ -71,12 +71,12 @@ export default function OperationsCard() {
   if (failed) return null;
 
   return (
-    <div className="mb-8 rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
+    <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold text-white">
+        <h2 className="text-sm font-semibold text-ink">
           Operations &mdash; last 30 days
         </h2>
-        <span className="text-[10px] text-slate-600">
+        <span className="text-[10px] text-ink-3">
           chats &middot; orders &middot; deliveries &middot; recovery
           &middot; CSAT
         </span>
