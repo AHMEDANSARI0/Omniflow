@@ -8248,6 +8248,10 @@ export interface MemoryEntry {
   kind: "preference" | "note" | "fact";
   content: string;
   created_by: string;
+  mtype: "short" | "long" | "business" | "journey";
+  source: "owner" | "ai" | "automation";
+  confidence: number;
+  expires_at: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -8305,14 +8309,22 @@ export async function addCustomerMemory(
   accessToken: string,
   contact: string,
   kind: MemoryEntry["kind"],
-  content: string
+  content: string,
+  mtype: MemoryEntry["mtype"] = "long",
+  expiresHours = 0
 ): Promise<boolean> {
   let response: Response;
   try {
     response = await portalRequest(accessToken, "api/v1/portal/memory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contact, kind, content }),
+      body: JSON.stringify({
+        contact,
+        kind,
+        content,
+        mtype,
+        expires_hours: expiresHours,
+      }),
     });
   } catch (error) {
     assertNotAuthError(error);
@@ -8326,14 +8338,20 @@ export async function addCustomerMemory(
 export async function updateCustomerMemory(
   accessToken: string,
   id: number,
-  content: string
+  content: string,
+  mtype?: MemoryEntry["mtype"],
+  expiresHours?: number
 ): Promise<boolean> {
   let response: Response;
   try {
     response = await portalRequest(accessToken, "api/v1/portal/memory/" + id, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        content,
+        mtype,
+        expires_hours: expiresHours,
+      }),
     });
   } catch (error) {
     assertNotAuthError(error);
@@ -10109,11 +10127,16 @@ export async function listListenHits(
     }));
 }
 
+export type RoutingTargetType = "user" | "agent";
+
 export interface RoutingRule {
   id: number;
   match: string;
   userId: number;
   priority: number;
+  targetType: RoutingTargetType;
+  agentId: number | null;
+  agentName: string | null;
 }
 
 export async function listRoutingRules(
@@ -10142,6 +10165,11 @@ export async function listRoutingRules(
       match: typeof item.match === "string" ? item.match : "",
       userId: typeof item.user_id === "number" ? item.user_id : 0,
       priority: typeof item.priority === "number" ? item.priority : 100,
+      targetType:
+        item.target_type === "agent" ? "agent" : "user",
+      agentId: typeof item.agent_id === "number" ? item.agent_id : null,
+      agentName:
+        typeof item.agent_name === "string" ? item.agent_name : null,
     }));
 }
 
@@ -10149,7 +10177,9 @@ export async function addRoutingRule(
   accessToken: string,
   match: string,
   userId: number,
-  priority: number
+  priority: number,
+  targetType: RoutingTargetType = "user",
+  agentId: number | null = null
 ): Promise<RoutingRule | null> {
   let response: Response;
   try {
@@ -10159,7 +10189,13 @@ export async function addRoutingRule(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ match, user_id: userId, priority }),
+        body: JSON.stringify({
+          match,
+          user_id: userId,
+          priority,
+          target_type: targetType,
+          agent_id: targetType === "agent" ? agentId : null,
+        }),
       }
     );
   } catch (error) {
@@ -10177,6 +10213,9 @@ export async function addRoutingRule(
     match,
     userId,
     priority,
+    targetType,
+    agentId: targetType === "agent" ? agentId : null,
+    agentName: null,
   };
 }
 
@@ -10201,6 +10240,693 @@ export async function deleteRoutingRule(
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   return { ok: true };
+}
+
+export interface PortalAgent {
+  id: number;
+  name: string;
+  tone: string;
+  instructions: string;
+  escalationUserId: number | null;
+  isActive: boolean;
+  versions: number;
+}
+
+function normalizeAgent(item: unknown): PortalAgent | null {
+  if (item === null || typeof item !== "object") return null;
+  const row = item as Record<string, unknown>;
+  const id = typeof row.id === "number" ? row.id : 0;
+  if (id <= 0) return null;
+  return {
+    id,
+    name: typeof row.name === "string" ? row.name : "",
+    tone: typeof row.tone === "string" ? row.tone : "",
+    instructions:
+      typeof row.instructions === "string" ? row.instructions : "",
+    escalationUserId:
+      typeof row.escalation_user_id === "number"
+        ? row.escalation_user_id
+        : null,
+    isActive: row.is_active !== false,
+    versions: typeof row.versions === "number" ? row.versions : 0,
+  };
+}
+
+export async function listAgents(
+  accessToken: string
+): Promise<PortalAgent[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/agents");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw =
+    payload !== null && typeof payload === "object"
+      ? (payload as Record<string, unknown>).agents
+      : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(normalizeAgent)
+    .filter((agent): agent is PortalAgent => agent !== null);
+}
+
+export interface AgentUpsert {
+  name: string;
+  tone: string;
+  instructions: string;
+  escalationUserId: number | null;
+}
+
+export async function createAgent(
+  accessToken: string,
+  input: AgentUpsert
+): Promise<PortalAgent | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/agents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: input.name,
+        tone: input.tone,
+        instructions: input.instructions,
+        escalation_user_id: input.escalationUserId,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = (payload as Record<string, unknown>).agent;
+  return normalizeAgent(row);
+}
+
+export type AgentMutation =
+  | { kind: "ok" }
+  | { kind: "not_found" }
+  | null;
+
+export async function updateAgent(
+  accessToken: string,
+  agentId: number,
+  input: AgentUpsert & { isActive: boolean }
+): Promise<AgentMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/agents/" + agentId,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: input.name,
+          tone: input.tone,
+          instructions: input.instructions,
+          escalation_user_id: input.escalationUserId,
+          is_active: input.isActive,
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { kind: "ok" };
+}
+
+export async function archiveAgent(
+  accessToken: string,
+  agentId: number
+): Promise<AgentMutation> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/agents/" + agentId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { kind: "ok" };
+}
+
+// ---------------------------------------------------------------------------
+// Workflows (engine 9): trigger -> steps automations + runs
+// ---------------------------------------------------------------------------
+
+export type WorkflowStepKind =
+  | "condition"
+  | "branch"
+  | "ai_decision"
+  | "action"
+  | "wait"
+  | "approval"
+  | "handoff"
+  | "goal"
+  | "stop";
+
+export interface WorkflowStep {
+  stepNo: number;
+  kind: WorkflowStepKind;
+  label: string;
+  config: Record<string, unknown>;
+}
+
+export interface WorkflowRunStats {
+  total: number;
+  live: number;
+  goals: number;
+  failed: number;
+  lastRunAt: string | null;
+}
+
+export interface PortalWorkflow {
+  id: number;
+  name: string;
+  description: string;
+  status: "draft" | "active" | "paused" | "archived";
+  triggerType: string;
+  triggerConfig: Record<string, unknown>;
+  stopOnReply: boolean;
+  version: number;
+  stepCount: number;
+  steps: WorkflowStep[];
+  runs: WorkflowRunStats;
+  updatedAt: string | null;
+}
+
+export interface WorkflowRunLogLine {
+  stepNo: number;
+  kind: string;
+  outcome: string;
+  detail: string;
+  at: string | null;
+}
+
+export interface WorkflowRun {
+  id: number;
+  workflowId: number;
+  event: string;
+  conversationId: number | null;
+  contactId: string;
+  contactName: string;
+  status: string;
+  currentStep: number;
+  stepsDone: number;
+  goal: string | null;
+  lastError: string | null;
+  resumeAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  log: WorkflowRunLogLine[];
+}
+
+export interface WorkflowTriggerSpec {
+  trigger: string;
+  label: string;
+  source: string;
+  options: string[];
+  description: string;
+}
+
+export interface WorkflowActionSpec {
+  action: string;
+  description: string;
+  risk: "low" | "medium" | "high";
+  required: string[];
+}
+
+export interface WorkflowTemplate {
+  key: string;
+  name: string;
+  description: string;
+  triggerType: string;
+  triggerConfig: Record<string, unknown>;
+  stopOnReply: boolean;
+  steps: { kind: WorkflowStepKind; label: string; config: Record<string, unknown> }[];
+}
+
+export interface WorkflowCatalog {
+  triggers: WorkflowTriggerSpec[];
+  actions: WorkflowActionSpec[];
+  stepKinds: WorkflowStepKind[];
+  templates: WorkflowTemplate[];
+  limits: { maxWorkflows: number; maxSteps: number; maxWaitMinutes: number };
+}
+
+export interface WorkflowUpsert {
+  name: string;
+  description: string;
+  triggerType: string;
+  triggerConfig: Record<string, unknown>;
+  stopOnReply: boolean;
+  steps: { kind: string; label: string; config: Record<string, unknown> }[];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function normalizeWorkflowStep(item: unknown): WorkflowStep | null {
+  const row = asRecord(item);
+  const kind = typeof row.kind === "string" ? row.kind : "";
+  if (!kind) return null;
+  return {
+    stepNo: typeof row.step_no === "number" ? row.step_no : 0,
+    kind: kind as WorkflowStepKind,
+    label: typeof row.label === "string" ? row.label : "",
+    config: asRecord(row.config),
+  };
+}
+
+function normalizeWorkflow(item: unknown): PortalWorkflow | null {
+  const row = asRecord(item);
+  const id = typeof row.id === "number" ? row.id : 0;
+  if (id <= 0) return null;
+  const runs = asRecord(row.runs);
+  const status = typeof row.status === "string" ? row.status : "draft";
+  const steps = Array.isArray(row.steps)
+    ? row.steps
+        .map(normalizeWorkflowStep)
+        .filter((step): step is WorkflowStep => step !== null)
+    : [];
+  return {
+    id,
+    name: typeof row.name === "string" ? row.name : "",
+    description: typeof row.description === "string" ? row.description : "",
+    status: (["draft", "active", "paused", "archived"].includes(status)
+      ? status
+      : "draft") as PortalWorkflow["status"],
+    triggerType:
+      typeof row.trigger_type === "string" ? row.trigger_type : "manual",
+    triggerConfig: asRecord(row.trigger_config),
+    stopOnReply: row.stop_on_reply === true,
+    version: typeof row.version === "number" ? row.version : 1,
+    stepCount:
+      typeof row.steps === "number" ? row.steps : steps.length,
+    steps,
+    runs: {
+      total: typeof runs.total === "number" ? runs.total : 0,
+      live: typeof runs.live === "number" ? runs.live : 0,
+      goals: typeof runs.goals === "number" ? runs.goals : 0,
+      failed: typeof runs.failed === "number" ? runs.failed : 0,
+      lastRunAt:
+        typeof runs.last_run_at === "string" ? runs.last_run_at : null,
+    },
+    updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
+  };
+}
+
+function normalizeWorkflowRun(item: unknown): WorkflowRun | null {
+  const row = asRecord(item);
+  const id = typeof row.id === "number" ? row.id : 0;
+  if (id <= 0) return null;
+  const log = Array.isArray(row.log)
+    ? row.log.map((line) => {
+        const entry = asRecord(line);
+        return {
+          stepNo: typeof entry.step_no === "number" ? entry.step_no : 0,
+          kind: typeof entry.kind === "string" ? entry.kind : "",
+          outcome: typeof entry.outcome === "string" ? entry.outcome : "",
+          detail: typeof entry.detail === "string" ? entry.detail : "",
+          at: typeof entry.at === "string" ? entry.at : null,
+        };
+      })
+    : [];
+  return {
+    id,
+    workflowId: typeof row.workflow_id === "number" ? row.workflow_id : 0,
+    event: typeof row.event === "string" ? row.event : "",
+    conversationId:
+      typeof row.conversation_id === "number" ? row.conversation_id : null,
+    contactId: typeof row.contact_id === "string" ? row.contact_id : "",
+    contactName: typeof row.contact_name === "string" ? row.contact_name : "",
+    status: typeof row.status === "string" ? row.status : "",
+    currentStep: typeof row.current_step === "number" ? row.current_step : 0,
+    stepsDone: typeof row.steps_done === "number" ? row.steps_done : 0,
+    goal: typeof row.goal === "string" ? row.goal : null,
+    lastError: typeof row.last_error === "string" ? row.last_error : null,
+    resumeAt: typeof row.resume_at === "string" ? row.resume_at : null,
+    startedAt: typeof row.started_at === "string" ? row.started_at : null,
+    finishedAt: typeof row.finished_at === "string" ? row.finished_at : null,
+    log,
+  };
+}
+
+function workflowBody(input: WorkflowUpsert): string {
+  return JSON.stringify({
+    name: input.name,
+    description: input.description,
+    trigger_type: input.triggerType,
+    trigger_config: input.triggerConfig,
+    stop_on_reply: input.stopOnReply,
+    steps: input.steps.map((step) => ({
+      kind: step.kind,
+      label: step.label,
+      config: step.config,
+    })),
+  });
+}
+
+export async function getWorkflowCatalog(
+  accessToken: string
+): Promise<WorkflowCatalog | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/workflows/catalog");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const limits = asRecord(payload.limits);
+  const triggers = Array.isArray(payload.triggers) ? payload.triggers : [];
+  const actions = Array.isArray(payload.actions) ? payload.actions : [];
+  const templates = Array.isArray(payload.templates) ? payload.templates : [];
+  return {
+    triggers: triggers.map((item) => {
+      const row = asRecord(item);
+      return {
+        trigger: typeof row.trigger === "string" ? row.trigger : "",
+        label: typeof row.label === "string" ? row.label : "",
+        source: typeof row.source === "string" ? row.source : "",
+        options: Array.isArray(row.options)
+          ? row.options.filter((o): o is string => typeof o === "string")
+          : [],
+        description:
+          typeof row.description === "string" ? row.description : "",
+      };
+    }),
+    actions: actions.map((item) => {
+      const row = asRecord(item);
+      const risk = typeof row.risk === "string" ? row.risk : "medium";
+      return {
+        action: typeof row.action === "string" ? row.action : "",
+        description:
+          typeof row.description === "string" ? row.description : "",
+        risk: (["low", "medium", "high"].includes(risk)
+          ? risk
+          : "medium") as WorkflowActionSpec["risk"],
+        required: Array.isArray(row.required)
+          ? row.required.filter((r): r is string => typeof r === "string")
+          : [],
+      };
+    }),
+    stepKinds: Array.isArray(payload.step_kinds)
+      ? (payload.step_kinds.filter(
+          (k): k is string => typeof k === "string"
+        ) as WorkflowStepKind[])
+      : [],
+    templates: templates.map((item) => {
+      const row = asRecord(item);
+      return {
+        key: typeof row.key === "string" ? row.key : "",
+        name: typeof row.name === "string" ? row.name : "",
+        description:
+          typeof row.description === "string" ? row.description : "",
+        triggerType:
+          typeof row.trigger_type === "string" ? row.trigger_type : "manual",
+        triggerConfig: asRecord(row.trigger_config),
+        stopOnReply: row.stop_on_reply === true,
+        steps: Array.isArray(row.steps)
+          ? row.steps.map((step) => {
+              const s = asRecord(step);
+              return {
+                kind: (typeof s.kind === "string"
+                  ? s.kind
+                  : "stop") as WorkflowStepKind,
+                label: typeof s.label === "string" ? s.label : "",
+                config: asRecord(s.config),
+              };
+            })
+          : [],
+      };
+    }),
+    limits: {
+      maxWorkflows:
+        typeof limits.max_workflows === "number" ? limits.max_workflows : 20,
+      maxSteps: typeof limits.max_steps === "number" ? limits.max_steps : 12,
+      maxWaitMinutes:
+        typeof limits.max_wait_minutes === "number"
+          ? limits.max_wait_minutes
+          : 10080,
+    },
+  };
+}
+
+export async function listWorkflows(
+  accessToken: string
+): Promise<PortalWorkflow[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/workflows");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  if (!Array.isArray(payload.workflows)) return [];
+  return payload.workflows
+    .map(normalizeWorkflow)
+    .filter((item): item is PortalWorkflow => item !== null);
+}
+
+export async function getWorkflow(
+  accessToken: string,
+  workflowId: number
+): Promise<PortalWorkflow | null | "not_found"> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/workflows/" + workflowId
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return "not_found";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return normalizeWorkflow(payload.workflow);
+}
+
+export type WorkflowWriteResult =
+  | { kind: "ok"; workflow?: PortalWorkflow | null; version?: number }
+  | { kind: "not_found" }
+  | { kind: "bad_request"; message: string }
+  | null;
+
+async function readWriteError(response: Response): Promise<WorkflowWriteResult> {
+  const payload = asRecord(await response.json().catch(() => null));
+  const error = asRecord(payload.error);
+  return {
+    kind: "bad_request",
+    message:
+      typeof error.message === "string" ? error.message : "Check the workflow.",
+  };
+}
+
+export async function createWorkflow(
+  accessToken: string,
+  input: WorkflowUpsert
+): Promise<WorkflowWriteResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/workflows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: workflowBody(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return readWriteError(response);
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return { kind: "ok", workflow: normalizeWorkflow(payload.workflow) };
+}
+
+export async function updateWorkflow(
+  accessToken: string,
+  workflowId: number,
+  input: WorkflowUpsert
+): Promise<WorkflowWriteResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/workflows/" + workflowId,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: workflowBody(input),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return readWriteError(response);
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return {
+    kind: "ok",
+    version: typeof payload.version === "number" ? payload.version : undefined,
+  };
+}
+
+export async function setWorkflowStatus(
+  accessToken: string,
+  workflowId: number,
+  status: "active" | "paused"
+): Promise<WorkflowWriteResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/workflows/" + workflowId + "/status",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return readWriteError(response);
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { kind: "ok" };
+}
+
+export async function archiveWorkflow(
+  accessToken: string,
+  workflowId: number
+): Promise<WorkflowWriteResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/workflows/" + workflowId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return { kind: "ok" };
+}
+
+export async function listWorkflowRuns(
+  accessToken: string,
+  workflowId: number,
+  limit = 20
+): Promise<WorkflowRun[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/workflows/" + workflowId + "/runs?limit=" +
+        Math.max(1, Math.min(50, Math.round(limit)))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404 || response.status === 501) return null;
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  if (!Array.isArray(payload.runs)) return [];
+  return payload.runs
+    .map(normalizeWorkflowRun)
+    .filter((run): run is WorkflowRun => run !== null);
+}
+
+export type WorkflowRunNowResult =
+  | { kind: "ok"; runId: number; status: string }
+  | { kind: "not_found" }
+  | { kind: "bad_request"; message: string }
+  | null;
+
+export async function runWorkflowNow(
+  accessToken: string,
+  workflowId: number,
+  conversationId: number
+): Promise<WorkflowRunNowResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/workflows/" + workflowId + "/run",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400 || response.status === 409) {
+    const payload = asRecord(await response.json().catch(() => null));
+    const error = asRecord(payload.error);
+    return {
+      kind: "bad_request",
+      message:
+        typeof error.message === "string" ? error.message : "Run failed.",
+    };
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return {
+    kind: "ok",
+    runId: typeof payload.run_id === "number" ? payload.run_id : 0,
+    status: typeof payload.status === "string" ? payload.status : "",
+  };
 }
 
 export interface RecoSuggestion {
@@ -11394,4 +12120,333 @@ export async function sendConversationMessage(
 export async function requirePortalAccessToken(): Promise<string | null> {
   const { accessToken } = await readSessionCookies();
   return accessToken ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Approvals (D3): high-risk actions wait for an owner yes/no — in the
+// portal or over WhatsApp with a plain 1 / 0 reply.
+// ---------------------------------------------------------------------------
+
+export interface Approval {
+  id: number;
+  conversationId: number | null;
+  contactId: string;
+  contactName: string | null;
+  action: string;
+  summary: string;
+  customerQuery: string | null;
+  status: string;
+  source: string;
+  refCode: string;
+  decidedBy: string | null;
+  decidedVia: string | null;
+  decidedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string | null;
+}
+
+export interface ApprovalsConfig {
+  approvalNumber: string;
+  autoExpireHours: number;
+  selfChatAvailable: boolean;
+}
+
+function mapApproval(row: Record<string, unknown>): Approval {
+  return {
+    id: Number(row.id || 0),
+    conversationId: row.conversation_id === null || row.conversation_id === undefined
+      ? null : Number(row.conversation_id),
+    contactId: String(row.contact_id || ""),
+    contactName: row.contact_name === null || row.contact_name === undefined
+      ? null : String(row.contact_name),
+    action: String(row.action || ""),
+    summary: String(row.summary || ""),
+    customerQuery: row.customer_query === null || row.customer_query === undefined
+      ? null : String(row.customer_query),
+    status: String(row.status || "pending"),
+    source: String(row.source || "ai"),
+    refCode: String(row.ref_code || ""),
+    decidedBy: row.decided_by === null || row.decided_by === undefined
+      ? null : String(row.decided_by),
+    decidedVia: row.decided_via === null || row.decided_via === undefined
+      ? null : String(row.decided_via),
+    decidedAt: row.decided_at === null || row.decided_at === undefined
+      ? null : String(row.decided_at),
+    expiresAt: row.expires_at === null || row.expires_at === undefined
+      ? null : String(row.expires_at),
+    createdAt: row.created_at === null || row.created_at === undefined
+      ? null : String(row.created_at),
+  };
+}
+
+export async function listApprovals(
+  accessToken: string,
+  status: string
+): Promise<Approval[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/approvals?status=" + encodeURIComponent(status),
+      { method: "GET" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).approvals
+    : null;
+  if (!Array.isArray(raw)) return null;
+  return raw.map((row: Record<string, unknown>) => mapApproval(row));
+}
+
+export async function decideApproval(
+  accessToken: string,
+  approvalId: number,
+  decision: "approve" | "reject"
+): Promise<"ok" | "not_found" | "conflict" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/approvals/" + approvalId + "/decide",
+      { method: "POST", body: JSON.stringify({ decision }) }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return "not_found";
+  if (response.status === 409) return "conflict";
+  if (!response.ok) return null;
+  return "ok";
+}
+
+export async function getApprovalsConfig(
+  accessToken: string
+): Promise<ApprovalsConfig | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken, "api/v1/portal/approvals/config", { method: "GET" });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  return {
+    approvalNumber: String(row.approvalNumber || ""),
+    autoExpireHours: Number(row.autoExpireHours || 24),
+    selfChatAvailable: row.selfChatAvailable === true,
+  };
+}
+
+export async function saveApprovalsConfig(
+  accessToken: string,
+  approvalNumber: string,
+  autoExpireHours: number
+): Promise<"ok" | "bad_request" | "forbidden" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/approvals/config",
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          approvalNumber,
+          autoExpireHours,
+        }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return "bad_request";
+  if (response.status === 403) return "forbidden";
+  if (!response.ok) return null;
+  return "ok";
+}
+
+// ---------------------------------------------------------------------------
+// Policy hub (engine 8): one read-only summary of every rule family +
+// the shared evaluator's dry-run endpoint.
+// ---------------------------------------------------------------------------
+
+export interface PolicyFamily {
+  ruleSet: string;
+  label: string;
+  href: string;
+  count: number;
+  summary: string;
+}
+
+export async function listPolicyRules(
+  accessToken: string
+): Promise<PolicyFamily[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/policy/rules",
+      { method: "GET" });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw = payload !== null && typeof payload === "object"
+    ? (payload as Record<string, unknown>).families
+    : null;
+  if (!Array.isArray(raw)) return null;
+  return raw.map((row: Record<string, unknown>) => ({
+    ruleSet: String(row.ruleSet || ""),
+    label: String(row.label || ""),
+    href: String(row.href || "/dashboard"),
+    count: Number(row.count || 0),
+    summary: String(row.summary || ""),
+  }));
+}
+
+export async function testPolicyRule(
+  accessToken: string,
+  rules: Record<string, unknown>,
+  context: Record<string, unknown>
+): Promise<boolean | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/policy/evaluate",
+      {
+        method: "POST",
+        body: JSON.stringify({ rules, context }),
+      });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  return (payload as Record<string, unknown>).matched === true;
+}
+
+// ---------------------------------------------------------------------------
+// Business Brain v2: structured business facts (policies / SOPs / pricing)
+// ---------------------------------------------------------------------------
+
+export interface BrainFact {
+  id: number;
+  kind: "policy" | "sop" | "pricing" | "refund" | "escalation" | "hours";
+  label: string;
+  content: string;
+  keywords: string;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export async function listBrainFacts(
+  accessToken: string
+): Promise<BrainFact[] | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/brain/facts");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    facts?: Array<Record<string, unknown>>;
+  } | null;
+  if (!payload?.facts) return null;
+  return payload.facts.map((row) => ({
+    id: Number(row.id || 0),
+    kind: (String(row.kind || "policy") as BrainFact["kind"]),
+    label: String(row.label || ""),
+    content: String(row.content || ""),
+    keywords: String(row.keywords || ""),
+    isActive: Boolean(row.is_active),
+    updatedAt: String(row.updated_at || ""),
+  }));
+}
+
+export async function saveBrainFact(
+  accessToken: string,
+  fact: {
+    id?: number;
+    kind: BrainFact["kind"];
+    label: string;
+    content: string;
+    keywords?: string;
+    isActive?: boolean;
+  }
+): Promise<BrainFact | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/brain/facts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: fact.id ?? 0,
+        kind: fact.kind,
+        label: fact.label,
+        content: fact.content,
+        keywords: fact.keywords ?? "",
+        is_active: fact.isActive ?? true,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    fact?: Record<string, unknown>;
+  } | null;
+  if (!payload?.fact) return null;
+  return {
+    id: Number(payload.fact.id || 0),
+    kind: (String(payload.fact.kind || "policy") as BrainFact["kind"]),
+    label: String(payload.fact.label || ""),
+    content: String(payload.fact.content || ""),
+    keywords: String(payload.fact.keywords || ""),
+    isActive: Boolean(payload.fact.is_active),
+    updatedAt: "",
+  };
+}
+
+export async function deleteBrainFact(
+  accessToken: string,
+  id: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/brain/facts?id=" + encodeURIComponent(String(id)),
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
 }

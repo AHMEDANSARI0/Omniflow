@@ -1,0 +1,268 @@
+"""Tests for Router+Agents upgrade: portal_agents (AI agent personas +
+versioning + soft archive, human-only API) + portal_routing agent targets
++ portal_brain persona wiring + web pins (BFF, portal.ts, team UI)."""
+from flask import Flask
+
+import portal_agents
+import portal_routing
+import portal_db
+from test_lib import install_db_stub
+from test_lib import check, summary
+
+PRINCIPAL = {
+    "session_id": "s", "user_id": 11, "client_id": 1, "role": "owner",
+    "email": "ahmed@example.com", "display_name": "Ahmed",
+    "via_api_key": False,
+}
+
+AGENT_ROW = {"id": 7, "name": "Sales Aunty", "tone": "cheerful",
+             "instructions": "Upsell gently.", "escalation_user_id": 9,
+             "is_active": True, "updated_at": "u"}
+
+
+class PrincipalStub:
+    def __init__(self, module, principal):
+        self.module = module
+        self.principal = principal
+
+    def __enter__(self):
+        self.orig = self.module.authenticate_portal_request
+        self.module.authenticate_portal_request = lambda: self.principal
+        self.module.PortalAuthUnavailable = Exception
+        return self
+
+    def __exit__(self, *a):
+        self.module.authenticate_portal_request = self.orig
+
+
+def fresh(script):
+    portal_agents._DDL_READY = True
+    return install_db_stub(portal_agents, script)
+
+
+def run_api(script, method, path, json_body=None, principal=PRINCIPAL):
+    fresh(script)
+    app = Flask("agents-test")
+    app.register_blueprint(portal_agents.bp)
+    with PrincipalStub(portal_agents, principal):
+        client = app.test_client()
+        if method == "GET":
+            return client.get(path)
+        if method == "POST":
+            return client.post(path, json=json_body)
+        if method == "PUT":
+            return client.put(path, json=json_body)
+        if method == "DELETE":
+            return client.delete(path)
+    return None
+
+
+# ---------- read helpers (fail-soft) ----------
+
+conn = fresh([[AGENT_ROW]])
+with conn.cur as cur:
+    agent = portal_agents.load_agent(cur, 1, 7)
+check("load_agent shaped", agent is not None and agent["name"] == "Sales Aunty"
+      and agent["tone"] == "cheerful", agent)
+
+conn = fresh([[]])
+with conn.cur as cur:
+    check("load_agent missing -> None",
+          portal_agents.load_agent(cur, 1, 7) is None, "none")
+
+conn = fresh([[AGENT_ROW]])
+with conn.cur as cur:
+    got = portal_agents.agent_for_conversation(cur, 1, 55)
+check("agent_for_conversation", got is not None
+      and got["id"] == 7 and got["name"] == "Sales Aunty", got)
+
+conn = fresh([])
+with conn.cur as cur:
+    check("agent_for_conversation fail-soft",
+          portal_agents.agent_for_conversation(cur, 1, 55) is None, "soft")
+
+conn = fresh([[]])
+with conn.cur as cur:
+    portal_agents.assign_agent(cur, 1, 55, 7)
+check("assign_agent upsert",
+      any("ON CONFLICT" in s for s, p in conn.cur.executed), "upsert")
+
+
+# ---------- owner API ----------
+
+r = run_api([[AGENT_ROW], [{"agent_id": 7, "versions": 3}]], "GET",
+            "/api/v1/portal/agents")
+check("agents list 200", r.status_code == 200, r.status_code)
+body = r.get_json()
+check("agents list shape", body["agents"][0]["id"] == 7
+      and body["agents"][0]["name"] == "Sales Aunty"
+      and body["agents"][0]["versions"] == 3
+      and body["agents"][0]["escalation_user_id"] == 9, body)
+
+r = run_api([[{"total": 0}], [{"id": 7}], [], []], "POST", "/api/v1/portal/agents",
+            json_body={"name": "Support Pro", "tone": "formal",
+                       "instructions": "Policy strict.", "escalation_user_id": 5})
+check("agents create 200", r.status_code == 200
+      and r.get_json()["agent"]["id"] == 7
+      and r.get_json()["agent"]["versions"] == 1, r.get_json())
+sqls = [s for s, p in portal_agents.portal_db.conn.cur.executed]
+check("agents create versions snapshot",
+      any("INSERT INTO portal_agent_versions" in s for s in sqls), "version")
+
+r = run_api([[]], "POST", "/api/v1/portal/agents",
+            json_body={"name": "", "tone": "", "instructions": ""})
+check("agents create 400 empty name", r.status_code == 400, r.status_code)
+
+r = run_api([[]], "POST", "/api/v1/portal/agents",
+            json_body={"name": "X", "tone": "", "instructions": "",
+                       "escalation_user_id": -3})
+check("agents create 400 bad escalation", r.status_code == 400, r.status_code)
+
+r = run_api([[{"total": 10}]], "POST", "/api/v1/portal/agents",
+            json_body={"name": "X", "tone": "", "instructions": ""})
+check("agents create 400 max", r.status_code == 400, r.status_code)
+
+r = run_api([[{"id": 7}], [], []], "PUT", "/api/v1/portal/agents/7",
+            json_body={"name": "Support Pro v2", "tone": "formal",
+                       "instructions": "x", "escalation_user_id": None,
+                       "is_active": False})
+check("agents update 200", r.status_code == 200, r.status_code)
+
+r = run_api([[]], "PUT", "/api/v1/portal/agents/999",
+            json_body={"name": "X", "tone": "", "instructions": ""})
+check("agents update 404", r.status_code == 404, r.status_code)
+
+r = run_api([[{"id": 7}], []], "DELETE", "/api/v1/portal/agents/7")
+check("agents archive 200 soft", r.status_code == 200, r.status_code)
+sqls = [s for s, p in portal_agents.portal_db.conn.cur.executed]
+check("agents archive soft delete",
+      any("SET is_active = FALSE" in s for s in sqls), "soft")
+
+r = run_api([[]], "DELETE", "/api/v1/portal/agents/999")
+check("agents archive 404", r.status_code == 404, r.status_code)
+
+r = run_api([[]], "GET", "/api/v1/portal/agents",
+            principal={"via_api_key": True, "client_id": 1, "user_id": 1})
+check("agents api key 403", r.status_code == 403, r.status_code)
+
+r = run_api([[]], "GET", "/api/v1/portal/agents", principal=None)
+check("agents anon 401", r.status_code == 401, r.status_code)
+
+
+# ---------- routing: agent targets ----------
+
+def routing_fresh(script):
+    portal_routing._ROUTING_DDL_READY = True
+    conn = install_db_stub(portal_routing, script)
+    portal_routing.portal_db.CONV_TABLE = "portal_conversations"
+    return conn
+
+
+routing_app = Flask("routing-test")
+routing_app.register_blueprint(portal_routing.bp)
+
+
+def run_routing(script, method, path, json_body=None, principal=PRINCIPAL):
+    routing_fresh(script)
+    with PrincipalStub(portal_routing, principal):
+        client = routing_app.test_client()
+        if method == "POST":
+            return client.post(path, json=json_body)
+        if method == "GET":
+            return client.get(path)
+        if method == "DELETE":
+            return client.delete(path)
+    return None
+
+
+r = run_routing([[{"total": 0}], [AGENT_ROW], [{"id": 9}], []],
+                "POST", "/api/v1/portal/routing/rules",
+                json_body={"match": "refund", "target_type": "agent",
+                           "agent_id": 7, "priority": 5})
+check("agent rule 200", r.status_code == 200
+      and r.get_json()["id"] == 9, r.status_code)
+sqls = [s for s, p in portal_routing.portal_db.conn.cur.executed]
+check("agent rule insert has agent_id",
+      any("target_type" in s and "agent_id" in s for s in sqls), "insert")
+
+r = run_routing([[{"total": 0}], []], "POST", "/api/v1/portal/routing/rules",
+                json_body={"match": "refund", "target_type": "agent",
+                           "agent_id": 99, "priority": 5})
+check("agent rule 400 unknown agent", r.status_code == 400, r.status_code)
+
+r = run_routing([[]], "POST", "/api/v1/portal/routing/rules",
+                json_body={"match": "refund", "target_type": "agent",
+                           "agent_id": 0})
+check("agent rule 400 bad agent id", r.status_code == 400, r.status_code)
+
+r = run_routing([[]], "POST", "/api/v1/portal/routing/rules",
+                json_body={"match": "refund", "target_type": "robot",
+                           "agent_id": 7})
+check("agent rule 400 bad target type", r.status_code == 400, r.status_code)
+
+# maybe_route assigns an agent (not a teammate) for agent rules
+AGENT_RULE = [{"id": 1, "match_text": "refund", "user_id": 0,
+               "target_type": "agent", "agent_id": 7}]
+conn = routing_fresh([AGENT_RULE, [], [], []])
+portal_routing.maybe_route(1, 42, "92x", "REFUND chahiye", conn)
+sqls = [s for s, p in conn.cur.executed]
+check("route assigns agent row",
+      any("portal_conversation_agents" in s and "ON CONFLICT" in s
+          for s in sqls), sqls)
+check("route no teammate assign",
+      not any("UPDATE portal_conversations" in s for s in sqls), "no user")
+
+# inactive agent rule is skipped (LEFT JOIN filter)
+conn = routing_fresh([[], []])
+portal_routing.maybe_route(1, 42, "92x", "salam", conn)
+check("no rule no assign", len(conn.cur.executed) == 1, conn.cur.executed)
+
+
+# ---------- wiring pins ----------
+
+APP = open("/tmp/smoke971/app.py", encoding="utf8").read()
+check("app.py registers agents bp",
+      "aux_app.register_blueprint(portal_agents_bp)" in APP, "bp")
+
+BRAIN = open("portal_brain.py", encoding="utf8").read()
+check("brain resolves agent persona",
+      "agent_for_conversation(" in BRAIN
+      and "agent_persona" in BRAIN, "brain")
+
+ROUTING = open("portal_routing.py", encoding="utf8").read()
+check("routing target_type column",
+      "ADD COLUMN IF NOT EXISTS target_type" in ROUTING
+      and "ADD COLUMN IF NOT EXISTS agent_id" in ROUTING, "ddl")
+check("routing assign_agent wired",
+      "portal_agents.assign_agent(" in ROUTING, "wire")
+
+PORTAL = open("/tmp/p13/Omniflow/lib/omniflow/portal.ts",
+              encoding="utf8").read()
+for fn in ("listAgents", "createAgent", "updateAgent", "archiveAgent"):
+    check("client " + fn, "export async function " + fn in PORTAL, fn)
+check("client RoutingRule agent fields",
+      "targetType: RoutingTargetType;" in PORTAL
+      and "agentName: string | null;" in PORTAL, "type")
+
+BFF_ROUTE = open("/tmp/smoke971/bff_routing_rules.ts", encoding="utf8").read()
+check("bff routing validates agent target",
+      "target_type" in BFF_ROUTE and "agent_id is required for agent targets"
+      in BFF_ROUTE, "bffroute")
+
+BFF = open("/tmp/smoke971/bff_agents.ts", encoding="utf8").read()
+check("bff agents list/create", "listAgents" in BFF
+      and "createAgent" in BFF, "bff")
+BFF_ID = open("/tmp/smoke971/bff_id_agent_id.ts", encoding="utf8").read()
+check("bff agents [id] update/archive", "updateAgent" in BFF_ID
+      and "archiveAgent" in BFF_ID, "bffid")
+check("bff agents [id] awaits Next 16 params (Promise)",
+      "params: Promise<{ id: string }>" in BFF_ID
+      and "params: { id: string }" not in BFF_ID, "bffid-params")
+UI = open("/tmp/smoke971/agents_routing.tsx", encoding="utf8").read()
+check("team UI agents + routing",
+      "Create agent" in UI and "Add rule" in UI, "ui")
+TEAM = open("/tmp/smoke971/team_page.tsx", encoding="utf8").read()
+check("team page mounts agents section",
+      "<AgentsAndRouting />" in TEAM, "mount")
+
+summary("agents")

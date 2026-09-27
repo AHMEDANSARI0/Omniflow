@@ -129,6 +129,90 @@ with conn.cur as cur:
           portal_memory.remember_fact(cur, 1, "92300", "likes COD") is None,
           "dupe")
 
+# ---------- upgrade: mtype / source / confidence / expiry ----------
+
+check("upgrade ddl cols",
+      all(c in portal_memory._DDL for c in
+          ("mtype", "source", "confidence", "expires_at"))
+      and "ADD COLUMN IF NOT EXISTS mtype" in portal_memory._DDL,
+      "ddl")
+check("mtypes vocab", portal_memory.MTYPES ==
+      ("short", "long", "business", "journey"), portal_memory.MTYPES)
+check("sources vocab", portal_memory.SOURCES ==
+      ("owner", "ai", "automation"), portal_memory.SOURCES)
+
+conn = fresh([[{"id": 5}], []])
+with conn.cur as cur:
+    mid = portal_memory.add_memory(cur, 1, "92300", "note",
+                                   "Prefers evening", mtype="short",
+                                   source="ai", confidence=0.8)
+check("add with metadata", mid == 5, mid)
+ins = [(s, p) for s, p in conn.cur.executed
+       if "INSERT INTO portal_customer_memory" in s]
+check("add metadata in insert", ins and "mtype" in ins[0][0]
+      and ins[0][1][5] == "short" and ins[0][1][6] == "ai"
+      and abs(ins[0][1][7] - 0.8) < 0.01, ins[0][1] if ins else "none")
+with conn.cur as cur:
+    check("add bad mtype -> None",
+          portal_memory.add_memory(cur, 1, "92300", "note", "x",
+                                   mtype="godmode") is None, "none")
+row = {"id": 3, "kind": "note", "content": "x", "created_by": "owner",
+       "mtype": "business", "source": "automation", "confidence": 0.5,
+       "expires_at": "e", "created_at": "c", "updated_at": "u"}
+pub = portal_memory._memory_public(row)
+check("public shaped", pub["mtype"] == "business"
+      and pub["source"] == "automation"
+      and abs(pub["confidence"] - 0.5) < 0.01
+      and pub["expires_at"] == "e", pub)
+
+conn = fresh([[row]])
+with conn.cur as cur:
+    rows = portal_memory.list_memory(cur, 1, "92300")
+check("list expiry filter", any(
+      "expires_at IS NULL OR expires_at > NOW()" in s
+      for s, p in conn.cur.executed), "where")
+check("list shaped rows", rows[0]["mtype"] == "business", rows)
+
+conn = fresh([[{"id": 9}]])
+with conn.cur as cur:
+    check("update mtype + expiry", portal_memory.update_memory(
+        cur, 1, 9, "new text", mtype="business", expires_hours=24) is True,
+        "ok")
+upd = [(s, p) for s, p in conn.cur.executed if "UPDATE" in s]
+check("update sets mtype + interval", upd and "mtype = %s" in upd[0][0]
+      and "make_interval(hours => %s)" in upd[0][0]
+      and upd[0][1][1] == "business", upd[0][1] if upd else "none")
+conn = fresh([[{"id": 9}]])
+with conn.cur as cur:
+    check("clear expiry", portal_memory.update_memory(
+        cur, 1, 9, "new text", expires_hours=0) is True, "ok")
+check("clear expiry sql", any("expires_at = NULL" in s
+                              for s, p in conn.cur.executed), "null")
+with conn.cur as cur:
+    check("update bad mtype -> False", portal_memory.update_memory(
+        cur, 1, 9, "x", mtype="godmode") is False, "false")
+
+r = run_api([], "POST", "/api/v1/portal/memory",
+            {"contact": "92300", "kind": "note", "content": "x",
+             "mtype": "godmode"})
+check("post 400 bad mtype", r.status_code == 400, r.status_code)
+r = run_api([], "POST", "/api/v1/portal/memory",
+            {"contact": "92300", "kind": "note", "content": "x",
+             "expires_hours": -5})
+check("post 400 bad expiry", r.status_code == 400, r.status_code)
+r = run_api([[{"id": 7}], [], []], "POST", "/api/v1/portal/memory",
+            {"contact": "92300", "kind": "note", "content": "x",
+             "mtype": "short", "expires_hours": 24})
+check("post 200 with mtype + expiry", r.status_code == 200
+      and r.get_json()["memory"]["mtype"] == "short"
+      and r.get_json()["memory"]["expires_at"], r.get_json())
+r = run_api([], "PUT", "/api/v1/portal/memory/9",
+            {"content": "x", "mtype": "godmode"})
+check("put 400 bad mtype", r.status_code == 400, r.status_code)
+r = run_api([[{"id": 9}]], "PUT", "/api/v1/portal/memory/9",
+            {"content": "new", "mtype": "long", "expires_hours": 0})
+check("put 200 mtype + clear expiry", r.status_code == 200, r.status_code)
+
 # ---------- journey ----------
 
 conn = fresh([
@@ -185,6 +269,8 @@ conn = fresh([
     [],                                    # previous state (none)
     [],                                    # state upsert
     [{"id": 11}],                          # event insert
+    [{"id": 21}],                          # journey memory insert
+    [],                                    # memory trim
     [],                                    # log_action
 ])
 with conn.cur as cur:
@@ -193,6 +279,11 @@ check("move ok", moved == {"id": 3, "name": "Customer"}, moved)
 sqls = [s for s, p in conn.cur.executed]
 check("move writes event", any("portal_journey_events" in s for s in sqls),
       "event")
+mem_ins = [(s, p) for s, p in conn.cur.executed
+           if "INSERT INTO portal_customer_memory" in s]
+check("move writes journey-type memory", len(mem_ins) == 1
+      and "Journey stage: Customer" in str(mem_ins[0][1])
+      and mem_ins[0][1][5] == "journey", mem_ins)
 check("move writes audit", any("journey.stage" in str(p) or
                                "journey.stage" in s for s, p in
                                conn.cur.executed), "audit")
@@ -234,7 +325,9 @@ conn = fresh([
     [],
     [],
     [{"id": 12}],
-    [],
+    [{"id": 22}],                          # journey memory insert
+    [],                                    # memory trim
+    [],                                    # log_action
 ])
 with conn.cur as cur:
     check("note_purchase advances",
@@ -318,6 +411,7 @@ r = run_api([[]], "PUT", "/api/v1/portal/journey",
 check("journey move 404 bad stage", r.status_code == 404, r.status_code)
 r = run_api([
     [{"id": 3, "name": "Customer"}], [], [], [{"id": 11}], [],
+    [{"id": 23}], [], [],
 ], "PUT", "/api/v1/portal/journey", {"contact": "92300", "stage_id": 3})
 check("journey move 200", r.status_code == 200
       and r.get_json()["current"]["name"] == "Customer", r.get_json())

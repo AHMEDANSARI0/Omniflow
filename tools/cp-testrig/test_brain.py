@@ -192,6 +192,9 @@ ok, conn, captured = run_maybe_answer(
      [{"direction": "in", "body": "salam", "created_at": "t"}],  # msgs
      [],  # orders empty
      [{"id": 3, "title": "Tracking", "content": "2-4 din"}],  # kb
+     [],  # business facts (v2)
+     [],  # customer memory (upgrade)
+     [],  # agent persona (upgrade)
      [],  # profile lang? (stored_language select)
      [{"id": 77}],  # trace insert
      [{"id": 88}],  # cmd insert
@@ -218,8 +221,14 @@ check("policy line in system prompt",
 # auto + needs_human -> None + trace decision handoff
 ok, conn, _ = run_maybe_answer(
     [[{"autonomy": "auto", "tone": ""}],
-     [], [], [], [],
-     [{"id": 79}]],
+     [],  # msgs
+     [],  # orders
+     [],  # kb
+     [],  # facts
+     [],  # memory
+     [],  # agent persona (upgrade)
+     [],  # profile lang
+     [{"id": 79}]],  # trace
     {"reply": "kuch samajh nahi aya", "needs_human": True,
      "confidence": 0.9})
 check("auto + needs_human -> None (no send)", ok is None, ok)
@@ -228,7 +237,15 @@ check("handoff traced", any("portal_brain_traces" in s
 
 # auto + llm down -> None fail-open
 ok, conn, _ = run_maybe_answer(
-    [[{"autonomy": "auto", "tone": ""}], [], [], [], [], [{"id": 80}]],
+    [[{"autonomy": "auto", "tone": ""}],
+     [],  # msgs
+     [],  # orders
+     [],  # kb
+     [],  # facts
+     [],  # memory
+     [],  # agent persona (upgrade)
+     [],  # profile lang
+     [{"id": 80}]],  # trace
     None)
 check("auto + llm unavailable -> None", ok is None, ok)
 
@@ -280,7 +297,7 @@ with PrincipalStub(portal_brain, None):
     r_anon = client.get("/api/v1/portal/brain/settings")
 check("anon 401", r_anon.status_code == 401, r_anon.status_code)
 
-conn = fresh([[{"id": 5}], [], [], [], [], [], [], [], []])
+conn = fresh([[{"id": 5}], [], [], [], [], [], [], [], [], [], []])
 portal_llm.chat_json = lambda *a, **k: {
     "reply": "Aapka order 2-4 din me a jayega.", "confidence": 0.9}
 with PrincipalStub(portal_brain, PRINCIPAL):
@@ -312,6 +329,207 @@ check("trace 200", r_tr.status_code == 200, r_tr.status_code)
 check("trace rows", r_tr.get_json()["traces"][0]["id"] == 1,
       r_tr.get_json())
 
+# ---------- v2: structured business facts ----------
+
+check("facts table in ddl", "portal_brain_facts" in portal_brain._DDL,
+      "ddl")
+check("fact kinds vocab",
+      portal_brain.FACT_KINDS ==
+      ("policy", "sop", "pricing", "refund", "escalation", "hours"),
+      portal_brain.FACT_KINDS)
+
+conn = fresh([[{"id": 7, "kind": "refund", "label": "Refund policy",
+                "content": "7 din ke andar"}]])
+with conn.cur as cur:
+    facts = portal_brain.tool_business_facts(cur, 1, "refund", 3)
+check("facts tool shaped", facts == [{"id": 7, "kind": "refund",
+      "label": "Refund policy", "content": "7 din ke andar"}], facts)
+with conn.cur as cur:
+    check("facts empty query", portal_brain.tool_business_facts(
+        cur, 1, "  ", 3) == [], "empty")
+sqls = [s for s, p in conn.cur.executed]
+check("facts query tenant-scoped + active",
+      any("client_id = %s AND is_active = TRUE" in s for s in sqls),
+      "where")
+
+# maybe_answer grounds on business facts
+conn = fresh([[{"autonomy": "auto", "tone": ""}],
+              [], [], [],
+              [{"id": 12, "kind": "pricing", "label": "Price list",
+                "content": "shirt 1500"}],  # facts hit
+              [{"id": 5, "kind": "preference", "mtype": "long",
+                "content": "evening calls only"}],  # memory hit
+              [],  # agent persona (upgrade)
+              [],  # profile lang
+              [{"id": 90}],  # trace
+              [{"id": 91}],  # cmd
+              []])  # log
+captured = {}
+
+
+def fake_chat2(system, user, max_tokens=120):
+    captured["user"] = user
+    return {"reply": "Shirt ka rate 1500 hai.", "confidence": 0.9}
+
+
+portal_llm.chat_json = fake_chat2
+with conn.cur as cur:
+    ok = portal_brain.maybe_answer(
+        1, 55, "92300", "Ali", "shirt ka rate kya he",
+        FakeConn(CurCtx(cur)))
+portal_llm.chat_json = ORIG_CHAT
+check("v2 brain answers with facts", ok is True, ok)
+check("v2 grounding business_facts",
+      '"business"' in captured["user"]
+      and "Price list" in captured["user"], "grounded")
+check("memory grounding customer_memory",
+      '"memory"' in captured["user"]
+      and "evening calls only" in captured["user"], "grounded")
+sqls = [s for s, p in conn.cur.executed]
+check("v2 facts select ran", any("portal_brain_facts" in s
+                                 and "ILIKE" in s for s in sqls), "select")
+
+# agent persona grounds + tone overrides (Router+Agents upgrade)
+agent_row = [{"id": 7, "name": "Sales Aunty", "tone": "cheerful persuasive",
+              "instructions": "Always mention the free gift.",
+              "escalation_user_id": 9, "is_active": True, "updated_at": "u"}]
+conn = fresh([[{"autonomy": "auto", "tone": "warm"}],
+              [{"direction": "in", "body": "shirt kitne ka", "created_at": "t"}],
+              [],  # orders
+              [],  # kb
+              [],  # facts
+              [],  # memory
+              agent_row,  # agent persona (upgrade)
+              [],  # profile lang
+              [{"id": 90}],  # trace
+              [{"id": 91}],  # cmd
+              []])  # log
+captured_agent = {}
+
+
+def fake_chat_agent(system, user, max_tokens=120):
+    captured_agent["user"] = user
+    captured_agent["system"] = system
+    return {"reply": "Ji, 1500 ka he.", "confidence": 0.9}
+
+
+portal_llm.chat_json = fake_chat_agent
+with conn.cur as cur:
+    ok = portal_brain.maybe_answer(
+        1, 55, "92300", "Ali", "shirt kitne ka", FakeConn(CurCtx(cur)))
+portal_llm.chat_json = ORIG_CHAT
+check("agent persona answers", ok is True, ok)
+check("agent grounded in context",
+      '"agent"' in captured_agent["user"]
+      and "Sales Aunty" in captured_agent["user"], "grounded")
+check("agent instructions flow to brain",
+      "free gift" in captured_agent["user"], "instructions")
+check("agent tone overrides settings",
+      "cheerful" in captured_agent["system"], "tone")
+
+# facts API
+conn = fresh([[{"id": 7, "kind": "policy", "label": "Refund",
+                "content": "7 din", "keywords": "refund wapas",
+                "is_active": True, "updated_at": "u"}]])
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_gf = client.get("/api/v1/portal/brain/facts")
+check("facts get 200", r_gf.status_code == 200
+      and r_gf.get_json()["facts"][0]["id"] == 7, r_gf.get_json())
+
+conn = fresh([[{"id": 21}], []])
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_cf = client.post("/api/v1/portal/brain/facts",
+                       json={"kind": "sop", "label": "RMA flow",
+                             "content": "pehle video bhejwayen",
+                             "keywords": "rma return"})
+check("facts create 200", r_cf.status_code == 200
+      and r_cf.get_json()["fact"]["id"] == 21, r_cf.get_json())
+sqls = [s for s, p in conn.cur.executed]
+check("facts create insert", any("INSERT INTO portal_brain_facts" in s
+                                 for s in sqls), "insert")
+audit_rows = [(s, p) for s, p in conn.cur.executed
+              if "portal_action_log" in s]
+check("facts create audit", bool(audit_rows)
+      and "brain.facts" in str(audit_rows[0][1]), "audit")
+
+conn = fresh([[{"id": 21}], []])
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_uf = client.post("/api/v1/portal/brain/facts",
+                       json={"id": 21, "kind": "sop", "label": "RMA v2",
+                             "content": "updated flow", "is_active": False})
+check("facts update 200", r_uf.status_code == 200
+      and r_uf.get_json()["fact"]["is_active"] is False, r_uf.get_json())
+check("facts update tenant guard",
+      any("WHERE id = %s AND client_id = %s" in s
+          for s, p in conn.cur.executed), "guard")
+
+conn = fresh([[]])
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_404f = client.post("/api/v1/portal/brain/facts",
+                         json={"id": 999, "kind": "sop", "label": "x",
+                               "content": "y"})
+check("facts update other-tenant 404", r_404f.status_code == 404,
+      r_404f.status_code)
+
+conn = fresh([])
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_badk = client.post("/api/v1/portal/brain/facts",
+                         json={"kind": "godmode", "label": "x",
+                               "content": "y"})
+check("facts 400 bad kind", r_badk.status_code == 400,
+      r_badk.status_code)
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_badl = client.post("/api/v1/portal/brain/facts",
+                         json={"kind": "policy", "label": "",
+                               "content": "y"})
+check("facts 400 empty label", r_badl.status_code == 400,
+      r_badl.status_code)
+
+conn = fresh([[{"id": 21}], []])
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_df = client.delete("/api/v1/portal/brain/facts?id=21")
+check("facts delete 200 soft", r_df.status_code == 200
+      and r_df.get_json()["ok"] is True, r_df.get_json())
+sqls = [s for s, p in conn.cur.executed]
+check("facts delete is soft", any("is_active = FALSE" in s for s in sqls),
+      "soft")
+
+conn = fresh([[]])
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_d404 = client.delete("/api/v1/portal/brain/facts?id=999")
+check("facts delete other-tenant 404", r_d404.status_code == 404,
+      r_d404.status_code)
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_dbad = client.delete("/api/v1/portal/brain/facts")
+check("facts delete 400 no id", r_dbad.status_code == 400,
+      r_dbad.status_code)
+with PrincipalStub(portal_brain, {"via_api_key": True}):
+    r_kf = client.get("/api/v1/portal/brain/facts")
+check("facts api key 403", r_kf.status_code == 403, r_kf.status_code)
+with PrincipalStub(portal_brain, None):
+    r_af = client.get("/api/v1/portal/brain/facts")
+check("facts anon 401", r_af.status_code == 401, r_af.status_code)
+
+# ---------- memory upgrade: tool + grounding ----------
+
+conn = fresh([[{"id": 9, "kind": "preference", "mtype": "long",
+                "content": "evening calls only"}]])
+with conn.cur as cur:
+    mem = portal_brain.tool_customer_memory(cur, 1, "92300", 3)
+check("memory tool shaped", mem == [{"id": 9, "kind": "preference",
+      "mtype": "long", "content": "evening calls only"}], mem)
+with conn.cur as cur:
+    check("memory empty contact",
+          portal_brain.tool_customer_memory(cur, 1, "", 3) == [], "empty")
+check("memory query tenant + expiry",
+      any("contact_id = %s" in s
+          and "expires_at IS NULL OR expires_at > NOW()" in s
+          for s, p in conn.cur.executed), "where")
+conn = fresh([])
+with conn.cur as cur:
+    check("memory tool fail-soft on exhaustion",
+          portal_brain.tool_customer_memory(cur, 1, "92300", 3) == [],
+          "failsoft")
 # ---------- wiring pins ----------
 
 CONN = open("/tmp/smoke971/connector_api.py", encoding="utf8").read()
@@ -327,7 +545,8 @@ check("app.py registers brain bp",
 PORTAL = open("/tmp/p13/Omniflow/lib/omniflow/portal.ts",
               encoding="utf8").read()
 for fn in ("getBrainSettings", "putBrainSettings", "draftBrainReply",
-           "listBrainTraces"):
+           "listBrainTraces", "listBrainFacts", "saveBrainFact",
+           "deleteBrainFact"):
     check("client " + fn, "export async function " + fn in PORTAL, fn)
 CARD = open("/tmp/p13/Omniflow/app/dashboard/(portal)/settings/BrainCard.tsx",
             encoding="utf8").read()
@@ -346,9 +565,16 @@ check("ai-brain page redirects", "redirect(\"/dashboard/bot\")" in open(
 check("no duplicate nav entry", "ai-brain" not in open(
     "/tmp/p13/Omniflow/app/dashboard/components/DashSidebar.tsx",
     encoding="utf8").read(), "sidebar")
-for route in ("brain/settings", "brain/draft", "brain/trace"):
+for route in ("brain/settings", "brain/draft", "brain/trace",
+              "brain/facts"):
     src = open("/tmp/p13/Omniflow/app/api/omniflow/portal/" + route +
                "/route.ts", encoding="utf8").read()
     check("bff " + route, "export async function" in src, route)
+FACTS = open("/tmp/p13/Omniflow/app/dashboard/(portal)/settings/FactsCard.tsx",
+             encoding="utf8").read()
+check("facts card exists", "Business facts" in FACTS
+      and "brain/facts" in FACTS, "card")
+check("configure-ai mounts facts card", "<FactsCard />" in BOT_PAGE,
+      "mount")
 
 summary("brain")

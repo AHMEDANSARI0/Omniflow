@@ -7,11 +7,26 @@ interface MemoryEntry {
   kind: "preference" | "note" | "fact";
   content: string;
   created_by: string;
+  mtype: "short" | "long" | "business" | "journey";
+  source: "owner" | "ai" | "automation";
+  confidence: number;
+  expires_at: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
 
 const KINDS: MemoryEntry["kind"][] = ["note", "preference", "fact"];
+const MTYPES: { value: MemoryEntry["mtype"]; label: string }[] = [
+  { value: "long", label: "Long-term" },
+  { value: "short", label: "Short-term" },
+  { value: "business", label: "Business" },
+];
+const EXPIRY: { value: number; label: string }[] = [
+  { value: 0, label: "Never expires" },
+  { value: 24, label: "Expires in 24 hours" },
+  { value: 168, label: "Expires in 7 days" },
+  { value: 720, label: "Expires in 30 days" },
+];
 
 /**
  * Customer 360 -> structured memory: editable/deletable notes
@@ -22,6 +37,8 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
   const [memory, setMemory] = useState<MemoryEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [kind, setKind] = useState<MemoryEntry["kind"]>("note");
+  const [mtype, setMtype] = useState<MemoryEntry["mtype"]>("long");
+  const [expiry, setExpiry] = useState(0);
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState(0);
   const [editDraft, setEditDraft] = useState("");
@@ -69,7 +86,13 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
     const ok = await call("/api/omniflow/portal/memory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contact, kind, content }),
+      body: JSON.stringify({
+        contact,
+        kind,
+        content,
+        mtype,
+        expires_hours: expiry,
+      }),
     });
     if (ok) {
       setDraft("");
@@ -167,10 +190,26 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
                           {entry.content}
                         </p>
                         <p className="mt-0.5 text-[10px] text-ink-3">
-                          {entry.kind}
-                          {entry.created_by !== "owner"
-                            ? " \u00b7 " + entry.created_by
-                            : ""}
+                          {[
+                            entry.kind,
+                            entry.mtype && entry.mtype !== "long"
+                              ? entry.mtype
+                              : null,
+                            entry.source && entry.source !== "owner"
+                              ? "via " + entry.source
+                              : null,
+                            typeof entry.confidence === "number" &&
+                            entry.confidence < 1
+                              ? Math.round(entry.confidence * 100) +
+                                "% confidence"
+                              : null,
+                            entry.expires_at
+                              ? "expires " +
+                                String(entry.expires_at).slice(0, 10)
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" \u00b7 ")}
                         </p>
                       </div>
                       <div className="flex shrink-0 gap-2 text-[10px]">
@@ -229,6 +268,35 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
             >
               Add
             </button>
+          </div>
+          <div className="mt-1.5 flex gap-2">
+            <select
+              value={mtype}
+              onChange={(event) =>
+                setMtype(event.target.value as MemoryEntry["mtype"])
+              }
+              className="rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink-2 outline-none"
+            >
+              {MTYPES.map((option) => (
+                <option key={option.value} value={option.value} className="bg-white">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={expiry}
+              onChange={(event) => setExpiry(Number(event.target.value))}
+              className="rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink-2 outline-none"
+            >
+              {EXPIRY.map((option) => (
+                <option key={option.value} value={option.value} className="bg-white">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="self-center text-[10px] text-ink-3">
+              Type and expiry shape what the AI may use, and for how long.
+            </p>
           </div>
         </>
       ) : (

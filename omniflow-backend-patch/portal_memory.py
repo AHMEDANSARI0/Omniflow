@@ -19,6 +19,14 @@ One small module for three related things the owner asked for:
   portal_action_log rows (ai answers, journey moves, COD confirmations,
   ...) pulled straight from the audit trail.
 
+MEMORY UPGRADE (confidence / source / type / expiry): every entry now
+carries mtype (short | long | business | journey - the gap-analysis
+memory types), source (owner | ai | automation), confidence (0..1) and
+an optional expires_at (expired entries stop appearing; the brain never
+sees them either). Stage moves write a journey-type memory so the AI can
+personalize with the customer's position. The brain reads this table
+through portal_brain.tool_customer_memory (read-only).
+
 The whole API is human-only (API keys get 403) - customer memory is
 personal data and never leaves through automation credentials.
 """
@@ -45,9 +53,12 @@ STATE_TABLE = "portal_journey_state"
 EVENTS_TABLE = "portal_journey_events"
 
 KINDS = ("preference", "note", "fact")
+MTYPES = ("short", "long", "business", "journey")
+SOURCES = ("owner", "ai", "automation")
 DEFAULT_STAGES = ("New", "Engaged", "Customer")
 AUTO_STAGE_NAME = "Customer"
 MAX_CONTENT_CHARS = 500
+MAX_EXPIRY_HOURS = int(os.environ.get("OF_MEMORY_MAX_EXPIRY_HOURS", "8760") or 8760)
 MAX_STAGES = int(os.environ.get("OF_JOURNEY_MAX_STAGES", "12") or 12)
 MEMORY_CAP = int(os.environ.get("OF_MEMORY_CAP", "50") or 50)
 EXPLAIN_LIMIT = 15
@@ -62,9 +73,18 @@ CREATE TABLE IF NOT EXISTS portal_customer_memory (
   kind TEXT NOT NULL DEFAULT 'note',
   content TEXT NOT NULL,
   created_by TEXT NOT NULL DEFAULT 'owner',
+  mtype TEXT NOT NULL DEFAULT 'long',
+  source TEXT NOT NULL DEFAULT 'owner',
+  confidence REAL NOT NULL DEFAULT 1.0,
+  expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE portal_customer_memory
+  ADD COLUMN IF NOT EXISTS mtype TEXT NOT NULL DEFAULT 'long',
+  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'owner',
+  ADD COLUMN IF NOT EXISTS confidence REAL NOT NULL DEFAULT 1.0,
+  ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_portal_customer_memory
   ON portal_customer_memory (client_id, contact_id, id DESC);
 CREATE TABLE IF NOT EXISTS portal_journey_stages (
@@ -144,27 +164,48 @@ def _trim_memory(cur, client_id: int, contact_id: str) -> None:
 
 
 def list_memory(cur, client_id: int, contact_id: str) -> List[Dict[str, Any]]:
+    """Active (non-expired) memories, newest first."""
     cur.execute(
-        "SELECT id, kind, content, created_by, created_at, updated_at"
+        "SELECT id, kind, content, created_by, mtype, source, confidence,"
+        " expires_at, created_at, updated_at"
         " FROM " + portal_db._q(MEMORY_TABLE) +
-        " WHERE client_id = %s AND contact_id = %s ORDER BY id DESC",
+        " WHERE client_id = %s AND contact_id = %s"
+        " AND (expires_at IS NULL OR expires_at > NOW())"
+        " ORDER BY id DESC",
         (client_id, contact_id),
     )
     return portal_db.rows(cur)
 
 
 def add_memory(cur, client_id: int, contact_id: str, kind: str,
-               content: str, created_by: str = "owner") -> Optional[int]:
-    """Insert one memory entry (returns the new id, None on bad input)."""
+               content: str, created_by: str = "owner",
+               mtype: str = "long", source: str = "owner",
+               confidence: float = 1.0,
+               expires_at: Any = None) -> Optional[int]:
+    """Insert one memory entry (returns the new id, None on bad input).
+
+    mtype: short | long | business | journey; source: owner | ai |
+    automation; confidence clamped to 0..1; expires_at a datetime (or
+    None = never expires)."""
     contact_id = _clean_contact(contact_id)
     text = str(content or "").strip()
     if not contact_id or kind not in KINDS or not text:
         return None
+    if mtype not in MTYPES:
+        return None
+    if source not in SOURCES:
+        source = "automation" if created_by not in SOURCES else created_by
+    try:
+        confidence = max(0.0, min(1.0, float(confidence)))
+    except Exception:
+        confidence = 1.0
     cur.execute(
         "INSERT INTO " + portal_db._q(MEMORY_TABLE) +
-        " (client_id, contact_id, kind, content, created_by)"
-        " VALUES (%s, %s, %s, %s, %s) RETURNING id",
-        (client_id, contact_id, kind, text[:MAX_CONTENT_CHARS], created_by),
+        " (client_id, contact_id, kind, content, created_by, mtype,"
+        " source, confidence, expires_at)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+        (client_id, contact_id, kind, text[:MAX_CONTENT_CHARS], created_by,
+         mtype, source, confidence, expires_at),
     )
     rows = portal_db.rows(cur)
     _trim_memory(cur, client_id, contact_id)
@@ -194,16 +235,31 @@ def remember_fact(cur, client_id: int, contact_id: str, content: str,
 
 
 def update_memory(cur, client_id: int, memory_id: int, content: str,
-                  kind: Optional[str] = None) -> bool:
+                  kind: Optional[str] = None,
+                  mtype: Optional[str] = None,
+                  expires_hours: Optional[int] = None) -> bool:
+    """Owner edit. expires_hours: None = leave as-is, <=0 = never
+    expire, >0 = expire that many hours from now."""
     text = str(content or "").strip()
     if not text or (kind is not None and kind not in KINDS):
+        return False
+    if mtype is not None and mtype not in MTYPES:
         return False
     sql = ("UPDATE " + portal_db._q(MEMORY_TABLE) +
            " SET content = %s, updated_at = NOW()")
     params: Tuple[Any, ...] = (text[:MAX_CONTENT_CHARS],)
     if kind is not None:
         sql += ", kind = %s"
-        params = (text[:MAX_CONTENT_CHARS], kind)
+        params = params + (kind,)
+    if mtype is not None:
+        sql += ", mtype = %s"
+        params = params + (mtype,)
+    if expires_hours is not None:
+        if expires_hours > 0:
+            sql += (", expires_at = NOW() + make_interval(hours => %s)")
+            params = params + (min(int(expires_hours), MAX_EXPIRY_HOURS),)
+        else:
+            sql += ", expires_at = NULL"
     sql += " WHERE id = %s AND client_id = %s RETURNING id"
     params = params + (memory_id, client_id)
     cur.execute(sql, params)
@@ -362,6 +418,16 @@ def move_contact(cur, client_id: int, contact_id: str, stage_id: int,
         " VALUES (%s, %s, %s, %s)",
         (client_id, contact_id, stage["name"], source),
     )
+    # Upgrade: journey-type memory row - the AI-facing memory timeline
+    # also carries the customer's position (fail-soft on purpose: the
+    # state row + event above are the truth; this is convenience).
+    try:
+        actor = "owner" if source == "owner" else "automation"
+        add_memory(cur, client_id, contact_id, "note",
+                   "Journey stage: " + stage["name"],
+                   created_by=actor, mtype="journey", source=actor)
+    except Exception as error:
+        logger.warning("journey memory row failed: %s", error)
     portal_db.log_action(
         cur, client_id, "journey.stage", "automation" if source != "owner"
         else "human", None, None,
@@ -472,6 +538,11 @@ def _memory_public(row: Dict[str, Any]) -> dict:
             "kind": str(row.get("kind") or "note"),
             "content": str(row.get("content") or ""),
             "created_by": str(row.get("created_by") or "owner"),
+            "mtype": str(row.get("mtype") or "long"),
+            "source": str(row.get("source") or "owner"),
+            "confidence": float(row.get("confidence") or 0)
+                          if row.get("confidence") is not None else 1.0,
+            "expires_at": _iso(row.get("expires_at")),
             "created_at": _iso(row.get("created_at")),
             "updated_at": _iso(row.get("updated_at"))}
 
@@ -511,6 +582,11 @@ def create_memory():
     contact = _clean_contact(payload.get("contact"))
     kind = str(payload.get("kind") or "note")
     content = str(payload.get("content") or "").strip()
+    mtype = str(payload.get("mtype") or "long")
+    try:
+        expires_hours = int(payload.get("expires_hours") or 0)
+    except Exception:
+        expires_hours = 0
     if not contact:
         return jsonify({"error": {"code": "bad_request",
                                   "message": "contact is required."}}), 400
@@ -518,17 +594,36 @@ def create_memory():
         return jsonify({"error": {"code": "bad_request",
                                   "message": "kind must be one of"
                                              " preference|note|fact."}}), 400
+    if mtype not in MTYPES:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "mtype must be one of"
+                                             " short|long|business|journey."}}), \
+            400
+    if expires_hours < 0 or expires_hours > MAX_EXPIRY_HOURS:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "expires_hours must be between"
+                                             " 0 and " + str(MAX_EXPIRY_HOURS)
+                                             + "."}}), 400
     if not content:
         return jsonify({"error": {"code": "bad_request",
                                   "message": "content is required."}}), 400
+    expires_at = None
+    if expires_hours > 0:
+        from datetime import datetime, timedelta, timezone
+
+        expires_at = datetime.now(timezone.utc) + \
+            timedelta(hours=expires_hours)
     conn = portal_db._conn()
     try:
         with conn.cursor() as cur:
             _ensure_ddl(cur)
-            memory_id = add_memory(cur, client_id, contact, kind, content)
+            memory_id = add_memory(cur, client_id, contact, kind, content,
+                                   mtype=mtype, source="owner",
+                                   expires_at=expires_at)
             portal_db.log_action(
                 cur, client_id, "memory.added", "human", None, None,
-                ("Memory " + kind + " for " + contact) + " saved",
+                ("Memory " + kind + " (" + mtype + ") for " + contact)
+                + " saved",
             )
         conn.commit()
     finally:
@@ -539,7 +634,9 @@ def create_memory():
             400
     return jsonify({"memory": {"id": memory_id, "kind": kind,
                                "content": content[:MAX_CONTENT_CHARS],
-                               "created_by": "owner"}}), 200
+                               "created_by": "owner", "mtype": mtype,
+                               "source": "owner", "confidence": 1.0,
+                               "expires_at": _iso(expires_at)}}), 200
 
 
 @bp.put("/memory/<int:memory_id>")
@@ -551,6 +648,8 @@ def edit_memory(memory_id: int):
     payload = request.get_json(silent=True) or {}
     content = str(payload.get("content") or "").strip()
     kind = payload.get("kind")
+    mtype = payload.get("mtype")
+    expires_hours = payload.get("expires_hours")
     if not content:
         return jsonify({"error": {"code": "bad_request",
                                   "message": "content is required."}}), 400
@@ -558,11 +657,30 @@ def edit_memory(memory_id: int):
         return jsonify({"error": {"code": "bad_request",
                                   "message": "kind must be one of"
                                              " preference|note|fact."}}), 400
+    if mtype is not None and mtype not in MTYPES:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "mtype must be one of"
+                                             " short|long|business|journey."}}), \
+            400
+    if expires_hours is not None:
+        try:
+            expires_hours = int(expires_hours)
+        except Exception:
+            return jsonify({"error": {"code": "bad_request",
+                                      "message": "expires_hours must be an"
+                                                 " integer."}}), 400
+        if expires_hours < 0 or expires_hours > MAX_EXPIRY_HOURS:
+            return jsonify({"error": {"code": "bad_request",
+                                      "message": "expires_hours must be"
+                                                 " between 0 and "
+                                                 + str(MAX_EXPIRY_HOURS)
+                                                 + "."}}), 400
     conn = portal_db._conn()
     try:
         with conn.cursor() as cur:
             _ensure_ddl(cur)
-            ok = update_memory(cur, client_id, memory_id, content, kind)
+            ok = update_memory(cur, client_id, memory_id, content, kind,
+                               mtype=mtype, expires_hours=expires_hours)
         conn.commit()
     finally:
         conn.close()

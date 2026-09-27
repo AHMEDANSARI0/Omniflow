@@ -61,13 +61,22 @@ export async function POST(request: Request) {
   const match = String(body.match || "").trim();
   const userId = Number(body.user_id);
   const priority = Number(body.priority ?? 100);
+  const targetType = body.target_type === "agent" ? "agent" : "user";
+  const agentId = body.agent_id == null ? null : Number(body.agent_id);
   if (!match || match.length > 60) {
     return safeJson(
       { error: { code: "bad_request", message: "match (max 60 chars) is required." } },
       400
     );
   }
-  if (!Number.isFinite(userId) || userId <= 0) {
+  if (targetType === "agent") {
+    if (!Number.isFinite(agentId as number) || (agentId as number) <= 0) {
+      return safeJson(
+        { error: { code: "bad_request", message: "agent_id is required for agent targets." } },
+        400
+      );
+    }
+  } else if (!Number.isFinite(userId) || userId <= 0) {
     return safeJson(
       { error: { code: "bad_request", message: "user_id is required." } },
       400
@@ -85,7 +94,9 @@ export async function POST(request: Request) {
       accessToken,
       match,
       Math.round(userId),
-      Math.round(priority)
+      Math.round(priority),
+      targetType,
+      targetType === "agent" ? Math.round(agentId as number) : null
     );
     if (rule === null) {
       return safeJson(

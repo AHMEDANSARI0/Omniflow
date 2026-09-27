@@ -43,6 +43,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 *.pre_*.bak
+
+# bot runtime + local accident backups (never commit)
 /whatsapp_sessions/
 /src/whatsapp_session/
 /logs/

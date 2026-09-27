@@ -69,6 +69,20 @@ SMOKE_MAP = {
     "bff_courier_bookings.ts": P + "courier/bookings/route.ts",
     "bff_courier_track.ts": P + "courier/track/route.ts",
     "bff_perf.ts": P + "perf/route.ts",
+    "bff_routing_rules.ts": P + "routing/rules/route.ts",
+    "bff_agents.ts": P + "agents/route.ts",
+    "bff_id_agent_id.ts": P + "agents/[id]/route.ts",
+    "agents_routing.tsx": D + "team/AgentsAndRouting.tsx",
+    "team_page.tsx": D + "team/page.tsx",
+    "bff_workflows.ts": P + "workflows/route.ts",
+    "bff_workflows_catalog.ts": P + "workflows/catalog/route.ts",
+    "bff_workflows_id.ts": P + "workflows/[id]/route.ts",
+    "bff_workflows_status.ts": P + "workflows/[id]/status/route.ts",
+    "bff_workflows_runs.ts": P + "workflows/[id]/runs/route.ts",
+    "bff_workflows_run.ts": P + "workflows/[id]/run/route.ts",
+    "workflow_payload.ts": "lib/omniflow/workflow-payload.ts",
+    "workflows_page.tsx": D + "workflows/page.tsx",
+    "workflows_client.tsx": D + "workflows/WorkflowsClient.tsx",
 }
 for name, rel in SMOKE_MAP.items():
     src = os.path.join(ROOT, rel)

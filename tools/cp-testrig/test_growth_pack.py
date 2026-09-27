@@ -217,14 +217,16 @@ conn = fresh(portal_listen, [
     [{"id": 4, "keyword": "franchise"}],
     [],
     [],
+    [],                                # policy.rule_fired audit (unified)
 ])
 portal_listen.maybe_listen(1, 8, "92x", "Franchise chahiye?", conn)
 inserts = [e for e in conn.cur.executed if "portal_listen_hits" in e[0]]
 check("hook inserts hit", len(inserts) == 1
       and inserts[0][1][1] == 4 and inserts[0][1][2] == 8, inserts)
 audits = [e for e in conn.cur.executed if "portal_action_log" in e[0]]
-check("hook audits listen.hit", audits and audits[0][1][1] == "listen.hit",
-      "audit")
+check("hook audits listen.hit", len(audits) == 2
+      and audits[0][1][1] == "policy.listen.fired"
+      and audits[1][1][1] == "listen.hit", "audit")
 check("snippet window", "franchise" in inserts[0][1][4], inserts[0][1][4])
 
 conn = fresh(portal_listen, [
@@ -240,7 +242,7 @@ conn = fresh(portal_routing, [RULES])
 response = client.get("/api/v1/portal/routing/rules")
 check("200 rules ordered", status(response) == 200
       and response.get_json()["rules"][0]["user_id"] == 55
-      and "ORDER BY priority ASC" in conn.cur.executed[0][0], status(response))
+      and "ORDER BY r.priority ASC" in conn.cur.executed[0][0], status(response))
 
 conn = fresh(portal_routing, [[{"total": 0}], [{"id": 9}], []])
 response = client.post("/api/v1/portal/routing/rules",
@@ -262,7 +264,7 @@ conn = fresh(portal_routing, [[{"id": 1}], []])
 response = client.delete("/api/v1/portal/routing/rules/1")
 check("200 delete", status(response) == 200, status(response))
 
-conn = fresh(portal_routing, [RULES, [], []])
+conn = fresh(portal_routing, [RULES, [], [], [], []])
 portal_routing.portal_db.CONV_TABLE = "portal_conversations"
 portal_routing.maybe_route(1, 42, "92x", "REFUND chahiye abhi", conn)
 updates = [e for e in conn.cur.executed if "UPDATE" in e[0]]
@@ -271,7 +273,9 @@ check("route assigns first match", len(updates) == 1
 check("assign only when unassigned", "assigned_to IS NULL" in updates[0][0],
       updates[0][0][:140])
 audits = [e for e in conn.cur.executed if "portal_action_log" in e[0]]
-check("route audit", audits and audits[0][1][1] == "chat.routed", "audit")
+check("route audit", len(audits) == 2
+      and audits[0][1][1] == "policy.routing.fired"
+      and audits[1][1][1] == "chat.routed", "audit")
 
 conn = fresh(portal_routing, [RULES])
 portal_routing.maybe_route(1, 42, "92x", "salam dost", conn)

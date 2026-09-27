@@ -8,6 +8,8 @@ import {
 import { safeJson } from "../../../../../lib/omniflow/request-security";
 
 const KINDS = ["preference", "note", "fact"];
+const MTYPES = ["short", "long", "business", "journey"];
+const MAX_EXPIRY_HOURS = 8760;
 
 function contactFrom(request: Request): string {
   return (new URL(request.url).searchParams.get("contact") ?? "").trim();
@@ -65,6 +67,8 @@ export async function POST(request: Request) {
     contact?: unknown;
     kind?: unknown;
     content?: unknown;
+    mtype?: unknown;
+    expires_hours?: unknown;
   } | null;
   const contact =
     payload && typeof payload.contact === "string"
@@ -74,6 +78,28 @@ export async function POST(request: Request) {
     payload && typeof payload.kind === "string" && KINDS.includes(payload.kind)
       ? payload.kind
       : "note";
+  const mtype =
+    payload && typeof payload.mtype === "string" &&
+    MTYPES.includes(payload.mtype)
+      ? payload.mtype
+      : "long";
+  const rawHours =
+    payload && typeof payload.expires_hours === "number"
+      ? payload.expires_hours
+      : 0;
+  if (!Number.isFinite(rawHours) || rawHours < 0 ||
+      rawHours > MAX_EXPIRY_HOURS) {
+    return safeJson(
+      {
+        error: {
+          code: "bad_request",
+          message: "expires_hours must be between 0 and " +
+            MAX_EXPIRY_HOURS + ".",
+        },
+      },
+      400
+    );
+  }
   const content =
     payload && typeof payload.content === "string"
       ? payload.content.trim()
@@ -95,7 +121,9 @@ export async function POST(request: Request) {
       accessToken,
       contact,
       kind as "preference" | "note" | "fact",
-      content
+      content,
+      mtype as "short" | "long" | "business" | "journey",
+      Math.round(rawHours)
     );
     if (!ok) {
       return safeJson(

@@ -233,6 +233,14 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_workflows
+
+                    portal_workflows.run_due_workflows(
+                        cur, tenant["client_id"], conn
+                    )
+                except Exception:
+                    pass
+                try:
                     import portal_events
 
                     portal_events.requeue_due_commands(
@@ -733,6 +741,21 @@ def ingest_whatsapp_messages():
                     claimed_by = None
                     if claimed_by is None:
                         try:
+                            import portal_approvals
+
+                            if portal_approvals.maybe_decide(
+                                tenant["client_id"],
+                                conversation_id,
+                                item["from"],
+                                item["body"],
+                                item["direction"],
+                                conn,
+                            ):
+                                claimed_by = "approvals"
+                        except Exception:
+                            pass
+                    if claimed_by is None:
+                        try:
                             if _maybe_enqueue_away_reply(
                                 tenant["client_id"],
                                 conversation_id,
@@ -844,6 +867,33 @@ def ingest_whatsapp_messages():
                             )
                         except Exception:
                             pass
+                        try:
+                            import portal_intelligence
+
+                            portal_intelligence.maybe_analyze(
+                                tenant["client_id"],
+                                conversation_id,
+                                item["from"],
+                                item["body"],
+                                item["direction"],
+                                conn,
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            import portal_approvals
+
+                            portal_approvals.maybe_request(
+                                tenant["client_id"],
+                                conversation_id,
+                                item["from"],
+                                item["name"],
+                                item["body"],
+                                item["direction"],
+                                conn,
+                            )
+                        except Exception:
+                            pass
                     try:
                         portal_sequences.maybe_enroll_new_contact(
                             tenant["client_id"],
@@ -869,6 +919,20 @@ def ingest_whatsapp_messages():
                         portal_sequences.maybe_auto_pause_replies(
                             tenant["client_id"],
                             conversation_id,
+                            conn,
+                        )
+                    except Exception:
+                        pass
+                    try:
+                        import portal_workflows
+
+                        portal_workflows.maybe_trigger_message(
+                            tenant["client_id"],
+                            conversation_id,
+                            item["from"],
+                            item["name"],
+                            item["body"],
+                            item["direction"],
                             conn,
                         )
                     except Exception:

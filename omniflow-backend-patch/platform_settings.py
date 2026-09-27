@@ -53,6 +53,7 @@ GROUP_KEYS = {
     "payments": ["provider", "publishable_key", "secret_key",
                  "webhook_secret"],
     "whatsapp_e2e": ["live_number"],
+    "stt": ["api_key", "base_url", "model"],
 }
 
 SECRET_HINTS = ("password", "api_key", "token", "secret")
@@ -241,3 +242,24 @@ def flag(name: str) -> bool:
     except Exception:
         return False
     return raw in ("on", "1", "true", "yes")
+
+
+def stt_config() -> dict:
+    """Effective speech-to-text config: admin panel first, env fallback.
+
+    portal_media owns the base/model defaults (OpenAI-compatible whisper
+    endpoint); this only resolves what the owner saved (or the env).
+    """
+    stored = {}
+    try:
+        stored = get_group("stt")
+    except Exception:
+        stored = {}
+    return {
+        "api_key": str(stored.get("api_key")
+                       or _env("OMNIFLOW_STT_API_KEY", "")),
+        "base_url": str(stored.get("base_url")
+                        or _env("OMNIFLOW_STT_BASE", "")),
+        "model": str(stored.get("model")
+                     or _env("OMNIFLOW_STT_MODEL", "")),
+    }

@@ -123,7 +123,7 @@ check("growth nav", '{ label: "Growth", href: "/dashboard/growth",'
 check("overview no emoji lightning", '"⚡"' not in OVERVIEW
       and "\\u26a1" not in OVERVIEW, "icon")
 check("overview no emoji smiley", '"☻"' not in OVERVIEW, "icon")
-check("overview 23 quick links", OVERVIEW.count("{ icon:") == 23,
+check("overview 24 quick links", OVERVIEW.count("{ icon:") == 24,
       OVERVIEW.count("{ icon:"))
 check("overview no ai-brain duplicate", "ai-brain" not in OVERVIEW,
       "dedupe")

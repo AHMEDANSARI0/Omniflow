@@ -46,6 +46,9 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     items: [
       { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "\u27a4", enabled: true },
       { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
+      { label: "Approvals", href: "/dashboard/approvals", icon: "\u2713", enabled: true },
+      { label: "Rules", href: "/dashboard/rules", icon: "\u25c8", enabled: true },
+      { label: "Workflows", href: "/dashboard/workflows", icon: "\u21c9", enabled: true },
       { label: "Courier", href: "/dashboard/courier", icon: "\u25bb", enabled: true },
       { label: "Growth", href: "/dashboard/growth", icon: "\u25b2", enabled: true },
       { label: "Win-back", href: "/dashboard/winback", icon: "\u21bb", enabled: true },

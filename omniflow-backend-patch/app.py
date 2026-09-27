@@ -55,6 +55,8 @@ from portal_events import bp as portal_events_bp  # noqa: E402
 from portal_rollups import bp as portal_rollups_bp  # noqa: E402
 from portal_alerts import bp as portal_alerts_bp  # noqa: E402
 from portal_brain import bp as portal_brain_bp  # noqa: E402
+from portal_agents import bp as portal_agents_bp  # noqa: E402
+from portal_workflows import bp as portal_workflows_bp  # noqa: E402
 from portal_memory import bp as portal_memory_bp  # noqa: E402
 from portal_recovery import bp as portal_recovery_bp  # noqa: E402
 from portal_risk import bp as portal_risk_bp  # noqa: E402
@@ -68,6 +70,10 @@ from admin_providers import bp as admin_providers_bp  # noqa: E402
 from portal_voice import bp as portal_voice_bp, public_bp as portal_voice_public_bp  # noqa: E402
 from portal_brands import store_bp as portal_brands_store_bp  # noqa: E402
 from portal_video import bp as portal_video_bp  # noqa: E402
+from portal_approvals import bp as portal_approvals_bp  # noqa: E402
+from portal_intelligence import bp as portal_intelligence_bp  # noqa: E402
+from portal_actions import bp as portal_actions_bp  # noqa: E402
+from portal_policy import bp as portal_policy_bp  # noqa: E402
 from portal_obs import install_obs as _install_obs  # noqa: E402
 from portal_restock import bp as portal_restock_bp  # noqa: E402
 from portal_value import bp as portal_value_bp  # noqa: E402
@@ -123,6 +129,8 @@ aux_app.register_blueprint(portal_events_bp)
 aux_app.register_blueprint(portal_rollups_bp)
 aux_app.register_blueprint(portal_alerts_bp)
 aux_app.register_blueprint(portal_brain_bp)
+aux_app.register_blueprint(portal_agents_bp)
+aux_app.register_blueprint(portal_workflows_bp)
 aux_app.register_blueprint(portal_memory_bp)
 aux_app.register_blueprint(portal_recovery_bp)
 aux_app.register_blueprint(portal_risk_bp)
@@ -133,6 +141,10 @@ aux_app.register_blueprint(portal_perf_bp)
 aux_app.register_blueprint(portal_templates_bp)
 aux_app.register_blueprint(portal_plans_bp)
 aux_app.register_blueprint(portal_brands_bp)
+aux_app.register_blueprint(portal_approvals_bp)
+aux_app.register_blueprint(portal_intelligence_bp)
+aux_app.register_blueprint(portal_actions_bp)
+aux_app.register_blueprint(portal_policy_bp)
 aux_app.register_blueprint(admin_providers_bp)
 aux_app.register_blueprint(portal_voice_bp)
 aux_app.register_blueprint(portal_voice_public_bp)

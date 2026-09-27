@@ -25,6 +25,7 @@ const QUICK_LINKS: QuickLink[] = [
   { icon: "\u2606", title: "Customers", href: "/dashboard/customers" },
   { icon: "\u2301", title: "Automations", href: "/dashboard/automations" },
   { icon: "\u2192", title: "Sequences", href: "/dashboard/sequences" },
+  { icon: "\u21c9", title: "Workflows", href: "/dashboard/workflows" },
   { icon: "\u2736", title: "Configure AI", href: "/dashboard/bot" },
   { icon: "\u2726", title: "Setup wizard", href: "/dashboard/onboarding" },
   { icon: "\u2706", title: "WhatsApp setup", href: "/dashboard/channels/whatsapp" },
