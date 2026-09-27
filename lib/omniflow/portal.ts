@@ -9281,6 +9281,9 @@ export interface TemplatePack {
   keywords: { keyword: string; note: string }[];
   saved_replies: { shortcut: string; body: string }[];
   journey: string[];
+  /** Workflow drafts seeded on activation (V2 B15 + Workflow Builder batch). */
+  workflows?: { key: string; name: string; description: string;
+                trigger_type: string }[];
 }
 
 export interface TemplatesPayload {
@@ -10480,6 +10483,8 @@ export interface WorkflowTemplate {
   key: string;
   name: string;
   description: string;
+  /** Industry pack key ("general" when the template fits every business). */
+  vertical: string;
   triggerType: string;
   triggerConfig: Record<string, unknown>;
   stopOnReply: boolean;
@@ -10491,6 +10496,10 @@ export interface WorkflowCatalog {
   actions: WorkflowActionSpec[];
   stepKinds: WorkflowStepKind[];
   templates: WorkflowTemplate[];
+  /** Template groups in catalog order (general first, then industry packs). */
+  verticals: { key: string; label: string }[];
+  /** Industry pack the workspace activated in Setup ("" when none). */
+  appliedVertical: string;
   limits: { maxWorkflows: number; maxSteps: number; maxWaitMinutes: number };
 }
 
@@ -10669,6 +10678,10 @@ export async function getWorkflowCatalog(
         name: typeof row.name === "string" ? row.name : "",
         description:
           typeof row.description === "string" ? row.description : "",
+        vertical:
+          typeof row.vertical === "string" && row.vertical
+            ? row.vertical
+            : "general",
         triggerType:
           typeof row.trigger_type === "string" ? row.trigger_type : "manual",
         triggerConfig: asRecord(row.trigger_config),
@@ -10687,6 +10700,19 @@ export async function getWorkflowCatalog(
           : [],
       };
     }),
+    verticals: (Array.isArray(payload.verticals) ? payload.verticals : [])
+      .map((item) => {
+        const row = asRecord(item);
+        return {
+          key: typeof row.key === "string" ? row.key : "",
+          label: typeof row.label === "string" ? row.label : "",
+        };
+      })
+      .filter((v) => v.key !== ""),
+    appliedVertical:
+      typeof payload.applied_vertical === "string"
+        ? payload.applied_vertical
+        : "",
     limits: {
       maxWorkflows:
         typeof limits.max_workflows === "number" ? limits.max_workflows : 20,
@@ -12442,6 +12468,278 @@ export async function deleteBrainFact(
       "api/v1/portal/brain/facts?id=" + encodeURIComponent(String(id)),
       { method: "DELETE" }
     );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+// ---------------------------------------------------------------------------
+// Customer identity (cross-channel identity resolution)
+// ---------------------------------------------------------------------------
+
+export type IdentityChannel =
+  | "whatsapp"
+  | "phone"
+  | "email"
+  | "instagram"
+  | "facebook"
+  | "tiktok"
+  | "web"
+  | "other";
+
+export interface IdentityHandle {
+  id: number;
+  identity_id: number;
+  channel: IdentityChannel;
+  handle: string;
+  raw_handle: string;
+  confidence: number;
+  source: "owner" | "system" | "legacy" | "import" | "adapter";
+  created_at: string | null;
+}
+
+export interface IdentitySuggestion {
+  contact_a: string;
+  name_a: string;
+  contact_b: string;
+  name_b: string;
+  reason: "same_phone" | "same_name";
+  confidence: number;
+}
+
+export interface CustomerIdentity {
+  id: number;
+  display_name: string;
+  primary_contact: string;
+  status: "active" | "merged";
+  handles: IdentityHandle[];
+  contacts: string[];
+  linked: { contact_id: string; name: string }[];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface CustomerIdentityPayload {
+  identity: CustomerIdentity;
+  suggestions: IdentitySuggestion[];
+  channels: IdentityChannel[];
+  limits: { max_handles: number };
+}
+
+export interface IdentityDuplicatesPayload {
+  suggestions: IdentitySuggestion[];
+  scanned: number;
+  linked_identities: number;
+  total: number;
+}
+
+export type AddIdentityHandleResult =
+  | { kind: "ok"; handle: IdentityHandle }
+  | { kind: "invalid"; message: string }
+  | { kind: "conflict"; message: string; other_contact: string }
+  | { kind: "unavailable" };
+
+async function identityMessage(response: Response): Promise<string> {
+  const payload = (await response.json().catch(() => null)) as {
+    error?: { message?: unknown };
+    other_contact?: unknown;
+  } | null;
+  return payload && payload.error && typeof payload.error.message === "string"
+    ? payload.error.message
+    : "";
+}
+
+export async function getCustomerIdentity(
+  accessToken: string,
+  contact: string
+): Promise<CustomerIdentityPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/identity?contact=" + encodeURIComponent(contact)
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as
+    CustomerIdentityPayload | null;
+}
+
+export async function addIdentityHandle(
+  accessToken: string,
+  contact: string,
+  channel: string,
+  handle: string
+): Promise<AddIdentityHandleResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/identity/handles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact, channel, handle }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 409) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: { message?: unknown };
+      other_contact?: unknown;
+    } | null;
+    return {
+      kind: "conflict",
+      message:
+        payload && payload.error && typeof payload.error.message === "string"
+          ? payload.error.message
+          : "That handle already belongs to another customer.",
+      other_contact:
+        payload && typeof payload.other_contact === "string"
+          ? payload.other_contact
+          : "",
+    };
+  }
+  if (response.status === 400) {
+    return {
+      kind: "invalid",
+      message: (await identityMessage(response)) || "That handle is not valid.",
+    };
+  }
+  if (!response.ok) return { kind: "unavailable" };
+  const payload = (await response.json().catch(() => null)) as {
+    handle?: IdentityHandle;
+  } | null;
+  if (!payload || !payload.handle) return { kind: "unavailable" };
+  return { kind: "ok", handle: payload.handle };
+}
+
+export async function removeIdentityHandle(
+  accessToken: string,
+  id: number
+): Promise<"ok" | "not_found" | "protected" | "unavailable"> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/identity/handles/" + id,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return "unavailable";
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return "not_found";
+  if (response.status === 400) return "protected";
+  return response.ok ? "ok" : "unavailable";
+}
+
+export async function mergeIdentity(
+  accessToken: string,
+  keep: string,
+  merge: string
+): Promise<{ identity: CustomerIdentity } | { error: string } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/identity/merge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keep, merge }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) {
+    return {
+      error: (await identityMessage(response)) || "Those contacts cannot be linked.",
+    };
+  }
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    identity?: CustomerIdentity;
+  } | null;
+  return payload && payload.identity ? { identity: payload.identity } : null;
+}
+
+export async function splitIdentity(
+  accessToken: string,
+  contact: string
+): Promise<{ identity: CustomerIdentity } | { error: string } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/identity/split", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400 || response.status === 404) {
+    return {
+      error:
+        (await identityMessage(response)) ||
+        "This contact is not linked to another contact.",
+    };
+  }
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    identity?: CustomerIdentity;
+  } | null;
+  return payload && payload.identity ? { identity: payload.identity } : null;
+}
+
+export async function listIdentityDuplicates(
+  accessToken: string,
+  limit = 50
+): Promise<IdentityDuplicatesPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/identity/duplicates?limit=" + encodeURIComponent(String(limit))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as
+    IdentityDuplicatesPayload | null;
+}
+
+export async function dismissIdentityPair(
+  accessToken: string,
+  contactA: string,
+  contactB: string
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/identity/dismiss", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contact_a: contactA, contact_b: contactB }),
+    });
   } catch (error) {
     assertNotAuthError(error);
     return false;

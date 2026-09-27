@@ -30,17 +30,19 @@
   - Sab approvals ka audit log (kaun, kab, kaise — portal/WhatsApp).
 - Design detail (mine): request message me ref code hoga; 1/0 simple path multiple-pending case me code maangega.
 
-## D4 — Industry Templates: Ecommerce + Local Business pehle
+## D4 — Industry Templates: Ecommerce + Local Business pehle ✅ DELIVERED (§196)
 - Config/template architecture (koi per-industry hardcoded system NAHI). Baqi industries baad me.
+- Delivered: V2 B15 VERTICAL_PACKS (ecommerce/salon/clinic/restaurant/real_estate/education) ab workflow drafts bhi seed karte hain (portal_workflows.WORKFLOW_TEMPLATES 21, vertical-tagged data, `seed_templates` = drafts only, savepoint fail-soft); Workflows page ka template picker applied pack ke hisaab se group hota he. Koi parallel template system nahi.
 
 ## D5 — Voice AI loop + Vision: DEFERRED (this round)
 - Voice speech-loop (Gather/speech→intent→agent) aur Vision dono substantial hain — agli rounds ke liye.
 - Existing voice infra (inbound, voicemail recordings, outbound, video) waisa hi chalta rahega.
 
-## D6 — Workflow Builder: shuru se professional, custom lightweight canvas
+## D6 — Workflow Builder: shuru se professional, custom lightweight canvas ✅ DELIVERED (§196)
 - **Koi heavy drag-drop library NAHI** (bundle weight) — custom minimal canvas (SVG/DOM + pointer events).
 - Hard rules owner-set: lightweight code · site extremely fast/responsive · simple minimal animations · professional enterprise UI.
 - Nodes (initial): Trigger, Condition, AI Decision, Action, Wait, Branch, Approval, Human Handoff, Goal/Stop.
+- Delivered: workflow-model.ts (pure model, rig-tested against the CP's own templates) + WorkflowCanvas (DOM nodes + SVG edges, pointer-capture drag, keyboard, zoom, reachability/issue overlays) + StepInspector; zero new dependencies (rig pins package.json). Runner/step model unchanged.
 
 ## D7 — Website UI polish pass (PENDING owner answer)
 - Owner ne purani UI me "box aur text ka color same / ajeeb structure / unprofessional" ka zikr kiya.
@@ -64,8 +66,9 @@
 5b. Router + Agents ✅: portal_agents (AI personas - tone/instructions/escalation, versioned, soft-archive, human-only) + routing rules target_type (user|agent) + agent_id (lazy ALTER); agent rules assign conversations to a persona; brain answers in that persona (agent_persona grounding + tone override). test_agents 41 + test_brain 96.
 5c. Workflow Engine v1 ✅: portal_workflows (5 tables lazy DDL, versioned, tenant-scoped) rides the poll loop (no worker); 8 triggers (ingest + portal_action_log stream with loop guard) x 9 step kinds (condition/branch via portal_policy.evaluate, ai_decision via chat_json, action via portal_actions.execute incl. HIGH -> approval gate, wait, approval, handoff, goal, stop); +5 MEDIUM registry actions; 4 catalog templates; /dashboard/workflows list + form-based step editor + runs timeline. test_workflows 134.
    - Next: Workflow Builder canvas (D6) on top of the same step model
-5. Workflow Engine v1 ✅ → **Workflow Builder UI (D6)** + Templates (D4)
-6. Identity Engine → Knowledge ingestion (keyword retrieval; D1) → platform services (audit/cost/notifications/handoff)
+5. Workflow Engine v1 ✅ → Workflow Builder UI (D6) ✅ + Templates (D4) ✅ (§196)
+6. Identity Engine ✅ (§197: portal_identity - normalised handles + confidence/source, resolve() for adapters, duplicate hints, SOFT reversible merge/split with audit; legacy /contacts/link imported + kept in sync; hard /customers/merge untouched)
+6b. **Knowledge ingestion** (next; keyword retrieval, D1 embeddings deferred) → platform services (audit/cost/notifications/handoff)
 7. BI layer (Insights + Problem Detector + AI Quality + Journey funnel)
 8. Omnichannel adapters → (baad me) Voice loop + Vision (D5)
 9. UI polish batch (D7 — jawab ke mutabiq)

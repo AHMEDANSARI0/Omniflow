@@ -272,12 +272,15 @@ def trigger_catalog() -> List[Dict[str, Any]]:
             for name, spec in TRIGGERS.items()]
 
 
-def templates() -> List[Dict[str, Any]]:
-    """Starter templates the owner copies into the editor and edits
-    (data, not behaviour - nothing here is enforced by code)."""
-    return [
+# Roman-Urdu customer copy below is TEMPLATE DATA the owner edits in the
+# builder before activating (it is customer-facing WhatsApp text, not UI
+# copy). ``vertical`` ties a template to a Setup-wizard pack; "general"
+# templates are offered to every workspace.
+WORKFLOW_TEMPLATES: List[Dict[str, Any]] = [
+
         {
             "key": "welcome_new_contact",
+            "vertical": "general",
             "name": "Welcome new contacts",
             "description": "Greet a brand-new contact and tag the chat.",
             "trigger_type": "contact_created", "trigger_config": {},
@@ -297,6 +300,7 @@ def templates() -> List[Dict[str, Any]]:
         },
         {
             "key": "refund_triage",
+            "vertical": "general",
             "name": "Refund request triage",
             "description": "Detect a refund request, confirm with AI, and"
                            " raise an owner approval.",
@@ -317,6 +321,7 @@ def templates() -> List[Dict[str, Any]]:
         },
         {
             "key": "cod_declined_followup",
+            "vertical": "general",
             "name": "COD declined follow-up",
             "description": "Wait an hour after a declined COD order, then"
                            " ask what went wrong and hand off if negative.",
@@ -339,6 +344,7 @@ def templates() -> List[Dict[str, Any]]:
         },
         {
             "key": "won_thank_you",
+            "vertical": "general",
             "name": "Deal won: thank-you + review ask",
             "description": "Thank the customer when a deal is marked won,"
                            " then request a review three days later.",
@@ -352,7 +358,7 @@ def templates() -> List[Dict[str, Any]]:
                              " ho gaya - koi sawal ho to isi number par"
                              " likhein."}}},
                 {"kind": "wait", "label": "Three days",
-                 "config": {"hours": 72}},
+                 "config": {"minutes": 4320}},
                 {"kind": "action", "label": "Review request",
                  "config": {"action": "queue_whatsapp_message", "args": {
                      "body": "{first_name}, umeed hai sab theek raha!"
@@ -361,7 +367,475 @@ def templates() -> List[Dict[str, Any]]:
                  "config": {"name": "review_requested"}},
             ],
         },
-    ]
+    # ------------------------------------------------------------ ecommerce
+    {
+        "key": "ecom_abandoned_checkout",
+        "vertical": "ecommerce",
+        "name": "Abandoned checkout reminder",
+        "description": "Two hours after a checkout link is created, remind"
+                       " the customer once. Stops by itself if they reply.",
+        "trigger_type": "checkout_created", "trigger_config": {},
+        "stop_on_reply": True,
+        "steps": [
+            {"kind": "wait", "label": "Give them two hours",
+             "config": {"minutes": 120}},
+            {"kind": "action", "label": "Gentle reminder",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "{first_name}, aapka checkout link abhi bhi"
+                         " active he. Koi sawal ho to batayen - hum"
+                         " foran madad karenge."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "checkout-reminded"}}},
+            {"kind": "goal", "label": "Reminded",
+             "config": {"name": "checkout_reminded"}},
+        ],
+    },
+    {
+        "key": "ecom_payment_confirmed",
+        "vertical": "ecommerce",
+        "name": "Payment received: confirmation",
+        "description": "Confirm an online payment instantly and move the"
+                       " deal to won.",
+        "trigger_type": "payment_received", "trigger_config": {},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "action", "label": "Confirm payment",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "Shukriya {first_name}! Aapki payment mil gayi"
+                         " he. Order ab process ho raha he - dispatch"
+                         " par tracking isi chat me milegi."}}},
+            {"kind": "action", "label": "Mark won",
+             "config": {"action": "set_pipeline_stage",
+                        "args": {"stage": "won"}}},
+            {"kind": "goal", "label": "Confirmed",
+             "config": {"name": "payment_confirmed"}},
+        ],
+    },
+    {
+        "key": "ecom_cod_confirmed",
+        "vertical": "ecommerce",
+        "name": "COD confirmed: dispatch expectations",
+        "description": "Set delivery expectations the moment a COD order"
+                       " is confirmed.",
+        "trigger_type": "cod_confirmed", "trigger_config": {},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "action", "label": "Dispatch note",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "Order confirm ho gaya {first_name}! Dispatch"
+                         " 24 ghante me hota he aur tracking number isi"
+                         " chat me bhej denge."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "cod-confirmed"}}},
+            {"kind": "goal", "label": "Expectations set",
+             "config": {"name": "dispatch_note_sent"}},
+        ],
+    },
+    {
+        "key": "ecom_delivery_question",
+        "vertical": "ecommerce",
+        "name": "Delivery question triage",
+        "description": "Detect \"where is my order\" questions: hand off"
+                       " during business hours, otherwise promise a"
+                       " morning update.",
+        "trigger_type": "message_received",
+        "trigger_config": {"keyword": "delivery",
+                           "once_per_conversation": True},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "ai_decision", "label": "Asking about delivery?",
+             "config": {"question": "Is the customer asking where their"
+                                    " order is or when it will arrive?",
+                        "fallback": "no", "else": "stop"}},
+            {"kind": "branch", "label": "Business hours?",
+             "config": {"rules": {"all": [
+                 {"field": "in_hours", "op": "is", "value": "true"}]},
+                 "else": 5}},
+            {"kind": "handoff", "label": "Hand to the team",
+             "config": {"note": "Delivery status question - check"
+                                " tracking and reply."}},
+            {"kind": "goal", "label": "Handed off",
+             "config": {"name": "handed_off"}},
+            {"kind": "action", "label": "After-hours reply",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "{first_name}, team abhi available nahi he -"
+                         " subah pehli fursat me tracking update bhej"
+                         " denge."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "delivery-query"}}},
+            {"kind": "goal", "label": "Answered after hours",
+             "config": {"name": "answered_after_hours"}},
+        ],
+    },
+    # ---------------------------------------------------------------- salon
+    {
+        "key": "salon_booking_request",
+        "vertical": "salon",
+        "name": "Booking request: hand off or hold",
+        "description": "When someone asks for a booking, hand off during"
+                       " opening hours or hold them politely until you"
+                       " open.",
+        "trigger_type": "message_received",
+        "trigger_config": {"keyword": "booking",
+                           "once_per_conversation": True},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "branch", "label": "Open right now?",
+             "config": {"rules": {"all": [
+                 {"field": "in_hours", "op": "is", "value": "true"}]},
+                 "else": 4}},
+            {"kind": "handoff", "label": "Hand to the front desk",
+             "config": {"note": "Booking request - confirm a slot."}},
+            {"kind": "goal", "label": "Handed off",
+             "config": {"name": "handed_off"}},
+            {"kind": "action", "label": "Hold message",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "{first_name}, salon abhi band he - khulte hi"
+                         " aapki booking confirm karenge. Apna"
+                         " pasandeeda din aur time likh dein."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "booking-after-hours"}}},
+            {"kind": "goal", "label": "Held until opening",
+             "config": {"name": "held_until_opening"}},
+        ],
+    },
+    {
+        "key": "salon_visit_review",
+        "vertical": "salon",
+        "name": "After the visit: thank-you + review",
+        "description": "Thank a client the day after a completed visit"
+                       " and ask for a review.",
+        "trigger_type": "stage_changed",
+        "trigger_config": {"stage": "won"},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "wait", "label": "Next day",
+             "config": {"minutes": 1440}},
+            {"kind": "action", "label": "Thank-you + review",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "Shukriya {first_name}! Umeed he aapko apna"
+                         " naya look pasand aaya. Ek chhota sa review"
+                         " hamare liye bohat maayne rakhta he."}}},
+            {"kind": "goal", "label": "Review requested",
+             "config": {"name": "review_requested"}},
+        ],
+    },
+    {
+        "key": "salon_new_client_welcome",
+        "vertical": "salon",
+        "name": "Welcome a new client",
+        "description": "Greet first-time contacts and tag them so the team"
+                       " can follow up.",
+        "trigger_type": "contact_created", "trigger_config": {},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "action", "label": "Welcome",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "Assalam o Alaikum {first_name}! Khush amdeed."
+                         " Services aur timing ke baare me poochein -"
+                         " hum foran jawab dete hain."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "new-client"}}},
+            {"kind": "goal", "label": "Welcomed",
+             "config": {"name": "welcomed"}},
+        ],
+    },
+    # --------------------------------------------------------------- clinic
+    {
+        "key": "clinic_appointment_request",
+        "vertical": "clinic",
+        "name": "Appointment request: hand off or hold",
+        "description": "Route appointment requests to reception during"
+                       " hours, otherwise hold them until you open.",
+        "trigger_type": "message_received",
+        "trigger_config": {"keyword": "appointment",
+                           "once_per_conversation": True},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "branch", "label": "Reception open?",
+             "config": {"rules": {"all": [
+                 {"field": "in_hours", "op": "is", "value": "true"}]},
+                 "else": 4}},
+            {"kind": "handoff", "label": "Hand to reception",
+             "config": {"note": "Appointment request - offer a slot."}},
+            {"kind": "goal", "label": "Handed off",
+             "config": {"name": "handed_off"}},
+            {"kind": "action", "label": "Hold message",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "{first_name}, clinic abhi band he - khulte hi"
+                         " reception aapko slot confirm karegi. Agar"
+                         " emergency he to please 1122 par call karein."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "appointment-after-hours"}}},
+            {"kind": "goal", "label": "Held until opening",
+             "config": {"name": "held_until_opening"}},
+        ],
+    },
+    {
+        "key": "clinic_urgent_message",
+        "vertical": "clinic",
+        "name": "Urgent message: immediate handoff",
+        "description": "Messages the intelligence engine rates as urgent"
+                       " go straight to a human.",
+        "trigger_type": "message_received",
+        "trigger_config": {"once_per_conversation": False},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "condition", "label": "Urgent?",
+             "config": {"rules": {"all": [
+                 {"field": "urgency", "op": "is", "value": "high"}]},
+                 "else": "stop"}},
+            {"kind": "handoff", "label": "Hand off now",
+             "config": {"note": "Urgent message - review immediately."}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "urgent"}}},
+            {"kind": "goal", "label": "Escalated",
+             "config": {"name": "escalated"}},
+        ],
+    },
+    {
+        "key": "clinic_post_visit_followup",
+        "vertical": "clinic",
+        "name": "Post-visit follow-up",
+        "description": "Check in two days after a completed visit.",
+        "trigger_type": "stage_changed",
+        "trigger_config": {"stage": "won"},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "wait", "label": "Two days",
+             "config": {"minutes": 2880}},
+            {"kind": "action", "label": "Check in",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "{first_name}, umeed he aap behtar mehsoos kar"
+                         " rahe hain. Koi sawal ya follow-up chahiye ho"
+                         " to isi number par likh dein."}}},
+            {"kind": "goal", "label": "Followed up",
+             "config": {"name": "followed_up"}},
+        ],
+    },
+    # ----------------------------------------------------------- restaurant
+    {
+        "key": "restaurant_order_request",
+        "vertical": "restaurant",
+        "name": "Order request: hand off or hold",
+        "description": "Route order messages to the counter during"
+                       " opening hours, otherwise share when you open.",
+        "trigger_type": "message_received",
+        "trigger_config": {"keyword": "order",
+                           "once_per_conversation": True},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "branch", "label": "Kitchen open?",
+             "config": {"rules": {"all": [
+                 {"field": "in_hours", "op": "is", "value": "true"}]},
+                 "else": 4}},
+            {"kind": "handoff", "label": "Hand to the counter",
+             "config": {"note": "Order request - confirm items and"
+                                " delivery time."}},
+            {"kind": "goal", "label": "Handed off",
+             "config": {"name": "handed_off"}},
+            {"kind": "action", "label": "Closed message",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "{first_name}, kitchen abhi band he - khulte"
+                         " hi aapka order le lenge. Menu ke liye"
+                         " 'menu' likhein."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "order-after-hours"}}},
+            {"kind": "goal", "label": "Held until opening",
+             "config": {"name": "held_until_opening"}},
+        ],
+    },
+    {
+        "key": "restaurant_complaint_handoff",
+        "vertical": "restaurant",
+        "name": "Negative feedback: handoff",
+        "description": "Unhappy messages reach a manager immediately and"
+                       " get tagged for review.",
+        "trigger_type": "message_received",
+        "trigger_config": {"once_per_conversation": False},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "condition", "label": "Negative sentiment?",
+             "config": {"rules": {"all": [
+                 {"field": "sentiment", "op": "is", "value": "negative"}]},
+                 "else": "stop"}},
+            {"kind": "handoff", "label": "Hand to a manager",
+             "config": {"note": "Negative feedback - respond personally."}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "complaint"}}},
+            {"kind": "goal", "label": "Escalated",
+             "config": {"name": "escalated"}},
+        ],
+    },
+    {
+        "key": "restaurant_repeat_thanks",
+        "vertical": "restaurant",
+        "name": "After the order: thank-you + review",
+        "description": "Thank the customer a day after a completed order"
+                       " and invite a review.",
+        "trigger_type": "stage_changed",
+        "trigger_config": {"stage": "won"},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "wait", "label": "Next day",
+             "config": {"minutes": 1440}},
+            {"kind": "action", "label": "Thank-you + review",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "Shukriya {first_name}! Umeed he khana pasand"
+                         " aaya. Ek chhota sa review hamare liye bohat"
+                         " maayne rakhta he."}}},
+            {"kind": "goal", "label": "Review requested",
+             "config": {"name": "review_requested"}},
+        ],
+    },
+    # ---------------------------------------------------------- real estate
+    {
+        "key": "re_listing_inquiry",
+        "vertical": "real_estate",
+        "name": "Listing inquiry: qualify and hand off",
+        "description": "Confirm the message is about a property, then hand"
+                       " off to an agent with the context.",
+        "trigger_type": "message_received",
+        "trigger_config": {"keyword": "price",
+                           "once_per_conversation": True},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "ai_decision", "label": "Property inquiry?",
+             "config": {"question": "Is the customer asking about the"
+                                    " price or availability of a"
+                                    " property listing?",
+                        "fallback": "no", "else": "stop"}},
+            {"kind": "handoff", "label": "Hand to an agent",
+             "config": {"note": "Listing inquiry - share price and"
+                                " arrange a visit."}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "listing-inquiry"}}},
+            {"kind": "goal", "label": "Qualified",
+             "config": {"name": "qualified"}},
+        ],
+    },
+    {
+        "key": "re_site_visit_followup",
+        "vertical": "real_estate",
+        "name": "Interested lead: site-visit nudge",
+        "description": "A day after a lead becomes interested, offer to"
+                       " schedule a site visit.",
+        "trigger_type": "stage_changed",
+        "trigger_config": {"stage": "interested"},
+        "stop_on_reply": True,
+        "steps": [
+            {"kind": "wait", "label": "Next day",
+             "config": {"minutes": 1440}},
+            {"kind": "action", "label": "Offer a visit",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "{first_name}, kya aap is hafte site visit"
+                         " schedule karna chahenge? Din aur time"
+                         " batayen, hum arrange kar dete hain."}}},
+            {"kind": "goal", "label": "Visit offered",
+             "config": {"name": "visit_offered"}},
+        ],
+    },
+    # ------------------------------------------------------------ education
+    {
+        "key": "edu_admission_inquiry",
+        "vertical": "education",
+        "name": "Admission inquiry: hand off or hold",
+        "description": "Route admission questions to the office during"
+                       " hours, otherwise hold them until you open.",
+        "trigger_type": "message_received",
+        "trigger_config": {"keyword": "admission",
+                           "once_per_conversation": True},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "branch", "label": "Office open?",
+             "config": {"rules": {"all": [
+                 {"field": "in_hours", "op": "is", "value": "true"}]},
+                 "else": 4}},
+            {"kind": "handoff", "label": "Hand to the office",
+             "config": {"note": "Admission inquiry - share process and"
+                                " fees."}},
+            {"kind": "goal", "label": "Handed off",
+             "config": {"name": "handed_off"}},
+            {"kind": "action", "label": "Hold message",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "{first_name}, office abhi band he - khulte"
+                         " hi admission team aapse rabta karegi. Class"
+                         " aur student ka naam likh dein."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "admission-after-hours"}}},
+            {"kind": "goal", "label": "Held until opening",
+             "config": {"name": "held_until_opening"}},
+        ],
+    },
+    {
+        "key": "edu_enrolled_welcome",
+        "vertical": "education",
+        "name": "Enrolled: welcome message",
+        "description": "Welcome a newly enrolled student and tag the"
+                       " conversation.",
+        "trigger_type": "stage_changed",
+        "trigger_config": {"stage": "won"},
+        "stop_on_reply": False,
+        "steps": [
+            {"kind": "action", "label": "Welcome",
+             "config": {"action": "queue_whatsapp_message", "args": {
+                 "body": "Mubarak ho {first_name}! Admission confirm ho"
+                         " gaya. Schedule aur zaroori documents ki list"
+                         " isi chat me bhej rahe hain."}}},
+            {"kind": "action", "label": "Tag",
+             "config": {"action": "add_conversation_tag",
+                        "args": {"tag": "enrolled"}}},
+            {"kind": "goal", "label": "Welcomed",
+             "config": {"name": "enrolled_welcomed"}},
+        ],
+    },
+]
+
+
+def templates(vertical: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Starter templates the owner copies into the builder and edits
+    (data, not behaviour - nothing here is enforced by code).
+    ``vertical=None`` returns all of them (general first); a pack key
+    returns only that vertical's templates."""
+    if vertical is None:
+        return [dict(item) for item in WORKFLOW_TEMPLATES]
+    return [dict(item) for item in WORKFLOW_TEMPLATES
+            if item.get("vertical") == vertical]
+
+
+def template_verticals() -> List[Dict[str, str]]:
+    """[{key, label}] in template order - labels come from the Setup
+    wizard packs (one source of truth), "general" is always first."""
+    labels: Dict[str, str] = {}
+    try:
+        import portal_templates
+
+        labels = {key: str(pack.get("label") or key)
+                  for key, pack in portal_templates.VERTICAL_PACKS.items()}
+    except Exception:
+        labels = {}
+    out: List[Dict[str, str]] = []
+    seen: List[str] = []
+    for item in WORKFLOW_TEMPLATES:
+        vertical = str(item.get("vertical") or "general")
+        if vertical in seen:
+            continue
+        seen.append(vertical)
+        label = "General" if vertical == "general" else labels.get(
+            vertical, vertical.replace("_", " ").title())
+        out.append({"key": vertical, "label": label})
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -1370,27 +1844,123 @@ def _write_steps(cur, client_id: int, workflow_id: int, steps: list) -> None:
         )
 
 
-def _parse_payload(payload: Dict[str, Any]):
-    """Shared create/update validation -> (fields, None) or (None, err)."""
+def _insert_workflow(cur, client_id: int, fields: Dict[str, Any],
+                     actor_user_id, note: str) -> int:
+    """Draft + steps + version 1 snapshot + audit (one transaction,
+    the caller commits). Shared by the owner API and pack seeding."""
+    cur.execute(
+        "INSERT INTO " + portal_db._q(WORKFLOWS_TABLE) +
+        " (client_id, name, description, status, trigger_type,"
+        " trigger_config, stop_on_reply, version)"
+        " VALUES (%s, %s, %s, 'draft', %s, CAST(%s AS JSONB), %s, 1)"
+        " RETURNING id",
+        (client_id, fields["name"], fields["description"],
+         fields["trigger_type"], json.dumps(fields["trigger_config"]),
+         fields["stop_on_reply"]),
+    )
+    rows = portal_db.rows(cur)
+    workflow_id = int((rows[0] if rows else {}).get("id") or 0)
+    _write_steps(cur, client_id, workflow_id, fields["steps"])
+    cur.execute(
+        "INSERT INTO " + portal_db._q(VERSIONS_TABLE) +
+        " (client_id, workflow_id, version, snapshot)"
+        " VALUES (%s, %s, 1, CAST(%s AS JSONB))",
+        (client_id, workflow_id, json.dumps(_snapshot(
+            fields["name"], fields["description"],
+            fields["trigger_type"], fields["trigger_config"],
+            fields["stop_on_reply"], fields["steps"]),
+            ensure_ascii=False)),
+    )
+    portal_db.log_action(cur, client_id, "workflow.saved", "human",
+                         actor_user_id, None, note[:200])
+    return workflow_id
+
+
+def seed_templates(cur, client_id: int, vertical: str,
+                   actor_user_id=None) -> int:
+    """Setup-wizard hook: create the vertical's templates as DRAFTS.
+    Idempotent by name (re-applying a pack never duplicates), respects
+    the workspace limit, and never activates anything - the owner
+    reviews each draft in the builder first. Returns how many were
+    created. Raises on SQL errors (the caller wraps in a savepoint)."""
+    items = templates(vertical)
+    if not items:
+        return 0
+    _ensure_ddl(cur)
+    cur.execute(
+        "SELECT name FROM " + portal_db._q(WORKFLOWS_TABLE) +
+        " WHERE client_id = %s AND status <> 'archived'",
+        (client_id,),
+    )
+    existing = [str(r.get("name") or "") for r in portal_db.rows(cur)]
+    total = len(existing)
+    created = 0
+    for item in items:
+        if item["name"] in existing or total >= MAX_WORKFLOWS:
+            continue
+        fields, problem = normalize_definition(item)
+        if problem or not fields:
+            logger.warning("workflow template %s invalid - skipped: %s",
+                           item.get("key"), problem)
+            continue
+        _insert_workflow(cur, client_id, fields, actor_user_id,
+                         "Draft from template " + str(item.get("key")))
+        existing.append(item["name"])
+        total += 1
+        created += 1
+    return created
+
+
+def normalize_definition(payload: Dict[str, Any]) -> Tuple[
+        Optional[Dict[str, Any]], Optional[str]]:
+    """Validate + normalise a workflow definition (owner payload or a
+    template) -> (fields, None) or (None, why). No Flask context needed."""
     name = str(payload.get("name") or "").strip()
     if not name or len(name) > MAX_NAME_CHARS:
-        return None, _bad("name is required (max " + str(MAX_NAME_CHARS)
-                          + " characters).")
+        return None, ("name is required (max " + str(MAX_NAME_CHARS)
+                      + " characters).")
     description = str(payload.get("description") or "").strip()
     if len(description) > MAX_DESCRIPTION_CHARS:
-        return None, _bad("description is too long (max "
-                          + str(MAX_DESCRIPTION_CHARS) + ").")
+        return None, ("description is too long (max "
+                      + str(MAX_DESCRIPTION_CHARS) + ").")
     trigger_type, trigger_config, problem = validate_trigger(
         payload.get("trigger_type"), payload.get("trigger_config"))
     if problem:
-        return None, _bad(problem)
+        return None, problem
     steps, problem = validate_steps(payload.get("steps") or [])
     if problem:
-        return None, _bad(problem)
+        return None, problem
     stop_on_reply = bool(payload.get("stop_on_reply", False))
     return {"name": name, "description": description,
             "trigger_type": trigger_type, "trigger_config": trigger_config,
             "steps": steps, "stop_on_reply": stop_on_reply}, None
+
+
+def _parse_payload(payload: Dict[str, Any]):
+    """Shared create/update validation -> (fields, None) or (None, err)."""
+    fields, problem = normalize_definition(payload)
+    if problem:
+        return None, _bad(problem)
+    return fields, None
+
+
+def _applied_vertical(client_id: int) -> str:
+    """Which Setup-wizard pack this workspace applied ("" if none) so the
+    builder can recommend that vertical's templates first. Fail-soft."""
+    try:
+        import portal_templates
+
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                portal_templates._ensure_ddl(cur)
+                applied = portal_templates._load_applied(cur, client_id)
+            conn.commit()
+        finally:
+            conn.close()
+        return str(applied.get("vertical") or "")
+    except Exception:
+        return ""
 
 
 @bp.get("/workflows/catalog")
@@ -1398,10 +1968,13 @@ def get_catalog():
     principal, error = _owner_or_error()
     if error:
         return error
+    client_id = int(principal.get("client_id") or 0)
     return jsonify({"triggers": trigger_catalog(),
                     "actions": action_catalog(),
                     "step_kinds": list(STEP_KINDS),
                     "templates": templates(),
+                    "verticals": template_verticals(),
+                    "applied_vertical": _applied_vertical(client_id),
                     "limits": {"max_workflows": MAX_WORKFLOWS,
                                "max_steps": MAX_STEPS,
                                "max_wait_minutes": MAX_WAIT_MINUTES}}), 200
@@ -1489,35 +2062,9 @@ def create_workflow():
             if int((rows[0] if rows else {}).get("total") or 0) \
                     >= MAX_WORKFLOWS:
                 return _bad("Max " + str(MAX_WORKFLOWS) + " workflows.")
-            cur.execute(
-                "INSERT INTO " + portal_db._q(WORKFLOWS_TABLE) +
-                " (client_id, name, description, status, trigger_type,"
-                " trigger_config, stop_on_reply, version)"
-                " VALUES (%s, %s, %s, 'draft', %s, CAST(%s AS JSONB), %s, 1)"
-                " RETURNING id",
-                (client_id, fields["name"], fields["description"],
-                 fields["trigger_type"],
-                 json.dumps(fields["trigger_config"]),
-                 fields["stop_on_reply"]),
-            )
-            rows = portal_db.rows(cur)
-            workflow_id = int((rows[0] if rows else {}).get("id") or 0)
-            _write_steps(cur, client_id, workflow_id, fields["steps"])
-            cur.execute(
-                "INSERT INTO " + portal_db._q(VERSIONS_TABLE) +
-                " (client_id, workflow_id, version, snapshot)"
-                " VALUES (%s, %s, 1, CAST(%s AS JSONB))",
-                (client_id, workflow_id, json.dumps(_snapshot(
-                    fields["name"], fields["description"],
-                    fields["trigger_type"], fields["trigger_config"],
-                    fields["stop_on_reply"], fields["steps"]),
-                    ensure_ascii=False)),
-            )
-            portal_db.log_action(
-                cur, client_id, "workflow.saved", "human",
-                principal.get("user_id"), None,
-                ("Workflow created: " + fields["name"])[:200],
-            )
+            workflow_id = _insert_workflow(
+                cur, client_id, fields, principal.get("user_id"),
+                "Workflow created: " + fields["name"])
         conn.commit()
     finally:
         conn.close()

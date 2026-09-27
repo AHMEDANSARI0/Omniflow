@@ -3,6 +3,7 @@
 import Link from "next/link";
 import CustomerMemoryCard from "./CustomerMemoryCard";
 import CustomerJourneyCard from "./CustomerJourneyCard";
+import CustomerIdentityCard from "./CustomerIdentityCard";
 import { useCallback, useEffect, useState } from "react";
 
 interface CustomerValueData {
@@ -446,6 +447,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
 
         {contact ? <CustomerMemoryCard contact={contact} /> : null}
         {contact ? <CustomerJourneyCard contact={contact} /> : null}
+        {contact ? <CustomerIdentityCard contact={contact} /> : null}
 
         {profile && recos.length > 0 ? (
           <section className="mt-4 rounded-2xl border border-line bg-soft p-4">

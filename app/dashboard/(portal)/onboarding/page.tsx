@@ -20,13 +20,17 @@ interface Pack {
   keywords: { keyword: string; note: string }[];
   saved_replies: { shortcut: string; body: string }[];
   journey: string[];
+  /** Workflow drafts seeded on activation (older control planes omit this). */
+  workflows?: { key: string; name: string; description: string;
+                trigger_type: string }[];
 }
 
 /**
  * Setup wizard: pick a vertical, see exactly what will be created
  * (persona, knowledge-base entries, saved replies, keyword alerts,
- * journey stages), then activate with one click. Everything the
- * template seeds can be edited or deleted normally afterwards.
+ * journey stages, workflow drafts), then activate with one click.
+ * Everything the template seeds can be edited or deleted normally
+ * afterwards - workflow drafts stay off until activated in Workflows.
  */
 export default function OnboardingPage() {
   const [packs, setPacks] = useState<Pack[] | null>(null);
@@ -81,6 +85,9 @@ export default function OnboardingPage() {
           + " saved replies, " + (payload.created.keywords ?? 0)
           + " keyword alerts, " + (payload.created.journey ?? 0)
           + " journey stages"
+          + (payload.created.workflows
+            ? ", " + payload.created.workflows + " workflow drafts"
+            : "")
           + (payload.created.persona
             ? ", assistant persona"
             : " (persona untouched)"));
@@ -110,8 +117,8 @@ export default function OnboardingPage() {
           <p className="mt-1.5 text-sm text-ink-3">
             Pick your business type - the wizard seeds a matching
             assistant persona, starter knowledge-base entries, saved
-            replies, keyword alerts and journey stages. Everything is
-            editable afterwards.
+            replies, keyword alerts, journey stages and workflow drafts.
+            Everything is editable afterwards.
           </p>
           {applied ? (
             <p className="mt-2 text-[11px] text-ok">
@@ -245,6 +252,29 @@ export default function OnboardingPage() {
                     </li>
                   ))}
                 </ul>
+                {active.workflows && active.workflows.length ? (
+                  <>
+                    <p className="mt-3 text-[10px] uppercase tracking-wider text-ink-3">
+                      Workflow drafts ({active.workflows.length})
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {active.workflows.map((flow) => (
+                        <li key={flow.key}
+                          className="text-[11px] text-ink-3">
+                          <span className="text-ink-2">{flow.name}</span>
+                          <span className="ml-1.5 text-[10px]">
+                            on {flow.trigger_type.replace(/_/g, " ")}
+                          </span>
+                          {" "}&mdash; {flow.description}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1 text-[10px] text-ink-3">
+                      Created as drafts - review and activate them in
+                      Workflows.
+                    </p>
+                  </>
+                ) : null}
               </div>
             </div>
           </section>
@@ -270,6 +300,11 @@ export default function OnboardingPage() {
             <Link href="/dashboard/saved-replies"
               className="text-brand hover:underline">
               adjust saved replies
+            </Link>
+            {" \u00b7 "}
+            <Link href="/dashboard/workflows"
+              className="text-brand hover:underline">
+              activate workflow drafts
             </Link>
           </p>
         ) : null}

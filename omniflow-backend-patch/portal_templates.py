@@ -3,8 +3,10 @@
 The packs are DATA (six starter verticals: ecommerce, salon, clinic,
 restaurant, real estate, education). Applying a pack seeds the
 workspace with a matching assistant persona, starter knowledge-base
-entries, customer-facing saved replies, keyword alert rules and
-journey stages - everything idempotent (existing titles, shortcuts,
+entries, customer-facing saved replies, keyword alert rules, journey
+stages and (engine 9) the vertical's workflow templates as DRAFTS
+(portal_workflows.WORKFLOW_TEMPLATES - one data source, the builder
+offers the same templates) - everything idempotent (existing titles, shortcuts,
 stages and keywords are never duplicated) and reversible by simply
 deleting the created rows through their own pages.
 
@@ -23,6 +25,7 @@ from portal_auth import (
 import portal_db
 import portal_kb
 import portal_listen
+import portal_workflows
 
 bp = Blueprint("portal_templates", __name__,
                url_prefix="/api/v1/portal")
@@ -420,17 +423,21 @@ def list_templates():
             "keywords": pack["keywords"],
             "saved_replies": pack["saved_replies"],
             "journey": pack["journey"],
+            "workflows": [{"key": item["key"], "name": item["name"],
+                           "description": item["description"],
+                           "trigger_type": item["trigger_type"]}
+                          for item in portal_workflows.templates(key)],
         })
     return jsonify({"packs": packs, "applied": applied["vertical"],
                     "applied_at": applied["applied_at"]}), 200
 
 
 def _apply_pack(cur, client_id: int, key: str,
-                overwrite_persona: bool) -> Dict[str, Any]:
+                overwrite_persona: bool, actor_user_id=None) -> Dict[str, Any]:
     """Idempotent seeding - one transaction, counts of what changed."""
     pack = VERTICAL_PACKS[key]
     created = {"kb": 0, "keywords": 0, "saved_replies": 0,
-               "journey": 0, "persona": 0}
+               "journey": 0, "persona": 0, "workflows": 0}
 
     # 1) persona - only seeds an empty desk, never overwrites a live one
     cur.execute(
@@ -525,6 +532,21 @@ def _apply_pack(cur, client_id: int, key: str,
             (client_id, name, position),
         )
         created["journey"] += 1
+
+    # 6) workflow drafts for the vertical - savepoint-guarded so a
+    #    workflow problem can never roll back the rest of the pack
+    cur.execute("SAVEPOINT template_workflows")
+    try:
+        created["workflows"] = portal_workflows.seed_templates(
+            cur, client_id, key, actor_user_id)
+        cur.execute("RELEASE SAVEPOINT template_workflows")
+    except Exception as error:
+        logger.warning("template workflows skipped: %s", error)
+        try:
+            cur.execute("ROLLBACK TO SAVEPOINT template_workflows")
+        except Exception:
+            pass
+        created["workflows"] = 0
     return created
 
 
@@ -547,7 +569,8 @@ def apply_template():
     try:
         with conn.cursor() as cur:
             _ensure_ddl(cur)
-            created = _apply_pack(cur, client_id, key, overwrite_persona)
+            created = _apply_pack(cur, client_id, key, overwrite_persona,
+                                  principal.get("user_id"))
             cur.execute(
                 "INSERT INTO " + portal_db._q(SETTINGS_TABLE) +
                 " (client_id, vertical, applied_at)"
@@ -563,7 +586,8 @@ def apply_template():
                 "Template " + key + " applied (kb " + str(created["kb"])
                 + ", replies " + str(created["saved_replies"])
                 + ", keywords " + str(created["keywords"])
-                + ", stages " + str(created["journey"]) + ")",
+                + ", stages " + str(created["journey"])
+                + ", workflows " + str(created["workflows"]) + ")",
             )
         conn.commit()
     finally:

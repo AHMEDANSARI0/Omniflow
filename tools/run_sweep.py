@@ -83,6 +83,10 @@ SMOKE_MAP = {
     "workflow_payload.ts": "lib/omniflow/workflow-payload.ts",
     "workflows_page.tsx": D + "workflows/page.tsx",
     "workflows_client.tsx": D + "workflows/WorkflowsClient.tsx",
+    "workflow_canvas.tsx": D + "workflows/WorkflowCanvas.tsx",
+    "step_inspector.tsx": D + "workflows/StepInspector.tsx",
+    "workflow_model.ts": D + "workflows/workflow-model.ts",
+    "onboarding_page.tsx": D + "onboarding/page.tsx",
 }
 for name, rel in SMOKE_MAP.items():
     src = os.path.join(ROOT, rel)

@@ -54,7 +54,7 @@
 ### 🔴 Missing entirely (naya build)
 | # | Engine | Kya banana hai |
 |---|---|---|
-| 1 | Customer Identity | cross-channel identity resolution (phone/email/WA-id/platform-id), confidence, duplicate detection, safe merge + audit — abhi sab WhatsApp-jid centric |
+| 1 | Customer Identity | ✅ §197 portal_identity: cross-channel handles (whatsapp/phone/email/instagram/facebook/tiktok/web/other) normalised + confidence/source, `resolve()` adapters ke liye, duplicate detection (same_phone/same_name), SOFT reversible merge/split + audit; legacy links imported |
 | 6 | Agent Router | centralized router (Support/Sales/Lead/Commerce/Order/Recovery/Retention/Followup/Ops) — isolated per-feature AI nahi |
 | 9 | Workflow Engine | trigger→condition→AI decision→action→wait→goal — automations+sequences+recovery+winback+restock+followups unify (sab alag modules abhi) |
 | 17 | Business Insights | conversation/order mining → actionable insights ("31% delivery time pooch rahe hain") — evidence-based |
@@ -69,8 +69,8 @@
 - **AI Control Center** page (agents/workflows/knowledge/actions/permissions/approvals/usage/cost)
 - **Agent Configuration** UI (name/role/goal/tone/language/allowed-forbidden actions/hours)
 - **AI Action Permissions** UI (Support: ✓read/send ✗refund — Action Engine se driven)
-- **Workflow Builder** (visual canvas — backend Workflow Engine ka representation)
-- **Industry Templates** (ecommerce/real-estate/salon/… — config-driven, hardcoded nahi)
+- **Workflow Builder** ✅ (§196: custom lightweight canvas — backend Workflow Engine ka representation, koi heavy lib nahi)
+- **Industry Templates** ✅ (§196: VERTICAL_PACKS + 21 workflow templates, config-driven, hardcoded nahi; baqi industries = data add karna)
 
 ---
 
@@ -80,7 +80,7 @@
 |---|---|
 | 0 Audit | YE document |
 | 1 Stabilize | 🟡 lagbhag stable (4366 checks green); bache: laptop pe connector E2E, weekly report send-now, provider-keys admin inputs (purani batch list) |
-| 2 Core Engines | 🟡 Identity 🔴, Memory 🟡, Business Brain 🟡, Intelligence 🟡, Router 🔴, **Action 🟡(formalize)**, Policy 🟡 |
+| 2 Core Engines | 🟡 Identity ✅ (§197), Memory 🟡, Business Brain 🟡, Intelligence 🟡, Router 🔴, **Action 🟡(formalize)**, Policy 🟡 |
 | 3 Workflow | 🔴 (seeds: sequences/automations/recovery/followups/winback/restock) |
 | 4 Agents | 🟡 (capabilities hain; "agents" as configs+router nahi) |
 | 5 Actions wiring | 🟡 (sab target APIs already hain — catalog/orders/payments/courier/CRM; Action Engine me wrap karna hai) |
@@ -102,13 +102,13 @@
 6. **Memory Engine upgrade** — confidence/source/expiry/types
 7. **Agent Router + Agents** — Support/Sales/Commerce/Recovery/Retention/Followup = router ke upar configs (naya AI system nahi)
 8. **Workflow Engine v1** ✅ (§195) — existing automations/sequences ko workflow records me lift; trigger+action library
-9. **Identity Engine** — cross-channel ki tayari (adapters se pehle zaroori)
+9. **Identity Engine** ✅ (§197) — cross-channel ki tayari (adapters se pehle zaroori)
 10. **Knowledge Engine** — ingestion pipeline + embeddings + retrieval + versioning (owner-approval law qayam)
 11. **Handoff + Notifications + Audit + Cost/Usage + Observability** (platform services)
 12. **BI layer** — Insights + Problem Detector + AI Quality + Journey funnel
 13. **Omnichannel adapters** (IG pehle) — Workflow/Identity/Action engines ready hone ke BAAD
 14. **Voice Agent loop + Vision**
-15. **Admin AI Control Center + Agent Config + Permissions UI + Workflow Builder + Templates**
+15. **Admin AI Control Center + Agent Config + Permissions UI** + ~~Workflow Builder + Templates~~ ✅ (§196)
 16. **Eval expansion + Agent versioning/rollback**
 
 ---
@@ -129,7 +129,7 @@
 2. **HIGH-risk approvals**: portal me "Approval inbox" (owner ek click me approve/reject) — theek hai?
 3. **Templates**: kaunsi industries pehle? (meri suggestion: Ecommerce + Local Business — PK focus)
 4. **Voice AI loop + Vision**: is upgrade round me ya baad me? (Gemini multimodal chahiye hoga)
-5. **Workflow Builder visual canvas**: Phase-3 me simple list-based UI kaafi hai ya shuru se drag-drop canvas chahiye?
+5. **Workflow Builder visual canvas**: ~~Phase-3 me simple list-based UI kaafi hai ya shuru se drag-drop canvas chahiye?~~ → D6 custom canvas delivered (§196)
 
 ---
 

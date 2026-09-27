@@ -6,6 +6,7 @@ from flask import Flask
 
 import portal_templates
 import portal_plans
+import portal_workflows
 PLANS_FREE_BRANDS = portal_plans.PLANS["free"]["limits"]["brands"]
 from test_lib import check, install_db_stub, summary
 
@@ -85,18 +86,50 @@ r, conn = run(portal_templates, [[], []], "GET",
 body = r.get_json()
 check("templates list", r.status_code == 200
       and len(body["packs"]) == 6, r.status_code)
+by_key = {pack["key"]: pack for pack in body["packs"]}
+check("packs preview their workflow templates (D4)",
+      len(by_key["ecommerce"]["workflows"]) == 4
+      and len(by_key["education"]["workflows"]) == 2
+      and set(by_key["salon"]["workflows"][0]) == {
+          "key", "name", "description", "trigger_type"},
+      [len(p["workflows"]) for p in body["packs"]])
 check("templates not applied yet", body["applied"] == "", body)
 
 r, conn = run(portal_templates,
               [[], [], [], [], [], [], [], [], [], [], [], [], [],
-               [], [], [], [], []],
+               [], [], []] + [[]] * 60,
               "POST", "/api/v1/portal/templates/apply",
               {"vertical": "ecommerce"})
 body = r.get_json()
 check("apply 200", r.status_code == 200 and body["ok"] is True, body)
-check("apply seeds everything", body["created"] == {
+check("apply seeds everything (incl. 4 workflow drafts)", body["created"] == {
     "kb": 3, "keywords": 2, "saved_replies": 3, "journey": 3,
-    "persona": 1}, body["created"])
+    "persona": 1, "workflows": 4}, body["created"])
+executed_sql = [e[0] for e in conn.cur.executed]
+check("workflow seeding is savepoint-guarded",
+      "SAVEPOINT template_workflows" in executed_sql
+      and "RELEASE SAVEPOINT template_workflows" in executed_sql
+      and sum(1 for q in executed_sql if "portal_workflows" in q
+              and q.startswith("INSERT")) == 4, "savepoint")
+check("apply audit mentions workflows", any(
+    "workflows 4" in json.dumps(e) for e in conn.cur.executed), "audit")
+
+# a workflow problem never rolls back the rest of the pack
+_orig_seed = portal_workflows.seed_templates
+portal_workflows.seed_templates = lambda *a, **k: (_ for _ in ()).throw(
+    RuntimeError("wf table locked"))
+try:
+    r, conn = run(portal_templates, [[]] * 40, "POST",
+                  "/api/v1/portal/templates/apply", {"vertical": "ecommerce"})
+    body = r.get_json()
+    check("pack survives a workflow seeding failure", r.status_code == 200
+          and body["created"]["workflows"] == 0
+          and body["created"]["kb"] == 3, body)
+    check("rollback to savepoint issued", any(
+        "ROLLBACK TO SAVEPOINT template_workflows" in e[0]
+        for e in conn.cur.executed), "rollback")
+finally:
+    portal_workflows.seed_templates = _orig_seed
 executed = [e[0] for e in conn.cur.executed]
 check("apply writes persona row", any(
     "portal_bot_configs" in s and "INSERT INTO" in s for s in executed),
@@ -122,7 +155,7 @@ check("apply status row", any(
 r, conn = run(portal_templates,
               [[], [{"agent_name": "MyBot", "greeting": "yo",
                      "fallback": "ok"}], [], [], [], [], [], [], [],
-               [], [], [], [], [], [], [], [], [], [], []],
+               [], [], [], [], [], [], [], [], [], [], []] + [[]] * 40,
               "POST", "/api/v1/portal/templates/apply",
               {"vertical": "salon"})
 body = r.get_json()
@@ -137,7 +170,7 @@ check("no persona update issued", not any(
 r, conn = run(portal_templates,
               [[], [{"agent_name": "MyBot", "greeting": "yo",
                      "fallback": "ok"}], [], [], [], [], [], [], [],
-               [], [], [], [], [], [], [], [], [], [], []],
+               [], [], [], [], [], [], [], [], [], [], []] + [[]] * 40,
               "POST", "/api/v1/portal/templates/apply",
               {"vertical": "salon", "overwrite_persona": True})
 check("persona overwrite honored",

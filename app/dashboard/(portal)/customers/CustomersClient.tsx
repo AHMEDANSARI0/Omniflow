@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import CustomersImport from "./CustomersImport";
+import DuplicatesPanel from "./DuplicatesPanel";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface CustomerSummary {
@@ -488,6 +489,8 @@ export default function CustomersClient({
           Export CSV
         </button>
       </div>
+
+      <DuplicatesPanel onLinked={() => void refresh()} />
 
       {!customers ? (
         <div className="animate-pulse space-y-3">

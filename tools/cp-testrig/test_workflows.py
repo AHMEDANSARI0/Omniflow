@@ -119,11 +119,49 @@ check("9 step kinds (D6 node list)", set(portal_workflows.STEP_KINDS) == {
     "handoff", "goal", "stop"}, portal_workflows.STEP_KINDS)
 
 tpls = portal_workflows.templates()
-check("4 starter templates validate", len(tpls) == 4 and all(
+check("21 templates across 7 verticals validate", len(tpls) == 21 and all(
     portal_workflows.validate_steps(t["steps"])[1] is None
     and portal_workflows.validate_trigger(
         t["trigger_type"], t["trigger_config"])[2] is None
     for t in tpls), [t["key"] for t in tpls])
+check("template keys + names unique", len({t["key"] for t in tpls}) == 21
+      and len({t["name"] for t in tpls}) == 21, "-")
+check("vertical tags (D4: general + ecommerce + local business first)",
+      [v["key"] for v in portal_workflows.template_verticals()] == [
+          "general", "ecommerce", "salon", "clinic", "restaurant",
+          "real_estate", "education"]
+      and portal_workflows.template_verticals()[1]["label"]
+      == "E-commerce store"
+      and len(portal_workflows.templates("ecommerce")) == 4
+      and len(portal_workflows.templates("salon")) == 3
+      and len(portal_workflows.templates("general")) == 4
+      and portal_workflows.templates("nope") == [],
+      portal_workflows.template_verticals())
+check("every template ends in a goal (measurable outcome)", all(
+    t["steps"][-1]["kind"] == "goal" for t in tpls), "-")
+
+
+def _rule_values_are_strings(step):
+    rules = step["config"].get("rules") or {}
+    for group in ("all", "any"):
+        for cond in rules.get(group) or []:
+            if not isinstance(cond.get("value"), str):
+                return False
+    return True
+
+
+check("template rule values are strings (builder round-trip contract)", all(
+    _rule_values_are_strings(step) for t in tpls for step in t["steps"]
+    if step["kind"] in ("condition", "branch")), "-")
+check("template waits use minutes (canonical) and stay in range", all(
+    isinstance(step["config"].get("minutes"), int)
+    and 1 <= step["config"]["minutes"] <= portal_workflows.MAX_WAIT_MINUTES
+    and "hours" not in step["config"]
+    for t in tpls for step in t["steps"] if step["kind"] == "wait"), "-")
+check("normalize_definition normalises a template without Flask",
+      portal_workflows.normalize_definition(tpls[0])[1] is None
+      and portal_workflows.normalize_definition({"name": ""})[1]
+      is not None, "-")
 
 steps, err = portal_workflows.validate_steps([
     {"kind": "condition", "config": {"rules": COND_REFUND, "else": "skip"}},
@@ -584,8 +622,49 @@ print("== owner API ==")
 r = run_api([], "GET", "/api/v1/portal/workflows/catalog")
 body = r.get_json()
 check("catalog 200", r.status_code == 200 and len(body["triggers"]) == 8
-      and len(body["actions"]) == 15 and len(body["templates"]) == 4
+      and len(body["actions"]) == 15 and len(body["templates"]) == 21
       and body["limits"]["max_steps"] == 12, r.status_code)
+check("catalog carries verticals + applied_vertical (fail-soft empty)",
+      body["verticals"][0]["key"] == "general" and len(body["verticals"]) == 7
+      and body["applied_vertical"] == "", body.get("applied_vertical"))
+import portal_templates  # noqa: E402
+
+conn = fresh([[], [{"vertical": "salon", "applied_at": "2026-01-01"}]])
+portal_templates._DDL_READY = False
+check("applied vertical read through portal_templates (DDL + select)",
+      portal_workflows._applied_vertical(1) == "salon"
+      and "portal_templates_applied" in conn.cur.executed[1][0], "-")
+fresh([Exception("no table")])
+portal_templates._DDL_READY = False
+check("applied vertical fail-soft", portal_workflows._applied_vertical(1)
+      == "", "-")
+
+# ---- seed_templates (Setup-wizard hook) ----
+print("== template seeding ==")
+EDU = portal_workflows.templates("education")
+conn = fresh([[{"name": EDU[1]["name"]}], [{"id": 71}], []]
+             + [[]] * len(EDU[0]["steps"]) + [[], []])
+created = portal_workflows.seed_templates(conn.cur, 1, "education", 11)
+sqls = [e[0] for e in conn.cur.executed]
+check("seeds only the missing template as a draft", created == 1
+      and "'draft'" in sqls[1] and conn.cur.executed[1][1][1] == EDU[0]["name"],
+      (created, sqls[1][:80]))
+check("seed writes steps + version + audit", sqls[2].startswith("DELETE")
+      and sum(1 for q in sqls if "portal_workflow_steps" in q
+              and q.startswith("INSERT")) == len(EDU[0]["steps"])
+      and any("portal_workflow_versions" in q for q in sqls)
+      and any("workflow.saved" in json.dumps(e) and "Draft from template"
+              in json.dumps(e) for e in conn.cur.executed), sqls)
+conn = fresh([[{"name": t["name"]} for t in EDU]])
+check("seeding is idempotent by name", portal_workflows.seed_templates(
+    conn.cur, 1, "education") == 0 and len(conn.cur.executed) == 1, "-")
+conn = fresh([[{"name": "w" + str(i)}
+               for i in range(portal_workflows.MAX_WORKFLOWS)]])
+check("seeding respects the workspace limit", portal_workflows.seed_templates(
+    conn.cur, 1, "education") == 0, "-")
+conn = fresh([])
+check("unknown vertical seeds nothing (no SQL)", portal_workflows.seed_templates(
+    conn.cur, 1, "nope") == 0 and conn.cur.executed == [], "-")
 r = run_api([], "GET", "/api/v1/portal/workflows",
             principal=API_KEY_PRINCIPAL)
 check("api key 403 (human-only)", r.status_code == 403, r.status_code)
@@ -817,13 +896,55 @@ check("Workflows page mounts client", "WorkflowsClient" in page_src
       and "listWorkflows" in page_src, "-")
 check("Workflows client: builder surfaces", all(t in client_src for t in (
     "/api/omniflow/portal/workflows", "Start from template",
-    "Run test", "Activate", "Pause", "Archive", "ai_decision", "approval",
-    "handoff", "goal", "stop_on_reply", "Runs")), "-")
-check("Workflows client: English copy, no Roman-Urdu UI strings",
-      "karein" not in client_src and "nahi" not in client_src
-      and "hai" not in client_src.replace("hair", ""), "-")
-check("Workflows client: no heavy libs (D6 law)", "reactflow" not in client_src
-      and "@xyflow" not in client_src and "dnd-kit" not in client_src, "-")
+    "Run test", "Activate", "Pause", "Archive", "Runs", "Open in builder",
+    "WorkflowCanvas", "StepInspector", "TriggerInspector")), "-")
+
+
+def _read(name):
+    path = BFF + name
+    return open(path, encoding="utf8").read() if os.path.exists(path) else ""
+
+
+canvas_src = _read("workflow_canvas.tsx")
+inspector_src = _read("step_inspector.tsx")
+model_src = _read("workflow_model.ts")
+onboarding_src = _read("onboarding_page.tsx")
+builder_srcs = client_src + canvas_src + inspector_src + model_src
+check("Builder model: every node kind + stop_on_reply live in the pure model",
+      all(t in model_src for t in (
+          "condition", "branch", "ai_decision", "action", "wait", "approval",
+          "handoff", "goal", "stop", "stop_on_reply", "reachability",
+          "layoutWorkflow", "moveToSlot")), "-")
+check("Builder canvas: custom pointer-event drag + SVG edges (D6 design)",
+      all(t in canvas_src for t in (
+          "setPointerCapture", "touchAction", "<svg", "slotFromY",
+          "Not reachable", "onKeyDown", "Insert a step at position")), "-")
+check("Builder inspector: per-kind forms + approval-gate notice + key jumps",
+      all(t in inspector_src for t in (
+          "High-risk", "jump to", "Yes/no question", "Add rule",
+          "Goal name", "Teammate user id")), "-")
+check("Templates picker groups by vertical with the applied pack first",
+      "optgroup" in client_src and "appliedVertical" in client_src
+      and "Recommended for" in client_src, "-")
+check("Setup wizard previews + links the seeded workflow drafts",
+      "Workflow drafts" in onboarding_src
+      and '"/dashboard/workflows"' in onboarding_src
+      and "workflow drafts" in onboarding_src, "-")
+check("Workflows UI: English copy, no Roman-Urdu UI strings",
+      "karein" not in builder_srcs and "nahi" not in builder_srcs
+      and "hai" not in builder_srcs.replace("hair", ""), "-")
+check("Builder canvas: no emoji-capable glyphs (text-presentation law)",
+      all(code not in canvas_src for code in (
+          "\\u25b6", "\\u261d", "\\u2714", "\\u26a1", "\\u2699", "\\u2709",
+          "\\u260e", "\\u2733", "\\u263a", "\\u25fc", "\\u27a1"))
+      and "\\u25c9" in canvas_src, "-")
+check("Workflows UI: no heavy libs (D6 law)", all(
+    lib not in builder_srcs for lib in ("reactflow", "@xyflow", "dnd-kit",
+                                        "react-beautiful-dnd", "konva")), "-")
+PKG = open(RIG13 + "package.json", encoding="utf8").read()
+check("package.json: no canvas/drag-drop dependency added", all(
+    lib not in PKG for lib in ("reactflow", "@xyflow", "dnd-kit",
+                               "react-beautiful-dnd", "konva", "d3")), "-")
 SIDEBAR = open(RIG13 + "app/dashboard/components/DashSidebar.tsx",
                encoding="utf8").read()
 PALETTE = open(RIG13 + "app/dashboard/components/CommandPalette.tsx",
