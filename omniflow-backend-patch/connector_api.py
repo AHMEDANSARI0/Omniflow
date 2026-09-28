@@ -800,7 +800,11 @@ def ingest_whatsapp_messages():
                             import portal_kb
                             import portal_intents
 
-                            intent = portal_intents.classify(item["body"])
+                            import portal_llm
+
+                            with portal_llm.usage_scope(
+                                    "intent", tenant["client_id"]):
+                                intent = portal_intents.classify(item["body"])
                             if portal_kb.maybe_auto_reply(
                                 tenant["client_id"],
                                 conversation_id,

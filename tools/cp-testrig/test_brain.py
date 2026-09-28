@@ -99,8 +99,31 @@ with conn.cur as cur:
 conn = fresh([[{"id": 3, "title": "Delivery time", "content": "2-4 din"}]])
 with conn.cur as cur:
     kb = portal_brain.tool_search_kb(cur, 1, "delivery", 3)
-check("kb search shaped", kb == [{"id": 3, "title": "Delivery time",
-      "content": "2-4 din"}], kb)
+check("kb search shaped (knowledge engine: kind/source/score added)",
+      len(kb) == 1 and kb[0]["id"] == 3 and kb[0]["title"] == "Delivery time"
+      and kb[0]["content"] == "2-4 din" and kb[0]["kind"] == "entry"
+      and kb[0]["source"] == "" and kb[0]["score"] > 0, kb)
+kb_sql = conn.cur.executed[0][0]
+check("kb search = one ranked query over entries + published chunks",
+      len(conn.cur.executed) == 1 and "portal_kb_entries" in kb_sql
+      and "portal_kb_chunks" in kb_sql and "s.status = 'published'" in kb_sql
+      and "ILIKE ANY(%s)" in kb_sql, kb_sql[:120])
+conn = fresh([[{"kind": "entry", "id": 3, "title": "Delivery time",
+                "content": "2-4 din", "extra": "", "source_id": 0,
+                "source_title": "", "position": 0},
+               {"kind": "chunk", "id": 41, "title": "delivery",
+                "content": "Karachi delivery takes 1-2 days.", "extra": "",
+                "source_id": 7, "source_title": "Store policy", "position": 2}]])
+with conn.cur as cur:
+    kb = portal_brain.tool_search_kb(cur, 1, "karachi delivery", 3)
+check("kb search ranks the document section first and cites its source",
+      [h["id"] for h in kb] == [41, 3] and kb[0]["kind"] == "chunk"
+      and kb[0]["source"] == "Store policy", kb)
+conn = fresh([[{"id": 3, "title": "Delivery time", "content": "2-4 din"}]])
+with conn.cur as cur:
+    kb = portal_brain.tool_search_kb(cur, 1, "refund policy", 3)
+check("kb search drops candidates that do not match the question",
+      kb == [], kb)
 
 conn = fresh([[], []])
 with conn.cur as cur:
@@ -191,7 +214,13 @@ ok, conn, captured = run_maybe_answer(
     [[{"autonomy": "auto", "tone": "warm"}],
      [{"direction": "in", "body": "salam", "created_at": "t"}],  # msgs
      [],  # orders empty
-     [{"id": 3, "title": "Tracking", "content": "2-4 din"}],  # kb
+     [{"kind": "entry", "id": 3, "title": "Order tracking",
+       "content": "2-4 din", "extra": "", "source_id": 0, "source_title": "",
+       "position": 0},
+      {"kind": "chunk", "id": 41, "title": "orders",
+       "content": "Order status updates are sent on WhatsApp within 24 hours.",
+       "extra": "", "source_id": 7, "source_title": "Store policy",
+       "position": 2}],  # kb (entries + published document sections)
      [],  # business facts (v2)
      [],  # customer memory (upgrade)
      [],  # agent persona (upgrade)
@@ -214,7 +243,18 @@ ins_params = [p for s, p in conn.cur.executed
               if "portal_connector_commands" in s][0]
 check("payload source ai_brain", "ai_brain" in str(ins_params), "source")
 check("grounding in prompt", "kb" in captured["user"]
-      or "Tracking" in captured["user"], "grounded")
+      or "Order tracking" in captured["user"], "grounded")
+check("document excerpt + source reach the prompt",
+      "Store policy" in captured["user"] and "chunk" in captured["user"],
+      captured["user"][:200])
+check("system prompt explains KB entries vs document excerpts",
+      "kind chunk" in captured["system"] and "never go beyond" in captured["system"],
+      "prompt")
+trace_params = [p for s, p in conn.cur.executed if "portal_brain_traces" in s][0]
+check("trace cites document sections (knowledge_ids + citations)",
+      "knowledge_ids" in str(trace_params) and "citations" in str(trace_params)
+      and "Store policy" in str(trace_params) and "\"kb_ids\": [3]" in str(trace_params),
+      str(trace_params)[:300])
 check("policy line in system prompt",
       "NEVER promise refunds" in captured["system"], "policy prompt")
 
@@ -234,6 +274,55 @@ ok, conn, _ = run_maybe_answer(
 check("auto + needs_human -> None (no send)", ok is None, ok)
 check("handoff traced", any("portal_brain_traces" in s
                             for s, p in conn.cur.executed), "trace")
+
+# needs_human is a real event: ONE escalation (ledger + audit + owner
+# notification through portal_notify), never a silent trace
+import portal_escalation  # noqa: E402
+import portal_notify  # noqa: E402
+
+portal_escalation._DDL_READY = True
+_notified = []
+_orig_notify = portal_notify.notify
+portal_notify.notify = lambda *a, **k: _notified.append((a, k)) or {"in_app": 1}
+try:
+    ok, conn, _ = run_maybe_answer(
+        [[{"autonomy": "auto", "tone": ""}],
+         [], [], [], [], [], [], [],
+         [{"id": 80}],  # trace
+         [],  # escalation: none open for this chat
+         [],  # escalation: persona table absent
+         [],  # escalation: team table absent -> nobody assigned
+         [{"id": 5}],  # escalation ledger row
+         []],  # escalation.opened audit
+        {"reply": "kuch samajh nahi aya", "needs_human": True,
+         "confidence": 0.9})
+finally:
+    portal_notify.notify = _orig_notify
+esc_rows = [e for e in conn.cur.executed if "portal_escalations" in e[0]
+            and e[0].startswith("INSERT")]
+audit_rows = [e for e in conn.cur.executed if "portal_action_log" in e[0]]
+check("needs_human opens an escalation (source ai, reason needs_human)",
+      ok is None and esc_rows and esc_rows[0][1][2] == "needs_human"
+      and esc_rows[0][1][3] == "ai" and esc_rows[0][1][1] == 55, esc_rows)
+check("escalation audited as automation + owner notified once",
+      audit_rows and audit_rows[-1][1][1] == "escalation.opened"
+      and audit_rows[-1][1][2] == "automation" and len(_notified) == 1
+      and _notified[0][0][1] == "escalation"
+      and _notified[0][1].get("dedupe_key") == "conv:55", (audit_rows, _notified))
+
+# llm_unavailable is a platform problem, not a customer situation: no page
+_notified = []
+portal_notify.notify = lambda *a, **k: _notified.append((a, k)) or {}
+try:
+    ok, conn, _ = run_maybe_answer(
+        [[{"autonomy": "auto", "tone": ""}],
+         [], [], [], [], [], [], [], [{"id": 81}]], None)
+finally:
+    portal_notify.notify = _orig_notify
+check("llm unavailable -> traced but NOT escalated",
+      ok is None and not any("portal_escalations" in e[0]
+                             for e in conn.cur.executed)
+      and not _notified, conn.cur.executed[-1][0][:60])
 
 # auto + llm down -> None fail-open
 ok, conn, _ = run_maybe_answer(

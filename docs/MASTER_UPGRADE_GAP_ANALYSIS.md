@@ -31,22 +31,22 @@
 |---|---|---|---|
 | 2 | Customer Memory | portal_memory: per-customer memory, purge, journey stages + explanations | confidence, source, timestamp/expiry, memory types (short/long/business/journey), owner-visible editing |
 | 3 | Business Brain | portal_brain v1: persona, custom instructions, business profile, policy-checked prompts (refund/discount blocked) | structured context layer: policies/SOPs/pricing/refund+escalation rules as queryable data (giant prompts ki jagah) |
-| 4 | Knowledge | portal_kb: Q&A pairs, gaps, owner-approved drafts | **file/URL ingestion (PDF/DOCX/TXT/CSV/website), chunking, EMBEDDINGS, retrieval, versioning, health, re-index** (embeddings: 0 hits — confirmed missing) |
+| 4 | Knowledge | ✅ §198 portal_knowledge: sources (paste/TXT-MD-CSV-JSON-HTML upload/website URL) + versions/rollback + heading-aware chunking + ranked keyword retrieval (entries + published sections, ONE query) + health/re-index + owner tester; drafts until owner publishes | EMBEDDINGS (D1 deferred; retrieve() contract ready), PDF/DOCX parsing, scheduled re-fetch |
 | 5 | Intelligence | intent classifier + sentiment (lexicon/LLM switch) | **shared IntelligenceResult schema** (intent/sentiment/language/purchase_intent/urgency/confidence) — purchase_intent/urgency/confidence: 0 hits; centralization nahi |
 | 7 | Action Engine | **portal_brain v1 tools = seed!** (tool_recent_messages, tool_customer_orders, tool_search_kb + policy + provenance) | formal registry: 35+ actions, input/output schemas, permissions per agent, risk levels (LOW/MED/HIGH), approval flow, idempotency, retry/timeout, unified audit |
 | 8 | Policy/Rule | negotiation bounds, business hours, routing/listen rules, brain policy | generic executable rule engine (IF/AND/OR/branches/delays/escalation) |
 | 10 | Sales Agent | reco + negotiation + checkout + catalog | dedicated agent: qualify, objections, compare, quotes, lead updates, follow-up loop |
-| 11 | Support Agent | assist (intent/sentiment/reply/context) + CSAT | knowledge **citations/traceability**, complaint flows, escalation summary |
+| 11 | Support Agent | assist (intent/sentiment/reply/context) + CSAT + knowledge citations in brain trace (§198) | complaint flows, escalation summary |
 | 12 | Commerce Ops Agent | COD risk, address normalize, courier, restock, orders | policy-checked autonomous flows ("order cancel karna hai" → policy → permission → action) |
 | 13 | Follow-up Agent | followup agent + sequences | context-aware stops (purchased? opt-out? human took over? duplicate?) — verify |
 | 15 | Retention | winback + churn + sequences + segments | centralized retention system (reorder/loyalty/personalized offers) |
 | 16 | Proactive AI | digest, order updates, restock alerts, winback triggers | formal event-driven proactive engine (business alerts: unavailable product demand, repeated complaints) |
 | 19 | Journey Intelligence | journey stages + explanations | funnel/drop-off analytics (Visitor→…→VIP/Churn) with revenue linkage |
-| 21 | Handoff | auto-assign, routing, needs-reply | **centralized escalation**: reason codes (low-confidence/angry/VIP/risk), human ko ready-made context summary |
+| 21 | Handoff | ✅ §199 portal_escalation: one `escalate()` for brain (needs_human/low_confidence/policy), workflows, knowledge gaps, owner; reason codes + severity, persona escalation target, one open per chat, ledger + audit + owner notify, Handoffs card | ready-made context summary for the human (BI batch), auto-resolve on human reply |
 | 22 | Voice Agent | inbound calls, voicemail recordings, outbound, video rooms (Twilio) | **speech conversation loop** (Gather/speech→intent→agent→response), voice actions, same brain/memory |
 | 24 | Omnichannel | WhatsApp LIVE (Baileys→CP), baaki honest "Coming" | **channel adapter interface** (receiveMessage/sendMessage/…8 ops) + message normalizer + identity linking — AI layer channel-agnostic banana |
-| 25 | Notifications | email (admin), WhatsApp, alerts module, desktop alerts, opt-outs | central engine: templates+variables, per-channel prefs, rate limits, delivery status |
-| 27 | Audit Log | per-module audit rows (events) | unified AI-action audit: who/what/why/agent/model/input/decision/approval |
+| 25 | Notifications | ✅ §199 portal_notify: bell + tenant opt-in email + ledger with delivery status, per-kind prefs + severity threshold, test send; used by escalations/approvals/dead deliveries/failed runs | templates+variables, rate limits (dedupe covers floods today) |
+| 27 | Audit Log | ✅ §199 portal_ai_audit read model over portal_action_log: categories registry, actor kinds, timeline + overview (approvals pending, handoffs open, usage) on Configure AI | per-row agent/model/input linkage (brain traces already carry grounding; join later in Control Center) |
 | 29 | Evaluation | 132 suites / 4366+ checks (structural+API) | **AI behavioral tests**: knowledge accuracy, tool-calling correctness, permission enforcement, workflow execution, injection defense, channel normalization |
 | 31 | Observability | portal_obs: trace-id + slow-request JSON logs | agent execution traces: conversation→agent→tool→result→decision→response |
 | 64 | Analytics split | analytics/revenue/service/one-reply/CSAT | AI quadrant (agent usage, confidence, cost, tool calls) + automation quadrant (workflow executions) |
@@ -57,11 +57,11 @@
 | 1 | Customer Identity | ✅ §197 portal_identity: cross-channel handles (whatsapp/phone/email/instagram/facebook/tiktok/web/other) normalised + confidence/source, `resolve()` adapters ke liye, duplicate detection (same_phone/same_name), SOFT reversible merge/split + audit; legacy links imported |
 | 6 | Agent Router | centralized router (Support/Sales/Lead/Commerce/Order/Recovery/Retention/Followup/Ops) — isolated per-feature AI nahi |
 | 9 | Workflow Engine | trigger→condition→AI decision→action→wait→goal — automations+sequences+recovery+winback+restock+followups unify (sab alag modules abhi) |
-| 17 | Business Insights | conversation/order mining → actionable insights ("31% delivery time pooch rahe hain") — evidence-based |
-| 18 | Problem Detector | knowledge gaps (seed hai) + sales bottlenecks, delivery problems, pricing objections, churn patterns → Problem/Evidence/Impact/Confidence/Action |
-| 20 | AI Quality | resolution rate, escalation rate, latency, low-confidence answers, "ye sawal main nahi janta" reporting |
+| 17 | Business Insights | ✅ §200 portal_bi: topic lexicon over inbound messages (share/trend/real examples), sentiment/purchase-intent mix, gaps, COD/checkout/delivery/SLA/CSAT signals; /dashboard/insights |
+| 18 | Problem Detector | ✅ §200 detect_problems: 16 env-tunable rules (gaps, delivery/price/complaint topics, negative tone, AI handoff/policy/engine, handoffs rising/unassigned, COD declines, unpaid checkouts, delivery failures, slow replies, CSAT, journey stall) → Problem/Evidence/Impact/Confidence/Action with deep links; churn patterns stay in portal_churn |
+| 20 | AI Quality | ✅ §200 ai_quality: resolution rate (answered chats never escalated), handoff share + reasons, avg confidence, grounded/cited share, engine failures + latency, CSAT after AI, unanswered questions list |
 | 23 | Vision/Media | image understanding (damaged product, screenshots) — transcribe seed hai, vision nahi |
-| 28 | AI Cost/Usage | tokens/cost/latency per workspace/agent/model/conversation (0 hits) — SaaS billing ke liye zaroori |
+| 28 | AI Cost/Usage | ✅ §199 portal_ai_usage: per-call tokens/latency/ok per workspace/feature/model via portal_llm.usage_scope; estimated cost from admin price table (honest "not configured" otherwise); usage card | per-agent/per-conversation split, billing hooks (plans) |
 | 30 | Agent Versioning | draft/test/published/previous/rollback |
 | 50 | Prompt-Injection Defense | customer message = untrusted content layer; system rules override-proof; injection test suite |
 
@@ -80,13 +80,13 @@
 |---|---|
 | 0 Audit | YE document |
 | 1 Stabilize | 🟡 lagbhag stable (4366 checks green); bache: laptop pe connector E2E, weekly report send-now, provider-keys admin inputs (purani batch list) |
-| 2 Core Engines | 🟡 Identity ✅ (§197), Memory 🟡, Business Brain 🟡, Intelligence 🟡, Router 🔴, **Action 🟡(formalize)**, Policy 🟡 |
+| 2 Core Engines | 🟡 Identity ✅ (§197), Knowledge ✅ (§198, embeddings deferred), Memory 🟡, Business Brain 🟡, Intelligence 🟡, Router 🔴, **Action 🟡(formalize)**, Policy 🟡 |
 | 3 Workflow | 🔴 (seeds: sequences/automations/recovery/followups/winback/restock) |
 | 4 Agents | 🟡 (capabilities hain; "agents" as configs+router nahi) |
 | 5 Actions wiring | 🟡 (sab target APIs already hain — catalog/orders/payments/courier/CRM; Action Engine me wrap karna hai) |
 | 6 Omnichannel | 🔴 (WA live; IG→Messenger→Email→TG→TikTok→SMS order) |
 | 7 Proactive | 🟡 upgrade |
-| 8 BI | 🔴 (data collected hai — events/rollups/analytics; insight generation nahi) |
+| 8 BI | ✅ §200 (portal_bi read model: insights + problems + AI quality + funnel; narrative summaries deferred) |
 | 9 AI Workforce UI | 🔴 |
 | 10 Voice/Vision | 🟡 / 🔴 |
 
@@ -103,9 +103,9 @@
 7. **Agent Router + Agents** — Support/Sales/Commerce/Recovery/Retention/Followup = router ke upar configs (naya AI system nahi)
 8. **Workflow Engine v1** ✅ (§195) — existing automations/sequences ko workflow records me lift; trigger+action library
 9. **Identity Engine** ✅ (§197) — cross-channel ki tayari (adapters se pehle zaroori)
-10. **Knowledge Engine** — ingestion pipeline + embeddings + retrieval + versioning (owner-approval law qayam)
-11. **Handoff + Notifications + Audit + Cost/Usage + Observability** (platform services)
-12. **BI layer** — Insights + Problem Detector + AI Quality + Journey funnel
+10. **Knowledge Engine** ✅ (§198) — ingestion pipeline + keyword retrieval + versioning (owner-approval law qayam; embeddings D1 deferred)
+11. **Handoff + Notifications + Audit + Cost/Usage + Observability** ✅ (§199 platform services; observability = usage ledger latency/failures + escalation summary; agent execution traces stay in brain traces)
+12. **BI layer** ✅ (§200) — Insights + Problem Detector + AI Quality + Journey funnel
 13. **Omnichannel adapters** (IG pehle) — Workflow/Identity/Action engines ready hone ke BAAD
 14. **Voice Agent loop + Vision**
 15. **Admin AI Control Center + Agent Config + Permissions UI** + ~~Workflow Builder + Templates~~ ✅ (§196)

@@ -130,7 +130,7 @@ export default function AlertsBell() {
           <div className="mt-2 max-h-72 space-y-1.5 overflow-y-auto">
             {alerts.length === 0 ? (
               <p className="rounded-xl border border-line px-3 py-4 text-center text-[11px] text-ink-3">
-                All clear — no failure alerts.
+                All clear — nothing needs you right now.
               </p>
             ) : (
               alerts.map((alert) => (
@@ -147,6 +147,8 @@ export default function AlertsBell() {
                     <p className="min-w-0 truncate text-xs text-ink">
                       {alert.severity === "revenue" ? (
                         <span className="mr-1 text-danger">&#9679;</span>
+                      ) : alert.severity === "high" ? (
+                        <span className="mr-1 text-amber-600">&#9679;</span>
                       ) : null}
                       {alert.title}
                     </p>

@@ -12748,3 +12748,797 @@ export async function dismissIdentityPair(
     throw new ControlPlaneRequestError(401, "unauthorized");
   return response.ok;
 }
+
+// ---------------------------------------------------------------------------
+// Knowledge engine (document / page sources, versions, retrieval tester)
+// ---------------------------------------------------------------------------
+
+export type KbSourceKind = "text" | "file" | "url";
+export type KbSourceStatus = "draft" | "published" | "paused";
+
+export interface KbSource {
+  id: number;
+  title: string;
+  kind: KbSourceKind;
+  origin: string;
+  status: KbSourceStatus;
+  version: number;
+  chunk_count: number;
+  char_count: number;
+  last_error: string;
+  stale: boolean;
+  ingested_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface KbHealth {
+  sources: number;
+  published: number;
+  drafts: number;
+  paused: number;
+  chunks: number;
+  errors: number;
+  stale: number;
+}
+
+export interface KbLimits {
+  max_sources: number;
+  max_chars: number;
+  chunk_chars: number;
+  max_versions: number;
+  kinds: KbSourceKind[];
+}
+
+export interface KbSourcesPayload {
+  sources: KbSource[];
+  health: KbHealth;
+  limits: KbLimits;
+}
+
+export interface KbSourceVersion {
+  version: number;
+  chunk_count: number;
+  char_count: number;
+  note: string;
+  created_at: string | null;
+}
+
+export interface KbHit {
+  kind: "entry" | "chunk";
+  id: number;
+  title: string;
+  content: string;
+  source_id: number;
+  source: string;
+  position: number;
+  score: number;
+  matched: string[];
+}
+
+export interface KbSearchPayload {
+  query: string;
+  tokens: string[];
+  hits: KbHit[];
+}
+
+export type KbSourceResult =
+  | { kind: "ok"; source: KbSource }
+  | { kind: "invalid"; code: string; message: string; status: number }
+  | { kind: "unavailable" };
+
+async function kbSourceResult(response: Response): Promise<KbSourceResult> {
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  const payload = (await response.json().catch(() => null)) as {
+    source?: KbSource;
+    error?: { code?: unknown; message?: unknown };
+  } | null;
+  if (response.ok) {
+    return payload && payload.source
+      ? { kind: "ok", source: payload.source }
+      : { kind: "unavailable" };
+  }
+  if (response.status === 400 || response.status === 404 || response.status === 409) {
+    return {
+      kind: "invalid",
+      status: response.status,
+      code:
+        payload && payload.error && typeof payload.error.code === "string"
+          ? payload.error.code
+          : "bad_request",
+      message:
+        payload && payload.error && typeof payload.error.message === "string"
+          ? payload.error.message
+          : "That request could not be completed.",
+    };
+  }
+  return { kind: "unavailable" };
+}
+
+export async function listKbSources(
+  accessToken: string
+): Promise<KbSourcesPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/kb/sources");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as KbSourcesPayload | null;
+}
+
+export async function createKbSource(
+  accessToken: string,
+  input: {
+    kind: KbSourceKind;
+    title?: string;
+    text?: string;
+    url?: string;
+    filename?: string;
+  }
+): Promise<KbSourceResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/kb/sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return kbSourceResult(response);
+}
+
+export async function updateKbSource(
+  accessToken: string,
+  id: number,
+  patch: { status?: KbSourceStatus; title?: string }
+): Promise<KbSourceResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/sources/" + id,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return kbSourceResult(response);
+}
+
+export async function deleteKbSource(
+  accessToken: string,
+  id: number
+): Promise<"ok" | "not_found" | "unavailable"> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/sources/" + id,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return "unavailable";
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 404) return "not_found";
+  return response.ok ? "ok" : "unavailable";
+}
+
+export async function reindexKbSource(
+  accessToken: string,
+  id: number,
+  text?: string
+): Promise<KbSourceResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/sources/" + id + "/reindex",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(text ? { text } : {}),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return kbSourceResult(response);
+}
+
+export async function listKbSourceVersions(
+  accessToken: string,
+  id: number
+): Promise<{ source: KbSource; versions: KbSourceVersion[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/sources/" + id + "/versions"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as {
+    source: KbSource;
+    versions: KbSourceVersion[];
+  } | null;
+}
+
+export async function rollbackKbSource(
+  accessToken: string,
+  id: number,
+  version: number
+): Promise<KbSourceResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/sources/" + id + "/rollback",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return kbSourceResult(response);
+}
+
+export async function searchKnowledge(
+  accessToken: string,
+  query: string,
+  n = 5
+): Promise<KbSearchPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/search?q=" +
+        encodeURIComponent(query) +
+        "&n=" +
+        encodeURIComponent(String(n))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as KbSearchPayload | null;
+}
+
+// ---------------------------------------------------------------------------
+// Platform services (MASTER-UPGRADE): notifications, escalations, AI usage +
+// unified AI audit (CP: portal_notify / portal_escalation / portal_ai_usage /
+// portal_ai_audit).
+// ---------------------------------------------------------------------------
+
+export type NotifySeverity = "normal" | "high";
+
+export interface NotifySettings {
+  email_enabled: boolean;
+  email_to: string;
+  min_severity: NotifySeverity;
+  kinds: Record<string, boolean>;
+}
+
+export interface NotifyKind {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface NotificationItem {
+  id: number;
+  kind: string;
+  severity: NotifySeverity;
+  title: string;
+  detail: string;
+  conversation_id: number | null;
+  alert_id: number | null;
+  email_to: string;
+  email_status: string;
+  email_error: string;
+  created_at: string | null;
+}
+
+export interface NotificationsPayload {
+  items: NotificationItem[];
+  settings: NotifySettings;
+  kinds: NotifyKind[];
+  severities: NotifySeverity[];
+  email_configured: boolean;
+}
+
+export interface NotifyTestResult {
+  ok: boolean;
+  result: {
+    in_app: number | null;
+    email: string;
+    email_to: string;
+    ledger_id: number | null;
+    error: string;
+  };
+}
+
+export type ServiceResult<T> =
+  | { kind: "ok"; data: T }
+  | { kind: "invalid"; status: number; code: string; message: string }
+  | { kind: "unavailable" };
+
+async function serviceResult<T>(response: Response): Promise<ServiceResult<T>> {
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  const payload = (await response.json().catch(() => null)) as
+    | (T & { error?: { code?: unknown; message?: unknown } })
+    | null;
+  if (response.ok) {
+    return payload ? { kind: "ok", data: payload } : { kind: "unavailable" };
+  }
+  if (response.status === 400 || response.status === 404 || response.status === 409) {
+    return {
+      kind: "invalid",
+      status: response.status,
+      code:
+        payload && payload.error && typeof payload.error.code === "string"
+          ? payload.error.code
+          : "bad_request",
+      message:
+        payload && payload.error && typeof payload.error.message === "string"
+          ? payload.error.message
+          : "That request could not be completed.",
+    };
+  }
+  return { kind: "unavailable" };
+}
+
+export async function getNotifications(
+  accessToken: string,
+  limit = 30
+): Promise<NotificationsPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/notifications?limit=" + encodeURIComponent(String(limit))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as NotificationsPayload | null;
+}
+
+export async function putNotificationSettings(
+  accessToken: string,
+  input: Partial<NotifySettings>
+): Promise<ServiceResult<{ ok: boolean; settings: NotifySettings }>> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/notifications/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return serviceResult(response);
+}
+
+export async function sendTestNotification(
+  accessToken: string
+): Promise<NotifyTestResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/notifications/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as NotifyTestResult | null;
+}
+
+export type EscalationStatus = "open" | "resolved";
+
+export interface Escalation {
+  id: number;
+  conversation_id: number;
+  contact_name: string;
+  contact_id: string;
+  reason: string;
+  reason_label: string;
+  source: string;
+  severity: NotifySeverity;
+  note: string;
+  target_user_id: number | null;
+  status: EscalationStatus;
+  hits: number;
+  created_at: string | null;
+  updated_at: string | null;
+  resolved_at: string | null;
+  resolved_note: string;
+}
+
+export interface EscalationSummary {
+  open: number;
+  open_high: number;
+  opened_7d: number;
+  resolved_7d: number;
+  avg_resolve_minutes: number | null;
+  by_source: Record<string, number>;
+  top_reasons: { label: string; count: number }[];
+}
+
+export interface EscalationsPayload {
+  items: Escalation[];
+  summary: EscalationSummary;
+  sources: string[];
+}
+
+export async function listEscalations(
+  accessToken: string,
+  status: EscalationStatus | "all" = "open",
+  limit = 50
+): Promise<EscalationsPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/escalations?status=" +
+        encodeURIComponent(status) +
+        "&limit=" +
+        encodeURIComponent(String(limit))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as EscalationsPayload | null;
+}
+
+export async function raiseEscalation(
+  accessToken: string,
+  input: { conversation_id: number; note?: string; user_id?: number }
+): Promise<ServiceResult<{ ok: boolean; escalation: Record<string, unknown> }>> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/escalations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return serviceResult(response);
+}
+
+export async function resolveEscalation(
+  accessToken: string,
+  id: number,
+  note = ""
+): Promise<ServiceResult<{ ok: boolean; escalation: Record<string, unknown> }>> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/escalations/" + id + "/resolve",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return serviceResult(response);
+}
+
+export interface AiUsageTotals {
+  calls: number;
+  failed: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  tokens: number;
+  avg_latency_ms: number;
+  cost_usd: number | null;
+  priced: boolean;
+  unpriced_calls: number;
+}
+
+export interface AiUsagePayload {
+  days: number;
+  totals: AiUsageTotals;
+  by_feature: { feature: string; label: string; calls: number; failed: number; tokens: number; cost_usd: number | null }[];
+  by_model: { model: string; calls: number; failed: number; tokens: number; cost_usd: number | null }[];
+  by_day: { day: string; calls: number; tokens: number }[];
+  prices_configured: boolean;
+  features: { key: string; label: string }[];
+}
+
+export interface AiAuditItem {
+  id: number;
+  action: string;
+  category: string;
+  actor_kind: string;
+  actor_user_id: number | null;
+  conversation_id: number | null;
+  note: string;
+  created_at: string | null;
+}
+
+export interface AiAuditPayload {
+  days: number;
+  category: string;
+  items: AiAuditItem[];
+  categories: { key: string; label: string }[];
+}
+
+export interface AiOverviewPayload {
+  days: number;
+  total: number;
+  by_category: { key: string; label: string; count: number }[];
+  by_actor: Record<string, number>;
+  approvals_pending: number | null;
+  escalations: EscalationSummary | null;
+  usage: { totals: AiUsageTotals; prices_configured: boolean } | null;
+}
+
+export async function getAiUsage(
+  accessToken: string,
+  days = 7
+): Promise<AiUsagePayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/usage?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as AiUsagePayload | null;
+}
+
+export async function getAiAudit(
+  accessToken: string,
+  days = 7,
+  category = "",
+  limit = 100
+): Promise<AiAuditPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/audit?days=" +
+        encodeURIComponent(String(days)) +
+        "&category=" +
+        encodeURIComponent(category) +
+        "&limit=" +
+        encodeURIComponent(String(limit))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 400) return null;
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as AiAuditPayload | null;
+}
+
+export async function getAiOverview(
+  accessToken: string,
+  days = 7
+): Promise<AiOverviewPayload | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/overview?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as AiOverviewPayload | null;
+}
+
+// ---------------------------------------------------------------------------
+// Business Intelligence layer (CP: portal_bi) - insights, problem detector,
+// AI quality, journey funnel in one report.
+// ---------------------------------------------------------------------------
+
+export interface BiTopic {
+  key: string;
+  label: string;
+  count: number;
+  share: number;
+  prev_share: number;
+  trend: "up" | "down" | "flat" | "new";
+  conversations: number;
+  examples: string[];
+}
+
+export interface BiProblem {
+  key: string;
+  title: string;
+  severity: "critical" | "warn" | "info";
+  evidence: Record<string, unknown>;
+  impact: string;
+  confidence: number;
+  action: { label: string; href: string };
+}
+
+export interface BiFunnelStage {
+  name: string;
+  position: number;
+  current: number;
+  reached: number;
+  conversion_from_previous: number | null;
+  median_hours_to_next: number | null;
+  stalled: number;
+}
+
+export interface BiReport {
+  days: number;
+  generated_at: string;
+  insights: {
+    days: number;
+    topics: {
+      messages: number;
+      previous_messages: number;
+      conversations: number;
+      topics: BiTopic[];
+      busy_hours: { hour: number; messages: number }[];
+      tz_offset_hours: number;
+    } | null;
+    mix: {
+      conversations: number;
+      sentiment: Record<string, number>;
+      purchase_intent: Record<string, number>;
+      urgency: Record<string, number>;
+      language: Record<string, number>;
+      negative_share: number;
+      high_purchase_share: number;
+      urgent_share: number;
+    } | null;
+    gaps: { count: number; unresolved: number; top_topics: { key: string; label: string; count: number }[]; examples: string[] } | null;
+    commerce: { cod: { confirmed: number; declined: number; decline_share: number }; negotiation_rounds: number; auto_answers: number } | null;
+    checkout: { created: number; paid: number; conversion: number } | null;
+    deliveries: { bookings: number; problem_bookings: number; problem_share: number; by_status: Record<string, number> } | null;
+    service: { overdue_replies: number; overdue_hours: number; csat_avg: number | null; csat_answers: number } | null;
+  };
+  ai_quality: {
+    days: number;
+    traces: {
+      decisions: number;
+      auto_answers: number;
+      drafts: number;
+      sends: number;
+      handoffs: number;
+      handoff_share: number;
+      reasons: Record<string, number>;
+      policy_blocks: number;
+      llm_unavailable: number;
+      avg_confidence: number | null;
+      grounded_share: number;
+      cited_share: number;
+      by_day: { day: string; send: number; handoff: number }[];
+    } | null;
+    resolution: {
+      answered_conversations: number;
+      escalated_after: number;
+      resolved_share: number;
+      csat_after_ai: number | null;
+      csat_after_ai_n: number;
+    } | null;
+    handoffs: {
+      current: number;
+      previous: number;
+      growth: number | null;
+      open: number;
+      open_unassigned: number;
+      avg_resolve_minutes: number | null;
+      by_source: Record<string, number>;
+      reasons: { label: string; source: string; count: number }[];
+    } | null;
+    usage: {
+      calls: number;
+      failed: number;
+      failed_share: number;
+      avg_latency_ms: number;
+      cost_usd: number | null;
+      priced: boolean;
+    } | null;
+    unanswered: { count: number; examples: string[] };
+  };
+  funnel: {
+    configured: boolean;
+    days: number;
+    stages: BiFunnelStage[];
+    contacts: number;
+    reached_first: number;
+    reached_last: number;
+    overall_conversion: number | null;
+    stalled: number;
+    stalled_share: number;
+    stall_days: number;
+    events: number;
+  } | null;
+  problems: BiProblem[];
+  problem_counts: { critical: number; warn: number };
+  topics: { key: string; label: string }[];
+}
+
+export async function getBiReport(
+  accessToken: string,
+  days = 7
+): Promise<BiReport | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/bi/report?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as BiReport | null;
+}

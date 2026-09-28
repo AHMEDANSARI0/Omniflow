@@ -14,6 +14,7 @@ import DeliveriesCard from "./DeliveriesCard";
 import NegotiationCard from "./NegotiationCard";
 import PerfCard from "./PerfCard";
 import PlanCard from "./PlanCard";
+import NotificationsCard from "./NotificationsCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -50,10 +51,10 @@ export default async function ClientSettingsPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-ink-3">
           Workspace security and integration controls for your tenant.
         </p>
       </div>
@@ -72,6 +73,7 @@ export default async function ClientSettingsPage() {
       <NegotiationCard />
       <PerfCard />
       <PlanCard />
+      <NotificationsCard />
       <BrandsCard />
     </div>
   );

@@ -904,8 +904,18 @@ def record_kb_gap(client_id, conversation_id, contact_id, contact_name,
 
 
 def _escalate_conversation(cur, client_id, conversation_id, reason: str) -> None:
-    """Assign the conversation to the first team member and audit it, so a
-    lost bot hands the chat to a human automatically. Never raises."""
+    """Hand the chat to a human through the central escalation service
+    (assignee: persona target -> first teammate; ledger + audit + owner
+    notification). The legacy inline path stays as the fallback when the
+    service is unavailable. Never raises."""
+    try:
+        import portal_escalation
+
+        if portal_escalation.escalate(cur, client_id, conversation_id, reason,
+                                      "kb") is not None:
+            return
+    except Exception:
+        pass
     import portal_db as _db
     try:
         cur.execute(

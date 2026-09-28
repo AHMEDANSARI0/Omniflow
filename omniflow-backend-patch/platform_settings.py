@@ -45,7 +45,7 @@ def _ddl() -> str:
 GROUP_KEYS = {
     "email": ["provider", "smtp_host", "smtp_port", "smtp_user",
               "smtp_password", "smtp_from", "brevo_api_key", "reports_to"],
-    "llm": ["base_url", "api_key", "model"],
+    "llm": ["base_url", "api_key", "model", "prices_json"],
     "flags": ["true_sentiment", "kb_autodraft", "phone_verification"],
     "voice": ["provider", "account_sid", "auth_token", "from_number"],
     "video": ["provider", "api_key", "zoom_account_id",

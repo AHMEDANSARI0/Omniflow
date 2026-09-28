@@ -207,14 +207,21 @@ check("blank contact no-op", len(conn.cur.executed) == 0, conn.cur.executed)
 
 print("== repeat-gap auto escalation ==")
 
+import portal_escalation  # noqa: E402
+
+portal_escalation._DDL_READY = True
 gconn = install_db_stub(portal_growth, [
     [{"auto_reply": True}],
     [],
     [{"total": 2}],
+    [],  # escalation: no open escalation for this chat yet
+    [{"to_regclass": "portal_conversation_agents"}],
+    [],  # escalation: no AI persona target
     [{"to_regclass": "portal_team_members"}],
     [{"user_id": 55}],
-    [],
-    [],
+    [],  # assign
+    [{"id": 3}],  # escalation ledger row
+    [],  # audit
 ])
 portal_growth.record_kb_gap(1, 9, "92x", "Ali", "kya price hai bhai", "general",
                             gconn)
@@ -226,8 +233,12 @@ check("assign executed", any("assigned_to" in s for s in kinds), "assign")
 assign = [e for e in gconn.cur.executed if "assigned_to" in e[0]][0]
 check("assign params", assign[1] == (55, 9, 1), assign[1])
 escalation_audit = [e for e in gconn.cur.executed if "portal_action_log" in e[0]]
-check("escalation audit", escalation_audit
-      and escalation_audit[0][1][1] == "bot.escalated", "audit")
+check("escalation audit (central service)", escalation_audit
+      and escalation_audit[0][1][1] == "escalation.opened"
+      and escalation_audit[0][1][2] == "bot", "audit")
+check("escalation ledger row written (source kb)",
+      any(e[0].startswith("INSERT INTO") and "portal_escalations" in e[0]
+          and e[1][3] == "kb" for e in gconn.cur.executed), gconn.cur.executed)
 
 gconn = install_db_stub(portal_growth, [
     [{"auto_reply": True}],

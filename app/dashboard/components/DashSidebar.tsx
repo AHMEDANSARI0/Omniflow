@@ -79,6 +79,12 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     title: "Insights",
     items: [
       {
+        label: "Business insights",
+        href: "/dashboard/insights",
+        icon: "\u2059",
+        enabled: true,
+      },
+      {
         label: "Analytics",
         href: "/dashboard/analytics",
         icon: "\u25c9",

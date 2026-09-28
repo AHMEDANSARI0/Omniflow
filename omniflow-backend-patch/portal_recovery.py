@@ -393,16 +393,17 @@ def _counter_message(cur, client_id: int, decision: Dict[str, Any],
     try:
         import portal_llm
 
-        payload = portal_llm.chat_json(
-            "You phrase ONE short Roman-Urdu WhatsApp message (max 2"
-            " sentences) offering the COUNTER PRICE exactly as given."
-            " NEVER mention any other price, never promise extra"
-            ' discounts. Reply ONLY with JSON: {"message": "..."}',
-            json.dumps({"asking_price": price, "customer_offer": offer,
-                        "counter_price": counter,
-                        "language": "roman"}),
-            max_tokens=150,
-        )
+        with portal_llm.usage_scope("negotiation", client_id, cur):
+            payload = portal_llm.chat_json(
+                "You phrase ONE short Roman-Urdu WhatsApp message (max 2"
+                " sentences) offering the COUNTER PRICE exactly as given."
+                " NEVER mention any other price, never promise extra"
+                ' discounts. Reply ONLY with JSON: {"message": "..."}',
+                json.dumps({"asking_price": price, "customer_offer": offer,
+                            "counter_price": counter,
+                            "language": "roman"}),
+                max_tokens=150,
+            )
         message = str((payload or {}).get("message") or "").strip()
         if (message and len(message) <= 300
                 and _fmt_price(counter) in message):
@@ -460,15 +461,16 @@ def generate_copy(cur, client_id: int, topic: str, lang: str) -> Dict[str, Any]:
     try:
         import portal_llm
 
-        payload = portal_llm.chat_json(
-            "You write WhatsApp broadcast copy for a small Pakistani"
-            " retail shop. Two SHORT variants (max 2 sentences each, no"
-            " emojis, no promises of refunds/discounts/dates). Reply"
-            ' ONLY with JSON: {"variants": ["...", "..."]}',
-            json.dumps({"topic": topic, "language": lang,
-                        "max_chars": MAX_COPY_CHARS}),
-            max_tokens=300,
-        )
+        with portal_llm.usage_scope("copy", client_id, cur):
+            payload = portal_llm.chat_json(
+                "You write WhatsApp broadcast copy for a small Pakistani"
+                " retail shop. Two SHORT variants (max 2 sentences each, no"
+                " emojis, no promises of refunds/discounts/dates). Reply"
+                ' ONLY with JSON: {"variants": ["...", "..."]}',
+                json.dumps({"topic": topic, "language": lang,
+                            "max_chars": MAX_COPY_CHARS}),
+                max_tokens=300,
+            )
         raw = (payload or {}).get("variants")
         if isinstance(raw, list):
             cleaned = [str(v or "").strip()[:MAX_COPY_CHARS]

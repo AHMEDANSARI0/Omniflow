@@ -13,7 +13,8 @@ Unify, do not duplicate (the audit-first law):
   with risk levels; HIGH-risk steps therefore create a D3 approval and
   the run waits for the owner's 1/0 (the AI never bypasses the gate);
 * approvals reuse ``portal_approvals.create_approval`` (WhatsApp 1/0);
-* handoff reuses ``portal_growth._escalate_conversation``;
+* handoff goes through ``portal_escalation.escalate`` (persona target ->
+  explicit user -> first teammate; ledger + bell + optional email);
 * triggers come from the two event surfaces the platform already has:
   the ingest hook (customer messages) and ``portal_action_log`` (stage
   moves, COD answers, payments, checkout links) - the same stream the
@@ -1498,8 +1499,11 @@ def _execute_step(cur, client_id: int, workflow_id: int, run: Dict[str, Any],
         return out
 
     if kind == "ai_decision":
-        answer, confidence = _ai_decide(str(config.get("question") or ""),
-                                        ctx)
+        import portal_llm
+
+        with portal_llm.usage_scope("workflow", client_id, cur):
+            answer, confidence = _ai_decide(
+                str(config.get("question") or ""), ctx)
         detail = "confidence " + str(round(confidence, 2))
         if answer is None:
             answer = str(config.get("fallback") or "no") == "yes"
@@ -1585,31 +1589,17 @@ def _execute_step(cur, client_id: int, workflow_id: int, run: Dict[str, Any],
             out.update({"outcome": "skipped",
                         "detail": "no conversation to hand off"})
             return out
-        user_id = config.get("user_id")
-        if user_id:
-            cur.execute(
-                "UPDATE " + portal_db._q(portal_db.CONV_TABLE) +
-                " SET assigned_to = %s, updated_at = NOW()"
-                " WHERE id = %s AND client_id = %s",
-                (user_id, conversation_id, client_id),
-            )
-            portal_db.log_action(
-                cur, client_id, "workflow.handoff", "workflow", None,
-                conversation_id,
-                ("Workflow handed off to user " + str(user_id)
-                 + (": " + str(config.get("note")) if config.get("note")
-                    else ""))[:200],
-            )
-            out.update({"outcome": "handed_off",
-                        "detail": "user " + str(user_id)})
-            return out
-        import portal_growth
+        import portal_escalation
 
-        portal_growth._escalate_conversation(
-            cur, client_id, conversation_id,
-            "workflow " + str(workflow_id)
-            + (": " + str(config.get("note")) if config.get("note") else ""))
-        out.update({"outcome": "handed_off", "detail": "first teammate"})
+        user_id = config.get("user_id")
+        result = portal_escalation.escalate(
+            cur, client_id, conversation_id, "workflow " + str(workflow_id),
+            "workflow", note=str(config.get("note") or ""),
+            user_id=int(user_id) if user_id else None)
+        target = (result or {}).get("target_user_id")
+        out.update({"outcome": "handed_off",
+                    "detail": ("user " + str(target) if target
+                               else "no teammate available")})
         return out
 
     if kind == "goal":
@@ -1716,6 +1706,18 @@ def advance_run(cur, client_id: int, run: Dict[str, Any],
                       str(error)[:200])
             _finish_run(cur, client_id, run_id, RUN_FAILED, steps_done,
                         step_no, str(error)[:200])
+        except Exception:
+            pass
+        try:
+            import portal_notify
+
+            portal_notify.notify(
+                client_id, "workflow",
+                "Workflow run #" + str(run_id) + " failed",
+                ("Workflow " + str(workflow_id) + " stopped at step "
+                 + str(step_no) + ": " + str(error)[:200]),
+                severity="normal", dedupe_key="wfrun:" + str(run_id),
+                conversation_id=run.get("conversation_id"))
         except Exception:
             pass
         return RUN_FAILED

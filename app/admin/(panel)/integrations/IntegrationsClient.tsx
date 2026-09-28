@@ -9,7 +9,8 @@ type GroupKey =
   | "voice"
   | "video"
   | "payments"
-  | "whatsapp_e2e";
+  | "whatsapp_e2e"
+  | "stt";
 
 type Field = {
   key: string;
@@ -70,6 +71,23 @@ const GROUPS: GroupDef[] = [
       { key: "base_url", label: "Base URL", placeholder: "https://api.openai.com/v1" },
       { key: "api_key", label: "API key", secret: true },
       { key: "model", label: "Model", placeholder: "gpt-4o-mini" },
+      {
+        key: "prices_json",
+        label: "Model prices (JSON, USD per 1M tokens)",
+        placeholder: '{"gpt-4o-mini": {"input": 0.15, "output": 0.6}, "default": {"input": 1, "output": 2}}',
+        hint: "Used by the AI operations card to estimate spend. Leave blank to show tokens only.",
+      },
+    ],
+  },
+  {
+    id: "stt",
+    title: "Speech-to-Text (voice notes)",
+    description:
+      "Transcribes WhatsApp voice notes for the media library. Works with any OpenAI-compatible endpoint. Saving takes effect immediately - no redeploy needed.",
+    fields: [
+      { key: "api_key", label: "API key", secret: true },
+      { key: "base_url", label: "Base URL", placeholder: "https://api.openai.com/v1" },
+      { key: "model", label: "Model", placeholder: "whisper-1" },
     ],
   },
   {
@@ -281,7 +299,7 @@ export default function IntegrationsClient() {
   return (
     <div className="space-y-6">
       {loading ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 text-sm text-slate-400">
+        <div className="rounded-2xl border border-line bg-soft p-6 text-sm text-ink-3">
           Loading integration settings…
         </div>
       ) : null}
@@ -291,28 +309,28 @@ export default function IntegrationsClient() {
         return (
           <div
             key={def.id}
-            className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6"
+            className="rounded-2xl border border-line bg-soft p-6"
           >
             <div className="mb-1 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-white">{def.title}</h2>
+              <h2 className="text-sm font-semibold text-ink">{def.title}</h2>
               <span
                 className={
                   "rounded-md border px-2 py-0.5 text-[10px] " +
                   (isOn
-                    ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                    : "border-white/[0.08] bg-white/[0.02] text-slate-400")
+                    ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                    : "border-line bg-soft text-ink-3")
                 }
               >
                 {isOn ? "Saved" : "Not set"}
               </span>
             </div>
-            <p className="mb-5 text-xs text-slate-500">{def.description}</p>
+            <p className="mb-5 text-xs text-ink-3">{def.description}</p>
 
             {(def.fields || []).length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {(def.fields || []).map((field) => (
                   <label key={field.key} className="block">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-300">
+                    <span className="mb-1 block text-[11px] font-medium text-ink-2">
                       {field.label}
                     </span>
                     <input
@@ -323,10 +341,10 @@ export default function IntegrationsClient() {
                       }
                       placeholder={field.placeholder}
                       autoComplete="off"
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40 focus:outline-none"
+                      className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
                     />
                     {field.hint ? (
-                      <span className="mt-1 block text-[10px] text-slate-500">
+                      <span className="mt-1 block text-[10px] text-ink-3">
                         {field.hint}
                       </span>
                     ) : null}
@@ -340,7 +358,7 @@ export default function IntegrationsClient() {
                 {def.toggles.map((toggle) => (
                   <label
                     key={toggle.key}
-                    className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3"
+                    className="flex items-start gap-3 rounded-xl border border-line bg-soft px-4 py-3"
                   >
                     <input
                       type="checkbox"
@@ -355,10 +373,10 @@ export default function IntegrationsClient() {
                       className="mt-0.5 h-4 w-4 accent-cyan-400"
                     />
                     <span>
-                      <span className="block text-sm text-slate-200">
+                      <span className="block text-sm text-ink">
                         {toggle.label}
                       </span>
-                      <span className="block text-[11px] text-slate-500">
+                      <span className="block text-[11px] text-ink-3">
                         {toggle.hint}
                       </span>
                     </span>
@@ -368,14 +386,14 @@ export default function IntegrationsClient() {
             ) : null}
 
             {def.note ? (
-              <p className="mt-4 text-[11px] text-slate-500">{def.note}</p>
+              <p className="mt-4 text-[11px] text-ink-3">{def.note}</p>
             ) : null}
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <button
                 onClick={() => void save(def)}
                 disabled={busyGroup === def.id}
-                className="rounded-xl border border-cyan-400/30 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
               >
                 {busyGroup === def.id ? "Saving…" : "Save"}
               </button>
@@ -383,7 +401,7 @@ export default function IntegrationsClient() {
                 <button
                   onClick={() => void action(def, "test")}
                   disabled={busyGroup === def.id + ":test"}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs text-slate-300 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                  className="rounded-xl border border-line bg-soft px-4 py-2 text-xs text-ink-2 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
                 >
                   {busyGroup === def.id + ":test" ? "Sending…" : "Send test email"}
                 </button>
@@ -392,7 +410,7 @@ export default function IntegrationsClient() {
                 <button
                   onClick={() => void action(def, "weekly")}
                   disabled={busyGroup === def.id + ":weekly"}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs text-slate-300 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                  className="rounded-xl border border-line bg-soft px-4 py-2 text-xs text-ink-2 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
                 >
                   {busyGroup === def.id + ":weekly"
                     ? "Sending…"
@@ -402,7 +420,7 @@ export default function IntegrationsClient() {
               {notice && notice.group === def.id ? (
                 <span
                   className={
-                    "text-[11px] " + (notice.ok ? "text-emerald-300" : "text-rose-300")
+                    "text-[11px] " + (notice.ok ? "text-ok" : "text-danger")
                   }
                 >
                   {notice.text}

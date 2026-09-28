@@ -69,6 +69,9 @@ class PrincipalStub:
 
 def fresh(script):
     portal_workflows._DDL_READY = True
+    import portal_escalation
+
+    portal_escalation._DDL_READY = True
     return install_db_stub(portal_workflows, script)
 
 
@@ -519,22 +522,28 @@ try:
 finally:
     portal_llm.chat_json = _orig_chat
 
-conn = fresh([[{"to_regclass": "portal_team_members"}], [{"user_id": 5}],
-              [], [], [], []])
+conn = fresh([[], [{"to_regclass": "portal_conversation_agents"}], [],
+              [{"to_regclass": "portal_team_members"}],
+              [{"user_id": 5}], [], [{"id": 1}], [], [], []])
 status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
     step(1, "handoff")])
-check("handoff reuses growth escalation (first teammate)",
-      status == "completed" and "SET assigned_to" in conn.cur.executed[2][0]
-      and conn.cur.executed[2][1][0] == 5
-      and "bot.escalated" in str(conn.cur.executed[3][1]), conn.cur.executed)
+check("handoff goes through the central escalation service (first teammate)",
+      status == "completed" and "SET assigned_to" in conn.cur.executed[5][0]
+      and conn.cur.executed[5][1][0] == 5
+      and conn.cur.executed[6][0].startswith("INSERT INTO")
+      and "portal_escalations" in conn.cur.executed[6][0]
+      and conn.cur.executed[6][1][3] == "workflow"
+      and "escalation.opened" in str(conn.cur.executed[7][1])
+      and conn.cur.executed[7][1][2] == "workflow", conn.cur.executed)
 
-conn = fresh([[], [], [], []])
+conn = fresh([[], [], [{"id": 2}], [], [], []])
 status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
     step(1, "handoff", user_id=9, note="VIP")])
-check("handoff to explicit teammate", status == "completed"
-      and conn.cur.executed[0][1][0] == 9
-      and "workflow.handoff" in str(conn.cur.executed[1][1]),
-      conn.cur.executed)
+check("handoff to explicit teammate (assign + ledger + audit)",
+      status == "completed" and conn.cur.executed[1][1][0] == 9
+      and conn.cur.executed[2][1][6] == 9
+      and "escalation.opened" in str(conn.cur.executed[3][1])
+      and "VIP" in str(conn.cur.executed[3][1]), conn.cur.executed)
 
 conn = fresh([[]] * 11)
 status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [

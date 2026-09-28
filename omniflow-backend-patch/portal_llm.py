@@ -13,10 +13,63 @@ budget is one attempt with a short timeout — the ingest loop must not stall.
 import json
 import logging
 import os
+import threading
+import time
 import urllib.request
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("omniflow.llm")
+
+_SCOPE = threading.local()
+
+
+class usage_scope:
+    """Tag the LLM calls made inside the block for the AI usage ledger:
+
+        with portal_llm.usage_scope("brain", client_id, cur):
+            payload = portal_llm.chat_json(...)
+
+    ``cur`` (optional) lets the ledger row ride the caller's transaction
+    (savepoint-guarded); without it the ledger opens its own short
+    connection. Scopes nest (innermost wins) and never raise."""
+
+    def __init__(self, feature: str, client_id: int = 0, cur=None):
+        self.entry = (str(feature or "")[:40], int(client_id or 0), cur)
+
+    def __enter__(self):
+        stack = getattr(_SCOPE, "stack", None)
+        if stack is None:
+            stack = _SCOPE.stack = []
+        stack.append(self.entry)
+        return self
+
+    def __exit__(self, *exc):
+        stack = getattr(_SCOPE, "stack", None)
+        if stack:
+            stack.pop()
+        return False
+
+
+def current_scope():
+    """(feature, client_id, cur) of the innermost usage_scope, or defaults."""
+    stack = getattr(_SCOPE, "stack", None)
+    return stack[-1] if stack else ("", 0, None)
+
+
+def _record_usage(model: str, usage: Any, ok: bool, started: float) -> None:
+    """Hand the call to the usage ledger (fail-soft, never raises)."""
+    try:
+        import portal_ai_usage
+
+        feature, client_id, cur = current_scope()
+        usage = usage if isinstance(usage, dict) else {}
+        portal_ai_usage.record(
+            client_id, feature or "other", model,
+            int(usage.get("prompt_tokens") or 0),
+            int(usage.get("completion_tokens") or 0),
+            int((time.time() - started) * 1000), ok, cur=cur)
+    except Exception:
+        pass
 
 BASE_URL = os.environ.get(
     "OF_LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -83,15 +136,21 @@ def chat_json(system: str, user: str,
         "Content-Type": "application/json",
     }
     base = str(runtime.get("base_url") or BASE_URL).rstrip("/")
+    model = str(payload["model"])
+    started = time.time()
+    last_usage = None
     for _ in range(ATTEMPTS):
         data = _http_post_json(base + "/chat/completions", headers, payload)
         if not data:
             continue
+        last_usage = data.get("usage") if isinstance(data, dict) else None
         try:
             content = data["choices"][0]["message"]["content"]
             parsed = json.loads(content)
         except Exception:
             continue
         if isinstance(parsed, dict):
+            _record_usage(model, last_usage, True, started)
             return parsed
+    _record_usage(model, last_usage, False, started)
     return None

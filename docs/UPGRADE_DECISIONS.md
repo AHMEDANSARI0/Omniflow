@@ -68,7 +68,10 @@
    - Next: Workflow Builder canvas (D6) on top of the same step model
 5. Workflow Engine v1 ✅ → Workflow Builder UI (D6) ✅ + Templates (D4) ✅ (§196)
 6. Identity Engine ✅ (§197: portal_identity - normalised handles + confidence/source, resolve() for adapters, duplicate hints, SOFT reversible merge/split with audit; legacy /contacts/link imported + kept in sync; hard /customers/merge untouched)
-6b. **Knowledge ingestion** (next; keyword retrieval, D1 embeddings deferred) → platform services (audit/cost/notifications/handoff)
+6b. Knowledge Engine ✅ (§198: portal_knowledge - sources text|file|url + versions/rollback + heading-aware chunking + ONE ranked keyword retrieval over entries + published sections, SSRF-guarded URL fetch, health/re-index, owner-approval law: drafts until published; brain citations in trace; D1 embeddings deferred - same retrieval contract)
+6c. Platform services ✅ (§199: portal_escalation - ONE handoff path for brain/workflows/kb gaps with persona target + ledger + audit; portal_notify - bell + tenant opt-in email + ledger, reused by escalations/approvals/dead deliveries/failed runs; portal_ai_usage - per-call tokens/latency/cost via portal_llm.usage_scope, admin price table; portal_ai_audit - unified AI activity read model + overview)
+6d. BI layer ✅ (§200: portal_bi read model - topic lexicon insights with evidence + trend, Problem Detector 16 rules -> Problem/Evidence/Impact/Confidence/Action, AI quality from brain traces + escalations + usage, journey funnel from portal_memory events; zero LLM cost; /dashboard/insights)
+6e. **Omnichannel adapters** (next: IG first - identity.resolve() + workflows + escalation ready)
 7. BI layer (Insights + Problem Detector + AI Quality + Journey funnel)
 8. Omnichannel adapters → (baad me) Voice loop + Vision (D5)
 9. UI polish batch (D7 — jawab ke mutabiq)

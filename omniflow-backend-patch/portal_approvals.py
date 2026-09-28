@@ -266,6 +266,20 @@ def create_approval(cur, client_id: int, conversation_id, contact_id: str,
             "action": action, "contact": contact_id,
             "notified": bool(target),
         })
+        try:
+            import portal_notify
+
+            portal_notify.notify(
+                client_id, "approval",
+                "Approval " + ref_code + ": " + str(summary or action)[:120],
+                ("Customer " + name + (": \"" + query_line[:160] + "\""
+                                       if query_line else "")
+                 + ". Reply 1 to approve or 0 to reject on WhatsApp, or"
+                 " decide in Approvals."),
+                severity="high", dedupe_key="approval:" + str(approval_id),
+                conversation_id=conversation_id)
+        except Exception:
+            pass
         return {"id": approval_id, "ref_code": ref_code,
                 "status": "pending", "action": action}
     except Exception:

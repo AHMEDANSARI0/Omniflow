@@ -6,7 +6,8 @@ messages by REASONING OVER TOOLS - all read-only in v1:
 
   * recent_messages  - the last messages of this conversation;
   * customer_orders  - the contact's recent checkout links (status/total);
-  * search_kb        - active knowledge-base entries matching the text;
+  * search_kb        - ranked knowledge: owner Q&A entries + published
+                     document sections (portal_knowledge.retrieve);
   * customer_profile - stored language (tone matching).
 
 Every decision is bounded (OF_BRAIN_MAX_TOOL_CALLS), grounded (the prompt
@@ -98,11 +99,25 @@ CREATE INDEX IF NOT EXISTS idx_portal_brain_facts
 
 
 def _ensure_ddl(cur) -> None:
-    """Create the brain tables once per process (lazy DDL)."""
+    """Create the brain tables once per process (lazy DDL). The knowledge
+    tables ride along so search_kb can join document chunks on a fresh
+    install before the owner ever opens the Knowledge page."""
     global _DDL_READY
     if _DDL_READY:
         return
     cur.execute(_DDL)
+    try:
+        import portal_knowledge
+
+        portal_knowledge._ensure_ddl(cur)
+    except Exception as error:  # pragma: no cover - fail-soft
+        logger.warning("knowledge DDL skipped: %s", error)
+    try:
+        import portal_escalation
+
+        portal_escalation._ensure_ddl(cur)
+    except Exception as error:  # pragma: no cover - fail-soft
+        logger.warning("escalation DDL skipped: %s", error)
     _DDL_READY = True
 
 
@@ -179,22 +194,36 @@ def tool_customer_orders(cur, client_id: int, contact_id: str,
 
 def tool_search_kb(cur, client_id: int, query: str,
                    n: int = 3) -> List[Dict[str, Any]]:
-    text = str(query or "").strip()[:120]
+    """Knowledge for the answer: owner Q&A entries AND published document
+    sections (portal_knowledge.retrieve - one tenant-scoped query, ranked
+    by token relevance). Each hit carries kind/source/score so the trace
+    can cite where the answer came from."""
+    text = str(query or "").strip()[:200]
     if not text:
         return []
-    cur.execute(
-        "SELECT id, title, content FROM " + portal_db._q("portal_kb_entries") +
-        " WHERE client_id = %s AND is_active = TRUE"
-        " AND (title ILIKE %s OR content ILIKE %s OR keywords ILIKE %s)"
-        " ORDER BY id DESC LIMIT %s",
-        (client_id, "%" + text + "%", "%" + text + "%", "%" + text + "%",
-         max(1, min(5, n))),
-    )
-    rows = portal_db.rows(cur)
-    return [{"id": int(r.get("id") or 0),
-             "title": str(r.get("title") or ""),
-             "content": str(r.get("content") or "")[:400]}
-            for r in rows]
+    try:
+        import portal_knowledge
+    except Exception:  # pragma: no cover - older deploy without the module
+        portal_knowledge = None
+    if portal_knowledge is None:
+        cur.execute(
+            "SELECT id, title, content FROM " + portal_db._q("portal_kb_entries") +
+            " WHERE client_id = %s AND is_active = TRUE"
+            " AND (title ILIKE %s OR content ILIKE %s OR keywords ILIKE %s)"
+            " ORDER BY id DESC LIMIT %s",
+            (client_id, "%" + text + "%", "%" + text + "%", "%" + text + "%",
+             max(1, min(5, n))),
+        )
+        return [{"id": int(r.get("id") or 0), "kind": "entry",
+                 "title": str(r.get("title") or ""),
+                 "content": str(r.get("content") or "")[:400],
+                 "source": "", "score": 0}
+                for r in portal_db.rows(cur)]
+    hits = portal_knowledge.retrieve(cur, client_id, text, max(1, min(5, n)))
+    return [{"id": h["id"], "kind": h["kind"], "title": h["title"],
+             "content": h["content"][:400], "source": h["source"],
+             "score": h["score"]}
+            for h in hits]
 
 
 def tool_customer_profile(cur, client_id: int,
@@ -311,7 +340,10 @@ def _system_prompt(tone: str) -> str:
         "provided CONTEXT - never invent orders, prices, dates or policies. "
         "CONTEXT may include BUSINESS facts (policies, pricing, SOPs, "
         "hours, refund and escalation rules); treat them as the owner's "
-        "own rules and follow them exactly. CONTEXT may also include "
+        "own rules and follow them exactly. CONTEXT may include KB items: "
+        "owner-written answers (kind entry) and excerpts from the "
+        "business's own documents (kind chunk, with source); answer from "
+        "them and never go beyond what they say. CONTEXT may also include "
         "MEMORY notes about THIS customer (preferences, past issues, "
         "journey position); personalize using them. CONTEXT may include "
         "an AGENT persona (name + instructions); when present, answer AS "
@@ -384,7 +416,12 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
         context["language"] = profile["language"]
         grounding["tools"].append("customer_profile")
     grounding["conversation_messages"] = len(context["conversation"])
-    grounding["kb_ids"] = [e["id"] for e in kb]
+    grounding["kb_ids"] = [e["id"] for e in kb if e.get("kind", "entry") == "entry"]
+    grounding["knowledge_ids"] = [e["id"] for e in kb if e.get("kind") == "chunk"]
+    grounding["citations"] = [
+        {"source": e.get("source") or "", "section": e.get("title") or "",
+         "score": e.get("score") or 0}
+        for e in kb if e.get("kind") == "chunk"]
     grounding["fact_ids"] = [f["id"] for f in facts]
     grounding["memory_ids"] = [m["id"] for m in memories]
     grounding["order_ids"] = [o["id"] for o in orders]
@@ -395,11 +432,12 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
 
     import portal_llm
 
-    payload = portal_llm.chat_json(
-        _system_prompt(tone),
-        json.dumps(context, ensure_ascii=False, default=str),
-        max_tokens=300,
-    )
+    with portal_llm.usage_scope("brain", client_id, cur):
+        payload = portal_llm.chat_json(
+            _system_prompt(tone),
+            json.dumps(context, ensure_ascii=False, default=str),
+            max_tokens=300,
+        )
     grounding["llm_called"] = payload is not None
     return payload, grounding
 
@@ -449,6 +487,30 @@ def _write_trace(cur, client_id: int, conversation_id: int, kind: str,
 # Ingest hook (autonomy == auto only) + owner draft API
 # ---------------------------------------------------------------------------
 
+def _handoff(cur, client_id: int, conversation_id: int,
+             grounding: Dict[str, Any]) -> None:
+    """A handoff decision under 'auto' autonomy is a real event, not a
+    silent trace: needs_human / low_confidence / policy blocks open ONE
+    escalation per conversation (portal_escalation: assignee + bell +
+    optional email). Platform problems (llm_unavailable, empty_reply) are
+    not customer situations and never page the team. Never raises."""
+    reason = str(grounding.get("reason") or "")
+    if not (reason in ("needs_human", "low_confidence")
+            or reason.startswith("policy:")):
+        return
+    try:
+        import portal_escalation
+
+        confidence = grounding.get("confidence")
+        note = "AI handoff: " + reason
+        if isinstance(confidence, (int, float)) and reason == "low_confidence":
+            note += " (confidence " + str(round(float(confidence), 2)) + ")"
+        portal_escalation.escalate(cur, client_id, conversation_id, reason,
+                                   "ai", note=note)
+    except Exception as error:
+        logger.warning("brain handoff escalation failed: %s", error)
+
+
 def maybe_answer(client_id, conversation_id, contact_id, contact_name,
                  body, conn) -> Optional[bool]:
     """Ingest hook: answer under 'auto' autonomy; return True when the
@@ -470,6 +532,7 @@ def maybe_answer(client_id, conversation_id, contact_id, contact_name,
             _write_trace(cur, client_id, int(conversation_id or 0),
                          "ingest_answer", decision, grounding)
             if decision != "send":
+                _handoff(cur, client_id, int(conversation_id or 0), grounding)
                 return None
             payload_out = {
                 "external_user_id": str(contact_id or ""),
