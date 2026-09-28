@@ -175,7 +175,9 @@ def _send_command(cur, client_id, external_user_id, display_name, body,
     if broadcast_id is not None:
         payload["broadcast_id"] = int(broadcast_id)
     contact = str(external_user_id or "").strip()
-    channel = "telegram" if contact.startswith("tg:") else "whatsapp"
+    import portal_channels
+
+    channel = portal_channels.channel_for_contact(contact)
     try:
         cur.execute(
             "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +

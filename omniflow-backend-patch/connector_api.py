@@ -1,10 +1,11 @@
 """
-OmniFlow Control Plane — CONNECTOR endpoints (WhatsApp connector bridge).
+OmniFlow Control Plane — CONNECTOR endpoints (shared channel queue).
 
 Ye endpoints customer ke apne device (home laptop) par chalne wale connector
-ke liye hain — server par WhatsApp session KABHI nahi chalta. Auth:
-X-Omniflow-Key header = OMNIFLOW_SERVICE_KEY ya OMNIFLOW_ADMIN_API_KEY
-(wahi proven pattern jo admin endpoints use karte hain).
+ke liye hain — server par WhatsApp session KABHI nahi chalta. Instagram
+commands use the same queue and a server-side Meta Graph dispatch adapter.
+Auth: X-Omniflow-Key header = OMNIFLOW_SERVICE_KEY ya
+OMNIFLOW_ADMIN_API_KEY (wahi proven pattern jo admin endpoints use karte hain).
 
 Connector ka tenant resolve hota hai (pehla match jeeta):
   1. Request body/query me explicit `client_id`
@@ -191,7 +192,7 @@ def list_commands():
     channel = (args.get("channel") or "").strip()
     if channel and channel not in ALLOWED_CHANNELS:
         return jsonify({"error": {"code": "bad_request",
-                                  "message": "channel whatsapp|telegram hon."}}), 400
+                                  "message": "channel whatsapp|telegram|instagram hon."}}), 400
 
     try:
         portal_db.ensure_tables()
@@ -390,7 +391,7 @@ def connector_bot_config():
 
 MAX_INGEST_MESSAGES = 100
 ALLOWED_DIRECTIONS = ("in", "out")
-ALLOWED_CHANNELS = ("whatsapp", "telegram")
+ALLOWED_CHANNELS = ("whatsapp", "telegram", "instagram")
 
 
 _AWAY_TABLE_READY = False
@@ -605,42 +606,51 @@ def ack_away_reply():
     return jsonify({"ok": True}), 200
 
 
-@bp.post("/whatsapp/messages")
-def ingest_whatsapp_messages():
-    """Store messages delivered by the customer's laptop connector.
+class MessageValidationError(ValueError):
+    """A connector payload failed the shared message contract."""
 
-    Body: {client_id?, messages: [{from, body?, name?, direction?}]}
-      - from    (required, non-empty string) = WhatsApp chat id (contact)
-      - body    (optional string)
-      - name    (optional string) = contact display name
-      - direction ("in" | "out", default "in")
-    Conversations are upserted per (client_id, channel, contact_id) —
-    UNIQUE constraint in portal_conversations.
+
+class IngestRateLimited(Exception):
+    """The tenant exceeded the shared inbound ingest limit."""
+
+
+class IngestFailure(Exception):
+    """Wrap a persistence/automation failure for route-level JSON errors."""
+
+    def __init__(self, original: Exception, operation: str):
+        super().__init__(str(original))
+        self.original = original
+        self.operation = operation
+
+
+def normalize_messages(messages: Any, default_channel: str = "whatsapp",
+                        require_nonempty: bool = True):
+    """Normalize provider-neutral messages for every channel adapter.
+
+    The returned records are deliberately the same records consumed by the
+    existing conversation, event, automation, compliance and audit engine.
+    Provider adapters may retain ``id``, ``media`` and ``postback`` metadata;
+    the core still uses the normalized ``from/body/name/direction/channel``
+    contract for conversation work.
     """
-    payload = _json_body()
-    tenant, error = _tenant_or_error(payload.get("client_id"))
-    if error:
-        return error
-
-    messages = payload.get("messages")
-    if not isinstance(messages, list) or not messages:
-        return jsonify({"error": {"code": "bad_request",
-                                  "message": "messages (non-empty list) zaroori hai."}}), 400
+    if not isinstance(messages, list) or (require_nonempty and not messages):
+        raise MessageValidationError(
+            "messages (non-empty list) zaroori hai."
+            if require_nonempty else "messages list zaroori hai."
+        )
     if len(messages) > MAX_INGEST_MESSAGES:
-        return jsonify({"error": {"code": "bad_request",
-                                  "message": "Aik request me max "
-                                             + str(MAX_INGEST_MESSAGES)
-                                             + " messages bhejein."}}), 400
+        raise MessageValidationError(
+            "Aik request me max " + str(MAX_INGEST_MESSAGES)
+            + " messages bhejein."
+        )
 
     normalized = []
     for item in messages:
         if not isinstance(item, dict):
-            return jsonify({"error": {"code": "bad_request",
-                                      "message": "Har message aik object ho."}}), 400
+            raise MessageValidationError("Har message aik object ho.")
         sender = item.get("from")
         if not isinstance(sender, str) or not sender.strip():
-            return jsonify({"error": {"code": "bad_request",
-                                      "message": "Har message me 'from' zaroori hai."}}), 400
+            raise MessageValidationError("Har message me 'from' zaroori hai.")
         body = item.get("body")
         if body is None:
             body = ""
@@ -658,22 +668,40 @@ def ingest_whatsapp_messages():
             pass
         direction = item.get("direction", "in")
         if direction not in ALLOWED_DIRECTIONS:
-            return jsonify({"error": {"code": "bad_request",
-                                      "message": "direction in|out hon."}}), 400
-        channel = item.get("channel", "whatsapp")
+            raise MessageValidationError("direction in|out hon.")
+        channel = item.get("channel", default_channel)
         if channel not in ALLOWED_CHANNELS:
-            return jsonify({"error": {"code": "bad_request",
-                                      "message": "channel whatsapp|telegram hon."}}), 400
+            raise MessageValidationError(
+                "channel " + "|".join(ALLOWED_CHANNELS) + " hon."
+            )
         name = item.get("name")
         name = name.strip() if isinstance(name, str) else None
-        normalized.append({
+        record = {
             "from": sender.strip(),
             "body": body,
             "name": name,
             "direction": direction,
             "channel": channel,
-        })
+        }
+        provider_id = item.get("id")
+        if isinstance(provider_id, (str, int)) and str(provider_id).strip():
+            record["id"] = str(provider_id).strip()
+        # Keep adapter metadata in the event/audit payload without making it
+        # part of the core conversation contract.
+        for key in ("media", "postback", "timestamp", "provider"):
+            if key in item and item[key] is not None:
+                record[key] = item[key]
+        normalized.append(record)
+    return normalized
 
+
+def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
+    """Run the existing message engine for any normalized channel.
+
+    Instagram calls this function rather than creating a second conversation
+    or automation pipeline. One-reply, approvals, compliance, sequences,
+    workflows, intelligence and event idempotency all remain in this path.
+    """
     inserted = 0
     try:
         portal_db.ensure_tables()
@@ -690,10 +718,9 @@ def ingest_whatsapp_messages():
                         60,
                     ):
                         conn.commit()
-                        return jsonify({"error": {
-                            "code": "rate_limited",
-                            "message": "Too many messages; slow down.",
-                        }}), 429
+                        raise IngestRateLimited()
+                except IngestRateLimited:
+                    raise
                 except Exception:
                     pass
                 for item in normalized:
@@ -706,6 +733,24 @@ def ingest_whatsapp_messages():
                             continue
                     except Exception:
                         pass
+                    if item["channel"] == "instagram":
+                        try:
+                            import portal_identity
+
+                            identity_handle = item["from"]
+                            if identity_handle.startswith("ig:"):
+                                identity_handle = identity_handle[3:]
+                            portal_identity.resolve(
+                                cur,
+                                tenant["client_id"],
+                                "instagram",
+                                identity_handle,
+                                item["name"] or "",
+                                create=True,
+                                source="instagram_webhook",
+                            )
+                        except Exception:
+                            pass
                     cur.execute(
                         "INSERT INTO " + portal_db._q(portal_db.CONV_TABLE) +
                         " (client_id, channel, contact_id, contact_name,"
@@ -953,9 +998,40 @@ def ingest_whatsapp_messages():
             conn.commit()
         finally:
             conn.close()
+    except IngestRateLimited:
+        raise
     except Exception as error:
-        return jsonify(portal_db.portal_unavailable(error, "wa messages ingest")[0]), 503
+        raise IngestFailure(error, "messages ingest") from error
+    return inserted
+
+
+@bp.post("/whatsapp/messages")
+def ingest_whatsapp_messages():
+    """Store connector-delivered messages through the shared channel engine."""
+    payload = _json_body()
+    tenant, error = _tenant_or_error(payload.get("client_id"))
+    if error:
+        return error
+    try:
+        normalized = normalize_messages(
+            payload.get("messages"), default_channel="whatsapp"
+        )
+    except MessageValidationError as error:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": str(error)}}), 400
+
+    try:
+        inserted = ingest_messages_for_tenant(tenant, normalized)
+    except IngestRateLimited:
+        return jsonify({"error": {
+            "code": "rate_limited",
+            "message": "Too many messages; slow down.",
+        }}), 429
+    except IngestFailure as failure:
+        return jsonify(portal_db.portal_unavailable(
+            failure.original, failure.operation)[0]), 503
 
     logger.info("whatsapp messages ingested client_id=%s count=%s",
                 tenant["client_id"], inserted)
     return jsonify({"ok": True, "inserted": inserted}), 200
+

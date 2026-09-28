@@ -333,13 +333,16 @@ def _enqueue_followup(cur, client_id: int, kind: str, contact_id: str,
         payload["conversation_id"] = int(conversation_id)
     if display_name:
         payload["target_display_name"] = display_name
+    import portal_channels
+
+    channel = portal_channels.channel_for_contact(contact_id)
     cur.execute(
         "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
         " (client_id, channel, action, payload, status, requested_by,"
         " created_at, updated_at) "
-        "VALUES (%s, 'whatsapp', 'send_message', CAST(%s AS JSONB),"
+        "VALUES (%s, %s, 'send_message', CAST(%s AS JSONB),"
         " 'pending', NULL, NOW(), NOW()) RETURNING id",
-        (client_id, json.dumps(payload)),
+        (client_id, channel, json.dumps(payload)),
     )
     return True
 

@@ -39,6 +39,16 @@ ALLOWED_STATES = ("disconnected", "connecting", "connected")
 ALLOWED_ACTIONS = ("connect", "disconnect")
 
 
+def channel_for_contact(contact_id: Any) -> str:
+    """Return the outbound adapter for a canonical external contact id."""
+    value = str(contact_id or "").strip().lower()
+    if value.startswith("tg:"):
+        return "telegram"
+    if value.startswith("ig:"):
+        return "instagram"
+    return "whatsapp"
+
+
 def _iso(value: Any) -> Optional[str]:
     if isinstance(value, datetime):
         if value.tzinfo is None:

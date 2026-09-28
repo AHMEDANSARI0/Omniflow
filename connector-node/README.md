@@ -24,6 +24,26 @@ python3 telegram_bridge.py
    COD asks queued for a `tg:` contact are delivered by this bridge; the
    WhatsApp bridge never sees them (command poll is channel-filtered).
 
+## Instagram bridge (Meta Graph API)
+
+Instagram credentials stay in the workspace Control Plane. This worker only
+polls the existing command queue and asks the Control Plane to deliver each
+command through Meta's Instagram Graph API; it never stores provider secrets.
+The public webhook is configured at:
+`/api/v1/public/instagram/webhook`.
+
+Set the following on the laptop and run `python3 instagram_bridge.py`:
+
+```
+export OMNIFLOW_CONTROL_PLANE_URL=https://<your-control-plane>
+export OMNIFLOW_SERVICE_KEY=<same key the connector uses>
+export OMNIFLOW_CLIENT_ID=<workspace id>
+```
+
+Instagram contacts use the canonical `ig:<scoped-user-id>` form. The same
+conversation, one-reply, approvals, compliance, workflow and audit paths are
+used for these messages.
+
 Notes:
 - Stdlib only (no pip installs).
 - Opted-out contacts (Compliance page / STOP keyword) never receive queued

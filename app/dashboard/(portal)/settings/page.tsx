@@ -8,6 +8,7 @@ import WidgetSettingsCard from "./WidgetSettingsCard";
 import PaymentsCard from "./PaymentsCard";
 import DataSafetyCard from "./DataSafetyCard";
 import WatiCard from "./WatiCard";
+import InstagramCard from "./InstagramCard";
 import CatalogCard from "./CatalogCard";
 import CouponsCard from "./CouponsCard";
 import DeliveriesCard from "./DeliveriesCard";
@@ -67,6 +68,7 @@ export default async function ClientSettingsPage() {
       <PaymentsCard />
       <DataSafetyCard />
       <WatiCard />
+      <InstagramCard />
       <CatalogCard />
       <CouponsCard />
       <DeliveriesCard />

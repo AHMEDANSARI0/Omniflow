@@ -141,17 +141,20 @@ def _run_queue_message(cur, client_id, args):
         "body": str(args.get("body") or "")[:1000],
         "source": "agent",
     }
+    import portal_channels
+
+    contact_id = str(args.get("contact_id") or "")
+    channel = portal_channels.channel_for_contact(contact_id)
     cur.execute(
         "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
         " (client_id, channel, action, payload, status, requested_by,"
         " created_at, updated_at) "
-        "SELECT %s, 'whatsapp', 'send_message', CAST(%s AS JSONB),"
+        "SELECT %s, %s, 'send_message', CAST(%s AS JSONB),"
         " 'pending', NULL, NOW(), NOW()"
         " WHERE NOT EXISTS (SELECT 1 FROM "
         + portal_db._q("portal_optouts") + " WHERE client_id = %s AND"
         " contact_id = %s)",
-        (client_id, json.dumps(payload), client_id,
-         str(args.get("contact_id") or "")),
+        (client_id, channel, json.dumps(payload), client_id, contact_id),
     )
     return {"queued": True}
 
@@ -561,13 +564,16 @@ def resolve_approval(cur, client_id: int, approval: Dict[str, Any],
                                        "request_order_cancel"):
             target = contact_id
             if target:
+                import portal_channels
+
+                channel = portal_channels.channel_for_contact(target)
                 cur.execute(
                     "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
                     " (client_id, channel, action, payload, status,"
                     " requested_by, created_at, updated_at)"
-                    " VALUES (%s, 'whatsapp', 'send_message',"
+                    " VALUES (%s, %s, 'send_message',"
                     " CAST(%s AS JSONB), 'pending', NULL, NOW(), NOW())",
-                    (client_id, json.dumps({
+                    (client_id, channel, json.dumps({
                         "external_user_id": target,
                         "body": _HOLD_REJECTED,
                         "source": "approval",

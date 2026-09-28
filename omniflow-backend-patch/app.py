@@ -53,6 +53,11 @@ from portal_changes import bp as portal_changes_bp  # noqa: E402
 from portal_coupons import bp as portal_coupons_bp  # noqa: E402
 from portal_cloud import bp as portal_cloud_bp  # noqa: E402
 from portal_cloud import connector_bp as portal_cloud_connector_bp  # noqa: E402
+from portal_instagram import (  # noqa: E402
+    bp as portal_instagram_bp,
+    public_bp as portal_instagram_public_bp,
+    connector_bp as portal_instagram_connector_bp,
+)
 from portal_events import bp as portal_events_bp  # noqa: E402
 from portal_rollups import bp as portal_rollups_bp  # noqa: E402
 from portal_alerts import bp as portal_alerts_bp  # noqa: E402
@@ -135,6 +140,9 @@ aux_app.register_blueprint(portal_changes_bp)
 aux_app.register_blueprint(portal_coupons_bp)
 aux_app.register_blueprint(portal_cloud_bp)
 aux_app.register_blueprint(portal_cloud_connector_bp)
+aux_app.register_blueprint(portal_instagram_bp)
+aux_app.register_blueprint(portal_instagram_public_bp)
+aux_app.register_blueprint(portal_instagram_connector_bp)
 aux_app.register_blueprint(portal_events_bp)
 aux_app.register_blueprint(portal_rollups_bp)
 aux_app.register_blueprint(portal_alerts_bp)

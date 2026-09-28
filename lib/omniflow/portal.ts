@@ -7243,6 +7243,121 @@ export async function sendInteractiveTemplate(
   return { ok: true, kind: typeof row.kind === "string" ? row.kind : "buttons" };
 }
 
+export interface InstagramSettings {
+  accountId: string;
+  pageId: string;
+  enabled: boolean;
+  configured: boolean;
+  accessTokenMasked: string;
+  appSecretMasked: string;
+  verifyTokenMasked: string;
+  lastCheckAt: string | null;
+  lastError: string | null;
+}
+
+export async function getInstagramSettings(
+  accessToken: string
+): Promise<InstagramSettings | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/instagram/settings");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = ((payload as Record<string, unknown>).settings || {}) as Record<string, unknown>;
+  return {
+    accountId: typeof row.accountId === "string" ? row.accountId : "",
+    pageId: typeof row.pageId === "string" ? row.pageId : "",
+    enabled: row.enabled === true,
+    configured: row.configured === true,
+    accessTokenMasked: typeof row.accessTokenMasked === "string" ? row.accessTokenMasked : "",
+    appSecretMasked: typeof row.appSecretMasked === "string" ? row.appSecretMasked : "",
+    verifyTokenMasked: typeof row.verifyTokenMasked === "string" ? row.verifyTokenMasked : "",
+    lastCheckAt: typeof row.lastCheckAt === "string" ? row.lastCheckAt : null,
+    lastError: typeof row.lastError === "string" ? row.lastError : null,
+  };
+}
+
+export async function saveInstagramSettings(
+  accessToken: string,
+  input: {
+    enabled: boolean;
+    accountId: string;
+    pageId: string;
+    accessTokenValue: string;
+    appSecret: string;
+    verifyToken: string;
+  }
+): Promise<{ ok: true; requiresCheck: boolean } | "bad_request" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/instagram/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        enabled: input.enabled,
+        account_id: input.accountId,
+        page_id: input.pageId,
+        access_token: input.accessTokenValue,
+        app_secret: input.appSecret,
+        verify_token: input.verifyToken,
+      }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) return "bad_request";
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  if (row.ok !== true) return null;
+  return {
+    ok: true,
+    requiresCheck: row.requires_check !== false,
+  };
+}
+
+export async function verifyInstagramSettings(
+  accessToken: string
+): Promise<{ ok: true; profile: { id: string; username: string } } | "not_configured" | "provider_error" | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/instagram/test", {
+      method: "POST",
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (response.status === 409) return "not_configured";
+  if (response.status === 502) return "provider_error";
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") return null;
+  const row = payload as Record<string, unknown>;
+  const profile = row.profile;
+  const p = profile !== null && typeof profile === "object"
+    ? (profile as Record<string, unknown>)
+    : {};
+  if (row.ok !== true) return null;
+  return {
+    ok: true,
+    profile: {
+      id: typeof p.id === "string" ? p.id : "",
+      username: typeof p.username === "string" ? p.username : "",
+    },
+  };
+}
+
 export interface WatiSettings {
   enabled: boolean;
   baseUrl: string;

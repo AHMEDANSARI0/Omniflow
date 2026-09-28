@@ -675,14 +675,17 @@ def maybe_answer(client_id, conversation_id, contact_id, contact_name,
             }
             if str(contact_name or "").strip():
                 payload_out["target_display_name"] = str(contact_name)
+            import portal_channels
+
+            channel = portal_channels.channel_for_contact(contact_id)
             cur.execute(
                 "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
                 " (client_id, channel, action, payload, status,"
                 " requested_by, created_at, updated_at) "
-                "VALUES (%s, 'whatsapp', 'send_message',"
+                "VALUES (%s, %s, 'send_message',"
                 " CAST(%s AS JSONB), 'pending', NULL, NOW(), NOW()) "
                 "RETURNING id",
-                (client_id, json.dumps(payload_out)),
+                (client_id, channel, json.dumps(payload_out)),
             )
             portal_db.log_action(
                 cur, client_id, "ai.answer", "automation",

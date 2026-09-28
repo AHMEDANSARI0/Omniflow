@@ -444,14 +444,17 @@ def winback_send():
                 }
                 if conversation_id is not None:
                     payload["conversation_id"] = conversation_id
+                import portal_channels
+
+                channel = portal_channels.channel_for_contact(contact)
                 cur.execute(
                     "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
                     " (client_id, channel, action, payload, status,"
                     " requested_by, created_at, updated_at) "
-                    "VALUES (%s, 'whatsapp', 'send_message',"
+                    "VALUES (%s, %s, 'send_message',"
                     " CAST(%s AS JSONB), 'pending', NULL, NOW(), NOW()) "
                     "RETURNING id",
-                    (client_id, json.dumps(payload)),
+                    (client_id, channel, json.dumps(payload)),
                 )
                 inserted = portal_db.rows(cur)
                 command_id = (int(inserted[0].get("id") or 0)
