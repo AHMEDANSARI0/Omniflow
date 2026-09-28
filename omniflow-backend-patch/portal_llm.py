@@ -97,6 +97,23 @@ def _http_post_json(url: str, headers: Dict[str, str],
         return None
 
 
+def _gated() -> bool:
+    """Platform AI gate (admin kill switch / per-workspace daily call cap)
+    for the call being made in the current usage scope; fail-open."""
+    try:
+        import portal_ai_usage
+
+        feature, client_id, cur = current_scope()
+        reason = portal_ai_usage.gate(feature, client_id, cur)
+    except Exception:
+        return False
+    if reason:
+        logger.info("llm call blocked (%s) client=%s feature=%s",
+                    reason, client_id, feature)
+        return True
+    return False
+
+
 def _runtime() -> Dict[str, Any]:
     """Effective config: admin panel first, env fallback (fail-soft)."""
     try:
@@ -120,6 +137,8 @@ def chat_json(system: str, user: str,
     """One JSON-mode chat call; parsed object or None (never raises)."""
     runtime = _runtime()
     if not runtime.get("enabled") or not runtime.get("api_key"):
+        return None
+    if _gated():
         return None
     payload = {
         "model": runtime.get("model") or MODEL,

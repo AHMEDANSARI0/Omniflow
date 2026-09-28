@@ -446,10 +446,17 @@ def _summary_for(name: str, args: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 def execute(cur, client_id: int, actor: str, action: str,
-            args: Dict[str, Any], conversation_id=None) -> Dict[str, Any]:
+            args: Dict[str, Any], conversation_id=None,
+            agent: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """One entry point. HIGH risk -> approval (no execution yet).
 
-    Returns {status: executed|approval_required|error, ...}.
+    ``agent`` (optional) is the AI persona acting - its permissions
+    (portal_agents.permits: allowed_actions + max_risk) are checked FIRST;
+    a denied action is audited (``action.denied``) and never runs. The
+    approval gate still applies after the permission check - permissions
+    never bypass it (AI never bypasses app permissions).
+
+    Returns {status: executed|approval_required|denied|error, ...}.
     Raises ValueError on unknown action / missing args.
     """
     spec = ACTIONS.get(action)
@@ -462,6 +469,26 @@ def execute(cur, client_id: int, actor: str, action: str,
         raise ValueError("missing_args:" + ",".join(missing))
 
     risk = _effective_risk(action, args)
+    if agent:
+        import portal_agents
+
+        allowed, reason = portal_agents.permits(agent, action, risk)
+        if not allowed:
+            try:
+                portal_db.log_action(
+                    cur, client_id, "action.denied", actor_kind="system",
+                    conversation_id=conversation_id,
+                    note=json.dumps({"actor": actor, "action": action,
+                                     "risk": risk, "reason": reason,
+                                     "agent_id": agent.get("id"),
+                                     "agent": agent.get("name")},
+                                    default=str)[:900],
+                )
+            except Exception:
+                pass
+            return {"status": "denied", "risk": risk, "reason": reason,
+                    "agent_id": agent.get("id"),
+                    "agent": str(agent.get("name") or "")}
     contact_id = str(args.get("contact_id") or "")
     if risk == RISK_HIGH:
         import portal_approvals

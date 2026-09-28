@@ -8136,6 +8136,13 @@ export async function putAlertSettings(
 export interface BrainSettings {
   autonomy: "off" | "suggest" | "auto";
   tone: string;
+  /** Platform controls applied on top of the workspace setting (read-only). */
+  platform?: {
+    paused: boolean;
+    autonomy_cap: "off" | "suggest" | "auto";
+    daily_call_cap: number;
+    effective_autonomy: "off" | "suggest" | "auto";
+  };
 }
 
 export interface BrainDraftResult {
@@ -10245,6 +10252,8 @@ export async function deleteRoutingRule(
   return { ok: true };
 }
 
+export type AgentRisk = "low" | "medium" | "high";
+
 export interface PortalAgent {
   id: number;
   name: string;
@@ -10253,6 +10262,25 @@ export interface PortalAgent {
   escalationUserId: number | null;
   isActive: boolean;
   versions: number;
+  /** Registry action names the persona may trigger; null = every action. */
+  allowedActions: string[] | null;
+  /** Highest action risk the persona may trigger (HIGH still needs approval). */
+  maxRisk: AgentRisk;
+  /** false = drafts only: the brain never auto-sends under this persona. */
+  canAutoReply: boolean;
+}
+
+function normalizeRisk(value: unknown): AgentRisk {
+  return value === "low" || value === "medium" || value === "high"
+    ? value
+    : "high";
+}
+
+function normalizeAllowedActions(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  return value
+    .filter((item): item is string => typeof item === "string" && item !== "")
+    .slice(0, 100);
 }
 
 function normalizeAgent(item: unknown): PortalAgent | null {
@@ -10272,6 +10300,9 @@ function normalizeAgent(item: unknown): PortalAgent | null {
         : null,
     isActive: row.is_active !== false,
     versions: typeof row.versions === "number" ? row.versions : 0,
+    allowedActions: normalizeAllowedActions(row.allowed_actions),
+    maxRisk: normalizeRisk(row.max_risk),
+    canAutoReply: row.can_auto_reply !== false,
   };
 }
 
@@ -10304,6 +10335,27 @@ export interface AgentUpsert {
   tone: string;
   instructions: string;
   escalationUserId: number | null;
+  /** Permission envelope (omitted = every action / high / auto-reply on). */
+  allowedActions?: string[] | null;
+  maxRisk?: AgentRisk;
+  canAutoReply?: boolean;
+}
+
+function agentBody(input: AgentUpsert): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    name: input.name,
+    tone: input.tone,
+    instructions: input.instructions,
+    escalation_user_id: input.escalationUserId,
+  };
+  if (input.allowedActions !== undefined) {
+    body.allowed_actions = input.allowedActions;
+  }
+  if (input.maxRisk !== undefined) body.max_risk = input.maxRisk;
+  if (input.canAutoReply !== undefined) {
+    body.can_auto_reply = input.canAutoReply;
+  }
+  return body;
 }
 
 export async function createAgent(
@@ -10315,12 +10367,7 @@ export async function createAgent(
     response = await portalRequest(accessToken, "api/v1/portal/agents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: input.name,
-        tone: input.tone,
-        instructions: input.instructions,
-        escalation_user_id: input.escalationUserId,
-      }),
+      body: JSON.stringify(agentBody(input)),
     });
   } catch (error) {
     assertNotAuthError(error);
@@ -10354,10 +10401,7 @@ export async function updateAgent(
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: input.name,
-          tone: input.tone,
-          instructions: input.instructions,
-          escalation_user_id: input.escalationUserId,
+          ...agentBody(input),
           is_active: input.isActive,
         }),
       }
@@ -10391,6 +10435,132 @@ export async function archiveAgent(
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   return { kind: "ok" };
+}
+
+// ---- agent versioning + rollback (history is never rewritten) ----
+
+export interface PortalAgentVersion {
+  version: number;
+  note: string;
+  createdAt: string;
+  snapshot: {
+    name: string;
+    tone: string;
+    instructions: string;
+    escalationUserId: number | null;
+    isActive: boolean;
+    allowedActions: string[] | null;
+    maxRisk: AgentRisk;
+    canAutoReply: boolean;
+    restoredFrom: number | null;
+  };
+}
+
+function normalizeAgentVersion(item: unknown): PortalAgentVersion | null {
+  if (item === null || typeof item !== "object") return null;
+  const row = item as Record<string, unknown>;
+  const version = typeof row.version === "number" ? row.version : 0;
+  if (version <= 0) return null;
+  const snap =
+    row.snapshot !== null && typeof row.snapshot === "object"
+      ? (row.snapshot as Record<string, unknown>)
+      : {};
+  return {
+    version,
+    note: typeof row.note === "string" ? row.note : "",
+    createdAt: typeof row.created_at === "string" ? row.created_at : "",
+    snapshot: {
+      name: typeof snap.name === "string" ? snap.name : "",
+      tone: typeof snap.tone === "string" ? snap.tone : "",
+      instructions:
+        typeof snap.instructions === "string" ? snap.instructions : "",
+      escalationUserId:
+        typeof snap.escalation_user_id === "number"
+          ? snap.escalation_user_id
+          : null,
+      isActive: snap.is_active !== false,
+      allowedActions: normalizeAllowedActions(snap.allowed_actions),
+      maxRisk: normalizeRisk(snap.max_risk),
+      canAutoReply: snap.can_auto_reply !== false,
+      restoredFrom:
+        typeof snap.restored_from === "number" ? snap.restored_from : null,
+    },
+  };
+}
+
+export type AgentVersionsResult =
+  | { kind: "ok"; versions: PortalAgentVersion[] }
+  | { kind: "not_found" }
+  | null;
+
+export async function listAgentVersions(
+  accessToken: string,
+  agentId: number
+): Promise<AgentVersionsResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/agents/" + agentId + "/versions"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload: unknown = await response.json().catch(() => null);
+  const raw =
+    payload !== null && typeof payload === "object"
+      ? (payload as Record<string, unknown>).versions
+      : null;
+  const versions = Array.isArray(raw)
+    ? raw
+        .map(normalizeAgentVersion)
+        .filter((item): item is PortalAgentVersion => item !== null)
+    : [];
+  return { kind: "ok", versions };
+}
+
+export type AgentRollbackResult =
+  | { kind: "ok"; version: number; restoredFrom: number }
+  | { kind: "not_found" }
+  | null;
+
+export async function rollbackAgent(
+  accessToken: string,
+  agentId: number,
+  version: number
+): Promise<AgentRollbackResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/agents/" + agentId + "/rollback",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    version?: unknown;
+    restored_from?: unknown;
+  } | null;
+  return {
+    kind: "ok",
+    version: typeof payload?.version === "number" ? payload.version : 0,
+    restoredFrom:
+      typeof payload?.restored_from === "number" ? payload.restored_from : version,
+  };
 }
 
 // ---------------------------------------------------------------------------

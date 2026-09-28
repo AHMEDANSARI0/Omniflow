@@ -516,6 +516,121 @@ check("agent instructions flow to brain",
 check("agent tone overrides settings",
       "cheerful" in captured_agent["system"], "tone")
 
+# ---------- Control Center: platform cap + persona draft-only ----------
+
+_orig_controls = portal_brain.platform_controls
+check("effective autonomy: own <= cap passes through",
+      portal_brain.effective_autonomy("auto", {"kill_switch": False,
+                                               "autonomy_cap": "auto"}) == "auto"
+      and portal_brain.effective_autonomy("suggest", {"autonomy_cap": "auto"})
+      == "suggest", "cap")
+check("effective autonomy: cap suggest lowers auto",
+      portal_brain.effective_autonomy("auto", {"autonomy_cap": "suggest"})
+      == "suggest"
+      and portal_brain.effective_autonomy("off", {"autonomy_cap": "suggest"})
+      == "off", "cap")
+check("effective autonomy: kill switch -> off",
+      portal_brain.effective_autonomy("auto", {"kill_switch": True,
+                                               "autonomy_cap": "auto"}) == "off",
+      "kill")
+check("effective autonomy: garbage -> safe defaults",
+      portal_brain.effective_autonomy("weird", {"autonomy_cap": "nope"})
+      == "suggest", "defaults")
+check("platform_controls fail-soft defaults",
+      portal_brain.platform_controls().get("autonomy_cap") in
+      ("auto", "suggest", "off"), portal_brain.platform_controls())
+
+# workspace says auto, platform caps at suggest -> no LLM call, no send
+portal_brain.platform_controls = lambda: {"kill_switch": False,
+                                          "autonomy_cap": "suggest",
+                                          "daily_call_cap": 0,
+                                          "source": "panel"}
+called = {"n": 0}
+
+
+def fake_chat_capped(system, user, max_tokens=120):
+    called["n"] += 1
+    return {"reply": "x", "confidence": 0.9}
+
+
+portal_llm.chat_json = fake_chat_capped
+conn = fresh([[{"autonomy": "auto", "tone": ""}]])
+with conn.cur as cur:
+    ok = portal_brain.maybe_answer(1, 55, "92300", "Ali", "hi",
+                                   FakeConn(CurCtx(cur)))
+portal_llm.chat_json = ORIG_CHAT
+check("platform cap suggest silences an auto workspace",
+      ok is None and called["n"] == 0 and len(conn.cur.executed) == 1,
+      (ok, called, len(conn.cur.executed)))
+
+# kill switch -> same (settings read only)
+portal_brain.platform_controls = lambda: {"kill_switch": True,
+                                          "autonomy_cap": "auto",
+                                          "daily_call_cap": 0,
+                                          "source": "panel"}
+conn = fresh([[{"autonomy": "auto", "tone": ""}]])
+with conn.cur as cur:
+    ok = portal_brain.maybe_answer(1, 55, "92300", "Ali", "hi",
+                                   FakeConn(CurCtx(cur)))
+check("kill switch silences the brain", ok is None
+      and len(conn.cur.executed) == 1, ok)
+portal_brain.platform_controls = _orig_controls
+
+# persona permission can_auto_reply=False -> decision handoff, reason
+# agent_draft_only, nothing queued, no escalation (not a handoff reason)
+draft_agent = [{"id": 7, "name": "Support Pro", "tone": "formal",
+                "instructions": "Policy strict.", "escalation_user_id": None,
+                "is_active": True, "updated_at": "u",
+                "allowed_actions": None, "max_risk": "medium",
+                "can_auto_reply": False}]
+conn = fresh([[{"autonomy": "auto", "tone": "warm"}],
+              [{"direction": "in", "body": "refund?", "created_at": "t"}],
+              [],  # orders
+              [],  # kb
+              [],  # facts
+              [],  # memory
+              draft_agent,  # agent persona
+              [],  # profile lang
+              [{"id": 90}]])  # trace (then handoff: no escalation)
+portal_llm.chat_json = lambda system, user, max_tokens=120: {
+    "reply": "Refund 7 din me.", "confidence": 0.95}
+with conn.cur as cur:
+    ok = portal_brain.maybe_answer(1, 55, "92300", "Ali", "refund?",
+                                   FakeConn(CurCtx(cur)))
+portal_llm.chat_json = ORIG_CHAT
+trace = next((e for e in conn.cur.executed if "portal_brain_traces" in e[0]),
+             None)
+check("draft-only persona never auto-sends", ok is None
+      and not any("portal_connector_commands" in e[0]
+                  for e in conn.cur.executed), ok)
+check("draft-only persona traced as handoff/agent_draft_only",
+      trace is not None and trace[1][3] == "handoff"
+      and '"agent_draft_only"' in str(trace[1][4])
+      and '"agent_auto_reply": false' in str(trace[1][4]), trace)
+check("draft-only persona opens no escalation",
+      not any("portal_escalations" in e[0] for e in conn.cur.executed),
+      "no escalation")
+
+# settings GET carries the platform block (owner-visible cap / pause)
+portal_brain.platform_controls = lambda: {"kill_switch": False,
+                                          "autonomy_cap": "suggest",
+                                          "daily_call_cap": 500,
+                                          "source": "panel"}
+conn = fresh([[{"autonomy": "auto", "tone": "warm"}]])
+with PrincipalStub(portal_brain, PRINCIPAL):
+    r_ps = client.get("/api/v1/portal/brain/settings")
+portal_brain.platform_controls = _orig_controls
+body_ps = r_ps.get_json()["settings"]
+check("settings get exposes platform controls",
+      body_ps["autonomy"] == "auto"
+      and body_ps["platform"] == {"paused": False, "autonomy_cap": "suggest",
+                                  "daily_call_cap": 500,
+                                  "effective_autonomy": "suggest"}, body_ps)
+check("brain DDL chain carries agents DDL (permission columns)",
+      "portal_agents._ensure_ddl(cur)" in open("portal_brain.py",
+                                               encoding="utf8").read(),
+      "chain")
+
 # facts API
 conn = fresh([[{"id": 7, "kind": "policy", "label": "Refund",
                 "content": "7 din", "keywords": "refund wapas",

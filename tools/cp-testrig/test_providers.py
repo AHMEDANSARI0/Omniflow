@@ -62,7 +62,9 @@ platform_settings.get_group = lambda group: {
     "video": {"provider": "daily", "api_key": "vk1"},
     "payments": {"provider": "stripe", "secret_key": "sk_live_9"},
     "whatsapp_e2e": {"live_number": "+923001234567"},
-}[group]
+    "stt": {},
+    "ai": {"kill_switch": "off", "autonomy_cap": "auto"},
+}.get(group, {})
 
 r = client.get("/api/v1/admin/providers", headers=KEY)
 body = r.get_json()
@@ -85,6 +87,7 @@ check("flags not configured", body["groups"]["flags"]["configured"] is False,
       "not")
 check("flags value visible", body["groups"]["flags"]["true_sentiment"]
       == "off", "off")
+check("stt group listed", "stt" in body["groups"], "stt")
 
 print("== providers PUT: whitelist + blank-keep + audit ==")
 

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+type Risk = "low" | "medium" | "high";
+
 interface Agent {
   id: number;
   name: string;
@@ -10,6 +12,59 @@ interface Agent {
   escalationUserId: number | null;
   isActive: boolean;
   versions: number;
+  allowedActions: string[] | null;
+  maxRisk: Risk;
+  canAutoReply: boolean;
+}
+
+interface CatalogAction {
+  action: string;
+  description: string;
+  risk: Risk;
+}
+
+interface AgentVersion {
+  version: number;
+  note: string;
+  createdAt: string;
+  snapshot: {
+    name: string;
+    tone: string;
+    instructions: string;
+    allowedActions: string[] | null;
+    maxRisk: Risk;
+    canAutoReply: boolean;
+    restoredFrom: number | null;
+  };
+}
+
+const RISK_LABEL: Record<Risk, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High (approval required)",
+};
+
+function permissionSummary(agent: Agent): string {
+  const actions =
+    agent.allowedActions === null
+      ? "all actions"
+      : agent.allowedActions.length === 0
+      ? "no actions"
+      : agent.allowedActions.length +
+        " action" +
+        (agent.allowedActions.length === 1 ? "" : "s");
+  const risk = "max risk " + agent.maxRisk;
+  const reply = agent.canAutoReply ? "auto-reply on" : "drafts only";
+  return actions + " \u00b7 " + risk + " \u00b7 " + reply;
+}
+
+function formatWhen(value: string): string {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return value;
+  }
 }
 
 interface Rule {
@@ -62,6 +117,18 @@ export default function AgentsAndRouting() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // permission envelope (AI never bypasses app permissions)
+  const [allowAll, setAllowAll] = useState(true);
+  const [allowedActions, setAllowedActions] = useState<string[]>([]);
+  const [maxRisk, setMaxRisk] = useState<Risk>("high");
+  const [canAutoReply, setCanAutoReply] = useState(true);
+  const [catalog, setCatalog] = useState<CatalogAction[]>([]);
+
+  // version history + rollback
+  const [versionsFor, setVersionsFor] = useState<number | null>(null);
+  const [versions, setVersions] = useState<AgentVersion[] | null>(null);
+  const [restoring, setRestoring] = useState<number | null>(null);
+
   // routing form
   const [match, setMatch] = useState("");
   const [targetType, setTargetType] = useState<"user" | "agent">("user");
@@ -72,11 +139,18 @@ export default function AgentsAndRouting() {
 
   const load = useCallback(async () => {
     try {
-      const [agentsRes, rulesRes, membersRes] = await Promise.all([
+      const [agentsRes, rulesRes, membersRes, catalogRes] = await Promise.all([
         fetch("/api/omniflow/portal/agents", { cache: "no-store" }),
         fetch("/api/omniflow/portal/routing/rules", { cache: "no-store" }),
         fetch("/api/omniflow/portal/team", { cache: "no-store" }),
+        fetch("/api/omniflow/portal/workflows/catalog", { cache: "no-store" }),
       ]);
+      if (catalogRes.ok) {
+        const payload = (await catalogRes.json()) as {
+          catalog?: { actions?: CatalogAction[] };
+        };
+        setCatalog(payload.catalog?.actions ?? []);
+      }
       if (agentsRes.ok) {
         const payload = (await agentsRes.json()) as { agents?: Agent[] };
         setAgents(payload.agents ?? []);
@@ -117,6 +191,9 @@ export default function AgentsAndRouting() {
         escalation_user_id: escalation.trim()
           ? Number.parseInt(escalation, 10)
           : null,
+        allowed_actions: allowAll ? null : allowedActions,
+        max_risk: maxRisk,
+        can_auto_reply: canAutoReply,
       };
       const response = await fetch(
         editingId
@@ -131,21 +208,33 @@ export default function AgentsAndRouting() {
         }
       );
       if (response.ok) {
-        setName("");
-        setTone("");
-        setInstructions("");
-        setEscalation("");
-        setEditingId(null);
+        resetForm();
         flash(editingId ? "Agent updated." : "Agent created.");
         await load();
+        if (versionsFor !== null) await openVersions(versionsFor);
       } else {
-        flash("Could not save the agent.");
+        const body = (await response.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
+        flash(body?.error?.message ?? "Could not save the agent.");
       }
     } catch {
       flash("Could not save the agent.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setName("");
+    setTone("");
+    setInstructions("");
+    setEscalation("");
+    setAllowAll(true);
+    setAllowedActions([]);
+    setMaxRisk("high");
+    setCanAutoReply(true);
   }
 
   function startEdit(agent: Agent) {
@@ -156,14 +245,85 @@ export default function AgentsAndRouting() {
     setEscalation(
       agent.escalationUserId != null ? String(agent.escalationUserId) : ""
     );
+    setAllowAll(agent.allowedActions === null);
+    setAllowedActions(agent.allowedActions ?? []);
+    setMaxRisk(agent.maxRisk);
+    setCanAutoReply(agent.canAutoReply);
   }
 
   function cancelEdit() {
-    setEditingId(null);
-    setName("");
-    setTone("");
-    setInstructions("");
-    setEscalation("");
+    resetForm();
+  }
+
+  function toggleAction(action: string) {
+    setAllowedActions((current) =>
+      current.includes(action)
+        ? current.filter((item) => item !== action)
+        : [...current, action]
+    );
+  }
+
+  async function openVersions(id: number) {
+    setVersionsFor(id);
+    setVersions(null);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/agents/" + id + "/versions",
+        { cache: "no-store" }
+      );
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          versions?: AgentVersion[];
+        };
+        setVersions(payload.versions ?? []);
+      } else {
+        setVersions([]);
+      }
+    } catch {
+      setVersions([]);
+    }
+  }
+
+  async function toggleVersions(id: number) {
+    if (versionsFor === id) {
+      setVersionsFor(null);
+      setVersions(null);
+      return;
+    }
+    await openVersions(id);
+  }
+
+  async function restoreVersion(id: number, version: number) {
+    setRestoring(version);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/agents/" + id + "/rollback",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ version }),
+        }
+      );
+      if (response.ok) {
+        const payload = (await response.json()) as { version?: number };
+        flash(
+          "Restored version " +
+            version +
+            " as version " +
+            (payload.version ?? "") +
+            "."
+        );
+        if (editingId === id) resetForm();
+        await load();
+        await openVersions(id);
+      } else {
+        flash("Could not restore that version.");
+      }
+    } catch {
+      flash("Could not restore that version.");
+    } finally {
+      setRestoring(null);
+    }
   }
 
   async function archive(id: number) {
@@ -328,6 +488,110 @@ export default function AgentsAndRouting() {
                 className={inputClass}
               />
             </div>
+
+            <fieldset className="rounded-xl border border-line bg-soft/60 p-3.5">
+              <legend className="px-1 text-xs font-semibold text-ink">
+                Permissions
+              </legend>
+              <p className="text-[11px] leading-relaxed text-ink-3">
+                The envelope the AI may act inside when a conversation belongs
+                to this agent. High-risk actions always wait for your approval,
+                whatever is allowed here.
+              </p>
+              <div className="mt-3">
+                <span className="mb-1 block text-xs font-medium text-ink-3">
+                  Actions this agent may trigger
+                </span>
+                <div className="flex flex-wrap gap-3 text-xs text-ink-2">
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="radio"
+                      name="agent_actions_mode"
+                      checked={allowAll}
+                      onChange={() => setAllowAll(true)}
+                    />
+                    All actions
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="radio"
+                      name="agent_actions_mode"
+                      checked={!allowAll}
+                      onChange={() => setAllowAll(false)}
+                    />
+                    Only selected
+                  </label>
+                </div>
+                {!allowAll ? (
+                  <div className="mt-2 grid max-h-44 gap-1 overflow-y-auto rounded-lg border border-line bg-white p-2 sm:grid-cols-2">
+                    {catalog.length === 0 ? (
+                      <p className="text-[11px] text-ink-3">
+                        Action catalog unavailable right now.
+                      </p>
+                    ) : (
+                      catalog.map((item) => (
+                        <label
+                          key={item.action}
+                          className="flex items-start gap-1.5 text-[11px] text-ink-2"
+                          title={item.description}
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={allowedActions.includes(item.action)}
+                            onChange={() => toggleAction(item.action)}
+                          />
+                          <span className="min-w-0">
+                            <span className="font-medium text-ink">
+                              {item.action}
+                            </span>{" "}
+                            <span className="text-ink-3">({item.risk})</span>
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="agent_max_risk"
+                    className="mb-1 block text-xs font-medium text-ink-3"
+                  >
+                    Highest action risk it may trigger
+                  </label>
+                  <select
+                    id="agent_max_risk"
+                    value={maxRisk}
+                    onChange={(event) => setMaxRisk(event.target.value as Risk)}
+                    className={inputClass}
+                  >
+                    {(Object.keys(RISK_LABEL) as Risk[]).map((level) => (
+                      <option key={level} value={level}>
+                        {RISK_LABEL[level]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <label className="flex items-start gap-2 pt-6 text-xs text-ink-2">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={canAutoReply}
+                    onChange={(event) => setCanAutoReply(event.target.checked)}
+                  />
+                  <span>
+                    May send replies automatically
+                    <span className="block text-[11px] text-ink-3">
+                      Unchecked = drafts only, even when the Business Brain
+                      runs in Auto.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
             <div className="flex items-center gap-2">
               <button
                 type="submit"
@@ -381,6 +645,81 @@ export default function AgentsAndRouting() {
                       ? " · escalates to user " + agent.escalationUserId
                       : ""}
                   </p>
+                  <p className="mt-0.5 text-[11px] text-ink-3">
+                    {permissionSummary(agent)}
+                  </p>
+                  {versionsFor === agent.id ? (
+                    <div className="mt-2 rounded-lg border border-line bg-white p-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                          Version history
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVersionsFor(null);
+                            setVersions(null);
+                          }}
+                          className="text-[11px] text-ink-3 hover:text-ink"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      {versions === null ? (
+                        <p className="mt-1.5 text-[11px] text-ink-3">
+                          Loading history…
+                        </p>
+                      ) : versions.length === 0 ? (
+                        <p className="mt-1.5 text-[11px] text-ink-3">
+                          No versions recorded yet.
+                        </p>
+                      ) : (
+                        <ul className="mt-1.5 space-y-1">
+                          {versions.map((entry, index) => (
+                            <li
+                              key={entry.version}
+                              className="flex items-start justify-between gap-2 text-[11px]"
+                            >
+                              <span className="min-w-0 text-ink-2">
+                                <span className="font-medium text-ink">
+                                  v{entry.version}
+                                </span>
+                                {index === 0 ? " (current)" : ""}
+                                {entry.note ? " · " + entry.note : ""}
+                                {entry.createdAt
+                                  ? " · " + formatWhen(entry.createdAt)
+                                  : ""}
+                                <span className="block truncate text-ink-3">
+                                  {entry.snapshot.name}
+                                  {entry.snapshot.tone
+                                    ? " · " + entry.snapshot.tone
+                                    : ""}
+                                  {" · max risk " + entry.snapshot.maxRisk}
+                                  {entry.snapshot.canAutoReply
+                                    ? ""
+                                    : " · drafts only"}
+                                </span>
+                              </span>
+                              {index === 0 ? null : (
+                                <button
+                                  type="button"
+                                  disabled={restoring !== null}
+                                  onClick={() =>
+                                    void restoreVersion(agent.id, entry.version)
+                                  }
+                                  className="shrink-0 rounded-md border border-line bg-soft px-2 py-0.5 text-[11px] text-ink-2 disabled:opacity-50"
+                                >
+                                  {restoring === entry.version
+                                    ? "Restoring…"
+                                    : "Restore"}
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   <button
@@ -388,6 +727,12 @@ export default function AgentsAndRouting() {
                     className="rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink-2"
                   >
                     Edit
+                  </button>
+                  <button
+                    onClick={() => void toggleVersions(agent.id)}
+                    className="rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink-2"
+                  >
+                    Versions
                   </button>
                   <button
                     onClick={() => void archive(agent.id)}

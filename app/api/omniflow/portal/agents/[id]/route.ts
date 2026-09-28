@@ -5,6 +5,7 @@ import {
   updateAgent,
 } from "../../../../../../lib/omniflow/portal";
 import { safeJson } from "../../../../../../lib/omniflow/request-security";
+import { parseAgentPermissions } from "../../../../../../lib/omniflow/agent-permissions";
 
 const MAX_NAME = 60;
 const MAX_TONE = 120;
@@ -40,7 +41,17 @@ export async function PUT(
     instructions?: unknown;
     escalation_user_id?: unknown;
     is_active?: unknown;
+    allowed_actions?: unknown;
+    max_risk?: unknown;
+    can_auto_reply?: unknown;
   } | null;
+  const permissions = parseAgentPermissions(payload);
+  if (!permissions.ok) {
+    return safeJson(
+      { error: { code: "bad_request", message: permissions.message } },
+      400
+    );
+  }
   const name =
     payload && typeof payload.name === "string" ? payload.name.trim() : "";
   const tone =
@@ -94,6 +105,7 @@ export async function PUT(
       instructions,
       escalationUserId,
       isActive,
+      ...permissions.value,
     });
     if (result === null) {
       return safeJson(

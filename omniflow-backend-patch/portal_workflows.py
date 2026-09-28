@@ -200,6 +200,12 @@ def _ensure_ddl(cur) -> None:
     if _DDL_READY:
         return
     cur.execute(_DDL)
+    try:
+        import portal_agents
+
+        portal_agents._ensure_ddl(cur)  # persona permission columns
+    except Exception as error:  # pragma: no cover - fail-soft
+        logger.warning("agents DDL skipped: %s", error)
     _DDL_READY = True
 
 
@@ -1528,10 +1534,22 @@ def _execute_step(cur, client_id: int, workflow_id: int, run: Dict[str, Any],
             args["conversation_id"] = ctx.get("conversation_id")
         if not args.get("customer_query") and ctx.get("text"):
             args["customer_query"] = str(ctx.get("text"))[:300]
+        # Persona envelope: when the conversation belongs to an AI agent,
+        # its permissions (allowed actions + max risk) cap what automation
+        # may do inside it (portal_agents.permits via execute(agent=...)).
+        agent = None
+        if ctx.get("conversation_id"):
+            try:
+                import portal_agents
+
+                agent = portal_agents.agent_for_conversation(
+                    cur, client_id, int(ctx.get("conversation_id") or 0))
+            except Exception:
+                agent = None
         try:
             result = portal_actions.execute(
                 cur, client_id, "workflow:" + str(workflow_id), name, args,
-                ctx.get("conversation_id"))
+                ctx.get("conversation_id"), agent=agent)
         except ValueError as error:
             out.update({"outcome": "error", "status": RUN_FAILED,
                         "detail": name + ": " + str(error)[:120]})
@@ -1540,6 +1558,12 @@ def _execute_step(cur, client_id: int, workflow_id: int, run: Dict[str, Any],
         if status == "executed":
             out.update({"outcome": "executed", "detail": name
                         + " (" + str(result.get("risk") or "") + ")"})
+        elif status == "denied":
+            out.update({"outcome": "denied", "status": RUN_FAILED,
+                        "detail": (name + ": not permitted for agent "
+                                   + str(result.get("agent") or "")
+                                   + " (" + str(result.get("reason") or "")
+                                   + ")")[:120]})
         elif status == "approval_required":
             out.update({"outcome": "approval_required",
                         "status": RUN_WAITING_APPROVAL,

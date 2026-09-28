@@ -19,6 +19,7 @@ const GROUPS: AdminProviderGroup[] = [
   "video",
   "payments",
   "whatsapp_e2e",
+  "ai",
 ];
 
 async function requireAdminSession() {

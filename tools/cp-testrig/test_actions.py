@@ -106,6 +106,54 @@ check("link inserted", insert is not None
       and out["result"]["token"] == "tok123"
       and len(str(insert[2])) > 10, insert)
 
+print("== execute: agent permission envelope ==")
+
+import portal_agents  # noqa: E402
+
+DENY = {"id": 7, "name": "Support Pro", "allowed_actions": ["add_customer_note"],
+        "max_risk": "medium", "can_auto_reply": True}
+conn = install_db_stub(portal_actions, [[]])          # audit action.denied
+out = portal_actions.execute(conn.cursor(), 1, "workflow:3",
+                             "create_checkout_link", {
+                                 "contact_id": "x@c.us",
+                                 "items": [{"name": "H", "qty": 1,
+                                            "price": 10}]},
+                             conversation_id=77, agent=DENY)
+check("action outside allowed_actions -> denied, audited",
+      out["status"] == "denied" and out["reason"] == "action_not_allowed"
+      and out["agent_id"] == 7
+      and "action.denied" in str(conn.cur.executed[0][1])
+      and not any("portal_checkout_links" in sql
+                  for sql, _p in conn.cur.executed), out)
+RISK = {"id": 8, "name": "Ops", "allowed_actions": None, "max_risk": "low"}
+conn = install_db_stub(portal_actions, [[]])
+out = portal_actions.execute(conn.cursor(), 1, "workflow:3",
+                             "add_customer_note",
+                             {"contact_id": "x@c.us", "content": "n"},
+                             agent=RISK)
+check("action above max_risk -> denied", out["status"] == "denied"
+      and out["reason"] == "risk_above_max", out)
+check("permits(): no agent = allowed; matrix",
+      portal_agents.permits(None, "anything", "high") == (True, "")
+      and portal_agents.permits(DENY, "add_customer_note", "medium")[0]
+      and not portal_agents.permits(DENY, "add_customer_note", "high")[0]
+      and portal_agents.permits({"allowed_actions": [], "max_risk": "high"},
+                                "read_order", "low")
+      == (False, "action_not_allowed"), "matrix")
+_orig_note = portal_actions.ACTIONS["add_customer_note"]["run"]
+try:
+    portal_actions.ACTIONS["add_customer_note"]["run"] = (
+        lambda cur, cid, args: {"ok": True})
+    conn = install_db_stub(portal_actions, [[]])       # audit
+    out = portal_actions.execute(conn.cursor(), 1, "workflow:3",
+                                 "add_customer_note",
+                                 {"contact_id": "x@c.us", "content": "n"},
+                                 agent=DENY)
+    check("permitted action executes normally", out["status"] == "executed"
+          and out["risk"] == "medium", out)
+finally:
+    portal_actions.ACTIONS["add_customer_note"]["run"] = _orig_note
+
 print("== execute: HIGH -> approval, nothing runs ==")
 
 conn = share_stub(install_db_stub(portal_actions, []))

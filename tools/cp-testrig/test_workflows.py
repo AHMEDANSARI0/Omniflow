@@ -384,17 +384,22 @@ STEPS_HAPPY = [
     step(3, "wait", minutes=30),
     step(4, "goal", name="done"),
 ]
-conn = fresh([[], [], [], [], [], []])
+# action steps resolve the conversation's AI persona first (permission
+# envelope): one extra SELECT per action step, [] = no agent assigned.
+conn = fresh([[], [], [], [], [], [], []])
 status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), STEPS_HAPPY)
 check("condition -> action -> wait", status == "waiting", status)
-queued = conn.cur.executed[1]
+check("action step resolves persona first",
+      "portal_conversation_agents" in conn.cur.executed[1][0]
+      and conn.cur.executed[1][1] == (1, 77), conn.cur.executed[1])
+queued = conn.cur.executed[2]
 check("action queued through the registry (opt-out aware)",
       "portal_connector_commands" in queued[0]
       and "portal_optouts" in queued[0]
       and '"body": "Hi Ali"' in queued[1][1], queued)
 check("action audit line", "action.queue_whatsapp_message"
-      in str(conn.cur.executed[2][1]), conn.cur.executed[2][1])
-waiting = conn.cur.executed[5]
+      in str(conn.cur.executed[3][1]), conn.cur.executed[3][1])
+waiting = conn.cur.executed[6]
 check("wait persists resume_at + next step", "make_interval(mins => %s)"
       in waiting[0] and waiting[1][:3] == (4, 3, 30), waiting)
 logs = [e for e in conn.cur.executed if "portal_workflow_run_log" in e[0]]
@@ -428,39 +433,80 @@ check("branch else goto step 2 -> stop", status == "stopped"
       and conn.cur.executed[1][1][3] == "stop",
       conn.cur.executed)
 
-conn = fresh([[], [{"id": 9}], [], [], []])
+conn = fresh([[], [], [{"id": 9}], [], [], []])
 status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
     step(1, "action", action="add_conversation_tag", args={"tag": " New Lead "})])
 check("tag action + fall off the end -> completed", status == "completed"
-      and conn.cur.executed[1][1][2] == "new lead"
-      and conn.cur.executed[1][1][1] == 77, conn.cur.executed[1][1])
+      and conn.cur.executed[2][1][2] == "new lead"
+      and conn.cur.executed[2][1][1] == 77, conn.cur.executed[2][1])
 
-conn = fresh([[], []])
+conn = fresh([[], [], []])
 status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
     step(1, "action", action="assign_conversation", args={})])
 check("missing required arg -> run failed with detail", status == "failed"
-      and "missing_args:assignee" in conn.cur.executed[0][1][5]
-      and conn.cur.executed[1][1][0] == "failed", conn.cur.executed)
+      and "missing_args:assignee" in conn.cur.executed[1][1][5]
+      and conn.cur.executed[2][1][0] == "failed", conn.cur.executed)
 
-conn = fresh([RuntimeError("boom"), [], []])
+conn = fresh([[], RuntimeError("boom"), [], []])
 status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
     step(1, "action", action="queue_whatsapp_message", args={"body": "x"})])
 check("db error inside a step -> failed, engine log", status == "failed"
-      and conn.cur.executed[1][1][3] == "engine", conn.cur.executed[1][1])
+      and conn.cur.executed[2][1][3] == "engine", conn.cur.executed[2][1])
+
+# persona permission envelope: the assigned agent may not trigger this
+# action -> denied (audited), run fails with a readable detail.
+DENY_AGENT = [{"id": 7, "name": "Support Pro", "tone": "", "instructions": "",
+               "escalation_user_id": None, "is_active": True, "updated_at": "",
+               "allowed_actions": '["add_conversation_tag"]',
+               "max_risk": "medium", "can_auto_reply": True}]
+conn = fresh([DENY_AGENT, [], [], []])
+status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
+    step(1, "action", action="queue_whatsapp_message", args={"body": "x"})])
+check("agent permission denies action -> run failed", status == "failed"
+      and "action.denied" in str(conn.cur.executed[1][1])
+      and conn.cur.executed[2][1][4] == "denied"
+      and "Support Pro" in conn.cur.executed[2][1][5]
+      and "action_not_allowed" in conn.cur.executed[2][1][5],
+      conn.cur.executed)
+check("denied action never queued",
+      not any("portal_connector_commands" in e[0] for e in conn.cur.executed),
+      "no send")
 
 _orig_create = portal_approvals.create_approval
 portal_approvals.create_approval = lambda *a, **k: {"id": 88,
                                                     "ref_code": "AP-1"}
 try:
-    conn = fresh([[], []])
+    conn = fresh([[], [], []])
     status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
         step(1, "action", action="request_refund", args={}),
         step(2, "goal", name="refund_routed")])
     check("HIGH-risk action -> approval gate, run waits", status
-          == "waiting_approval" and conn.cur.executed[0][1][4]
+          == "waiting_approval" and conn.cur.executed[1][1][4]
           == "approval_required"
-          and "approval_id = %s" in conn.cur.executed[1][0]
-          and conn.cur.executed[1][1][2] == 88, conn.cur.executed)
+          and "approval_id = %s" in conn.cur.executed[2][0]
+          and conn.cur.executed[2][1][2] == 88, conn.cur.executed)
+    # permissions never bypass the approval gate: an agent allowed to
+    # request refunds at max_risk high still lands in the approval queue.
+    OK_AGENT = [{"id": 8, "name": "Ops", "tone": "", "instructions": "",
+                 "escalation_user_id": None, "is_active": True,
+                 "updated_at": "", "allowed_actions": None,
+                 "max_risk": "high", "can_auto_reply": True}]
+    conn = fresh([OK_AGENT, [], []])
+    status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
+        step(1, "action", action="request_refund", args={}),
+        step(2, "goal", name="refund_routed")])
+    check("permitted HIGH-risk action still needs approval",
+          status == "waiting_approval"
+          and conn.cur.executed[1][1][4] == "approval_required",
+          conn.cur.executed)
+    LOW_AGENT = [dict(OK_AGENT[0], max_risk="medium")]
+    conn = fresh([LOW_AGENT, [], [], []])
+    status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
+        step(1, "action", action="request_refund", args={}),
+        step(2, "goal", name="refund_routed")])
+    check("max_risk medium blocks a HIGH-risk action", status == "failed"
+          and "risk_above_max" in conn.cur.executed[2][1][5],
+          conn.cur.executed)
     conn = fresh([[], []])
     status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
         step(1, "approval", summary="Send {first_name} a discount"),

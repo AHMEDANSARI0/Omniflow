@@ -118,6 +118,12 @@ def _ensure_ddl(cur) -> None:
         portal_escalation._ensure_ddl(cur)
     except Exception as error:  # pragma: no cover - fail-soft
         logger.warning("escalation DDL skipped: %s", error)
+    try:
+        import portal_agents
+
+        portal_agents._ensure_ddl(cur)
+    except Exception as error:  # pragma: no cover - fail-soft
+        logger.warning("agents DDL skipped: %s", error)
     _DDL_READY = True
 
 
@@ -150,6 +156,39 @@ def _load_settings(cur, client_id: int) -> Dict[str, Any]:
         return {"autonomy": "suggest", "tone": ""}
     return {"autonomy": str(rows[0].get("autonomy") or "suggest"),
             "tone": str(rows[0].get("tone") or "")}
+
+
+AUTONOMY_ORDER = {"off": 0, "suggest": 1, "auto": 2}
+
+
+def platform_controls() -> Dict[str, Any]:
+    """Platform AI controls (admin AI Control Center) - fail-soft copy of
+    platform_settings.ai_controls(): {kill_switch, autonomy_cap,
+    daily_call_cap, source}. Defaults never restrict anything."""
+    try:
+        import platform_settings
+
+        controls = platform_settings.ai_controls()
+        if isinstance(controls, dict):
+            return controls
+    except Exception:
+        pass
+    return {"kill_switch": False, "autonomy_cap": "auto",
+            "daily_call_cap": 0, "source": "default"}
+
+
+def effective_autonomy(own: str,
+                       controls: Optional[Dict[str, Any]] = None) -> str:
+    """The autonomy the brain actually runs at: the workspace's own level
+    capped by the platform (kill switch = off; autonomy_cap = ceiling)."""
+    controls = controls if isinstance(controls, dict) else platform_controls()
+    own = own if own in AUTONOMY_ORDER else "suggest"
+    if controls.get("kill_switch"):
+        return "off"
+    cap = str(controls.get("autonomy_cap") or "auto")
+    if cap not in AUTONOMY_ORDER:
+        cap = "auto"
+    return own if AUTONOMY_ORDER[own] <= AUTONOMY_ORDER[cap] else cap
 
 
 # ---------------------------------------------------------------------------
@@ -409,6 +448,8 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
                             str(agent.get("instructions") or "")[:400]}
         grounding["tools"].append("agent_persona")
         grounding["agent_id"] = agent.get("id")
+        grounding["agent_auto_reply"] = agent.get("can_auto_reply", True) \
+            is not False
         if str(agent.get("tone") or "").strip():
             tone = str(agent.get("tone"))
     profile = tool_customer_profile(cur, client_id, contact_id)
@@ -522,13 +563,19 @@ def maybe_answer(client_id, conversation_id, contact_id, contact_name,
         with conn.cursor() as cur:
             _ensure_ddl(cur)
             settings = _load_settings(cur, client_id)
-            if settings.get("autonomy") != "auto":
+            if effective_autonomy(str(settings.get("autonomy") or "")) \
+                    != "auto":
                 return None
             payload, grounding = _reason(
                 cur, client_id, int(conversation_id or 0),
                 str(contact_id or ""), str(contact_name or ""), text,
                 str(settings.get("tone") or ""))
             decision, reply, grounding = _decide(payload, grounding)
+            if decision == "send" and grounding.get("agent_auto_reply") \
+                    is False:
+                # Persona permission: drafts only - the owner sends.
+                decision = "handoff"
+                grounding["reason"] = "agent_draft_only"
             _write_trace(cur, client_id, int(conversation_id or 0),
                          "ingest_answer", decision, grounding)
             if decision != "send":
@@ -617,6 +664,14 @@ def get_brain_settings():
         conn.commit()
     finally:
         conn.close()
+    controls = platform_controls()
+    settings["platform"] = {
+        "paused": bool(controls.get("kill_switch")),
+        "autonomy_cap": str(controls.get("autonomy_cap") or "auto"),
+        "daily_call_cap": int(controls.get("daily_call_cap") or 0),
+        "effective_autonomy": effective_autonomy(
+            str(settings.get("autonomy") or ""), controls),
+    }
     return jsonify({"settings": settings}), 200
 
 

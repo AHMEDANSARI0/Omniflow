@@ -15,3 +15,8 @@ echo "cp mirrored: $(find /tmp/p13/OmniFlow-Control-Plane -type f | wc -l) files
 printf '# patcher backups stay out of git\n*.pre_*.bak\n__pycache__/\n' > /tmp/p13/OmniFlow-Control-Plane/.gitignore
 mkdir -p /tmp/p13/src
 cp -a /home/user/Omniflow/connector-bridge/. /tmp/p13/src/
+# CP wiring pins read /tmp/smoke971/*.py (app.py, connector_api.py ...).
+mkdir -p /tmp/smoke971
+cp -a /home/user/Omniflow/omniflow-backend-patch/. /tmp/smoke971/
+python3 /home/user/Omniflow/tools/run_sweep.py --mirror-only
+echo "smoke971 mirrored: $(find /tmp/smoke971 -type f -name '*.py' | wc -l) py files"

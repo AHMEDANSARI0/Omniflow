@@ -54,7 +54,14 @@ GROUP_KEYS = {
                  "webhook_secret"],
     "whatsapp_e2e": ["live_number"],
     "stt": ["api_key", "base_url", "model"],
+    # Platform AI controls (admin AI Control Center): a global pause, the
+    # highest autonomy any workspace may run at, and a per-workspace daily
+    # LLM call cap (0 = unlimited). Env fallbacks: OF_AI_KILL_SWITCH,
+    # OF_AI_AUTONOMY_CAP, OF_AI_DAILY_CALL_CAP.
+    "ai": ["kill_switch", "autonomy_cap", "daily_call_cap"],
 }
+
+AUTONOMY_LEVELS = ("off", "suggest", "auto")
 
 SECRET_HINTS = ("password", "api_key", "token", "secret")
 
@@ -178,6 +185,57 @@ def llm_config() -> dict:
         "model": str(stored.get("model") or "")
                  or _env("OF_LLM_MODEL", "gpt-4o-mini"),
         "enabled": bool(api_key) and env_enabled,
+    }
+
+
+def ai_controls() -> dict:
+    """Effective platform AI controls: admin panel first, env fallback.
+
+    {kill_switch: bool, autonomy_cap: off|suggest|auto,
+     daily_call_cap: int (0 = unlimited), source: panel|env|default}
+    Fail-soft: any storage problem yields the permissive defaults. Reads
+    go through get_setting (30 s TTL cache) because the LLM gate consults
+    this on EVERY call - never an extra round trip per call.
+    """
+    stored = {}
+    try:
+        for name in GROUP_KEYS["ai"]:
+            stored[name] = str(get_setting("ai." + name, "") or "")
+    except Exception:
+        stored = {}
+    source = "default"
+    kill_raw = str(stored.get("kill_switch") or "")
+    if kill_raw:
+        source = "panel"
+    else:
+        kill_raw = _env("OF_AI_KILL_SWITCH", "")
+        if kill_raw:
+            source = "env"
+    cap_raw = str(stored.get("autonomy_cap") or "").strip().lower()
+    if cap_raw and source == "default":
+        source = "panel"
+    if not cap_raw:
+        cap_raw = _env("OF_AI_AUTONOMY_CAP", "").lower()
+        if cap_raw and source == "default":
+            source = "env"
+    if cap_raw not in AUTONOMY_LEVELS:
+        cap_raw = "auto"
+    daily_raw = str(stored.get("daily_call_cap") or "").strip()
+    if daily_raw and source == "default":
+        source = "panel"
+    if not daily_raw:
+        daily_raw = _env("OF_AI_DAILY_CALL_CAP", "")
+        if daily_raw and source == "default":
+            source = "env"
+    try:
+        daily_cap = max(0, int(daily_raw or 0))
+    except (TypeError, ValueError):
+        daily_cap = 0
+    return {
+        "kill_switch": kill_raw.strip().lower() in ("on", "1", "true", "yes"),
+        "autonomy_cap": cap_raw,
+        "daily_call_cap": daily_cap,
+        "source": source,
     }
 
 

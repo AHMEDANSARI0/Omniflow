@@ -135,6 +135,104 @@ def record(client_id: int, feature: str, model: str, prompt_tokens: int,
 
 
 # ---------------------------------------------------------------------------
+# platform gate (admin AI Control Center): kill switch + daily call cap
+# ---------------------------------------------------------------------------
+
+GATE_KILL_SWITCH = "kill_switch"
+GATE_DAILY_CAP = "daily_cap"
+#: reasons -> owner-facing sentence (notification detail)
+GATE_MESSAGES = {
+    GATE_KILL_SWITCH: "AI answering is paused platform-wide by the OmniFlow"
+                      " team. Replies and drafts resume automatically when"
+                      " the pause is lifted.",
+    GATE_DAILY_CAP: "This workspace reached its daily AI call limit. AI"
+                    " answers and drafts pause until the limit resets;"
+                    " human replies are unaffected.",
+}
+
+
+def _count_calls_since(cur, client_id: int, hours: int) -> int:
+    cur.execute(
+        "SELECT COUNT(*) AS calls FROM " + portal_db._q(TABLE) +
+        " WHERE client_id = %s"
+        " AND created_at > NOW() - make_interval(hours => %s)",
+        (int(client_id or 0), int(hours)),
+    )
+    rows = portal_db.rows(cur)
+    return int((rows[0] if rows else {}).get("calls") or 0)
+
+
+def calls_since(client_id: int, hours: int = 24, cur=None) -> Optional[int]:
+    """LLM calls this workspace made in the last ``hours`` (None when the
+    ledger cannot be read). With a caller cursor the query rides that
+    transaction behind a SAVEPOINT; otherwise one short connection."""
+    if cur is not None:
+        try:
+            cur.execute("SAVEPOINT of_ai_gate")
+            value = _count_calls_since(cur, client_id, hours)
+            cur.execute("RELEASE SAVEPOINT of_ai_gate")
+            return value
+        except Exception as error:
+            logger.warning("ai gate count (tx) failed: %s", error)
+            try:
+                cur.execute("ROLLBACK TO SAVEPOINT of_ai_gate")
+            except Exception:
+                pass
+            return None
+    try:
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as own:
+                value = _count_calls_since(own, client_id, hours)
+            conn.commit()
+        finally:
+            conn.close()
+        return value
+    except Exception as error:
+        logger.warning("ai gate count failed: %s", error)
+        return None
+
+
+def gate(feature: str, client_id: int, cur=None) -> Optional[str]:
+    """Platform gate every LLM call passes before the provider is called.
+
+    Returns None when the call may proceed, else the blocking reason
+    (``kill_switch`` | ``daily_cap``). Fail-open: a storage problem never
+    blocks a call. When a workspace hits its daily cap the owner gets ONE
+    in-app notification per day (dedupe key ``aicap:<client>:<day>``).
+    """
+    try:
+        import platform_settings
+
+        controls = platform_settings.ai_controls()
+    except Exception:
+        return None
+    if controls.get("kill_switch"):
+        return GATE_KILL_SWITCH
+    cap = int(controls.get("daily_call_cap") or 0)
+    client_id = int(client_id or 0)
+    if cap <= 0 or client_id <= 0:
+        return None
+    used = calls_since(client_id, 24, cur=cur)
+    if used is None or used < cap:
+        return None
+    try:
+        import datetime as _dt
+
+        import portal_notify
+
+        day = _dt.datetime.utcnow().strftime("%Y%m%d")
+        portal_notify.notify(
+            client_id, "system", "Daily AI call limit reached",
+            GATE_MESSAGES[GATE_DAILY_CAP] + " (" + str(used) + "/" + str(cap)
+            + " calls in the last 24 hours.)", severity="high",
+            dedupe_key="aicap:" + str(client_id) + ":" + day)
+    except Exception:
+        pass
+    return GATE_DAILY_CAP
+
+
+# ---------------------------------------------------------------------------
 # prices + cost
 # ---------------------------------------------------------------------------
 

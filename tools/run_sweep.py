@@ -1,6 +1,7 @@
 """Full rig sweep: refresh smoke971 snapshots + shared CP modules, run
 every tools/cp-testrig/test_*.py suite. Lives IN the repo so sandbox
-rebuilds cannot wipe it. Usage: python3 tools/run_sweep.py"""
+rebuilds cannot wipe it. Usage: python3 tools/run_sweep.py
+(``--mirror-only`` refreshes the smoke971 snapshots and exits)."""
 import os, subprocess, sys, shutil, glob, re
 
 ROOT = "/home/user/Omniflow"
@@ -92,6 +93,11 @@ for name, rel in SMOKE_MAP.items():
     src = os.path.join(ROOT, rel)
     if os.path.exists(src):
         shutil.copy2(src, os.path.join(SMOKE, name))
+
+if "--mirror-only" in sys.argv:
+    # Snapshot refresh only (single-suite runs need the same smoke971 files).
+    print("smoke971 snapshots refreshed")
+    sys.exit(0)
 
 suites = sorted(glob.glob(RIG + "/test_*.py"))
 env = dict(os.environ)

@@ -87,6 +87,12 @@ def _ensure_routing_tables(conn) -> None:
             "CREATE INDEX IF NOT EXISTS portal_routing_rules_client_idx ON "
             + portal_db._q(RULES_TABLE) + " (client_id, priority, id)"
         )
+        try:
+            import portal_agents
+
+            portal_agents._ensure_ddl(cur)  # persona permission columns
+        except Exception as error:  # pragma: no cover - fail-soft
+            logger.warning("agents DDL skipped: %s", error)
     conn.commit()
     _ROUTING_DDL_READY = True
 

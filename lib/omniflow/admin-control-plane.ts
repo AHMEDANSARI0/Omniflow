@@ -73,7 +73,8 @@ export type AdminProviderGroup =
   | "voice"
   | "video"
   | "payments"
-  | "whatsapp_e2e";
+  | "whatsapp_e2e"
+  | "ai";
 
 export interface AdminProviderGroups {
   [group: string]: {
@@ -245,4 +246,126 @@ export async function listRecentResetCodes(): Promise<AdminResetCode[]> {
     throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
   }
   return (payload as { codes: AdminResetCode[] }).codes;
+}
+
+// ---------------------------------------------------------------------------
+// AI Control Center (platform-wide AI posture + controls)
+// ---------------------------------------------------------------------------
+
+export type AdminAutonomy = "off" | "suggest" | "auto";
+
+export interface AdminAiControls {
+  kill_switch: boolean;
+  autonomy_cap: AdminAutonomy;
+  daily_call_cap: number;
+  source: "panel" | "env" | "default";
+}
+
+export interface AdminAiWorkspace {
+  client_id: number;
+  name: string;
+  owner: string;
+  email: string;
+  users: number;
+  autonomy: AdminAutonomy;
+  autonomy_updated_at: string | null;
+  agents_active: number;
+  agents_total: number;
+  agents_draft_only: number;
+  calls: number;
+  failed: number;
+  tokens: number;
+  cost_usd: number | null;
+  last_call_at: string | null;
+  open_escalations: number;
+  pending_approvals: number;
+  answers: number;
+  handoffs: number;
+}
+
+export interface AdminAiTotals {
+  workspaces: number;
+  auto: number;
+  suggest: number;
+  off: number;
+  agents_active: number;
+  calls: number;
+  failed: number;
+  tokens: number;
+  cost_usd: number;
+  priced: boolean;
+  open_escalations: number;
+  pending_approvals: number;
+  answers: number;
+  handoffs: number;
+}
+
+export interface AdminAiRecent {
+  id: number;
+  client_id: number;
+  action: string;
+  category: string;
+  actor_kind: string;
+  conversation_id: number | null;
+  note: string;
+  created_at: string | null;
+}
+
+export interface AdminAiOverview {
+  days: number;
+  generated_at: string;
+  controls: AdminAiControls;
+  totals: AdminAiTotals;
+  workspaces: AdminAiWorkspace[];
+  recent: AdminAiRecent[];
+}
+
+export async function getAdminAiOverview(
+  days: number
+): Promise<AdminAiOverview> {
+  const safeDays = Number.isFinite(days) ? Math.max(1, Math.min(90, days)) : 7;
+  const response = await adminRequest(
+    "api/v1/admin/ai/overview?days=" + safeDays,
+    { method: "GET" }
+  );
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("workspaces" in payload) ||
+    !("controls" in payload)
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminAiOverview;
+}
+
+export interface AdminAutonomyResult {
+  ok: boolean;
+  client_id: number;
+  autonomy: AdminAutonomy;
+}
+
+export async function setAdminClientAutonomy(
+  clientId: number,
+  autonomy: AdminAutonomy,
+  reason: string
+): Promise<AdminAutonomyResult> {
+  const response = await adminRequest(
+    "api/v1/admin/ai/clients/" + clientId + "/autonomy",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ autonomy, reason }),
+    }
+  );
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("ok" in payload)
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminAutonomyResult;
 }

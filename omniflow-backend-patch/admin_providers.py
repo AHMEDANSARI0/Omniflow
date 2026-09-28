@@ -41,7 +41,12 @@ PROVIDER_WHITELISTS = {
     "voice.provider": ("twilio",),
     "video.provider": ("whereby", "daily", "zoom"),
     "payments.provider": ("stripe",),
+    "ai.kill_switch": ("on", "off"),
+    "ai.autonomy_cap": ("off", "suggest", "auto"),
 }
+
+# Numeric settings (blank = unset).
+NUMERIC_KEYS = {"ai.daily_call_cap": (0, 1000000)}
 
 
 def _authorized() -> bool:
@@ -98,6 +103,8 @@ def _configured(group: str, values: dict) -> bool:
         return any(v == "on" for v in values.values())
     if group == "whatsapp_e2e":
         return bool(values.get("live_number"))
+    if group == "ai":
+        return any(str(v or "").strip() for v in values.values())
     return False
 
 
@@ -130,9 +137,15 @@ def _clean_group(group: str, raw: dict):
         text = "" if value is None else str(value).strip()
         full = group + "." + name
         if full in PROVIDER_WHITELISTS:
+            text = text.lower() if group == "ai" else text
             if text and text not in PROVIDER_WHITELISTS[full]:
                 return None, (full + " must be one of: "
                               + ", ".join(PROVIDER_WHITELISTS[full]) + ".")
+        if full in NUMERIC_KEYS and text:
+            low, high = NUMERIC_KEYS[full]
+            if not text.isdigit() or not low <= int(text) <= high:
+                return None, (full + " must be a whole number between "
+                              + str(low) + " and " + str(high) + ".")
         if full == "email.smtp_port":
             if text and (not text.isdigit() or not 1 <= int(text) <= 65535):
                 return None, "email.smtp_port must be a port number."

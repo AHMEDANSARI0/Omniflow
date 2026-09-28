@@ -26,12 +26,40 @@ const LEVELS: { value: Autonomy; label: string; hint: string }[] = [
  * Settings -> AI Brain: autonomy level + tone. The brain answers with
  * tools (orders, KB, conversation), policy checks and full traces.
  */
+interface PlatformControls {
+  paused: boolean;
+  autonomy_cap: Autonomy;
+  daily_call_cap: number;
+  effective_autonomy: Autonomy;
+}
+
+function platformNotice(
+  platform: PlatformControls | null,
+  autonomy: Autonomy
+): string | null {
+  if (!platform) return null;
+  if (platform.paused) {
+    return "AI answering is paused platform-wide by the OmniFlow team. Your setting is kept and resumes automatically.";
+  }
+  if (platform.effective_autonomy !== autonomy) {
+    return (
+      "The platform currently caps autonomy at \"" +
+      platform.autonomy_cap +
+      "\", so the brain runs at \"" +
+      platform.effective_autonomy +
+      "\" until the cap is lifted."
+    );
+  }
+  return null;
+}
+
 export default function BrainCard() {
   const [autonomy, setAutonomy] = useState<Autonomy>("suggest");
   const [tone, setTone] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<PlatformControls | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -41,10 +69,15 @@ export default function BrainCard() {
       });
       if (response.ok) {
         const payload = (await response.json()) as {
-          settings?: { autonomy?: Autonomy; tone?: string };
+          settings?: {
+            autonomy?: Autonomy;
+            tone?: string;
+            platform?: PlatformControls;
+          };
         };
         if (payload.settings?.autonomy) setAutonomy(payload.settings.autonomy);
         setTone(payload.settings?.tone ?? "");
+        setPlatform(payload.settings?.platform ?? null);
         setLoaded(true);
       }
     } catch {
@@ -99,6 +132,12 @@ export default function BrainCard() {
           {busy ? "Loading..." : "Refresh"}
         </button>
       </div>
+
+      {loaded && platformNotice(platform, autonomy) ? (
+        <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2 text-[11px] text-amber-700">
+          {platformNotice(platform, autonomy)}
+        </p>
+      ) : null}
 
       {loaded ? (
         <div className="mt-3 space-y-2">
