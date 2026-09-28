@@ -43,6 +43,7 @@ PROVIDER_WHITELISTS = {
     "payments.provider": ("stripe",),
     "ai.kill_switch": ("on", "off"),
     "ai.autonomy_cap": ("off", "suggest", "auto"),
+    "ai.guard_mode": ("off", "standard", "strict"),
 }
 
 # Numeric settings (blank = unset).

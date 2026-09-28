@@ -254,10 +254,13 @@ export async function listRecentResetCodes(): Promise<AdminResetCode[]> {
 
 export type AdminAutonomy = "off" | "suggest" | "auto";
 
+export type AdminGuardMode = "off" | "standard" | "strict";
+
 export interface AdminAiControls {
   kill_switch: boolean;
   autonomy_cap: AdminAutonomy;
   daily_call_cap: number;
+  guard_mode?: AdminGuardMode;
   source: "panel" | "env" | "default";
 }
 
@@ -281,6 +284,7 @@ export interface AdminAiWorkspace {
   pending_approvals: number;
   answers: number;
   handoffs: number;
+  blocked?: number;
 }
 
 export interface AdminAiTotals {
@@ -298,6 +302,7 @@ export interface AdminAiTotals {
   pending_approvals: number;
   answers: number;
   handoffs: number;
+  blocked?: number;
 }
 
 export interface AdminAiRecent {
@@ -318,6 +323,44 @@ export interface AdminAiOverview {
   totals: AdminAiTotals;
   workspaces: AdminAiWorkspace[];
   recent: AdminAiRecent[];
+}
+
+export interface AdminAiEvalCase {
+  id: string;
+  category: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface AdminAiEval {
+  suite: string;
+  version: string;
+  mode: "deterministic_contracts" | string;
+  llm_calls: number;
+  customer_data: boolean;
+  passed: number;
+  total: number;
+  score: number;
+  status: "pass" | "fail" | string;
+  failed: string[];
+  cases: AdminAiEvalCase[];
+}
+
+export async function getAdminAiEval(): Promise<AdminAiEval> {
+  const response = await adminRequest("api/v1/admin/ai/eval", {
+    method: "GET",
+  });
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("cases" in payload) ||
+    !Array.isArray((payload as { cases: unknown }).cases)
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminAiEval;
 }
 
 export async function getAdminAiOverview(

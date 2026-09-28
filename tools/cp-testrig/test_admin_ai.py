@@ -42,6 +42,7 @@ c = platform_settings.ai_controls()
 check("defaults are permissive", c == {"kill_switch": False,
                                        "autonomy_cap": "auto",
                                        "daily_call_cap": 0,
+                                       "guard_mode": "standard",
                                        "source": "default"}, c)
 stored({"ai.kill_switch": "on", "ai.autonomy_cap": "Suggest",
         "ai.daily_call_cap": "250"})
@@ -81,7 +82,7 @@ check("ai_controls reads through the cached get_setting (no per-call query)",
       "cached")
 check("group registered for the admin API",
       platform_settings.GROUP_KEYS["ai"] == ["kill_switch", "autonomy_cap",
-                                             "daily_call_cap"],
+                                             "daily_call_cap", "guard_mode"],
       platform_settings.GROUP_KEYS.get("ai"))
 
 # admin validation (generic providers PUT handles group "ai")

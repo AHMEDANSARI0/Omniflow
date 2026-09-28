@@ -113,6 +113,10 @@ def reason_label(reason: str) -> str:
         return "AI asked for a human"
     if reason == "low_confidence":
         return "AI was not confident"
+    if reason == "injection_suspected":
+        return "Suspicious message (prompt injection)"
+    if reason.startswith("output_guard"):
+        return "AI reply withheld (" + reason.split(":", 1)[-1] + ")"
     if reason.startswith("policy"):
         return "Blocked by policy (" + reason.split(":", 1)[-1] + ")"
     if reason == "repeated knowledge gaps":

@@ -47,7 +47,7 @@
 | 24 | Omnichannel | WhatsApp LIVE (Baileys→CP), baaki honest "Coming" | **channel adapter interface** (receiveMessage/sendMessage/…8 ops) + message normalizer + identity linking — AI layer channel-agnostic banana |
 | 25 | Notifications | ✅ §199 portal_notify: bell + tenant opt-in email + ledger with delivery status, per-kind prefs + severity threshold, test send; used by escalations/approvals/dead deliveries/failed runs | templates+variables, rate limits (dedupe covers floods today) |
 | 27 | Audit Log | ✅ §199 portal_ai_audit read model over portal_action_log: categories registry, actor kinds, timeline + overview (approvals pending, handoffs open, usage) on Configure AI | per-row agent/model/input linkage (brain traces already carry grounding; join later in Control Center) |
-| 29 | Evaluation | 132 suites / 4366+ checks (structural+API) | **AI behavioral tests**: knowledge accuracy, tool-calling correctness, permission enforcement, workflow execution, injection defense, channel normalization |
+| 29 | Evaluation | ✅ §203 deterministic AI behavioral contracts: knowledge ranking/citations, tool/permission envelopes, workflow injection boundary, prompt-injection detector + sanitisation/output guard, channel identity normalization; 150 suites / 5591 PASS after the batch | live provider quality/regression sampling, human-labelled answer sets, agent cost split |
 | 31 | Observability | portal_obs: trace-id + slow-request JSON logs | agent execution traces: conversation→agent→tool→result→decision→response |
 | 64 | Analytics split | analytics/revenue/service/one-reply/CSAT | AI quadrant (agent usage, confidence, cost, tool calls) + automation quadrant (workflow executions) |
 
@@ -109,7 +109,7 @@
 13. **Omnichannel adapters** (IG pehle) — Workflow/Identity/Action engines ready hone ke BAAD
 14. **Voice Agent loop + Vision**
 15. **Admin AI Control Center + Agent Config + Permissions UI** ✅ (§201) + ~~Workflow Builder + Templates~~ ✅ (§196)
-16. **Eval expansion** (AI behavioral suite + injection defense) + ~~Agent versioning/rollback~~ ✅ (§201)
+16. **Eval expansion** ✅ (§203: prompt-injection defense + deterministic AI behavioral contract suite) + ~~Agent versioning/rollback~~ ✅ (§201)
 
 ---
 

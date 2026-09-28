@@ -54,6 +54,7 @@ CATEGORIES: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = (
     ("memory", "Memory & identity", ("memory.", "identity.")),
     ("notifications", "Notifications", ("notifications.", "alert.")),
     ("settings", "AI settings", ("ai.settings", "agent.", "brain.")),
+    ("security", "Security", ("ai.guard",)),
 )
 CATEGORY_KEYS = tuple(k for k, _l, _p in CATEGORIES)
 

@@ -199,11 +199,13 @@ def _approvals(cur) -> List[Dict[str, Any]]:
 
 def _traces(cur, days: int) -> List[Dict[str, Any]]:
     cur.execute(
-        "SELECT client_id, decision, COUNT(*) AS n FROM " +
+        "SELECT client_id, decision,"
+        " (COALESCE(grounding->>'reason', '') = 'injection_suspected')"
+        " AS blocked, COUNT(*) AS n FROM " +
         portal_db._q("portal_brain_traces") +
         " WHERE kind = 'ingest_answer'"
         " AND created_at > NOW() - make_interval(days => %s)"
-        " GROUP BY client_id, decision",
+        " GROUP BY client_id, decision, blocked",
         (days,),
     )
     return portal_db.rows(cur)
@@ -266,11 +268,14 @@ def overview(cur, days: int = DEFAULT_DAYS) -> Dict[str, Any]:
     traces: Dict[int, Dict[str, int]] = {}
     for row in trace_rows:
         cid = int(row.get("client_id") or 0)
-        entry = traces.setdefault(cid, {"answers": 0, "handoffs": 0})
+        entry = traces.setdefault(cid, {"answers": 0, "handoffs": 0,
+                                        "blocked": 0})
         if str(row.get("decision") or "") == "send":
             entry["answers"] += int(row.get("n") or 0)
         else:
             entry["handoffs"] += int(row.get("n") or 0)
+            if row.get("blocked") is True:
+                entry["blocked"] += int(row.get("n") or 0)
 
     # Universe: every workspace with users, plus any workspace that shows
     # AI activity but no user row (never hide activity).
@@ -285,7 +290,7 @@ def overview(cur, days: int = DEFAULT_DAYS) -> Dict[str, Any]:
               "agents_active": 0, "calls": 0, "failed": 0, "tokens": 0,
               "cost_usd": 0.0, "priced": bool(price_table),
               "open_escalations": 0, "pending_approvals": 0,
-              "answers": 0, "handoffs": 0}
+              "answers": 0, "handoffs": 0, "blocked": 0}
     for ws in workspaces:
         cid = int(ws.get("client_id") or 0)
         if cid <= 0:
@@ -297,7 +302,8 @@ def overview(cur, days: int = DEFAULT_DAYS) -> Dict[str, Any]:
                                  "cost_usd": 0.0, "priced": False,
                                  "last_call_at": None}
         agent = agents.get(cid) or {}
-        trace = traces.get(cid) or {"answers": 0, "handoffs": 0}
+        trace = traces.get(cid) or {"answers": 0, "handoffs": 0,
+                                    "blocked": 0}
         item = {
             "client_id": cid,
             "name": str((names.get(cid) or {}).get("business_name") or ""),
@@ -322,6 +328,7 @@ def overview(cur, days: int = DEFAULT_DAYS) -> Dict[str, Any]:
                 "pending") or 0),
             "answers": int(trace["answers"]),
             "handoffs": int(trace["handoffs"]),
+            "blocked": int(trace.get("blocked") or 0),
         }
         items.append(item)
         totals["workspaces"] += 1
@@ -336,6 +343,7 @@ def overview(cur, days: int = DEFAULT_DAYS) -> Dict[str, Any]:
         totals["pending_approvals"] += item["pending_approvals"]
         totals["answers"] += item["answers"]
         totals["handoffs"] += item["handoffs"]
+        totals["blocked"] += item["blocked"]
     items.sort(key=lambda i: (-i["calls"], i["client_id"]))
 
     recent = []
@@ -361,6 +369,25 @@ def overview(cur, days: int = DEFAULT_DAYS) -> Dict[str, Any]:
         "workspaces": items,
         "recent": recent,
     }
+
+
+@bp.get("/eval")
+def get_behavioral_eval():
+    """Run the bounded, deterministic AI behavior contracts.
+
+    This intentionally makes zero provider calls and touches no tenant data;
+    it is a deploy-time smoke signal, not a customer-message evaluator.
+    """
+    try:
+        import portal_ai_eval
+
+        return jsonify(portal_ai_eval.run_contract_suite()), 200
+    except Exception as error:
+        logger.warning("admin ai behavioral eval failed: %s", error)
+        return jsonify({"error": {
+            "code": "ai_eval_unavailable",
+            "message": "AI behavioral evaluation temporarily unavailable.",
+        }}), 503
 
 
 @bp.get("/overview")

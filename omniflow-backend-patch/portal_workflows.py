@@ -1443,9 +1443,37 @@ _DECISION_SYSTEM = (
     " \"confidence\": 0..1}. Answer no when unsure.")
 
 
-def _ai_decide(question: str, ctx: Dict[str, Any]) -> Tuple[Optional[bool],
-                                                            float]:
-    """(True/False, confidence) or (None, 0) when the LLM is unavailable."""
+def _guard_message(ctx: Dict[str, Any],
+                   guard_mode: Optional[str] = None
+                   ) -> Tuple[str, Optional[Dict[str, Any]]]:
+    """(sanitised message, guard result when the trust boundary blocks it).
+
+    portal_guard is the same detector the brain uses: a trigger message
+    that tries to rewrite instructions never reaches the classifier, so
+    an ``ai_decision`` can not be steered into a 'yes' by the customer.
+    Fail-open on the detector (never on the model)."""
+    text = str(ctx.get("text") or "")[:600]
+    try:
+        import portal_guard
+
+        result = portal_guard.inspect(text)
+        if portal_guard.blocks(result, guard_mode):
+            return "", result
+        return portal_guard.sanitize(text, 600), None
+    except Exception:
+        return text, None
+
+
+def _ai_decide(question: str, ctx: Dict[str, Any],
+               guard_mode: Optional[str] = None
+               ) -> Tuple[Optional[bool], float]:
+    """(True/False, confidence) or (None, 0) when the LLM is unavailable.
+
+    A blocked (prompt-injection) trigger message answers a hard 'no' with
+    confidence 1.0 and never spends a call (see ``_guard_message``)."""
+    message, blocked = _guard_message(ctx, guard_mode)
+    if blocked is not None:
+        return False, 1.0
     try:
         import portal_llm
 
@@ -1454,7 +1482,7 @@ def _ai_decide(question: str, ctx: Dict[str, Any]) -> Tuple[Optional[bool],
             json.dumps({
                 "question": question,
                 "customer_data": {
-                    "message": str(ctx.get("text") or "")[:600],
+                    "message": message,
                     "intelligence": ctx.get("intelligence") or {},
                     "event": ctx.get("event"),
                     "stage": ctx.get("stage"),
@@ -1507,6 +1535,22 @@ def _execute_step(cur, client_id: int, workflow_id: int, run: Dict[str, Any],
     if kind == "ai_decision":
         import portal_llm
 
+        _message, blocked = _guard_message(ctx)
+        if blocked is not None:
+            try:
+                import portal_guard
+
+                portal_guard.record_block(cur, client_id, ctx.get(
+                    "conversation_id"), blocked, "workflow", db=portal_db)
+            except Exception:
+                pass
+            target = _else_target(config, step_no)
+            out.update({"outcome": "no", "next": target,
+                        "status": None if target else RUN_STOPPED,
+                        "detail": "blocked: suspicious message (" +
+                        ", ".join(list(blocked.get("signals") or [])[:3]) +
+                        ")"})
+            return out
         with portal_llm.usage_scope("workflow", client_id, cur):
             answer, confidence = _ai_decide(
                 str(config.get("question") or ""), ctx)

@@ -25,6 +25,8 @@ const REASON_LABEL: Record<string, string> = {
   policy: "blocked by policy",
   llm_unavailable: "AI engine unavailable",
   empty_reply: "empty reply",
+  injection_suspected: "suspicious message blocked",
+  output_guard: "reply withheld by the output guard",
 };
 
 function pct(value: number | null | undefined): string {

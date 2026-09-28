@@ -174,7 +174,8 @@ def platform_controls() -> Dict[str, Any]:
     except Exception:
         pass
     return {"kill_switch": False, "autonomy_cap": "auto",
-            "daily_call_cap": 0, "source": "default"}
+            "daily_call_cap": 0, "guard_mode": "standard",
+            "source": "default"}
 
 
 def effective_autonomy(own: str,
@@ -391,8 +392,20 @@ def _system_prompt(tone: str) -> str:
         "internal systems. If the context is insufficient or the customer "
         "needs a human, set needs_human=true. " + tone_line +
         ' Reply ONLY with JSON: {"reply": "...", "needs_human": false, '
-        '"confidence": 0.0}'
+        '"confidence": 0.0}' + _security_rules()
     )
+
+
+def _security_rules() -> str:
+    """The override-proof trust-boundary block (portal_guard) appended to
+    every brain prompt. Fail-soft: an import problem never silences the
+    assistant, it only loses the extra block."""
+    try:
+        import portal_guard
+
+        return portal_guard.SECURITY_RULES
+    except Exception:
+        return ""
 
 
 def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
@@ -406,6 +419,23 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
     grounding: Dict[str, Any] = {"tools": []}
     context: Dict[str, Any] = {}
     calls = 0
+
+    # Trust boundary first (portal_guard): a message that tries to rewrite
+    # the assistant's instructions never reaches the tools or the model.
+    guard_mode = "standard"
+    try:
+        import portal_guard
+
+        guard = portal_guard.inspect(message_text)
+        guard_mode = portal_guard.mode()
+        grounding["guard"] = dict(portal_guard.summary(guard),
+                                  mode=guard_mode)
+        if portal_guard.blocks(guard, guard_mode):
+            grounding["reason"] = "injection_suspected"
+            grounding["llm_called"] = False
+            return None, grounding
+    except Exception as error:
+        logger.warning("brain guard inspect failed: %s", error)
 
     def budget_left() -> bool:
         return calls < MAX_TOOL_CALLS
@@ -470,6 +500,12 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
 
     context["customer_name"] = str(contact_name or "")
     context["customer_message"] = str(message_text or "")
+    try:
+        import portal_guard
+
+        context = portal_guard.sanitize_context(context)
+    except Exception:
+        pass
 
     import portal_llm
 
@@ -480,12 +516,17 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
             max_tokens=300,
         )
     grounding["llm_called"] = payload is not None
+    if agent and str(agent.get("instructions") or "").strip():
+        grounding["_private"] = [str(agent.get("instructions"))[:400]]
     return payload, grounding
 
 
 def _decide(payload: Optional[Dict[str, Any]],
             grounding: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
     """Map the LLM payload + policy to (decision, reply, grounding)."""
+    private = grounding.pop("_private", None) or []
+    if grounding.get("reason") == "injection_suspected":
+        return "handoff", "", grounding
     if not isinstance(payload, dict):
         grounding["reason"] = "llm_unavailable"
         return "handoff", "", grounding
@@ -507,10 +548,25 @@ def _decide(payload: Optional[Dict[str, Any]],
     if violations:
         grounding["reason"] = "policy:" + violations[0]
         return "handoff", "", grounding
+    leaks = _output_guard(reply, private)
+    if leaks:
+        grounding["output_violations"] = leaks
+        grounding["reason"] = "output_guard:" + leaks[0]
+        return "handoff", "", grounding
     if not reply:
         grounding["reason"] = "empty_reply"
         return "handoff", "", grounding
     return "send", reply[:MAX_DRAFT_CHARS], grounding
+
+
+def _output_guard(reply: str, private) -> List[str]:
+    """Reply-side leak check (portal_guard.check_output); fail-open."""
+    try:
+        import portal_guard
+
+        return portal_guard.check_output(reply, private)
+    except Exception:
+        return []
 
 
 def _write_trace(cur, client_id: int, conversation_id: int, kind: str,
@@ -528,16 +584,38 @@ def _write_trace(cur, client_id: int, conversation_id: int, kind: str,
 # Ingest hook (autonomy == auto only) + owner draft API
 # ---------------------------------------------------------------------------
 
+def _record_guard_block(cur, client_id: int, conversation_id: int,
+                        grounding: Dict[str, Any], source: str) -> None:
+    """Audit a blocked input/output without leaking its contents."""
+    try:
+        import portal_guard
+
+        reason = str(grounding.get("reason") or "")
+        result = grounding.get("guard") or {}
+        if reason.startswith("output_guard:"):
+            result = {"score": 0, "level": "high",
+                      "signals": [reason.split(":", 1)[1]]}
+        portal_guard.record_block(cur, client_id, conversation_id, result,
+                                  source, db=portal_db)
+    except Exception as error:
+        logger.warning("brain guard audit failed: %s", error)
+
+
 def _handoff(cur, client_id: int, conversation_id: int,
              grounding: Dict[str, Any]) -> None:
     """A handoff decision under 'auto' autonomy is a real event, not a
-    silent trace: needs_human / low_confidence / policy blocks open ONE
-    escalation per conversation (portal_escalation: assignee + bell +
-    optional email). Platform problems (llm_unavailable, empty_reply) are
-    not customer situations and never page the team. Never raises."""
+    silent trace: needs_human / low_confidence / policy blocks / suspected
+    prompt injection / output leaks open ONE escalation per conversation
+    (portal_escalation: assignee + bell + optional email). Platform problems
+    (llm_unavailable, empty_reply) are not customer situations and never page
+    the team. Never raises."""
     reason = str(grounding.get("reason") or "")
-    if not (reason in ("needs_human", "low_confidence")
-            or reason.startswith("policy:")):
+    if reason == "injection_suspected" or reason.startswith("output_guard:"):
+        _record_guard_block(cur, client_id, conversation_id, grounding,
+                            "brain")
+    if not (reason in ("needs_human", "low_confidence", "injection_suspected")
+            or reason.startswith("policy:")
+            or reason.startswith("output_guard:")):
         return
     try:
         import portal_escalation
@@ -546,6 +624,14 @@ def _handoff(cur, client_id: int, conversation_id: int,
         note = "AI handoff: " + reason
         if isinstance(confidence, (int, float)) and reason == "low_confidence":
             note += " (confidence " + str(round(float(confidence), 2)) + ")"
+        if reason == "injection_suspected":
+            note = ("Suspicious message: the customer text tried to change "
+                    "the assistant's instructions (" +
+                    ", ".join((grounding.get("guard") or {}).get("signals")
+                              or [])[:120] + "). Please review and reply.")
+        elif reason.startswith("output_guard:"):
+            note = ("The AI reply was withheld by the output guard (" +
+                    reason.split(":", 1)[1] + "). Please review and reply.")
         portal_escalation.escalate(cur, client_id, conversation_id, reason,
                                    "ai", note=note)
     except Exception as error:
@@ -619,6 +705,10 @@ def draft_reply(cur, client_id: int, conversation_id: int,
         cur, client_id, conversation_id, "", "", message_text,
         str(settings.get("tone") or ""))
     decision, reply, grounding = _decide(payload, grounding)
+    if (str(grounding.get("reason") or "") == "injection_suspected"
+            or str(grounding.get("reason") or "").startswith("output_guard:")):
+        _record_guard_block(cur, client_id, conversation_id, grounding,
+                            "brain_draft")
     _write_trace(cur, client_id, conversation_id, "draft", decision,
                  grounding)
     portal_db.log_action(
@@ -669,6 +759,7 @@ def get_brain_settings():
         "paused": bool(controls.get("kill_switch")),
         "autonomy_cap": str(controls.get("autonomy_cap") or "auto"),
         "daily_call_cap": int(controls.get("daily_call_cap") or 0),
+        "guard_mode": str(controls.get("guard_mode") or "standard"),
         "effective_autonomy": effective_autonomy(
             str(settings.get("autonomy") or ""), controls),
     }

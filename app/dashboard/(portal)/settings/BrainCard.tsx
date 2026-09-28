@@ -30,8 +30,17 @@ interface PlatformControls {
   paused: boolean;
   autonomy_cap: Autonomy;
   daily_call_cap: number;
+  guard_mode?: "off" | "standard" | "strict";
   effective_autonomy: Autonomy;
 }
+
+const GUARD_NOTE: Record<string, string> = {
+  off: "Prompt-injection guard: off (attempts are recorded only).",
+  standard:
+    "Prompt-injection guard: on. Messages that try to rewrite the assistant's instructions are handed to you instead of answered.",
+  strict:
+    "Prompt-injection guard: strict. Borderline messages are handed to you as well.",
+};
 
 function platformNotice(
   platform: PlatformControls | null,
@@ -136,6 +145,12 @@ export default function BrainCard() {
       {loaded && platformNotice(platform, autonomy) ? (
         <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2 text-[11px] text-amber-700">
           {platformNotice(platform, autonomy)}
+        </p>
+      ) : null}
+
+      {loaded && platform?.guard_mode ? (
+        <p className="mt-3 text-[11px] text-ink-3">
+          {GUARD_NOTE[platform.guard_mode] ?? GUARD_NOTE.standard}
         </p>
       ) : null}
 

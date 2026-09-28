@@ -12,11 +12,19 @@ import { motion } from "motion/react";
  */
 
 type Autonomy = "off" | "suggest" | "auto";
+type GuardMode = "off" | "standard" | "strict";
+
+const GUARD_LABEL: Record<GuardMode, string> = {
+  off: "Off - record attempts only",
+  standard: "Standard - block clear manipulation attempts",
+  strict: "Strict - also hand off borderline messages",
+};
 
 interface Controls {
   kill_switch: boolean;
   autonomy_cap: Autonomy;
   daily_call_cap: number;
+  guard_mode?: GuardMode;
   source: "panel" | "env" | "default";
 }
 
@@ -40,6 +48,7 @@ interface Workspace {
   pending_approvals: number;
   answers: number;
   handoffs: number;
+  blocked?: number;
 }
 
 interface Totals {
@@ -57,6 +66,7 @@ interface Totals {
   pending_approvals: number;
   answers: number;
   handoffs: number;
+  blocked?: number;
 }
 
 interface Recent {
@@ -77,6 +87,28 @@ interface Overview {
   totals: Totals;
   workspaces: Workspace[];
   recent: Recent[];
+}
+
+interface EvalCase {
+  id: string;
+  category: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+interface BehavioralEval {
+  suite: string;
+  version: string;
+  mode: string;
+  llm_calls: number;
+  customer_data: boolean;
+  passed: number;
+  total: number;
+  score: number;
+  status: string;
+  failed: string[];
+  cases: EvalCase[];
 }
 
 const AUTONOMY_LABEL: Record<Autonomy, string> = {
@@ -152,11 +184,15 @@ export default function AdminAiControlPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [behavioralEval, setBehavioralEval] = useState<BehavioralEval | null>(null);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [evalError, setEvalError] = useState<string | null>(null);
 
   // platform controls form
   const [killSwitch, setKillSwitch] = useState(false);
   const [autonomyCap, setAutonomyCap] = useState<Autonomy>("auto");
   const [dailyCap, setDailyCap] = useState("");
+  const [guardMode, setGuardMode] = useState<GuardMode>("standard");
   const [savingControls, setSavingControls] = useState(false);
 
   // per-workspace override
@@ -185,6 +221,7 @@ export default function AdminAiControlPage() {
         setDailyCap(
           data.controls?.daily_call_cap ? String(data.controls.daily_call_cap) : ""
         );
+        setGuardMode(data.controls?.guard_mode ?? "standard");
       }
     } catch {
       setError("Network error — please try again.");
@@ -194,9 +231,36 @@ export default function AdminAiControlPage() {
     }
   }, [days]);
 
+  const runBehavioralEval = useCallback(async () => {
+    setEvalLoading(true);
+    setEvalError(null);
+    try {
+      const response = await fetch("/api/omniflow/admin/ai/eval", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setEvalError(
+          payload?.error?.message ??
+            "Could not run the AI behavioral checks. Please try again."
+        );
+        setBehavioralEval(null);
+      } else {
+        setBehavioralEval(payload as BehavioralEval);
+      }
+    } catch {
+      setEvalError("Network error — behavioral checks were not completed.");
+      setBehavioralEval(null);
+    } finally {
+      setEvalLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void runBehavioralEval();
+  }, [load, runBehavioralEval]);
 
   function flash(text: string) {
     setNotice(text);
@@ -218,6 +282,7 @@ export default function AdminAiControlPage() {
             kill_switch: killSwitch ? "on" : "off",
             autonomy_cap: autonomyCap,
             daily_call_cap: dailyCap.trim(),
+            guard_mode: guardMode,
           },
         }),
       });
@@ -310,6 +375,13 @@ export default function AdminAiControlPage() {
             ))}
           </div>
           <button
+            onClick={() => void runBehavioralEval()}
+            disabled={evalLoading}
+            className="rounded-xl border border-brand/25 bg-brand-soft px-3.5 py-2 text-xs font-medium text-brand transition-colors hover:border-brand/40 disabled:opacity-50"
+          >
+            {evalLoading ? "Running checks..." : "Run behavior checks"}
+          </button>
+          <button
             onClick={() => void load()}
             className="rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
           >
@@ -344,6 +416,79 @@ export default function AdminAiControlPage() {
           workspace until the pause is lifted below.
         </div>
       ) : null}
+
+      {/* ---------- deterministic behavioral evaluation ---------- */}
+      <div className="mb-6 rounded-2xl border border-line bg-soft p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">
+              AI behavioral evaluation
+            </h2>
+            <p className="mt-1 max-w-2xl text-xs text-ink-3">
+              Deploy-time contracts for injection defense, grounding,
+              knowledge ranking, permissions, workflows and channel
+              normalization. Deterministic only: no provider calls, customer
+              data or usage cost.
+            </p>
+          </div>
+          {behavioralEval ? (
+            <span
+              className={
+                "rounded-full border px-2.5 py-1 text-xs font-medium " +
+                (behavioralEval.status === "pass"
+                  ? "border-emerald-400/30 bg-emerald-400/10 text-ok"
+                  : "border-red-400/30 bg-red-400/10 text-danger")
+              }
+            >
+              {behavioralEval.status === "pass" ? "All contracts pass" : "Review failed contracts"}
+            </span>
+          ) : null}
+        </div>
+        {evalError ? (
+          <p className="mt-3 rounded-lg border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-danger">
+            {evalError}
+          </p>
+        ) : behavioralEval ? (
+          <div className="mt-4">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p className="text-2xl font-semibold text-ink">
+                  {behavioralEval.score.toFixed(1)}%
+                </p>
+                <p className="text-[11px] text-ink-3">
+                  {behavioralEval.passed} of {behavioralEval.total} contracts ·
+                  version {behavioralEval.version}
+                </p>
+              </div>
+              <p className="text-[11px] text-ink-3">
+                {behavioralEval.llm_calls} LLM calls · customer data: {behavioralEval.customer_data ? "yes" : "no"}
+              </p>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {behavioralEval.cases.map((item) => (
+                <div
+                  key={item.id}
+                  className={
+                    "rounded-lg border px-3 py-2 text-xs " +
+                    (item.passed
+                      ? "border-emerald-400/20 bg-emerald-400/[0.04]"
+                      : "border-red-400/25 bg-red-400/[0.05]")
+                  }
+                >
+                  <p className="font-medium text-ink">
+                    {item.passed ? "Pass" : "Fail"} · {item.label}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-ink-3">{item.category}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-xs text-ink-3">
+            {evalLoading ? "Running deterministic contracts..." : "No result yet."}
+          </p>
+        )}
+      </div>
 
       {/* ---------- platform controls ---------- */}
       <div className="mb-6 rounded-2xl border border-line bg-soft p-5">
@@ -431,6 +576,31 @@ export default function AdminAiControlPage() {
               Rolling 24 hours. The owner is notified once a day when reached.
             </p>
           </div>
+          <div>
+            <label
+              htmlFor="ai_guard_mode"
+              className="mb-1 block text-xs font-medium text-ink-3"
+            >
+              Prompt-injection guard
+            </label>
+            <select
+              id="ai_guard_mode"
+              value={guardMode}
+              onChange={(event) => setGuardMode(event.target.value as GuardMode)}
+              className={inputClass}
+            >
+              {(Object.keys(GUARD_LABEL) as GuardMode[]).map((level) => (
+                <option key={level} value={level}>
+                  {GUARD_LABEL[level]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-ink-3">
+              Messages that try to rewrite the assistant&apos;s instructions are
+              handed to a human instead of the model. Blocked attempts appear
+              in each workspace&apos;s AI activity under Security.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -458,7 +628,12 @@ export default function AdminAiControlPage() {
           <Tile
             label="Brain answers · handoffs"
             value={formatNumber(totals.answers) + " · " + formatNumber(totals.handoffs)}
-            hint={formatNumber(totals.agents_active) + " active agents"}
+            hint={
+              formatNumber(totals.agents_active) +
+              " active agents · " +
+              formatNumber(totals.blocked ?? 0) +
+              " injection attempts blocked"
+            }
           />
           <Tile
             label="Open escalations"
@@ -498,7 +673,7 @@ export default function AdminAiControlPage() {
                   <th className="px-4 py-3 font-medium">Agents</th>
                   <th className="px-4 py-3 font-medium">Calls · failed</th>
                   <th className="px-4 py-3 font-medium">Cost</th>
-                  <th className="px-4 py-3 font-medium">Answers · handoffs</th>
+                  <th className="px-4 py-3 font-medium">Answers · handoffs · blocked</th>
                   <th className="px-4 py-3 font-medium">Escalations · approvals</th>
                   <th className="px-4 py-3 font-medium">Last AI call</th>
                 </tr>
@@ -557,7 +732,8 @@ export default function AdminAiControlPage() {
                       {formatCost(ws.cost_usd, totals?.priced ?? false)}
                     </td>
                     <td className="px-4 py-3 text-ink-2">
-                      {formatNumber(ws.answers)} · {formatNumber(ws.handoffs)}
+                      {formatNumber(ws.answers)} · {formatNumber(ws.handoffs)} ·{" "}
+                      {formatNumber(ws.blocked ?? 0)}
                     </td>
                     <td className="px-4 py-3 text-ink-2">
                       {ws.open_escalations} · {ws.pending_approvals}

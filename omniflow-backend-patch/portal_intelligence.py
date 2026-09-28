@@ -107,8 +107,13 @@ def _ensure_ddl(cur) -> None:
     )
 
 
-def analyze(text: str, stored_language: Optional[str] = None) -> Dict[str, Any]:
-    """The shared IntelligenceResult (never raises)."""
+def analyze(text: str, stored_language: Optional[str] = None,
+            use_llm: bool = True) -> Dict[str, Any]:
+    """The shared IntelligenceResult (never raises).
+
+    ``use_llm=False`` is the deterministic path used by deploy-time
+    behavioral evaluation; normal product callers keep the existing default
+    and may use the owner's sentiment setting."""
     body = str(text or "")
     intent = "general"
     sentiment = "neutral"
@@ -123,7 +128,8 @@ def analyze(text: str, stored_language: Optional[str] = None) -> Dict[str, Any]:
     try:
         import portal_insights
 
-        verdict = portal_insights.analyze_sentiment_smart(body)
+        verdict = (portal_insights.analyze_sentiment_smart(body)
+                   if use_llm else portal_insights.analyze_sentiment(body))
         if verdict:
             sentiment = str(verdict.get("label") or sentiment)
             sentiment_engine = str(verdict.get("engine")

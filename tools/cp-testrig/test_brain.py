@@ -625,6 +625,7 @@ check("settings get exposes platform controls",
       body_ps["autonomy"] == "auto"
       and body_ps["platform"] == {"paused": False, "autonomy_cap": "suggest",
                                   "daily_call_cap": 500,
+                                  "guard_mode": "standard",
                                   "effective_autonomy": "suggest"}, body_ps)
 check("brain DDL chain carries agents DDL (permission columns)",
       "portal_agents._ensure_ddl(cur)" in open("portal_brain.py",

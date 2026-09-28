@@ -280,7 +280,7 @@ check("blueprint registered", "aux_app.register_blueprint(portal_escalation_bp)"
 BRAIN = read(os.path.join(CP, "portal_brain.py"))
 check("brain: handoff decisions escalate (needs_human / low_confidence / policy)",
       "def _handoff(" in BRAIN and '_handoff(cur, client_id, int(conversation_id or 0), grounding)'
-      in BRAIN and 'reason in ("needs_human", "low_confidence")' in BRAIN
+      in BRAIN and 'reason in ("needs_human", "low_confidence", "injection_suspected")' in BRAIN
       and 'reason.startswith("policy:")' in BRAIN
       and 'portal_escalation.escalate(cur, client_id, conversation_id, reason,\n                                   "ai"' in BRAIN, "-")
 check("brain: escalation tables ride the brain DDL chain",

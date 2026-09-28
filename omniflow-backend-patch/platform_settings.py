@@ -58,10 +58,11 @@ GROUP_KEYS = {
     # highest autonomy any workspace may run at, and a per-workspace daily
     # LLM call cap (0 = unlimited). Env fallbacks: OF_AI_KILL_SWITCH,
     # OF_AI_AUTONOMY_CAP, OF_AI_DAILY_CALL_CAP.
-    "ai": ["kill_switch", "autonomy_cap", "daily_call_cap"],
+    "ai": ["kill_switch", "autonomy_cap", "daily_call_cap", "guard_mode"],
 }
 
 AUTONOMY_LEVELS = ("off", "suggest", "auto")
+GUARD_MODES = ("off", "standard", "strict")
 
 SECRET_HINTS = ("password", "api_key", "token", "secret")
 
@@ -192,7 +193,9 @@ def ai_controls() -> dict:
     """Effective platform AI controls: admin panel first, env fallback.
 
     {kill_switch: bool, autonomy_cap: off|suggest|auto,
-     daily_call_cap: int (0 = unlimited), source: panel|env|default}
+     daily_call_cap: int (0 = unlimited),
+     guard_mode: off|standard|strict (prompt-injection guard),
+     source: panel|env|default}
     Fail-soft: any storage problem yields the permissive defaults. Reads
     go through get_setting (30 s TTL cache) because the LLM gate consults
     this on EVERY call - never an extra round trip per call.
@@ -231,10 +234,20 @@ def ai_controls() -> dict:
         daily_cap = max(0, int(daily_raw or 0))
     except (TypeError, ValueError):
         daily_cap = 0
+    guard_raw = str(stored.get("guard_mode") or "").strip().lower()
+    if guard_raw and source == "default":
+        source = "panel"
+    if not guard_raw:
+        guard_raw = _env("OF_AI_GUARD_MODE", "").lower()
+        if guard_raw and source == "default":
+            source = "env"
+    if guard_raw not in GUARD_MODES:
+        guard_raw = "standard"
     return {
         "kill_switch": kill_raw.strip().lower() in ("on", "1", "true", "yes"),
         "autonomy_cap": cap_raw,
         "daily_call_cap": daily_cap,
+        "guard_mode": guard_raw,
         "source": source,
     }
 
