@@ -122,6 +122,7 @@ export default function AgentsAndRouting() {
   const [allowedActions, setAllowedActions] = useState<string[]>([]);
   const [maxRisk, setMaxRisk] = useState<Risk>("high");
   const [canAutoReply, setCanAutoReply] = useState(true);
+  const [schedule, setSchedule] = useState<AgentSchedule>(defaultSchedule);
   const [catalog, setCatalog] = useState<CatalogAction[]>([]);
 
   // version history + rollback
@@ -153,7 +154,13 @@ export default function AgentsAndRouting() {
       }
       if (agentsRes.ok) {
         const payload = (await agentsRes.json()) as { agents?: Agent[] };
-        setAgents(payload.agents ?? []);
+        const rows = (payload.agents ?? []).map((agent) => ({
+          ...agent,
+          schedule: normalizeSchedule(agent.schedule),
+          inHours: agent.inHours !== false,
+          canAutoReply: agent.canAutoReply !== false,
+        }));
+        setAgents(rows);
       }
       if (rulesRes.ok) {
         const payload = (await rulesRes.json()) as { rules?: Rule[] };
@@ -194,6 +201,7 @@ export default function AgentsAndRouting() {
         allowed_actions: allowAll ? null : allowedActions,
         max_risk: maxRisk,
         can_auto_reply: canAutoReply,
+        schedule,
       };
       const response = await fetch(
         editingId
@@ -235,6 +243,7 @@ export default function AgentsAndRouting() {
     setAllowedActions([]);
     setMaxRisk("high");
     setCanAutoReply(true);
+    setSchedule(defaultSchedule());
   }
 
   function startEdit(agent: Agent) {
@@ -249,6 +258,7 @@ export default function AgentsAndRouting() {
     setAllowedActions(agent.allowedActions ?? []);
     setMaxRisk(agent.maxRisk);
     setCanAutoReply(agent.canAutoReply);
+    setSchedule(normalizeSchedule(agent.schedule));
   }
 
   function cancelEdit() {
@@ -592,6 +602,118 @@ export default function AgentsAndRouting() {
               </div>
             </fieldset>
 
+
+            <fieldset className="rounded-xl border border-line bg-white shadow-card/60 p-3.5">
+              <legend className="px-1 text-xs font-semibold text-ink">
+                Active hours
+              </legend>
+              <p className="text-[11px] leading-relaxed text-ink-3">
+                Optional weekly windows for this persona. Off means the agent
+                can auto-reply any time. Outside the window the brain drafts
+                only (same as turning auto-reply off).
+              </p>
+              <label className="mt-3 flex items-start gap-2 text-xs text-ink-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={schedule.enabled}
+                  onChange={(event) =>
+                    setSchedule((prev) => ({
+                      ...prev,
+                      enabled: event.target.checked,
+                    }))
+                  }
+                />
+                <span>
+                  Limit auto-reply to the hours below
+                  <span className="block text-[11px] text-ink-3">
+                    Timezone: {schedule.timezone}
+                  </span>
+                </span>
+              </label>
+              {schedule.enabled ? (
+                <div className="mt-3 space-y-2">
+                  <label className="block text-xs text-ink-2">
+                    <span className="mb-1 block text-ink-3">Timezone</span>
+                    <input
+                      type="text"
+                      value={schedule.timezone}
+                      onChange={(event) =>
+                        setSchedule((prev) => ({
+                          ...prev,
+                          timezone: event.target.value.slice(0, 64),
+                        }))
+                      }
+                      placeholder="Asia/Karachi"
+                      className={inputClass}
+                    />
+                  </label>
+                  <div className="grid gap-2">
+                    {SCHEDULE_DAY_LABELS.map((label, index) => {
+                      const day = schedule.days[index];
+                      return (
+                        <div
+                          key={label}
+                          className="flex flex-wrap items-center gap-2 text-xs text-ink-2"
+                        >
+                          <label className="flex w-14 items-center gap-1.5">
+                            <input
+                              type="checkbox"
+                              checked={day.enabled}
+                              onChange={(event) =>
+                                setSchedule((prev) => {
+                                  const days = prev.days.map((d, i) =>
+                                    i === index
+                                      ? { ...d, enabled: event.target.checked }
+                                      : d
+                                  );
+                                  return { ...prev, days };
+                                })
+                              }
+                            />
+                            {label}
+                          </label>
+                          <input
+                            type="time"
+                            value={day.start}
+                            disabled={!day.enabled}
+                            onChange={(event) =>
+                              setSchedule((prev) => {
+                                const days = prev.days.map((d, i) =>
+                                  i === index
+                                    ? { ...d, start: event.target.value || d.start }
+                                    : d
+                                );
+                                return { ...prev, days };
+                              })
+                            }
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink outline-none disabled:opacity-40"
+                          />
+                          <span className="text-ink-3">to</span>
+                          <input
+                            type="time"
+                            value={day.end}
+                            disabled={!day.enabled}
+                            onChange={(event) =>
+                              setSchedule((prev) => {
+                                const days = prev.days.map((d, i) =>
+                                  i === index
+                                    ? { ...d, end: event.target.value || d.end }
+                                    : d
+                                );
+                                return { ...prev, days };
+                              })
+                            }
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink outline-none disabled:opacity-40"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </fieldset>
+
             <div className="flex items-center gap-2">
               <button
                 type="submit"
@@ -647,6 +769,11 @@ export default function AgentsAndRouting() {
                   </p>
                   <p className="mt-0.5 text-[11px] text-ink-3">
                     {permissionSummary(agent)}
+                    {agent.schedule?.enabled && !agent.inHours ? (
+                      <span className="ml-1 rounded-full border border-amber-400/30 bg-amber-400/[0.08] px-1.5 py-0.5 text-[10px] text-amber-700">
+                        Outside hours
+                      </span>
+                    ) : null}
                   </p>
                   {versionsFor === agent.id ? (
                     <div className="mt-2 rounded-lg border border-line bg-white p-2.5">

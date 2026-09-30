@@ -70,6 +70,7 @@ from portal_notify import bp as portal_notify_bp  # noqa: E402
 from portal_escalation import bp as portal_escalation_bp  # noqa: E402
 from portal_ai_usage import bp as portal_ai_usage_bp  # noqa: E402
 from portal_ai_audit import bp as portal_ai_audit_bp  # noqa: E402
+from portal_ai_quality import bp as portal_ai_quality_bp  # noqa: E402
 from portal_bi import bp as portal_bi_bp  # noqa: E402
 from admin_ai import bp as admin_ai_bp  # noqa: E402
 from portal_memory import bp as portal_memory_bp  # noqa: E402
@@ -155,6 +156,7 @@ aux_app.register_blueprint(portal_notify_bp)
 aux_app.register_blueprint(portal_escalation_bp)
 aux_app.register_blueprint(portal_ai_usage_bp)
 aux_app.register_blueprint(portal_ai_audit_bp)
+aux_app.register_blueprint(portal_ai_quality_bp)
 aux_app.register_blueprint(portal_bi_bp)
 aux_app.register_blueprint(admin_ai_bp)
 aux_app.register_blueprint(portal_memory_bp)

@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     allowed_actions?: unknown;
     max_risk?: unknown;
     can_auto_reply?: unknown;
+    schedule?: unknown;
   } | null;
   const permissions = parseAgentPermissions(payload);
   if (!permissions.ok) {

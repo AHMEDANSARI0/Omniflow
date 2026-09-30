@@ -478,8 +478,16 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
                             str(agent.get("instructions") or "")[:400]}
         grounding["tools"].append("agent_persona")
         grounding["agent_id"] = agent.get("id")
-        grounding["agent_auto_reply"] = agent.get("can_auto_reply", True) \
-            is not False
+        in_hours = True
+        try:
+            import portal_agents as _agents_hours
+            in_hours = _agents_hours.agent_in_hours(agent) is not False
+        except Exception:
+            in_hours = True
+        grounding["agent_in_hours"] = in_hours
+        grounding["agent_auto_reply"] = (
+            agent.get("can_auto_reply", True) is not False and in_hours
+        )
         if str(agent.get("tone") or "").strip():
             tone = str(agent.get("tone"))
     profile = tool_customer_profile(cur, client_id, contact_id)

@@ -10369,6 +10369,18 @@ export async function deleteRoutingRule(
 
 export type AgentRisk = "low" | "medium" | "high";
 
+export interface AgentScheduleDay {
+  enabled: boolean;
+  start: string;
+  end: string;
+}
+
+export interface AgentSchedule {
+  enabled: boolean;
+  timezone: string;
+  days: AgentScheduleDay[];
+}
+
 export interface PortalAgent {
   id: number;
   name: string;
@@ -10383,6 +10395,10 @@ export interface PortalAgent {
   maxRisk: AgentRisk;
   /** false = drafts only: the brain never auto-sends under this persona. */
   canAutoReply: boolean;
+  /** Weekly auto-reply windows; enabled false = always on. */
+  schedule: AgentSchedule;
+  /** Live clock: whether the agent is inside its schedule right now. */
+  inHours: boolean;
 }
 
 function normalizeRisk(value: unknown): AgentRisk {
@@ -10418,6 +10434,8 @@ function normalizeAgent(item: unknown): PortalAgent | null {
     allowedActions: normalizeAllowedActions(row.allowed_actions),
     maxRisk: normalizeRisk(row.max_risk),
     canAutoReply: row.can_auto_reply !== false,
+    schedule: normalizeAgentSchedule(row.schedule),
+    inHours: row.in_hours !== false,
   };
 }
 
@@ -10454,6 +10472,46 @@ export interface AgentUpsert {
   allowedActions?: string[] | null;
   maxRisk?: AgentRisk;
   canAutoReply?: boolean;
+  schedule?: AgentSchedule;
+}
+
+function defaultAgentSchedule(): AgentSchedule {
+  return {
+    enabled: false,
+    timezone: "Asia/Karachi",
+    days: Array.from({ length: 7 }, () => ({
+      enabled: true,
+      start: "09:00",
+      end: "17:00",
+    })),
+  };
+}
+
+function normalizeAgentSchedule(raw: unknown): AgentSchedule {
+  const fallback = defaultAgentSchedule();
+  if (raw === null || typeof raw !== "object") return fallback;
+  const row = raw as Record<string, unknown>;
+  const daysRaw = Array.isArray(row.days) ? row.days : [];
+  const days = fallback.days.map((day, index) => {
+    const item =
+      daysRaw[index] !== null && typeof daysRaw[index] === "object"
+        ? (daysRaw[index] as Record<string, unknown>)
+        : null;
+    if (!item) return day;
+    return {
+      enabled: item.enabled !== false,
+      start: typeof item.start === "string" ? item.start : day.start,
+      end: typeof item.end === "string" ? item.end : day.end,
+    };
+  });
+  return {
+    enabled: row.enabled === true,
+    timezone:
+      typeof row.timezone === "string" && row.timezone.trim()
+        ? row.timezone.trim().slice(0, 64)
+        : fallback.timezone,
+    days,
+  };
 }
 
 function agentBody(input: AgentUpsert): Record<string, unknown> {
@@ -10469,6 +10527,9 @@ function agentBody(input: AgentUpsert): Record<string, unknown> {
   if (input.maxRisk !== undefined) body.max_risk = input.maxRisk;
   if (input.canAutoReply !== undefined) {
     body.can_auto_reply = input.canAutoReply;
+  }
+  if (input.schedule !== undefined) {
+    body.schedule = input.schedule;
   }
   return body;
 }
@@ -13757,6 +13818,738 @@ export async function getAiUsage(
   if (!response.ok) return null;
   return (await response.json().catch(() => null)) as AiUsagePayload | null;
 }
+
+
+// ---------------------------------------------------------------------------
+// Live AI quality + human-labelled answer sets (CP: portal_ai_quality)
+// ---------------------------------------------------------------------------
+
+export interface AiQualitySignal {
+  key: string;
+  severity: string;
+  title: string;
+  detail: string;
+}
+
+export interface AiQualitySample {
+  days: number;
+  generatedAt: string;
+  scope: string;
+  traces: {
+    total: number;
+    byDecision: Record<string, number>;
+    byKind: Record<string, number>;
+    avgConfidence: number | null;
+    groundedShare: number | null;
+    citedShare: number | null;
+    autoReplyBlockedShare: number | null;
+    guardBlocked: number;
+    handoffReasons: Record<string, number>;
+  };
+  usage: {
+    calls: number;
+    failed: number;
+    failShare: number | null;
+    avgLatencyMs: number;
+  } | null;
+  signals: AiQualitySignal[];
+}
+
+function normalizeAiQuality(payload: Record<string, unknown>): AiQualitySample {
+  const traces = asRecord(payload.traces);
+  const usage = payload.usage === null || payload.usage === undefined
+    ? null
+    : asRecord(payload.usage);
+  const signalsRaw = Array.isArray(payload.signals) ? payload.signals : [];
+  const signals: AiQualitySignal[] = [];
+  for (const item of signalsRaw) {
+    const row = asRecord(item);
+    if (typeof row.title === "string") {
+      signals.push({
+        key: typeof row.key === "string" ? row.key : "",
+        severity: typeof row.severity === "string" ? row.severity : "info",
+        title: row.title,
+        detail: typeof row.detail === "string" ? row.detail : "",
+      });
+    }
+  }
+  const numMap = (src: unknown): Record<string, number> => {
+    const out: Record<string, number> = {};
+    const rec = asRecord(src);
+    for (const [k, v] of Object.entries(rec)) {
+      if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+    }
+    return out;
+  };
+  return {
+    days: typeof payload.days === "number" ? payload.days : 7,
+    generatedAt:
+      typeof payload.generated_at === "string" ? payload.generated_at : "",
+    scope: typeof payload.scope === "string" ? payload.scope : "workspace",
+    traces: {
+      total: typeof traces.total === "number" ? traces.total : 0,
+      byDecision: numMap(traces.by_decision),
+      byKind: numMap(traces.by_kind),
+      avgConfidence:
+        typeof traces.avg_confidence === "number" ? traces.avg_confidence : null,
+      groundedShare:
+        typeof traces.grounded_share === "number" ? traces.grounded_share : null,
+      citedShare:
+        typeof traces.cited_share === "number" ? traces.cited_share : null,
+      autoReplyBlockedShare:
+        typeof traces.auto_reply_blocked_share === "number"
+          ? traces.auto_reply_blocked_share
+          : null,
+      guardBlocked:
+        typeof traces.guard_blocked === "number" ? traces.guard_blocked : 0,
+      handoffReasons: numMap(traces.handoff_reasons),
+    },
+    usage: usage
+      ? {
+          calls: typeof usage.calls === "number" ? usage.calls : 0,
+          failed: typeof usage.failed === "number" ? usage.failed : 0,
+          failShare:
+            typeof usage.fail_share === "number" ? usage.fail_share : null,
+          avgLatencyMs:
+            typeof usage.avg_latency_ms === "number" ? usage.avg_latency_ms : 0,
+        }
+      : null,
+    signals,
+  };
+}
+
+export async function getAiQualitySample(
+  accessToken: string,
+  days = 7
+): Promise<AiQualitySample | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/quality?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return normalizeAiQuality(payload);
+}
+
+export interface AiLabelItem {
+  message: string;
+  expectedDecision: "send" | "handoff" | "draft";
+  expectedKeywords: string[];
+  forbiddenPhrases: string[];
+  note: string;
+}
+
+export interface AiLabelSet {
+  id: number;
+  name: string;
+  notes: string;
+  items: AiLabelItem[];
+  itemCount: number;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+function normalizeLabelItem(raw: unknown): AiLabelItem | null {
+  const row = asRecord(raw);
+  const message = typeof row.message === "string" ? row.message : "";
+  if (!message) return null;
+  const decision = String(row.expected_decision || row.expectedDecision || "send");
+  const dec =
+    decision === "handoff" || decision === "draft" || decision === "send"
+      ? decision
+      : "send";
+  const kw = Array.isArray(row.expected_keywords)
+    ? row.expected_keywords.filter((x): x is string => typeof x === "string")
+    : Array.isArray(row.expectedKeywords)
+      ? row.expectedKeywords.filter((x): x is string => typeof x === "string")
+      : [];
+  const fb = Array.isArray(row.forbidden_phrases)
+    ? row.forbidden_phrases.filter((x): x is string => typeof x === "string")
+    : Array.isArray(row.forbiddenPhrases)
+      ? row.forbiddenPhrases.filter((x): x is string => typeof x === "string")
+      : [];
+  return {
+    message,
+    expectedDecision: dec,
+    expectedKeywords: kw,
+    forbiddenPhrases: fb,
+    note: typeof row.note === "string" ? row.note : "",
+  };
+}
+
+function normalizeLabelSet(raw: unknown): AiLabelSet | null {
+  const row = asRecord(raw);
+  const id = typeof row.id === "number" ? row.id : 0;
+  if (id <= 0) return null;
+  const itemsRaw = Array.isArray(row.items) ? row.items : [];
+  const items: AiLabelItem[] = [];
+  for (const item of itemsRaw) {
+    const n = normalizeLabelItem(item);
+    if (n) items.push(n);
+  }
+  return {
+    id,
+    name: typeof row.name === "string" ? row.name : "",
+    notes: typeof row.notes === "string" ? row.notes : "",
+    items,
+    itemCount:
+      typeof row.item_count === "number" ? row.item_count : items.length,
+    isActive: row.is_active !== false,
+    updatedAt: typeof row.updated_at === "string" ? row.updated_at : "",
+  };
+}
+
+export async function listAiLabelSets(
+  accessToken: string
+): Promise<{ sets: AiLabelSet[]; decisions: string[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/ai/labels");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const setsRaw = Array.isArray(payload.sets) ? payload.sets : [];
+  const sets: AiLabelSet[] = [];
+  for (const item of setsRaw) {
+    const n = normalizeLabelSet(item);
+    if (n) sets.push(n);
+  }
+  const decisions = Array.isArray(payload.decisions)
+    ? payload.decisions.filter((x): x is string => typeof x === "string")
+    : ["send", "handoff", "draft"];
+  return { sets, decisions };
+}
+
+function labelSetBody(input: {
+  name: string;
+  notes?: string;
+  items: AiLabelItem[];
+  isActive?: boolean;
+}): Record<string, unknown> {
+  return {
+    name: input.name,
+    notes: input.notes || "",
+    is_active: input.isActive !== false,
+    items: input.items.map((item) => ({
+      message: item.message,
+      expected_decision: item.expectedDecision,
+      expected_keywords: item.expectedKeywords,
+      forbidden_phrases: item.forbiddenPhrases,
+      note: item.note,
+    })),
+  };
+}
+
+export async function createAiLabelSet(
+  accessToken: string,
+  input: { name: string; notes?: string; items: AiLabelItem[] }
+): Promise<AiLabelSet | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/ai/labels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(labelSetBody(input)),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return normalizeLabelSet(payload.set);
+}
+
+export async function updateAiLabelSet(
+  accessToken: string,
+  setId: number,
+  input: { name: string; notes?: string; items: AiLabelItem[]; isActive?: boolean }
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/labels/" + setId,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(labelSetBody(input)),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function archiveAiLabelSet(
+  accessToken: string,
+  setId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/labels/" + setId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export interface AiLabelRunResult {
+  setId: number;
+  name: string;
+  mode: string;
+  llmCalls: number;
+  passed: number;
+  total: number;
+  score: number;
+  status: string;
+  results: {
+    message: string;
+    expectedDecision: string;
+    actualDecision: string | null;
+    passed: boolean;
+    detail: string;
+    liveReply: string | null;
+  }[];
+}
+
+export async function runAiLabelSet(
+  accessToken: string,
+  setId: number,
+  includeLive = false
+): Promise<AiLabelRunResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/labels/" + setId + "/run",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ include_live: includeLive === true }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const resultsRaw = Array.isArray(payload.results) ? payload.results : [];
+  const results = [];
+  for (const item of resultsRaw) {
+    const row = asRecord(item);
+    results.push({
+      message: typeof row.message === "string" ? row.message : "",
+      expectedDecision:
+        typeof row.expected_decision === "string" ? row.expected_decision : "",
+      actualDecision:
+        typeof row.actual_decision === "string" ? row.actual_decision : null,
+      passed: row.passed === true,
+      detail: typeof row.detail === "string" ? row.detail : "",
+      liveReply: typeof row.live_reply === "string" ? row.live_reply : null,
+    });
+  }
+  return {
+    setId: typeof payload.set_id === "number" ? payload.set_id : setId,
+    name: typeof payload.name === "string" ? payload.name : "",
+    mode: typeof payload.mode === "string" ? payload.mode : "deterministic",
+    llmCalls: typeof payload.llm_calls === "number" ? payload.llm_calls : 0,
+    passed: typeof payload.passed === "number" ? payload.passed : 0,
+    total: typeof payload.total === "number" ? payload.total : 0,
+    score: typeof payload.score === "number" ? payload.score : 0,
+    status: typeof payload.status === "string" ? payload.status : "fail",
+    results,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Live AI quality + human-labelled answer sets (CP: portal_ai_quality)
+// ---------------------------------------------------------------------------
+
+export interface AiQualitySignal {
+  key: string;
+  severity: string;
+  title: string;
+  detail: string;
+}
+
+export interface AiQualitySample {
+  days: number;
+  generatedAt: string;
+  scope: string;
+  traces: {
+    total: number;
+    byDecision: Record<string, number>;
+    byKind: Record<string, number>;
+    avgConfidence: number | null;
+    groundedShare: number | null;
+    citedShare: number | null;
+    autoReplyBlockedShare: number | null;
+    guardBlocked: number;
+    handoffReasons: Record<string, number>;
+  };
+  usage: {
+    calls: number;
+    failed: number;
+    failShare: number | null;
+    avgLatencyMs: number;
+  } | null;
+  signals: AiQualitySignal[];
+}
+
+function normalizeAiQuality(payload: Record<string, unknown>): AiQualitySample {
+  const traces = asRecord(payload.traces);
+  const usage = payload.usage === null || payload.usage === undefined
+    ? null
+    : asRecord(payload.usage);
+  const signalsRaw = Array.isArray(payload.signals) ? payload.signals : [];
+  const signals: AiQualitySignal[] = [];
+  for (const item of signalsRaw) {
+    const row = asRecord(item);
+    if (typeof row.title === "string") {
+      signals.push({
+        key: typeof row.key === "string" ? row.key : "",
+        severity: typeof row.severity === "string" ? row.severity : "info",
+        title: row.title,
+        detail: typeof row.detail === "string" ? row.detail : "",
+      });
+    }
+  }
+  const numMap = (src: unknown): Record<string, number> => {
+    const out: Record<string, number> = {};
+    const rec = asRecord(src);
+    for (const [k, v] of Object.entries(rec)) {
+      if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+    }
+    return out;
+  };
+  return {
+    days: typeof payload.days === "number" ? payload.days : 7,
+    generatedAt:
+      typeof payload.generated_at === "string" ? payload.generated_at : "",
+    scope: typeof payload.scope === "string" ? payload.scope : "workspace",
+    traces: {
+      total: typeof traces.total === "number" ? traces.total : 0,
+      byDecision: numMap(traces.by_decision),
+      byKind: numMap(traces.by_kind),
+      avgConfidence:
+        typeof traces.avg_confidence === "number" ? traces.avg_confidence : null,
+      groundedShare:
+        typeof traces.grounded_share === "number" ? traces.grounded_share : null,
+      citedShare:
+        typeof traces.cited_share === "number" ? traces.cited_share : null,
+      autoReplyBlockedShare:
+        typeof traces.auto_reply_blocked_share === "number"
+          ? traces.auto_reply_blocked_share
+          : null,
+      guardBlocked:
+        typeof traces.guard_blocked === "number" ? traces.guard_blocked : 0,
+      handoffReasons: numMap(traces.handoff_reasons),
+    },
+    usage: usage
+      ? {
+          calls: typeof usage.calls === "number" ? usage.calls : 0,
+          failed: typeof usage.failed === "number" ? usage.failed : 0,
+          failShare:
+            typeof usage.fail_share === "number" ? usage.fail_share : null,
+          avgLatencyMs:
+            typeof usage.avg_latency_ms === "number" ? usage.avg_latency_ms : 0,
+        }
+      : null,
+    signals,
+  };
+}
+
+export async function getAiQualitySample(
+  accessToken: string,
+  days = 7
+): Promise<AiQualitySample | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/quality?days=" + encodeURIComponent(String(days))
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return normalizeAiQuality(payload);
+}
+
+export interface AiLabelItem {
+  message: string;
+  expectedDecision: "send" | "handoff" | "draft";
+  expectedKeywords: string[];
+  forbiddenPhrases: string[];
+  note: string;
+}
+
+export interface AiLabelSet {
+  id: number;
+  name: string;
+  notes: string;
+  items: AiLabelItem[];
+  itemCount: number;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+function normalizeLabelItem(raw: unknown): AiLabelItem | null {
+  const row = asRecord(raw);
+  const message = typeof row.message === "string" ? row.message : "";
+  if (!message) return null;
+  const decision = String(row.expected_decision || row.expectedDecision || "send");
+  const dec =
+    decision === "handoff" || decision === "draft" || decision === "send"
+      ? decision
+      : "send";
+  const kw = Array.isArray(row.expected_keywords)
+    ? row.expected_keywords.filter((x): x is string => typeof x === "string")
+    : Array.isArray(row.expectedKeywords)
+      ? row.expectedKeywords.filter((x): x is string => typeof x === "string")
+      : [];
+  const fb = Array.isArray(row.forbidden_phrases)
+    ? row.forbidden_phrases.filter((x): x is string => typeof x === "string")
+    : Array.isArray(row.forbiddenPhrases)
+      ? row.forbiddenPhrases.filter((x): x is string => typeof x === "string")
+      : [];
+  return {
+    message,
+    expectedDecision: dec,
+    expectedKeywords: kw,
+    forbiddenPhrases: fb,
+    note: typeof row.note === "string" ? row.note : "",
+  };
+}
+
+function normalizeLabelSet(raw: unknown): AiLabelSet | null {
+  const row = asRecord(raw);
+  const id = typeof row.id === "number" ? row.id : 0;
+  if (id <= 0) return null;
+  const itemsRaw = Array.isArray(row.items) ? row.items : [];
+  const items: AiLabelItem[] = [];
+  for (const item of itemsRaw) {
+    const n = normalizeLabelItem(item);
+    if (n) items.push(n);
+  }
+  return {
+    id,
+    name: typeof row.name === "string" ? row.name : "",
+    notes: typeof row.notes === "string" ? row.notes : "",
+    items,
+    itemCount:
+      typeof row.item_count === "number" ? row.item_count : items.length,
+    isActive: row.is_active !== false,
+    updatedAt: typeof row.updated_at === "string" ? row.updated_at : "",
+  };
+}
+
+export async function listAiLabelSets(
+  accessToken: string
+): Promise<{ sets: AiLabelSet[]; decisions: string[] } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/ai/labels");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const setsRaw = Array.isArray(payload.sets) ? payload.sets : [];
+  const sets: AiLabelSet[] = [];
+  for (const item of setsRaw) {
+    const n = normalizeLabelSet(item);
+    if (n) sets.push(n);
+  }
+  const decisions = Array.isArray(payload.decisions)
+    ? payload.decisions.filter((x): x is string => typeof x === "string")
+    : ["send", "handoff", "draft"];
+  return { sets, decisions };
+}
+
+function labelSetBody(input: {
+  name: string;
+  notes?: string;
+  items: AiLabelItem[];
+  isActive?: boolean;
+}): Record<string, unknown> {
+  return {
+    name: input.name,
+    notes: input.notes || "",
+    is_active: input.isActive !== false,
+    items: input.items.map((item) => ({
+      message: item.message,
+      expected_decision: item.expectedDecision,
+      expected_keywords: item.expectedKeywords,
+      forbidden_phrases: item.forbiddenPhrases,
+      note: item.note,
+    })),
+  };
+}
+
+export async function createAiLabelSet(
+  accessToken: string,
+  input: { name: string; notes?: string; items: AiLabelItem[] }
+): Promise<AiLabelSet | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/ai/labels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(labelSetBody(input)),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return normalizeLabelSet(payload.set);
+}
+
+export async function updateAiLabelSet(
+  accessToken: string,
+  setId: number,
+  input: { name: string; notes?: string; items: AiLabelItem[]; isActive?: boolean }
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/labels/" + setId,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(labelSetBody(input)),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export async function archiveAiLabelSet(
+  accessToken: string,
+  setId: number
+): Promise<boolean> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/labels/" + setId,
+      { method: "DELETE" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return false;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  return response.ok;
+}
+
+export interface AiLabelRunResult {
+  setId: number;
+  name: string;
+  mode: string;
+  llmCalls: number;
+  passed: number;
+  total: number;
+  score: number;
+  status: string;
+  results: {
+    message: string;
+    expectedDecision: string;
+    actualDecision: string | null;
+    passed: boolean;
+    detail: string;
+    liveReply: string | null;
+  }[];
+}
+
+export async function runAiLabelSet(
+  accessToken: string,
+  setId: number,
+  includeLive = false
+): Promise<AiLabelRunResult | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/ai/labels/" + setId + "/run",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ include_live: includeLive === true }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const resultsRaw = Array.isArray(payload.results) ? payload.results : [];
+  const results = [];
+  for (const item of resultsRaw) {
+    const row = asRecord(item);
+    results.push({
+      message: typeof row.message === "string" ? row.message : "",
+      expectedDecision:
+        typeof row.expected_decision === "string" ? row.expected_decision : "",
+      actualDecision:
+        typeof row.actual_decision === "string" ? row.actual_decision : null,
+      passed: row.passed === true,
+      detail: typeof row.detail === "string" ? row.detail : "",
+      liveReply: typeof row.live_reply === "string" ? row.live_reply : null,
+    });
+  }
+  return {
+    setId: typeof payload.set_id === "number" ? payload.set_id : setId,
+    name: typeof payload.name === "string" ? payload.name : "",
+    mode: typeof payload.mode === "string" ? payload.mode : "deterministic",
+    llmCalls: typeof payload.llm_calls === "number" ? payload.llm_calls : 0,
+    passed: typeof payload.passed === "number" ? payload.passed : 0,
+    total: typeof payload.total === "number" ? payload.total : 0,
+    score: typeof payload.score === "number" ? payload.score : 0,
+    status: typeof payload.status === "string" ? payload.status : "fail",
+    results,
+  };
+}
+
 
 export async function getAiAudit(
   accessToken: string,

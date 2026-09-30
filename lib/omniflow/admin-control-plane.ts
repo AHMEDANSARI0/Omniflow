@@ -363,6 +363,25 @@ export async function getAdminAiEval(): Promise<AdminAiEval> {
   return payload as AdminAiEval;
 }
 
+export type AdminAiQuality = Record<string, unknown>;
+
+export async function getAdminAiQuality(
+  days = 7,
+  clientId?: number
+): Promise<AdminAiQuality> {
+  const safeDays = [1, 7, 14, 30].includes(days) ? days : 7;
+  let path = "api/v1/admin/ai/quality?days=" + safeDays;
+  if (typeof clientId === "number" && clientId > 0) {
+    path += "&client_id=" + encodeURIComponent(String(clientId));
+  }
+  const response = await adminRequest(path, { method: "GET" });
+  const payload: unknown = await response.json();
+  if (payload === null || typeof payload !== "object") {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminAiQuality;
+}
+
 export async function getAdminAiOverview(
   days: number
 ): Promise<AdminAiOverview> {

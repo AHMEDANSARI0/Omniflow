@@ -97,6 +97,32 @@ interface EvalCase {
   detail: string;
 }
 
+interface LiveQualitySignal {
+  key: string;
+  severity: string;
+  title: string;
+  detail: string;
+}
+
+interface LiveQuality {
+  days: number;
+  scope?: string;
+  traces?: {
+    total?: number;
+    by_decision?: Record<string, number>;
+    avg_confidence?: number | null;
+    grounded_share?: number | null;
+    guard_blocked?: number;
+  };
+  usage?: {
+    calls?: number;
+    failed?: number;
+    fail_share?: number | null;
+    avg_latency_ms?: number;
+  } | null;
+  signals?: LiveQualitySignal[];
+}
+
 interface BehavioralEval {
   suite: string;
   version: string;
@@ -187,6 +213,9 @@ export default function AdminAiControlPage() {
   const [behavioralEval, setBehavioralEval] = useState<BehavioralEval | null>(null);
   const [evalLoading, setEvalLoading] = useState(false);
   const [evalError, setEvalError] = useState<string | null>(null);
+  const [liveQuality, setLiveQuality] = useState<LiveQuality | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [qualityError, setQualityError] = useState<string | null>(null);
 
   // platform controls form
   const [killSwitch, setKillSwitch] = useState(false);
@@ -257,10 +286,37 @@ export default function AdminAiControlPage() {
     }
   }, []);
 
+  const runLiveQuality = useCallback(async () => {
+    setQualityLoading(true);
+    setQualityError(null);
+    try {
+      const response = await fetch("/api/omniflow/admin/ai/quality?days=7", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setQualityError(
+          (payload && payload.error && payload.error.message) ||
+            "Could not sample live AI quality."
+        );
+        setLiveQuality(null);
+      } else {
+        setLiveQuality(payload as LiveQuality);
+      }
+    } catch {
+      setQualityError("Network error — live quality was not sampled.");
+      setLiveQuality(null);
+    } finally {
+      setQualityLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
     void runBehavioralEval();
-  }, [load, runBehavioralEval]);
+    void runLiveQuality();
+  }, [load, runBehavioralEval, runLiveQuality]);
 
   function flash(text: string) {
     setNotice(text);
@@ -486,6 +542,84 @@ export default function AdminAiControlPage() {
         ) : (
           <p className="mt-4 text-xs text-ink-3">
             {evalLoading ? "Running deterministic contracts..." : "No result yet."}
+          </p>
+        )}
+      </div>
+
+
+      {/* ---------- live provider quality sample ---------- */}
+      <div className="mb-6 rounded-2xl border border-line bg-white p-5 shadow-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">Live provider quality</h2>
+            <p className="mt-1 text-xs leading-relaxed text-ink-3">
+              Deterministic sample of recent brain traces and LLM usage across
+              workspaces. Zero extra provider cost. Owner labelled sets live on
+              Configure AI.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void runLiveQuality()}
+            disabled={qualityLoading}
+            className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 hover:border-line-2 disabled:opacity-50"
+          >
+            {qualityLoading ? "Sampling..." : "Refresh sample"}
+          </button>
+        </div>
+        {qualityError ? (
+          <p className="mt-3 text-xs text-danger">{qualityError}</p>
+        ) : liveQuality ? (
+          <div className="mt-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-line bg-canvas px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">Traces</p>
+                <p className="text-lg font-semibold text-ink">
+                  {liveQuality.traces?.total ?? 0}
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-canvas px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">Avg confidence</p>
+                <p className="text-lg font-semibold text-ink">
+                  {liveQuality.traces?.avg_confidence == null
+                    ? "—"
+                    : Math.round((liveQuality.traces.avg_confidence || 0) * 100) + "%"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-canvas px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">LLM calls</p>
+                <p className="text-lg font-semibold text-ink">
+                  {liveQuality.usage?.calls ?? "—"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-canvas px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-ink-3">Fail share</p>
+                <p className="text-lg font-semibold text-ink">
+                  {liveQuality.usage?.fail_share == null
+                    ? "—"
+                    : Math.round((liveQuality.usage.fail_share || 0) * 100) + "%"}
+                </p>
+              </div>
+            </div>
+            {(liveQuality.signals || []).length > 0 ? (
+              <ul className="space-y-1.5">
+                {(liveQuality.signals || []).map((s) => (
+                  <li key={s.key + s.title} className="text-xs text-ink-2">
+                    <span className="font-medium text-ink">{s.title}</span>
+                    {" · "}
+                    {s.detail}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-ink-3">
+                No elevated signals in the last {liveQuality.days} days.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-ink-3">
+            {qualityLoading ? "Sampling live quality..." : "No sample yet."}
           </p>
         )}
       </div>

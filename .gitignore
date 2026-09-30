@@ -52,3 +52,5 @@ next-env.d.ts
 /hide/
 /Omniflow/
 *.dir_conflict.bak/
+/patchers
+/hide

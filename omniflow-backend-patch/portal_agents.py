@@ -66,7 +66,7 @@ DEFAULT_MAX_RISK = "high"
 #: the owner API all shape rows through _shape()).
 AGENT_COLUMNS = ("id, name, tone, instructions, escalation_user_id,"
                  " is_active, updated_at, allowed_actions, max_risk,"
-                 " can_auto_reply")
+                 " can_auto_reply, schedule")
 
 _DDL_READY = False
 
@@ -108,6 +108,8 @@ ALTER TABLE portal_agents
   ADD COLUMN IF NOT EXISTS can_auto_reply BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE portal_agent_versions
   ADD COLUMN IF NOT EXISTS note TEXT NOT NULL DEFAULT '';
+ALTER TABLE portal_agents
+  ADD COLUMN IF NOT EXISTS schedule JSONB;
 """
 
 
@@ -154,19 +156,177 @@ def _risk(value: Any) -> str:
     return text if text in RISK_LEVELS else DEFAULT_MAX_RISK
 
 
+DAY_LABELS = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+DEFAULT_SCHEDULE_TZ = os.environ.get("OF_AGENT_SCHEDULE_TZ", "Asia/Karachi") or "Asia/Karachi"
+SCHEDULE_START_DEFAULT = "09:00"
+SCHEDULE_END_DEFAULT = "17:00"
+
+
+def default_schedule() -> Dict[str, Any]:
+    """Off by default: agent is always in hours (no window gate)."""
+    return {
+        "enabled": False,
+        "timezone": str(DEFAULT_SCHEDULE_TZ)[:64],
+        "days": [
+            {"enabled": True, "start": SCHEDULE_START_DEFAULT,
+             "end": SCHEDULE_END_DEFAULT}
+            for _ in DAY_LABELS
+        ],
+    }
+
+
+def _parse_hhmm(value: Any) -> Optional[str]:
+    text = str(value or "").strip()
+    if len(text) != 5 or text[2] != ":":
+        return None
+    try:
+        hour = int(text[:2])
+        minute = int(text[3:])
+    except Exception:
+        return None
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        return None
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _normalize_schedule(raw: Any) -> Dict[str, Any]:
+    """Owner payload / DB JSON -> clean schedule. Junk -> defaults."""
+    out = default_schedule()
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            return out
+    if not isinstance(raw, dict):
+        return out
+    if isinstance(raw.get("enabled"), bool):
+        out["enabled"] = raw["enabled"]
+    tz = str(raw.get("timezone") or "").strip()
+    if tz and len(tz) <= 64 and all(c.isalnum() or c in "/_+-" for c in tz):
+        out["timezone"] = tz
+    days_raw = raw.get("days")
+    if isinstance(days_raw, list) and len(days_raw) == 7:
+        days = []
+        for i, item in enumerate(days_raw):
+            base = dict(out["days"][i])
+            if isinstance(item, dict):
+                if isinstance(item.get("enabled"), bool):
+                    base["enabled"] = item["enabled"]
+                start = _parse_hhmm(item.get("start"))
+                end = _parse_hhmm(item.get("end"))
+                if start:
+                    base["start"] = start
+                if end:
+                    base["end"] = end
+                # if start > end, keep but is_in_hours treats as closed-cross-midnight simple: no
+            days.append(base)
+        out["days"] = days
+    return out
+
+
+def _validate_schedule(raw: Any) -> Optional[str]:
+    """None when ok; English error string when bad. None/absent = ok (defaults)."""
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            return "schedule must be an object."
+    if not isinstance(raw, dict):
+        return "schedule must be an object."
+    if "enabled" in raw and not isinstance(raw.get("enabled"), bool):
+        return "schedule.enabled must be true or false."
+    if "timezone" in raw:
+        tz = str(raw.get("timezone") or "").strip()
+        if not tz or len(tz) > 64:
+            return "schedule.timezone is required (max 64 characters)."
+        if not all(c.isalnum() or c in "/_+-" for c in tz):
+            return "schedule.timezone looks invalid."
+    if "days" in raw:
+        days = raw.get("days")
+        if not isinstance(days, list) or len(days) != 7:
+            return "schedule.days must be a list of 7 day windows (Sun-Sat)."
+        for i, item in enumerate(days):
+            if not isinstance(item, dict):
+                return "schedule.days[" + str(i) + "] must be an object."
+            if "enabled" in item and not isinstance(item.get("enabled"), bool):
+                return "schedule.days[" + str(i) + "].enabled must be true or false."
+            for key in ("start", "end"):
+                if key in item and item.get(key) is not None:
+                    if _parse_hhmm(item.get(key)) is None:
+                        return ("schedule.days[" + str(i) + "]." + key
+                                + " must be HH:MM.")
+            start = _parse_hhmm(item.get("start")) if "start" in item else None
+            end = _parse_hhmm(item.get("end")) if "end" in item else None
+            if start and end and start >= end:
+                return ("schedule.days[" + str(i)
+                        + "] start must be before end (same-day windows only).")
+    return None
+
+
+def agent_in_hours(agent: Optional[Dict[str, Any]],
+                   when=None) -> bool:
+    """True when the agent may auto-reply now. Schedule off -> always True.
+    Fail-soft: any clock/tz error -> True (never brick the brain)."""
+    if not agent:
+        return True
+    schedule = agent.get("schedule")
+    if not isinstance(schedule, dict):
+        schedule = _normalize_schedule(schedule)
+    if not schedule.get("enabled"):
+        return True
+    days = schedule.get("days") or []
+    if not isinstance(days, list) or len(days) != 7:
+        return True
+    try:
+        from datetime import datetime, timezone
+        moment = when if when is not None else datetime.now(timezone.utc)
+        if getattr(moment, "tzinfo", None) is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        tz_name = str(schedule.get("timezone") or DEFAULT_SCHEDULE_TZ)
+        try:
+            from zoneinfo import ZoneInfo
+            local = moment.astimezone(ZoneInfo(tz_name))
+        except Exception:
+            # Fixed offset fallback: Asia/Karachi ~ UTC+5 when zoneinfo missing
+            from datetime import timedelta
+            local = moment.astimezone(timezone(timedelta(hours=5)))
+        # Python weekday: Mon=0..Sun=6; our days Sun=0..Sat=6
+        py_wd = local.weekday()  # Mon=0
+        idx = (py_wd + 1) % 7  # Sun=0
+        day = days[idx] if idx < len(days) else None
+        if not isinstance(day, dict) or not day.get("enabled"):
+            return False
+        start = str(day.get("start") or "")
+        end = str(day.get("end") or "")
+        now_hm = f"{local.hour:02d}:{local.minute:02d}"
+        if start >= end:
+            return False
+        return start <= now_hm < end
+    except Exception as error:
+        logger.warning("agent_in_hours failed: %s", error)
+        return True
+
+
+
+
 def _shape(row: Dict[str, Any]) -> Dict[str, Any]:
     escalation = row.get("escalation_user_id")
-    return {"id": int(row.get("id") or 0),
-            "name": str(row.get("name") or ""),
-            "tone": str(row.get("tone") or ""),
-            "instructions": str(row.get("instructions") or ""),
-            "escalation_user_id": int(escalation) if escalation else None,
-            "is_active": bool(row.get("is_active")),
-            "updated_at": str(row.get("updated_at") or ""),
-            "allowed_actions": _allowed_list(row.get("allowed_actions")),
-            "max_risk": _risk(row.get("max_risk")),
-            "can_auto_reply": (True if row.get("can_auto_reply") is None
-                               else bool(row.get("can_auto_reply")))}
+    agent = {"id": int(row.get("id") or 0),
+             "name": str(row.get("name") or ""),
+             "tone": str(row.get("tone") or ""),
+             "instructions": str(row.get("instructions") or ""),
+             "escalation_user_id": int(escalation) if escalation else None,
+             "is_active": bool(row.get("is_active")),
+             "updated_at": str(row.get("updated_at") or ""),
+             "allowed_actions": _allowed_list(row.get("allowed_actions")),
+             "max_risk": _risk(row.get("max_risk")),
+             "can_auto_reply": (True if row.get("can_auto_reply") is None
+                                else bool(row.get("can_auto_reply"))),
+             "schedule": _normalize_schedule(row.get("schedule"))}
+    agent["in_hours"] = agent_in_hours(agent)
+    return agent
 
 
 def permits(agent: Optional[Dict[str, Any]], action: str,
@@ -343,6 +503,11 @@ def _validate_payload(payload: Dict[str, Any]) -> Tuple[Optional[dict], int]:
         return (jsonify({"error": {
             "code": "bad_request",
             "message": "can_auto_reply must be true or false."}}), 400)
+    schedule_problem = _validate_schedule(payload.get("schedule"))
+    if schedule_problem:
+        return (jsonify({"error": {
+            "code": "bad_request",
+            "message": schedule_problem}}), 400)
     return None, 200
 
 
@@ -376,12 +541,14 @@ def _permissions_from(payload: Dict[str, Any],
 
 
 def _snapshot(name: str, tone: str, instructions: str, escalation,
-              is_active: bool, permissions: Dict[str, Any]) -> Dict[str, Any]:
+              is_active: bool, permissions: Dict[str, Any],
+              schedule: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     return {"name": name, "tone": tone, "instructions": instructions,
             "escalation_user_id": escalation, "is_active": is_active,
             "allowed_actions": permissions.get("allowed_actions"),
             "max_risk": permissions.get("max_risk") or DEFAULT_MAX_RISK,
-            "can_auto_reply": bool(permissions.get("can_auto_reply", True))}
+            "can_auto_reply": bool(permissions.get("can_auto_reply", True)),
+            "schedule": _normalize_schedule(schedule)}
 
 
 def _permissions_json(permissions: Dict[str, Any]) -> Optional[str]:
@@ -421,21 +588,24 @@ def create_agent():
                 return jsonify({"error": {
                     "code": "bad_request",
                     "message": "Max " + str(MAX_AGENTS) + " agents."}}), 400
+            schedule = _normalize_schedule(payload.get("schedule"))
             cur.execute(
                 "INSERT INTO " + portal_db._q(AGENTS_TABLE) +
                 " (client_id, name, tone, instructions, escalation_user_id,"
-                " allowed_actions, max_risk, can_auto_reply)"
-                " VALUES (%s, %s, %s, %s, %s, CAST(%s AS JSONB), %s, %s)"
+                " allowed_actions, max_risk, can_auto_reply, schedule)"
+                " VALUES (%s, %s, %s, %s, %s, CAST(%s AS JSONB), %s, %s,"
+                " CAST(%s AS JSONB))"
                 " RETURNING id",
                 (client_id, name[:MAX_NAME_CHARS], tone[:MAX_TONE_CHARS],
                  instructions[:MAX_INSTRUCTIONS_CHARS], escalation,
                  _permissions_json(permissions), permissions["max_risk"],
-                 bool(permissions["can_auto_reply"])),
+                 bool(permissions["can_auto_reply"]),
+                 json.dumps(schedule, ensure_ascii=False)),
             )
             rows = portal_db.rows(cur)
             agent_id = int((rows[0] if rows else {}).get("id") or 0)
             snapshot = _snapshot(name, tone, instructions, escalation, True,
-                                 permissions)
+                                 permissions, schedule)
             cur.execute(
                 "INSERT INTO " + portal_db._q(VERSIONS_TABLE) +
                 " (client_id, agent_id, version, snapshot, note)"
@@ -451,15 +621,16 @@ def create_agent():
         conn.commit()
     finally:
         conn.close()
-    return jsonify({"agent": {"id": agent_id, "name": name, "tone": tone,
-                              "instructions": instructions,
-                              "escalation_user_id": escalation,
-                              "is_active": True, "versions": 1,
-                              "allowed_actions":
-                                  permissions["allowed_actions"],
-                              "max_risk": permissions["max_risk"],
-                              "can_auto_reply":
-                                  bool(permissions["can_auto_reply"])}}), 200
+    shaped = {"id": agent_id, "name": name, "tone": tone,
+              "instructions": instructions,
+              "escalation_user_id": escalation,
+              "is_active": True, "versions": 1,
+              "allowed_actions": permissions["allowed_actions"],
+              "max_risk": permissions["max_risk"],
+              "can_auto_reply": bool(permissions["can_auto_reply"]),
+              "schedule": schedule}
+    shaped["in_hours"] = agent_in_hours(shaped)
+    return jsonify({"agent": shaped}), 200
 
 
 @bp.put("/agents/<int:agent_id>")
@@ -487,17 +658,38 @@ def update_agent(agent_id: int):
     try:
         with conn.cursor() as cur:
             _ensure_ddl(cur)
+            # Preserve existing schedule when the client omits the key
+            # (partial updates / older UIs must not wipe hours).
+            if "schedule" in payload:
+                schedule = _normalize_schedule(payload.get("schedule"))
+            else:
+                cur.execute(
+                    "SELECT schedule FROM " + portal_db._q(AGENTS_TABLE) +
+                    " WHERE id = %s AND client_id = %s",
+                    (agent_id, client_id),
+                )
+                existing = portal_db.rows(cur)
+                if not existing:
+                    conn.rollback()
+                    return jsonify({"error": {
+                        "code": "not_found",
+                        "message": "No such agent in this workspace."}}), 404
+                schedule = _normalize_schedule(
+                    (existing[0] if existing else {}).get("schedule")
+                )
             cur.execute(
                 "UPDATE " + portal_db._q(AGENTS_TABLE) +
                 " SET name = %s, tone = %s, instructions = %s,"
                 " escalation_user_id = %s, is_active = %s,"
                 " allowed_actions = CAST(%s AS JSONB), max_risk = %s,"
-                " can_auto_reply = %s, updated_at = NOW()"
+                " can_auto_reply = %s, schedule = CAST(%s AS JSONB),"
+                " updated_at = NOW()"
                 " WHERE id = %s AND client_id = %s RETURNING id",
                 (name[:MAX_NAME_CHARS], tone[:MAX_TONE_CHARS],
                  instructions[:MAX_INSTRUCTIONS_CHARS], escalation,
                  is_active, _permissions_json(permissions),
                  permissions["max_risk"], bool(permissions["can_auto_reply"]),
+                 json.dumps(schedule, ensure_ascii=False),
                  agent_id, client_id),
             )
             rows = portal_db.rows(cur)
@@ -507,7 +699,7 @@ def update_agent(agent_id: int):
                     "code": "not_found",
                     "message": "No such agent in this workspace."}}), 404
             snapshot = _snapshot(name, tone, instructions, escalation,
-                                 is_active, permissions)
+                                 is_active, permissions, schedule)
             _insert_version(cur, client_id, agent_id, snapshot, "Saved")
             portal_db.log_action(
                 cur, client_id, "agents.saved", "human",
@@ -561,6 +753,7 @@ def _shape_version(row: Dict[str, Any]) -> Dict[str, Any]:
                 "max_risk": _risk(snapshot.get("max_risk")),
                 "can_auto_reply": snapshot.get("can_auto_reply", True)
                 is not False,
+                "schedule": _normalize_schedule(snapshot.get("schedule")),
                 "restored_from": snapshot.get("restored_from")}}
 
 
@@ -648,12 +841,16 @@ def rollback_agent(agent_id: int):
                 " SET name = %s, tone = %s, instructions = %s,"
                 " escalation_user_id = %s, is_active = TRUE,"
                 " allowed_actions = CAST(%s AS JSONB), max_risk = %s,"
-                " can_auto_reply = %s, updated_at = NOW()"
+                " can_auto_reply = %s, schedule = CAST(%s AS JSONB),"
+                " updated_at = NOW()"
                 " WHERE id = %s AND client_id = %s RETURNING id",
                 (name, wanted["tone"][:MAX_TONE_CHARS],
                  wanted["instructions"][:MAX_INSTRUCTIONS_CHARS], escalation,
                  _permissions_json(permissions), permissions["max_risk"],
-                 bool(permissions["can_auto_reply"]), agent_id, client_id),
+                 bool(permissions["can_auto_reply"]),
+                 json.dumps(wanted.get("schedule") or default_schedule(),
+                            ensure_ascii=False),
+                 agent_id, client_id),
             )
             if not portal_db.rows(cur):
                 conn.rollback()
@@ -661,7 +858,8 @@ def rollback_agent(agent_id: int):
                     "code": "not_found",
                     "message": "No such agent in this workspace."}}), 404
             snapshot = _snapshot(name, wanted["tone"], wanted["instructions"],
-                                 escalation, True, permissions)
+                                 escalation, True, permissions,
+                                 wanted.get("schedule"))
             snapshot["restored_from"] = version
             new_version = _insert_version(
                 cur, client_id, agent_id, snapshot,

@@ -390,6 +390,43 @@ def get_behavioral_eval():
         }}), 503
 
 
+
+
+@bp.get("/quality")
+def get_live_quality():
+    """Platform-wide live quality sample over brain traces + usage.
+    Service-key only (before_request). Zero LLM cost. Optional
+    ?client_id= filters to one workspace; ?days=1|7|14|30."""
+    try:
+        import portal_ai_quality
+        days = request.args.get("days")
+        raw_client = request.args.get("client_id")
+        client_id = None
+        if raw_client not in (None, ""):
+            try:
+                client_id = int(raw_client)
+                if client_id <= 0:
+                    client_id = None
+            except Exception:
+                client_id = None
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                data = portal_ai_quality.sample_quality(
+                    cur, client_id, days=days or portal_ai_quality.DEFAULT_DAYS
+                )
+            conn.commit()
+        finally:
+            conn.close()
+        return jsonify(data), 200
+    except Exception as error:
+        logger.warning("admin ai quality sample failed: %s", error)
+        return jsonify({"error": {
+            "code": "ai_quality_unavailable",
+            "message": "Live AI quality sampling temporarily unavailable.",
+        }}), 503
+
+
 @bp.get("/overview")
 def get_overview():
     days = _days(request.args.get("days"))
