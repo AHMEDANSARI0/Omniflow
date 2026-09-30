@@ -16,14 +16,14 @@ export default async function AnalyticsPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Analytics
         </h1>
-        <p className="mt-1 text-sm text-ink-3">
+        <p className="mt-1 text-sm text-ink-2">
           How your assistant is performing — conversations, messages,
           automation and the questions customers actually ask.
         </p>
       </div>
 
       {data === null ? (
-        <div className="rounded-2xl border border-line bg-soft p-6">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6">
           <p className="text-xs leading-relaxed text-ink-3">
             Analytics is rolling out on the server — try again shortly after
             the deploy finishes.

@@ -89,7 +89,7 @@ export default function WeeklyPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Weekly summary
         </h1>
-        <p className="mt-1.5 text-sm text-ink-3">
+        <p className="mt-1.5 text-sm text-ink-2">
           The last 7 days at a glance — chats, messages, orders and ratings.
         </p>
 
@@ -117,7 +117,7 @@ export default function WeeklyPage() {
               ].map((tile) => (
                 <div
                   key={tile.label}
-                  className="rounded-2xl border border-line bg-soft p-3 text-center"
+                  className="rounded-2xl border border-line bg-white shadow-card p-3 text-center"
                 >
                   <p className="text-xl font-semibold text-ink">{tile.value}</p>
                   <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-3">
@@ -127,7 +127,7 @@ export default function WeeklyPage() {
               ))}
             </div>
 
-            <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Day by day</p>
               <ul className="mt-3 space-y-2">
                 {summary.days.map((day) => (

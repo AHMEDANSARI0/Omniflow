@@ -150,7 +150,7 @@ export default function CouponsCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-5">
       <h2 className="text-sm font-semibold text-ink">Coupon codes</h2>
       <p className="mt-1 text-xs text-ink-3">
         Discount codes your customers apply on the order page. Percent codes
@@ -229,7 +229,7 @@ export default function CouponsCard() {
             {rows.map((row) => (
               <li
                 key={row.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <div className="min-w-0">
                   <p className="truncate text-xs text-ink">

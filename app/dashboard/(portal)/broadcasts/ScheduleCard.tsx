@@ -274,7 +274,7 @@ export default function ScheduleCard() {
             {rows.map((row) => (
               <li
                 key={row.id}
-                className="flex flex-col gap-2 rounded-xl border border-line bg-soft px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-line bg-white shadow-card px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-ink">{row.body}</p>

@@ -35,7 +35,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
   return (
     <form action={formAction} className="space-y-6">
       {/* Search engine section */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">
           Search engine listing
         </h2>
@@ -93,7 +93,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
       </div>
 
       {/* Social sharing section */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">
           Social sharing (Open Graph)
         </h2>
@@ -131,7 +131,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
       </div>
 
       {/* Site section */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Site</h2>
         <p className="mb-5 text-xs text-ink-3">
           The canonical URL of the website (used in metadata).

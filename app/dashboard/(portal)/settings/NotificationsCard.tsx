@@ -50,7 +50,7 @@ interface TestResult {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 const ghostBtn =
@@ -186,7 +186,7 @@ export default function NotificationsCard() {
   const kinds = data?.kinds ?? [];
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-ink">Notifications</h2>

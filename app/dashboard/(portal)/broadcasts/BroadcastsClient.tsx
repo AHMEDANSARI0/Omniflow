@@ -21,7 +21,7 @@ interface BroadcastRow {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
@@ -160,7 +160,7 @@ export default function BroadcastsClient({
   if (expired) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
           <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
@@ -200,7 +200,7 @@ export default function BroadcastsClient({
 
       <ScheduleCard />
 
-      <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <select
             value={audience}
@@ -294,7 +294,7 @@ export default function BroadcastsClient({
             {history.map((row) => (
               <li
                 key={row.id}
-                className="rounded-2xl border border-line bg-soft p-4"
+                className="rounded-2xl border border-line bg-white shadow-card p-4"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-1.5">

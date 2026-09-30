@@ -48,7 +48,7 @@ export default function RecoCard({ conversationId }: { conversationId: number })
   if (!recos || recos.suggestions.length === 0) return null;
 
   return (
-    <section className="of-fade-up rounded-2xl border border-line bg-soft p-4">
+    <section className="of-fade-up rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold text-ink">Recommendations</p>
         <button
@@ -66,7 +66,7 @@ export default function RecoCard({ conversationId }: { conversationId: number })
         {recos.suggestions.map((suggestion) => (
           <li
             key={suggestion.name}
-            className="rounded-xl border border-line bg-soft px-3 py-2"
+            className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
           >
             <div className="flex items-center justify-between gap-2">
               <p className="truncate text-xs font-medium text-ink">

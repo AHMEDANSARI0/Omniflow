@@ -323,4 +323,18 @@ check("Escalations card mounted on Configure AI", "<EscalationsCard />" in read(
 check("UI copy English + text glyphs", "karein" not in CARD and "\\u25b6" not in CARD
       and "\\u2714" not in CARD, "-")
 
+
+# ---- auto-resolve on human reply (ops polish) ----
+CONV = read(os.path.join(CP, "portal_conversations.py"))
+check("human reply POST auto-resolves open escalations",
+      "def send_conversation_message" in CONV
+      and "resolve_for_conversation" in CONV
+      and 'source": "manual"' in CONV
+      and "message.manual_queued" in CONV, "-")
+check("customers message also auto-resolves",
+      'def send_customer_message' in CONV
+      and CONV.count("resolve_for_conversation") >= 2, "-")
+check("resolve_for_conversation stays fail-soft",
+      "def resolve_for_conversation" in SRC and "return 0" in SRC, "-")
+
 raise SystemExit(1 if summary("escalation") else 0)

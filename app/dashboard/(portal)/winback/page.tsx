@@ -79,7 +79,7 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
         : "quiet " + (entry.days ?? 0) + "d";
 
   return (
-    <li className="rounded-xl border border-line bg-soft px-3 py-2.5">
+    <li className="rounded-xl border border-line bg-white shadow-card px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-sm font-medium text-ink">
           {entry.name || entry.contactId}
@@ -178,7 +178,7 @@ export default function WinbackPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Win-back
         </h1>
-        <p className="mt-1 text-sm text-ink-3">
+        <p className="mt-1 text-sm text-ink-2">
           Ready-to-send recovery messages built from open carts, reorder gaps
           and quiet customers. Copy one, open WhatsApp, or send it through
           your connected number - nothing is ever sent automatically.
@@ -198,7 +198,7 @@ export default function WinbackPage() {
       </p>
 
       <div className="space-y-4">
-        <section className="rounded-2xl border border-line bg-soft p-4">
+        <section className="rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Carts to recover</p>
           <p className="mt-0.5 text-[11px] text-ink-3">
             Open checkout links waiting on a confirmation.
@@ -216,7 +216,7 @@ export default function WinbackPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-line bg-soft p-4">
+        <section className="rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Reorder due</p>
           <p className="mt-0.5 text-[11px] text-ink-3">
             Repeat buyers past their usual time-between-orders.
@@ -234,7 +234,7 @@ export default function WinbackPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-line bg-soft p-4">
+        <section className="rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Win-back</p>
           <p className="mt-0.5 text-[11px] text-ink-3">
             Paying customers who have gone quiet for 45+ days.

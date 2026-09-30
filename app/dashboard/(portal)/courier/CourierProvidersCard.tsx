@@ -171,7 +171,7 @@ export default function CourierProvidersCard() {
   const selectedAdapter = adapters.find((a) => a.key === form.adapter);
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-4">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-ink">
@@ -282,7 +282,7 @@ export default function CourierProvidersCard() {
           {providers.map((provider) => (
             <li
               key={provider.id}
-              className="rounded-xl border border-line bg-soft p-3"
+              className="rounded-xl border border-line bg-white shadow-card p-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">

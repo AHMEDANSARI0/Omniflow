@@ -175,7 +175,7 @@ export default function TeamCard({
   const activeMembers = members.filter((member) => member.status === "active");
 
   return (
-    <div className="mb-4 rounded-2xl border border-line bg-soft p-4">
+    <div className="mb-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h2 className="text-xs font-semibold text-ink">Team</h2>
@@ -210,7 +210,7 @@ export default function TeamCard({
             {notes.map((note) => (
               <li
                 key={note.id}
-                className="rounded-xl border border-line bg-soft px-3 py-2"
+                className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   {note.authorName || note.authorEmail}
@@ -230,7 +230,7 @@ export default function TeamCard({
             rows={2}
             maxLength={2000}
             placeholder="Internal note — never sent to the customer"
-            className="w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-xs text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+            className="w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-xs text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <button
             type="button"

@@ -21,7 +21,7 @@ export interface BusinessProfile extends Record<string, unknown> {
 const initialState: ProfileActionState = { success: false, message: "" };
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
@@ -34,7 +34,7 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
   return (
     <form action={formAction} className="space-y-6">
       {/* Company card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Company</h2>
         <p className="mb-5 text-xs text-ink-3">
           Basic information about your business.
@@ -117,7 +117,7 @@ export default function ProfileForm({ profile }: { profile: BusinessProfile }) {
       </div>
 
       {/* Availability card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Availability</h2>
         <p className="mb-5 text-xs text-ink-3">
           Helps the AI answer questions about your hours correctly.

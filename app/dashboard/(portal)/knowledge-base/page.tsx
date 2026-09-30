@@ -21,7 +21,7 @@ export default async function KnowledgeBasePage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Knowledge base
         </h1>
-        <p className="mt-1 text-sm text-ink-3">
+        <p className="mt-1 text-sm text-ink-2">
           Everything your assistant is allowed to know: ready answers it sends
           instantly, plus documents and web pages it reads before replying.
           Sensitive conversations are never auto-answered, and nothing you
@@ -30,7 +30,7 @@ export default async function KnowledgeBasePage() {
       </div>
 
       {data === null ? (
-        <div className="rounded-2xl border border-line bg-soft p-6">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6">
           <p className="text-xs leading-relaxed text-ink-3">
             The knowledge base is rolling out on the server — try again
             shortly after the deploy finishes.

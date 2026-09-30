@@ -16,7 +16,7 @@ import {
 } from "./workflow-model";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 const smallInput =
   "w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink outline-none transition-colors duration-300 focus:border-brand/40";
 const ghostBtn =
@@ -209,7 +209,7 @@ export function StepInspector({
             of these rules
           </div>
           {step.conditions.map((condition, cIndex) => (
-            <div key={cIndex} className="rounded-xl border border-line bg-soft p-2">
+            <div key={cIndex} className="rounded-xl border border-line bg-white shadow-card p-2">
               <div className="grid grid-cols-2 gap-2">
                 <select
                   className={smallInput}

@@ -39,7 +39,7 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
   return (
     <div className="space-y-6">
       {/* API key card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">API key</h2>
         <p className="mb-5 text-xs text-ink-3">
           Read-only key for your own integrations — it reads your bot config,
@@ -60,7 +60,7 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
 
         {/* Current key status */}
         {hasActiveKey && !genState.newKey ? (
-          <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-line bg-soft px-4 py-3">
+          <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-line bg-white shadow-card px-4 py-3">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Key
@@ -148,7 +148,7 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
       </div>
 
       {/* Integration guide card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">
           Connect your bot
         </h2>

@@ -119,7 +119,7 @@ export default function InstagramCard() {
 
   if (!loaded) {
     return (
-      <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+      <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
         <h2 className="text-sm font-medium text-ink">Instagram Messaging</h2>
         <p className="mt-0.5 text-xs text-ink-3">Loading...</p>
       </section>
@@ -127,7 +127,7 @@ export default function InstagramCard() {
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+    <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-medium text-ink">Instagram Messaging</h2>

@@ -170,7 +170,7 @@ function Tile({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-soft px-4 py-3">
+    <div className="rounded-xl border border-line bg-white shadow-card px-4 py-3">
       <p className="text-[11px] uppercase tracking-wider text-ink-3">{label}</p>
       <p className="mt-1 text-lg font-semibold text-ink">{value}</p>
       {hint ? <p className="mt-0.5 text-[11px] text-ink-3">{hint}</p> : null}
@@ -357,7 +357,7 @@ export default function AdminAiControlPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-line bg-soft p-0.5 text-xs">
+          <div className="flex rounded-xl border border-line bg-white shadow-card p-0.5 text-xs">
             {([7, 30] as const).map((option) => (
               <button
                 key={option}
@@ -383,7 +383,7 @@ export default function AdminAiControlPage() {
           </button>
           <button
             onClick={() => void load()}
-            className="rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
+            className="rounded-xl border border-line bg-white shadow-card px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
           >
             Refresh
           </button>
@@ -418,7 +418,7 @@ export default function AdminAiControlPage() {
       ) : null}
 
       {/* ---------- deterministic behavioral evaluation ---------- */}
-      <div className="mb-6 rounded-2xl border border-line bg-soft p-5">
+      <div className="mb-6 rounded-2xl border border-line bg-white shadow-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-ink">
@@ -491,7 +491,7 @@ export default function AdminAiControlPage() {
       </div>
 
       {/* ---------- platform controls ---------- */}
-      <div className="mb-6 rounded-2xl border border-line bg-soft p-5">
+      <div className="mb-6 rounded-2xl border border-line bg-white shadow-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-ink">Platform controls</h2>
@@ -647,7 +647,7 @@ export default function AdminAiControlPage() {
       ) : null}
 
       {/* ---------- workspaces ---------- */}
-      <div className="overflow-hidden rounded-2xl border border-line bg-soft">
+      <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
         <div className="border-b border-line px-5 py-3">
           <h2 className="text-sm font-semibold text-ink">Workspaces</h2>
           <p className="mt-0.5 text-[11px] text-ink-3">
@@ -750,7 +750,7 @@ export default function AdminAiControlPage() {
       </div>
 
       {/* ---------- recent AI activity ---------- */}
-      <div className="mt-6 rounded-2xl border border-line bg-soft p-5">
+      <div className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
         <h2 className="text-sm font-semibold text-ink">
           Recent AI activity (all workspaces)
         </h2>

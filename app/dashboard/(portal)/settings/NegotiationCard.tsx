@@ -107,7 +107,7 @@ export default function NegotiationCard() {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">
@@ -188,7 +188,7 @@ export default function NegotiationCard() {
           </button>
         </div>
         {result ? (
-          <div className="mt-2 rounded-xl border border-line bg-soft px-3 py-2">
+          <div className="mt-2 rounded-xl border border-line bg-white shadow-card px-3 py-2">
             <p className="text-xs text-ink">
               <span
                 className={

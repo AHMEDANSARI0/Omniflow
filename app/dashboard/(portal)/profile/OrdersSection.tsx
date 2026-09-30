@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { OrderRow } from "../../../../lib/omniflow/portal";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
@@ -137,7 +137,7 @@ export default function OrdersSection() {
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-soft p-6">
+    <div className="rounded-2xl border border-line bg-white shadow-card p-6">
       <h2 className="text-sm font-semibold text-ink">Order tracking</h2>
       <p className="mt-1 text-xs leading-relaxed text-ink-3">
         Paste your orders — when a customer asks about their order on

@@ -21,8 +21,8 @@ interface QuickLink {
 }
 
 const QUICK_LINKS: QuickLink[] = [
-  { icon: "\u270e", title: "Conversations", href: "/dashboard/conversations" },
-  { icon: "\u2606", title: "Customers", href: "/dashboard/customers" },
+  { icon: "\u25a3", title: "Conversations", href: "/dashboard/conversations" },
+  { icon: "\u25c9", title: "Customers", href: "/dashboard/customers" },
   { icon: "\u2301", title: "Automations", href: "/dashboard/automations" },
   { icon: "\u2192", title: "Sequences", href: "/dashboard/sequences" },
   { icon: "\u21c9", title: "Workflows", href: "/dashboard/workflows" },
@@ -35,7 +35,7 @@ const QUICK_LINKS: QuickLink[] = [
   { icon: "\u2248", title: "Weekly", href: "/dashboard/weekly" },
   { icon: "\u25ce", title: "Segments", href: "/dashboard/segments" },
   { icon: "\u25c8", title: "Pipeline", href: "/dashboard/pipeline" },
-  { icon: "➤", title: "Broadcasts", href: "/dashboard/broadcasts" },
+  { icon: "⇒", title: "Broadcasts", href: "/dashboard/broadcasts" },
   { icon: "\u25a4", title: "COD confirmations", href: "/dashboard/cod" },
   { icon: "\u21c4", title: "Integrations", href: "/dashboard/integrations" },
   { icon: "\u26e8", title: "Compliance", href: "/dashboard/compliance" },
@@ -43,7 +43,7 @@ const QUICK_LINKS: QuickLink[] = [
   { icon: "\u21bb", title: "Win-back", href: "/dashboard/winback" },
   { icon: "/", title: "Quick replies", href: "/dashboard/saved-replies" },
   { icon: "\u2261", title: "Activity", href: "/dashboard/activity" },
-  { icon: "\u2699", title: "Settings", href: "/dashboard/settings" },
+  { icon: "\u25c8", title: "Settings", href: "/dashboard/settings" },
   { icon: "⚑", title: "Team", href: "/dashboard/team" },
 ];
 
@@ -57,7 +57,7 @@ function StatTile({
   sub?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-soft px-4 py-3.5">
+    <div className="rounded-2xl border border-line bg-white shadow-card px-4 py-3.5">
       <p className="text-[10px] uppercase tracking-wider text-ink-3">
         {label}
       </p>
@@ -117,14 +117,14 @@ export default async function ClientDashboardPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-8">
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
           Workspace {principal.clientId}
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Welcome{principal.displayName ? `, ${principal.displayName}` : ""}
         </h1>
-        <p className="mt-1.5 text-sm text-ink-3">
-          Your tenant-isolated OmniFlow workspace is authenticated and ready.
+        <p className="mt-1.5 text-sm text-ink-2">
+          Your workspace is ready — pick up where you left off.
         </p>
       </div>
 
@@ -141,7 +141,7 @@ export default async function ClientDashboardPage() {
           {plans && (
             <Link
               href="/dashboard/settings"
-              className="block rounded-2xl border border-line bg-soft px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
+              className="block rounded-2xl border border-line bg-white shadow-card px-4 py-3.5 transition-colors duration-300 hover:border-line-2 hover:shadow-card"
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] uppercase tracking-wider text-ink-3">
@@ -176,7 +176,7 @@ export default async function ClientDashboardPage() {
           {cod && (
             <Link
               href="/dashboard/cod"
-              className="block rounded-2xl border border-line bg-soft px-4 py-3.5 transition-colors duration-300 hover:border-white/[0.12]"
+              className="block rounded-2xl border border-line bg-white shadow-card px-4 py-3.5 transition-colors duration-300 hover:border-line-2 hover:shadow-card"
             >
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 COD confirmations
@@ -247,7 +247,7 @@ export default async function ClientDashboardPage() {
             </Link>
           )}
           {overview.hotLeads.length > 0 && (
-            <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
+            <div className="mb-8 rounded-2xl border border-line bg-white shadow-card p-5">
               <h2 className="text-sm font-semibold text-ink">Hot leads</h2>
               <p className="mt-1 text-xs text-ink-3">
                 Open chats flagged hot — reply before they cool down.
@@ -297,7 +297,7 @@ export default async function ClientDashboardPage() {
       )}
 
       {activity && activity.length > 0 && (
-        <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
+        <div className="mb-8 rounded-2xl border border-line bg-white shadow-card p-5">
           <h2 className="text-sm font-semibold text-ink">Recent activity</h2>
           <p className="mt-1 text-xs text-ink-3">
             Live audit trail of what your assistant and team did across
@@ -327,7 +327,7 @@ export default async function ClientDashboardPage() {
           <Link
             key={link.title}
             href={link.href}
-            className="rounded-2xl border border-line bg-soft p-4 transition-colors duration-300 hover:border-brand/25 hover:bg-cyan-400/[0.04]"
+            className="rounded-2xl border border-line bg-white shadow-card p-4 transition-colors duration-300 hover:border-brand/25 hover:bg-cyan-400/[0.04]"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
               {link.icon}

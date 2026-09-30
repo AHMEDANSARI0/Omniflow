@@ -83,7 +83,7 @@ interface TeamMember {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
@@ -489,7 +489,7 @@ export default function AgentsAndRouting() {
               />
             </div>
 
-            <fieldset className="rounded-xl border border-line bg-soft/60 p-3.5">
+            <fieldset className="rounded-xl border border-line bg-white shadow-card/60 p-3.5">
               <legend className="px-1 text-xs font-semibold text-ink">
                 Permissions
               </legend>
@@ -608,7 +608,7 @@ export default function AgentsAndRouting() {
                 <button
                   type="button"
                   onClick={cancelEdit}
-                  className="rounded-xl border border-line bg-soft px-4 py-2 text-xs text-ink-2"
+                  className="rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs text-ink-2"
                 >
                   Cancel
                 </button>
@@ -625,7 +625,7 @@ export default function AgentsAndRouting() {
             {(agents ?? []).map((agent) => (
               <li
                 key={agent.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-line bg-soft px-3 py-2.5"
+                className="flex items-start justify-between gap-3 rounded-xl border border-line bg-white shadow-card px-3 py-2.5"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -879,7 +879,7 @@ export default function AgentsAndRouting() {
             {(rules ?? []).map((rule) => (
               <li
                 key={rule.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-soft px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <span className="min-w-0 truncate text-xs text-ink">
                   “{rule.match}” →{" "}

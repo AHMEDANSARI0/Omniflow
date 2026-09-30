@@ -147,7 +147,7 @@ export default function CodPage() {
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">COD confirmations</h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Hot leads get one confirmation ask automatically; their YES or NO reply is
             recorded here so delivered orders (and returns) stay visible.
           </p>
@@ -162,7 +162,7 @@ export default function CodPage() {
           </p>
         ) : null}
 
-        <div className="mb-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="mb-6 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
           <label className="flex cursor-pointer items-center justify-between gap-3">
             <span>
               <span className="block text-sm font-medium text-ink">Ask for confirmation</span>
@@ -223,7 +223,7 @@ export default function CodPage() {
         </div>
 
         {requests.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No COD requests in this view yet.</p>
             <p className="mt-1 text-xs text-ink-3">
               Turn the ask on above; hot leads will be asked on their next message.
@@ -234,7 +234,7 @@ export default function CodPage() {
             {requests.map((row) => (
               <li
                 key={row.id}
-                className="flex flex-col gap-2 rounded-2xl border border-line bg-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-2xl border border-line bg-white shadow-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-ink">

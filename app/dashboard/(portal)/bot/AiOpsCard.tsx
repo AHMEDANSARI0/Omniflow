@@ -128,7 +128,7 @@ export default function AiOpsCard() {
   const pricesConfigured = usage?.prices_configured ?? overview?.usage?.prices_configured ?? false;
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-ink">AI operations</h2>

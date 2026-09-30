@@ -53,7 +53,7 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-soft px-4 py-3 text-left transition-colors hover:border-line-2"
+      className="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-white shadow-card px-4 py-3 text-left transition-colors hover:border-line-2"
       aria-pressed={checked}
     >
       <span>
@@ -157,7 +157,7 @@ export default function BotForm({
   }
 
   const inputClass =
-    "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-200 focus:border-brand/40";
+    "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-200 focus:border-brand/40";
   const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
   return (
@@ -175,7 +175,7 @@ export default function BotForm({
         </p>
       )}
 
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="agentName" className={labelClass}>
@@ -255,7 +255,7 @@ export default function BotForm({
         </div>
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-line bg-soft p-6">
+      <div className="space-y-3 rounded-2xl border border-line bg-white shadow-card p-6">
         <Toggle
           checked={config.workingHoursEnabled}
           onChange={(v) => update("workingHoursEnabled", v)}

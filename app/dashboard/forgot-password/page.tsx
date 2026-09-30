@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-line bg-soft p-6 sm:p-7">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6 sm:p-7">
           {done ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-ink-2">
@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
               </p>
               <Link
                 href="/dashboard/login"
-                className="inline-block rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink-2 transition-colors hover:border-brand/40"
+                className="inline-block rounded-xl border border-line bg-white shadow-card px-4 py-2.5 text-sm text-ink-2 transition-colors hover:border-brand/40"
               >
                 Back to sign in
               </Link>
@@ -125,7 +125,7 @@ export default function ForgotPasswordPage() {
                   autoComplete="username"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                   placeholder="you@business.com"
                 />
               </div>

@@ -132,7 +132,7 @@ export default function ContentHubPage() {
                 className="cursor-not-allowed rounded-2xl border border-line bg-white/[0.01] p-5 opacity-50"
               >
                 <div className="mb-4 flex items-start justify-between">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-soft text-sm text-ink-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white shadow-card text-sm text-ink-3">
                     {section.icon}
                   </div>
                   <span className="rounded-md border border-line bg-soft px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-3">
@@ -153,7 +153,7 @@ export default function ContentHubPage() {
             <Link
               key={section.href}
               href={section.href}
-              className="group rounded-2xl border border-line bg-soft p-5 transition-colors duration-300 hover:border-brand/20"
+              className="group rounded-2xl border border-line bg-white shadow-card p-5 transition-colors duration-300 hover:border-brand/20"
             >
               <div className="mb-4 flex items-start justify-between">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">

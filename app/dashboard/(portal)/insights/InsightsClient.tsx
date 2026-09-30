@@ -78,7 +78,7 @@ function Section({
   aside?: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-line bg-soft p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-ink">{title}</h2>
@@ -209,7 +209,7 @@ export default function InsightsClient() {
     return (
       <div className="space-y-3">
         {rangeButtons}
-        <p className="rounded-2xl border border-line bg-soft p-5 text-sm text-ink-3">
+        <p className="rounded-2xl border border-line bg-white shadow-card p-5 text-sm text-ink-3">
           Insights are unavailable right now. Try again shortly.
         </p>
       </div>

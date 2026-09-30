@@ -390,6 +390,8 @@ import portal_ai_usage  # noqa: E402
 portal_ai_usage._ensure_ddl = lambda cur: None
 portal_ai_usage.prices = lambda: {}
 SCRIPT = [
+    [{"bi_thresholds": {}}],                            # thresholds_for
+    [{"business_hours": {"timezone": "Asia/Karachi"}}], # timezone_offset_hours (insights)
     [], MESSAGES, [],                                   # topics
     [], [{"sentiment": "negative", "purchase_intent": "low", "urgency": "low",
           "language": "roman", "n": 12}], [],           # mix
@@ -408,16 +410,19 @@ SCRIPT = [
 conn = install_db_stub(bi, SCRIPT)
 rep = bi.report(conn.cur, 1, 7)
 ex = conn.cur.executed
+sp = [e for e in ex if e[0].startswith("SAVEPOINT") or e[0].startswith("RELEASE") or e[0].startswith("ROLLBACK")]
 check("report: every block behind SAVEPOINT / RELEASE, a failing block rolls back alone",
-      ex[0][0] == "SAVEPOINT of_bi" and ex[2][0] == "RELEASE SAVEPOINT of_bi"
+      sp and sp[0][0] == "SAVEPOINT of_bi" and any(e[0] == "RELEASE SAVEPOINT of_bi" for e in sp)
       and any(e[0] == "ROLLBACK TO SAVEPOINT of_bi" for e in ex)
       and rep["insights"]["commerce"] is None and rep["insights"]["checkout"]["created"] == 20
-      and rep["insights"]["mix"]["conversations"] == 12, [e[0][:30] for e in ex[:12]])
+      and rep["insights"]["mix"]["conversations"] == 12, [e[0][:30] for e in ex[:14]])
 check("report shape: days, generated_at, insights, ai_quality, funnel, problems, counts, topics registry",
       rep["days"] == 7 and rep["generated_at"] and rep["ai_quality"]["traces"]["decisions"] == 50
       and rep["funnel"]["configured"] is True and isinstance(rep["problems"], list)
       and set(rep["problem_counts"]) == {"critical", "warn"}
-      and [t["key"] for t in rep["topics"]] == [k for k, _l, _kw in bi.TOPICS], list(rep))
+      and [t["key"] for t in rep["topics"]] == [k for k, _l, _kw in bi.TOPICS]
+      and isinstance(rep.get("thresholds"), dict)
+      and "timezone_offset_hours" in rep, list(rep))
 check("problems come from the assembled numbers (slow replies, checkout, AI handoff, unassigned)",
       {"slow_replies", "checkout_unpaid", "ai_low_confidence", "handoffs_unassigned"}
       <= {p["key"] for p in rep["problems"]}, [p["key"] for p in rep["problems"]])
@@ -454,7 +459,10 @@ check("blueprint registered", "aux_app.register_blueprint(portal_bi_bp)" in read
 SRC = read(bi.__file__)
 check("zero LLM cost: no portal_llm / chat_json in the BI layer",
       "portal_llm" not in SRC and "chat_json" not in SRC, "-")
-check("no new tables: BI is a read model", "CREATE TABLE" not in SRC and "INSERT INTO" not in SRC, "-")
+check("no new BI tables: report stays a read model; thresholds reuse client_settings",
+      "CREATE TABLE portal_bi" not in SRC and "portal_bi_" not in SRC
+      and "thresholds_for" in SRC and "bi_thresholds" in SRC
+      and "timezone_offset_hours" in SRC, "-")
 check("reuses platform definitions (needs-reply SLA, escalation labels, usage report, journey tables)",
       all(t in SRC for t in ("portal_conversations", "OVERDUE_HOURS", "portal_escalation.reason_label",
                              "portal_ai_usage.usage_report", "portal_memory.STAGES_TABLE",
@@ -486,5 +494,31 @@ check("sidebar + command palette entries", '"/dashboard/insights"' in SIDEBAR an
 check("UI copy English + text-presentation glyphs only",
       "karein" not in CLIENT and "\\u25b6" not in CLIENT and "\\u2714" not in CLIENT
       and "\\u26a1" not in CLIENT and '"\\u2059"' in SIDEBAR, "-")
+
+
+# ---- owner thresholds + tenant timezone (ops polish) ----
+check("owner thresholds clamp + defaults", bi._clamp_threshold("handoff_share", 2.0) == 1.0
+      and bi._clamp_threshold("gaps_min", 0) == 1.0
+      and bi._clamp_threshold("csat_low", 9) == 5.0
+      and set(bi.default_thresholds()) == set(bi.THRESHOLDS), "-")
+check("topic_insights accepts tenant tz offset",
+      bi.topic_insights([], tz_offset_hours=3)["tz_offset_hours"] == 3, "-")
+check("detect_problems honours injected thresholds",
+      bi.detect_problems({"topics": {"messages": 0, "topics": []}}, {}, {}, 7,
+                         thresholds={**bi.THRESHOLDS, "gaps_min": 9999}) == [], "-")
+LIB2 = read(RIG13 + "lib/omniflow/portal.ts")
+check("portal.ts BI thresholds client", all(t in LIB2 for t in (
+    "export async function getBiThresholds", "export async function saveBiThresholds",
+    '"api/v1/portal/bi/thresholds"')), "-")
+THR = read(RIG13 + "app/api/omniflow/portal/bi/thresholds/route.ts")
+check("BFF bi/thresholds GET+PUT", "getBiThresholds" in THR and "saveBiThresholds" in THR
+      and "export async function GET" in THR and "export async function PUT" in THR, "-")
+CARD = read(RIG13 + "app/dashboard/(portal)/settings/BiThresholdsCard.tsx")
+PAGE = read(RIG13 + "app/dashboard/(portal)/settings/page.tsx")
+check("Settings BI thresholds card mounted", "<BiThresholdsCard />" in PAGE
+      and "Business insights thresholds" in CARD
+      and "/api/omniflow/portal/bi/thresholds" in CARD, "-")
+check("thresholds endpoints on blueprint",
+      '@bp.get("/bi/thresholds")' in SRC and '@bp.put("/bi/thresholds")' in SRC, "-")
 
 raise SystemExit(1 if summary("bi") else 0)

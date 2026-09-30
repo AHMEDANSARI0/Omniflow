@@ -181,7 +181,7 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-line bg-soft">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
         <table className="w-full min-w-[640px] text-left">
           <thead>
             <tr className="border-b border-line">

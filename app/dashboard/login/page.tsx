@@ -95,7 +95,7 @@ export default function DashboardLoginPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-line bg-soft p-6 sm:p-7">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6 sm:p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-ink-3">
@@ -110,7 +110,7 @@ export default function DashboardLoginPage() {
                 autoComplete="username"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="you@business.com"
               />
             </div>
@@ -128,7 +128,7 @@ export default function DashboardLoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="••••••••"
               />
             </div>
@@ -147,7 +147,7 @@ export default function DashboardLoginPage() {
                 autoComplete="off"
                 value={workspaceId}
                 onChange={(event) => setWorkspaceId(event.target.value.replace(/\D/g, ""))}
-                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="Only needed for multiple workspaces"
               />
             </div>

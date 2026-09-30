@@ -107,7 +107,7 @@ export default function BroadcastCalendarPage() {
             <h1 className="text-2xl font-semibold tracking-tight text-ink">
               Broadcast calendar
             </h1>
-            <p className="mt-1 text-sm text-ink-3">
+            <p className="mt-1 text-sm text-ink-2">
               Sent and scheduled broadcasts by day.
             </p>
           </div>
@@ -179,7 +179,7 @@ export default function BroadcastCalendarPage() {
             </div>
 
             {data.items.length > 0 ? (
-              <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+              <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
                 <p className="text-xs font-semibold text-ink">This month</p>
                 <ul className="mt-2 space-y-1.5">
                   {data.items.map((item) => (

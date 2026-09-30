@@ -108,7 +108,7 @@ export default function DeliveriesCard() {
     filter === "all" ? rows : rows.filter((row) => row.status === filter);
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">Deliveries</h3>
@@ -160,7 +160,7 @@ export default function DeliveriesCard() {
             return (
               <div
                 key={row.kind + "-" + row.id}
-                className="rounded-xl border border-line bg-soft px-3 py-2"
+                className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 truncate text-sm text-ink">

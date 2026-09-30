@@ -60,7 +60,7 @@ export default function CopyGenCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-4">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-4">
       <p className="text-xs font-semibold text-ink">AI copy helper</p>
       <p className="mt-0.5 text-[11px] text-ink-3">
         Topic likhein - do short variants ban jayenge. Text sirf yahan
@@ -99,7 +99,7 @@ export default function CopyGenCard() {
           {variants.map((text, index) => (
             <li
               key={index}
-              className="flex items-start justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
+              className="flex items-start justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
             >
               <p className="min-w-0 text-xs text-ink-2">{text}</p>
               <button

@@ -111,7 +111,7 @@ export default function BusinessHoursCard() {
 
   if (!config) {
     return (
-      <section className="rounded-2xl border border-line bg-soft p-5">
+      <section className="rounded-2xl border border-line bg-white shadow-card p-5">
         <h2 className="text-sm font-semibold text-ink">Business hours</h2>
         <p className="mt-2 text-xs text-ink-3">Loading…</p>
       </section>
@@ -121,7 +121,7 @@ export default function BusinessHoursCard() {
   const open = isOpenNow(config);
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-ink">Business hours</h2>
         {config.enabled && (

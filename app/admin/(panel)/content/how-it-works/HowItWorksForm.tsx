@@ -31,7 +31,7 @@ export default function HowItWorksForm({
   return (
     <form action={formAction} className="space-y-6">
       {/* Section heading card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Section heading</h2>
         <p className="mb-5 text-xs text-ink-3">
           Line 2 is shown with the gradient color.
@@ -94,7 +94,7 @@ export default function HowItWorksForm({
       </div>
 
       {/* Workflow steps */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Workflow steps</h2>
         <p className="mb-5 text-xs text-ink-3">
           The 4 numbered steps. Icons stay fixed.
@@ -104,7 +104,7 @@ export default function HowItWorksForm({
           {steps.map((s) => (
             <div
               key={s.i}
-              className="rounded-xl border border-line bg-soft p-4"
+              className="rounded-xl border border-line bg-white shadow-card p-4"
             >
               <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
                 Step 0{s.i}
@@ -157,7 +157,7 @@ export default function HowItWorksForm({
       </div>
 
       {/* Bottom note */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Bottom note</h2>
         <p className="mb-5 text-xs text-ink-3">
           The statement under the builder preview.

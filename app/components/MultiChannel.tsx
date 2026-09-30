@@ -99,7 +99,7 @@ export default function MultiChannel({
             </div>
 
             <div className="mt-6 space-y-3">
-              <div className="flex items-center gap-3 rounded-xl2 border border-line bg-soft px-4 py-3">
+              <div className="flex items-center gap-3 rounded-xl2 border border-line bg-white shadow-card px-4 py-3">
                 <Inbox className="h-4 w-4 shrink-0 text-brand" aria-hidden />
                 <p className="text-[13px] font-medium text-ink-2">
                   Customer writes — on any connected channel

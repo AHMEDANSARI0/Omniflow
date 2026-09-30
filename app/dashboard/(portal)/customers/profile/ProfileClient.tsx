@@ -325,7 +325,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
         >
           \\u2190 Customers
         </Link>
-        <div className="mt-3 rounded-2xl border border-line bg-soft p-5">
+        <div className="mt-3 rounded-2xl border border-line bg-white shadow-card p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h1 className="truncate text-xl font-semibold text-ink">
@@ -450,7 +450,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
         {contact ? <CustomerIdentityCard contact={contact} /> : null}
 
         {profile && recos.length > 0 ? (
-          <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+          <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
             <p className="text-xs font-semibold text-ink">
               Recommended next
             </p>
@@ -461,7 +461,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               {recos.slice(0, 3).map((suggestion) => (
                 <li
                   key={suggestion.name}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm text-ink">
@@ -485,7 +485,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
         ) : null}
 
         {profile && value ? (
-          <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+          <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-ink">
                 Lifetime value
@@ -535,7 +535,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
 
         {profile ? (
           <>
-            <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Conversations</p>
               {profile.conversations.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">No chats yet.</p>
@@ -568,7 +568,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">COD orders</p>
               {profile.codRequests.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">No COD asks yet.</p>
@@ -589,7 +589,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Series</p>
               {profile.sequences.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">
@@ -613,7 +613,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Action requests</p>
               {profile.actions.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">
@@ -647,7 +647,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Notes</p>
               {profile.notes.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">No notes yet.</p>

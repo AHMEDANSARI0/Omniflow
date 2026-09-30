@@ -299,7 +299,7 @@ export default function IntegrationsClient() {
   return (
     <div className="space-y-6">
       {loading ? (
-        <div className="rounded-2xl border border-line bg-soft p-6 text-sm text-ink-3">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6 text-sm text-ink-3">
           Loading integration settings…
         </div>
       ) : null}
@@ -309,7 +309,7 @@ export default function IntegrationsClient() {
         return (
           <div
             key={def.id}
-            className="rounded-2xl border border-line bg-soft p-6"
+            className="rounded-2xl border border-line bg-white shadow-card p-6"
           >
             <div className="mb-1 flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-ink">{def.title}</h2>
@@ -358,7 +358,7 @@ export default function IntegrationsClient() {
                 {def.toggles.map((toggle) => (
                   <label
                     key={toggle.key}
-                    className="flex items-start gap-3 rounded-xl border border-line bg-soft px-4 py-3"
+                    className="flex items-start gap-3 rounded-xl border border-line bg-white shadow-card px-4 py-3"
                   >
                     <input
                       type="checkbox"
@@ -401,7 +401,7 @@ export default function IntegrationsClient() {
                 <button
                   onClick={() => void action(def, "test")}
                   disabled={busyGroup === def.id + ":test"}
-                  className="rounded-xl border border-line bg-soft px-4 py-2 text-xs text-ink-2 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                  className="rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs text-ink-2 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
                 >
                   {busyGroup === def.id + ":test" ? "Sending…" : "Send test email"}
                 </button>
@@ -410,7 +410,7 @@ export default function IntegrationsClient() {
                 <button
                   onClick={() => void action(def, "weekly")}
                   disabled={busyGroup === def.id + ":weekly"}
-                  className="rounded-xl border border-line bg-soft px-4 py-2 text-xs text-ink-2 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                  className="rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs text-ink-2 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
                 >
                   {busyGroup === def.id + ":weekly"
                     ? "Sending…"

@@ -186,7 +186,7 @@ export default function SavedRepliesPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Quick replies
         </h1>
-        <p className="mt-1.5 text-sm text-ink-3">
+        <p className="mt-1.5 text-sm text-ink-2">
           Canned messages your team types as /shortcut in any conversation. Up to
           30 per workspace.
         </p>
@@ -204,7 +204,7 @@ export default function SavedRepliesPage() {
           </p>
         ) : null}
 
-        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+        <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Add a reply</p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
@@ -243,7 +243,7 @@ export default function SavedRepliesPage() {
             {replies.map((reply) => (
               <li
                 key={reply.id}
-                className="rounded-2xl border border-line bg-soft p-4"
+                className="rounded-2xl border border-line bg-white shadow-card p-4"
               >
                 {editId === reply.id ? (
                   <div className="flex flex-col gap-2">

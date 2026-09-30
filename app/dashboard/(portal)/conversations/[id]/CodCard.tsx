@@ -87,7 +87,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
 
   if (loaded && cod === null && !expanded) {
     return (
-      <div className="mb-4 rounded-2xl border border-line bg-soft p-4">
+      <div className="mb-4 rounded-2xl border border-line bg-white shadow-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-xs font-semibold text-ink">COD order</h2>
@@ -170,7 +170,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
             onChange={(e) => setDetails(e.target.value)}
             maxLength={200}
             placeholder="Optional details, e.g. 2 suits, PKR 4,500"
-            className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+            className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <div className="flex gap-2">
             <button

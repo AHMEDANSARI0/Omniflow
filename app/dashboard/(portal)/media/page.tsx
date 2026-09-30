@@ -179,7 +179,7 @@ export default function MediaPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Media &amp; voice
           </h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Store images, PDFs and audio - send them to customers on
             WhatsApp or turn voice notes into text. Uploads and the
             library always work; sending needs OMNIFLOW_WA_CLOUD_URL
@@ -188,7 +188,7 @@ export default function MediaPage() {
           </p>
         </div>
 
-        <section className="rounded-2xl border border-line bg-soft p-4">
+        <section className="rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Upload</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input
@@ -219,7 +219,7 @@ export default function MediaPage() {
           ) : null}
         </section>
 
-        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+        <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Library</p>
           {assets.length === 0 ? (
             <p className="mt-1 text-[11px] text-ink-3">
@@ -230,7 +230,7 @@ export default function MediaPage() {
               {assets.map((asset) => (
                 <li
                   key={asset.id}
-                  className="rounded-xl border border-line bg-soft p-3"
+                  className="rounded-xl border border-line bg-white shadow-card p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">

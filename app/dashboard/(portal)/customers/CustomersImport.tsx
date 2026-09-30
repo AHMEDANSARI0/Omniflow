@@ -176,7 +176,7 @@ export default function CustomersImport({
                 const file = event.target.files?.[0];
                 if (file) void handleFile(file);
               }}
-              className="mt-3 block w-full cursor-pointer rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink-2 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cyan-400/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand"
+              className="mt-3 block w-full cursor-pointer rounded-xl border border-line bg-white shadow-card px-3 py-2 text-xs text-ink-2 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cyan-400/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand"
             />
             {fileName ? (
               <p className="mt-1.5 text-[11px] text-ink-3">
@@ -185,7 +185,7 @@ export default function CustomersImport({
             ) : null}
 
             {preview.length > 0 ? (
-              <ul className="mt-3 max-h-36 space-y-1 overflow-y-auto rounded-xl border border-line bg-soft p-2.5">
+              <ul className="mt-3 max-h-36 space-y-1 overflow-y-auto rounded-xl border border-line bg-white shadow-card p-2.5">
                 {preview.slice(0, 8).map((row, index) => (
                   <li key={String(index)} className="flex justify-between gap-2 text-[11px] text-ink-3">
                     <span className="truncate">{row.name || "(no name)"}</span>

@@ -23,7 +23,9 @@ over data the platform ALREADY collects. Zero LLM cost, no new write path.
                conversion, median time to move on, contacts stalled.
 * problems   - the Problem Detector: rules over the numbers above ->
                Problem / Evidence / Impact / Confidence / Action, each with
-               a deep link. Thresholds are env-tunable (OF_BI_*), confidence
+               a deep link. Thresholds default from env (OF_BI_*) and owners can
+               override them per workspace (client_settings.bi_thresholds);
+               busy hours use the business_hours timezone. Confidence
                grows with sample size, nothing fires on thin data.
 
 Every block runs behind a SAVEPOINT so one missing table blanks only that
@@ -33,6 +35,7 @@ workspace cannot make the page wait. Tenant-scoped; open to API keys
 """
 
 import logging
+import json
 import os
 import re
 import statistics
@@ -94,6 +97,126 @@ THRESHOLDS: Dict[str, float] = {
     "stall_share": _env_float("OF_BI_STALL_SHARE", 0.30),
     "stall_min": _env_float("OF_BI_STALL_MIN", 10),
 }
+
+#: Owner-editable knobs under client_settings.settings.bi_thresholds.
+#: Env OF_BI_* remains the default floor; blank keys fall back here.
+OWNER_THRESHOLD_KEYS = (
+    "gaps_min", "topic_min", "delivery_share", "price_share", "trouble_share",
+    "negative_share", "sentiment_min", "handoff_share", "decisions_min",
+    "handoff_growth", "handoff_min", "policy_min", "ai_fail_share",
+    "ai_calls_min", "cod_decline_share", "cod_min", "checkout_conversion",
+    "checkout_min", "delivery_fail_share", "bookings_min", "csat_low",
+    "csat_min", "overdue_min", "stall_share", "stall_min",
+)
+SHARE_KEYS = {
+    "delivery_share", "price_share", "trouble_share", "negative_share",
+    "handoff_share", "ai_fail_share", "cod_decline_share", "checkout_conversion",
+    "delivery_fail_share", "stall_share", "handoff_growth",
+}
+MIN_KEYS = {
+    "gaps_min", "topic_min", "sentiment_min", "decisions_min", "handoff_min",
+    "policy_min", "ai_calls_min", "cod_min", "checkout_min", "bookings_min",
+    "csat_min", "overdue_min", "stall_min",
+}
+
+
+def _clamp_threshold(key: str, value: float) -> float:
+    if key in SHARE_KEYS:
+        return max(0.0, min(1.0, float(value)))
+    if key == "csat_low":
+        return max(1.0, min(5.0, float(value)))
+    if key in MIN_KEYS:
+        return max(1.0, min(1000.0, float(value)))
+    return float(value)
+
+
+def default_thresholds() -> Dict[str, float]:
+    return {k: float(v) for k, v in THRESHOLDS.items()}
+
+
+def thresholds_for(cur, client_id: int) -> Dict[str, float]:
+    """Env defaults overlaid with owner-saved client_settings.bi_thresholds."""
+    out = default_thresholds()
+    try:
+        cur.execute(
+            "SELECT settings -> 'bi_thresholds' AS bi_thresholds FROM "
+            + portal_db._q("client_settings") +
+            " WHERE client_id = %s",
+            (client_id,),
+        )
+        rows = portal_db.rows(cur)
+        stored = rows[0].get("bi_thresholds") if rows and rows[0] else None
+        if isinstance(stored, str):
+            import json as _json
+            try:
+                stored = _json.loads(stored)
+            except Exception:
+                stored = None
+        if isinstance(stored, dict):
+            for key in OWNER_THRESHOLD_KEYS:
+                raw = stored.get(key)
+                if raw is None or isinstance(raw, bool):
+                    continue
+                try:
+                    out[key] = _clamp_threshold(key, float(raw))
+                except Exception:
+                    continue
+    except Exception as error:
+        logger.warning("bi thresholds load failed: %s", error)
+    return out
+
+
+def timezone_offset_hours(cur, client_id: int) -> int:
+    """Workspace timezone from business_hours; env OF_BI_TZ_OFFSET_HOURS fallback."""
+    name = None
+    try:
+        cur.execute(
+            "SELECT settings -> 'business_hours' AS business_hours FROM "
+            + portal_db._q("client_settings") +
+            " WHERE client_id = %s",
+            (client_id,),
+        )
+        rows = portal_db.rows(cur)
+        stored = rows[0].get("business_hours") if rows and rows[0] else None
+        if isinstance(stored, str):
+            import json as _json
+            try:
+                stored = _json.loads(stored)
+            except Exception:
+                stored = None
+        if isinstance(stored, dict):
+            name = stored.get("timezone")
+    except Exception as error:
+        logger.warning("bi timezone load failed: %s", error)
+    if isinstance(name, str) and name.strip():
+        try:
+            from zoneinfo import ZoneInfo
+            from datetime import datetime as _dt
+            now = _dt.now(ZoneInfo("UTC"))
+            local = now.astimezone(ZoneInfo(name.strip()))
+            offset = local.utcoffset()
+            if offset is not None:
+                return int(offset.total_seconds() // 3600)
+        except Exception:
+            pass
+    return TZ_OFFSET_HOURS
+
+
+def _validate_thresholds(payload) -> tuple:
+    if not isinstance(payload, dict):
+        return None, "bi_thresholds must be an object."
+    clean: Dict[str, float] = {}
+    for key, raw in payload.items():
+        if key not in OWNER_THRESHOLD_KEYS:
+            continue
+        if raw is None or isinstance(raw, bool):
+            return None, key + " must be a number."
+        try:
+            clean[key] = _clamp_threshold(key, float(raw))
+        except Exception:
+            return None, key + " must be a number."
+    return clean, None
+
 
 #: (key, label, keywords) - lower-cased substring / word matches over the
 #: customer's text; Roman-Urdu + English. A message may carry several.
@@ -209,9 +332,11 @@ def _sample_messages(cur, client_id: int, days: int) -> List[Dict[str, Any]]:
     return portal_db.rows(cur)
 
 
-def topic_insights(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+def topic_insights(messages: List[Dict[str, Any]],
+                  tz_offset_hours: Optional[int] = None) -> Dict[str, Any]:
     """Pure: topic shares for the current window, the previous window's
     share for trend, example questions, busy hours."""
+    offset = TZ_OFFSET_HOURS if tz_offset_hours is None else int(tz_offset_hours)
     current = [m for m in messages if m.get("current")]
     previous = [m for m in messages if not m.get("current")]
     counts: Dict[str, int] = {}
@@ -231,8 +356,8 @@ def topic_insights(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
                     bucket.append(snippet)
         when = message.get("created_at")
         if hasattr(when, "hour"):
-            hours[(when.hour + TZ_OFFSET_HOURS) % 24] = hours.get(
-                (when.hour + TZ_OFFSET_HOURS) % 24, 0) + 1
+            hours[(when.hour + offset) % 24] = hours.get(
+                (when.hour + offset) % 24, 0) + 1
     for message in previous:
         for key in topics_for(message.get("body")):
             prev_counts[key] = prev_counts.get(key, 0) + 1
@@ -263,7 +388,7 @@ def topic_insights(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         "conversations": len({m.get("conversation_id") for m in current}),
         "topics": topics,
         "busy_hours": [{"hour": hour, "messages": n} for hour, n in busy],
-        "tz_offset_hours": TZ_OFFSET_HOURS,
+        "tz_offset_hours": offset,
     }
 
 
@@ -415,10 +540,12 @@ def _service(cur, client_id: int, days: int) -> Dict[str, Any]:
 def insights(cur, client_id: int, days: int) -> Dict[str, Any]:
     """Customer-side picture for the window (each block fail-soft)."""
     days = _days(days)
+    tz_off = timezone_offset_hours(cur, client_id)
     topics = _guarded(cur, "topics", lambda: topic_insights(
-        _sample_messages(cur, client_id, days)))
+        _sample_messages(cur, client_id, days), tz_off))
     return {
         "days": days,
+        "timezone_offset_hours": tz_off,
         "topics": topics,
         "mix": _guarded(cur, "intelligence", lambda: _intelligence_mix(cur, client_id, days)),
         "gaps": _guarded(cur, "gaps", lambda: _gaps(cur, client_id, days)),
@@ -765,9 +892,10 @@ def _pct(share: Any) -> str:
 
 
 def detect_problems(ins: Optional[Dict[str, Any]], quality: Optional[Dict[str, Any]],
-                    fun: Optional[Dict[str, Any]], days: int) -> List[Dict[str, Any]]:
+                    fun: Optional[Dict[str, Any]], days: int,
+                    thresholds: Optional[Dict[str, float]] = None) -> List[Dict[str, Any]]:
     """Pure rules -> Problem / Evidence / Impact / Confidence / Action."""
-    T = THRESHOLDS
+    T = thresholds if isinstance(thresholds, dict) and thresholds else THRESHOLDS
     ins = ins or {}
     quality = quality or {}
     fun = fun or {}
@@ -1001,10 +1129,11 @@ def detect_problems(ins: Optional[Dict[str, Any]], quality: Optional[Dict[str, A
 
 def report(cur, client_id: int, days: int) -> Dict[str, Any]:
     days = _days(days)
+    T = thresholds_for(cur, client_id)
     ins = insights(cur, client_id, days)
     quality = ai_quality(cur, client_id, days, gaps=ins.get("gaps"))
     fun = _guarded(cur, "funnel", lambda: funnel(cur, client_id, days))
-    problems = detect_problems(ins, quality, fun, days)
+    problems = detect_problems(ins, quality, fun, days, thresholds=T)
     return {
         "days": days,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -1017,6 +1146,8 @@ def report(cur, client_id: int, days: int) -> Dict[str, Any]:
             "warn": sum(1 for p in problems if p["severity"] == "warn"),
         },
         "topics": [{"key": k, "label": l} for k, l, _kw in TOPICS],
+        "thresholds": T,
+        "timezone_offset_hours": ins.get("timezone_offset_hours", TZ_OFFSET_HOURS),
     }
 
 
@@ -1052,3 +1183,404 @@ def get_report():
     finally:
         conn.close()
     return jsonify(data), 200
+
+
+@bp.get("/bi/thresholds")
+def get_thresholds():
+    """Owner-readable problem-detector thresholds (env defaults + overrides)."""
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    client_id = int(principal.get("client_id") or 0)
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            data = thresholds_for(cur, client_id)
+            tz = timezone_offset_hours(cur, client_id)
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({
+        "thresholds": data,
+        "defaults": default_thresholds(),
+        "timezone_offset_hours": tz,
+        "keys": list(OWNER_THRESHOLD_KEYS),
+    }), 200
+
+
+@bp.put("/bi/thresholds")
+def update_thresholds():
+    """Owner saves problem-detector thresholds into client_settings."""
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    try:
+        from portal_auth import ensure_human_principal
+        forbidden = ensure_human_principal(principal)
+        if forbidden is not None:
+            return forbidden
+    except Exception:
+        pass
+    payload = request.get_json(silent=True) or {}
+    raw = payload.get("thresholds", payload.get("bi_thresholds", payload))
+    clean, problem = _validate_thresholds(raw)
+    if problem:
+        return jsonify({"error": {"code": "bad_request", "message": problem}}), 400
+    client_id = int(principal.get("client_id") or 0)
+    import json as _json
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS " + portal_db._q("client_settings") +
+                " (client_id BIGINT PRIMARY KEY,"
+                " settings JSONB NOT NULL DEFAULT '{}'::jsonb,"
+                " updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
+            )
+            # Merge with existing so partial updates keep other keys.
+            cur.execute(
+                "SELECT settings -> 'bi_thresholds' AS bi_thresholds FROM "
+                + portal_db._q("client_settings") +
+                " WHERE client_id = %s",
+                (client_id,),
+            )
+            rows = portal_db.rows(cur)
+            existing = {}
+            if rows and isinstance(rows[0].get("bi_thresholds"), dict):
+                existing = dict(rows[0]["bi_thresholds"])
+            existing.update(clean)
+            # Re-clamp whole map.
+            final = {}
+            for key in OWNER_THRESHOLD_KEYS:
+                if key in existing:
+                    try:
+                        final[key] = _clamp_threshold(key, float(existing[key]))
+                    except Exception:
+                        continue
+            cur.execute(
+                "INSERT INTO " + portal_db._q("client_settings") +
+                " (client_id, settings) VALUES (%s, %s::jsonb)"
+                " ON CONFLICT (client_id) DO UPDATE SET"
+                " settings = client_settings.settings || EXCLUDED.settings,"
+                " updated_at = NOW()",
+                (client_id, _json.dumps({"bi_thresholds": final})),
+            )
+            portal_db.log_action(
+                cur, client_id, "bi.thresholds_update", "customer_user",
+                principal.get("user_id"), None,
+                ("BI thresholds updated (" + str(len(final)) + " keys).")[:200],
+            )
+            data = thresholds_for(cur, client_id)
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "thresholds": data}), 200
+
+
+# ---------------------------------------------------------------------------
+# Weekly problems email (ops polish): rides the connector poll like the
+# owner daily digest. Defaults OFF. Uses portal_bi.report + portal_notify.
+# ---------------------------------------------------------------------------
+
+WEEKLY_DEFAULT_HOUR = int(os.environ.get("OF_BI_WEEKLY_HOUR", "9") or 9)
+WEEKLY_DEFAULT_WEEKDAY = int(os.environ.get("OF_BI_WEEKLY_WEEKDAY", "1") or 1)  # Mon=1..Sun=7 ISO
+
+
+def default_weekly_settings() -> Dict[str, Any]:
+    return {
+        "enabled": False,
+        "hour": max(6, min(21, WEEKLY_DEFAULT_HOUR)),
+        "weekday": max(1, min(7, WEEKLY_DEFAULT_WEEKDAY)),
+        "last_sent_date": None,
+    }
+
+
+def _load_weekly_settings(cur, client_id: int) -> Dict[str, Any]:
+    out = default_weekly_settings()
+    try:
+        cur.execute(
+            "SELECT settings -> 'weekly_problems' AS weekly_problems FROM "
+            + portal_db._q("client_settings") +
+            " WHERE client_id = %s",
+            (client_id,),
+        )
+        rows = portal_db.rows(cur)
+        stored = rows[0].get("weekly_problems") if rows and rows[0] else None
+        if isinstance(stored, str):
+            try:
+                stored = json.loads(stored)
+            except Exception:
+                stored = None
+        if isinstance(stored, dict):
+            if isinstance(stored.get("enabled"), bool):
+                out["enabled"] = stored["enabled"]
+            try:
+                hour = int(stored.get("hour"))
+                if 6 <= hour <= 21:
+                    out["hour"] = hour
+            except Exception:
+                pass
+            try:
+                wd = int(stored.get("weekday"))
+                if 1 <= wd <= 7:
+                    out["weekday"] = wd
+            except Exception:
+                pass
+            ls = stored.get("last_sent_date")
+            if isinstance(ls, str) and ls:
+                out["last_sent_date"] = ls[:10]
+    except Exception as error:
+        logger.warning("weekly problems settings load failed: %s", error)
+    return out
+
+
+def _save_weekly_settings(cur, client_id: int, settings: Dict[str, Any],
+                          actor_user_id=None, note: str = "") -> Dict[str, Any]:
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS " + portal_db._q("client_settings") +
+        " (client_id BIGINT PRIMARY KEY,"
+        " settings JSONB NOT NULL DEFAULT '{}'::jsonb,"
+        " updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
+    )
+    clean = {
+        "enabled": bool(settings.get("enabled")),
+        "hour": max(6, min(21, int(settings.get("hour") or WEEKLY_DEFAULT_HOUR))),
+        "weekday": max(1, min(7, int(settings.get("weekday") or WEEKLY_DEFAULT_WEEKDAY))),
+        "last_sent_date": settings.get("last_sent_date"),
+    }
+    cur.execute(
+        "INSERT INTO " + portal_db._q("client_settings") +
+        " (client_id, settings) VALUES (%s, %s::jsonb)"
+        " ON CONFLICT (client_id) DO UPDATE SET"
+        " settings = client_settings.settings || EXCLUDED.settings,"
+        " updated_at = NOW()",
+        (client_id, json.dumps({"weekly_problems": clean})),
+    )
+    if note:
+        portal_db.log_action(
+            cur, client_id, "bi.weekly_problems_settings", "customer_user",
+            actor_user_id, None, note[:200],
+        )
+    return clean
+
+
+def _format_weekly_body(data: Dict[str, Any]) -> Tuple[str, str, str]:
+    """Return (title, detail, severity) for portal_notify."""
+    problems = data.get("problems") or []
+    counts = data.get("problem_counts") or {}
+    critical = int(counts.get("critical") or 0)
+    warn = int(counts.get("warn") or 0)
+    days = int(data.get("days") or 7)
+    if not problems:
+        title = "Business insights: quiet week"
+        detail = (
+            "No problems crossed the detector thresholds in the last "
+            + str(days) + " days. Open Insights anytime to review topics "
+            "and AI quality."
+        )
+        return title, detail[:500], "normal"
+
+    title = (
+        "Business insights: "
+        + str(critical) + " to fix now, "
+        + str(warn) + " worth a look"
+    )
+    lines = []
+    for problem in problems[:6]:
+        sev = str(problem.get("severity") or "warn")
+        label = "FIX" if sev == "critical" else "LOOK"
+        action = (problem.get("action") or {}).get("label") or ""
+        line = "[" + label + "] " + str(problem.get("title") or "")
+        if action:
+            line += " — " + action
+        lines.append(line)
+    detail = (
+        "Last " + str(days) + " days. Top signals:\n"
+        + "\n".join(lines)
+        + "\nOpen /dashboard/insights to review evidence and act."
+    )
+    severity = "high" if critical else "normal"
+    return title[:200], detail[:500], severity
+
+
+def materialize_weekly_problems(cur, client_id: int, conn=None) -> int:
+    """Once a week (owner-chosen weekday + hour), email/bell the BI problems.
+    Defaults OFF. Never raises. Returns 1 when a notification was sent."""
+    try:
+        settings = _load_weekly_settings(cur, client_id)
+        if not settings.get("enabled"):
+            return 0
+        # ISO weekday 1=Mon .. 7=Sun via PostgreSQL
+        cur.execute(
+            "SELECT EXTRACT(ISODOW FROM NOW())::int AS wd,"
+            " EXTRACT(HOUR FROM NOW())::int AS h,"
+            " TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') AS d"
+        )
+        rows = portal_db.rows(cur)
+        row = rows[0] if rows else {}
+        wd = int(row.get("wd") or 0)
+        hour = int(row.get("h") or 0)
+        today = str(row.get("d") or "")
+        if wd != int(settings.get("weekday") or 0):
+            return 0
+        if hour < int(settings.get("hour") or 9):
+            return 0
+        if settings.get("last_sent_date") == today:
+            return 0
+
+        data = report(cur, client_id, 7)
+        title, detail, severity = _format_weekly_body(data)
+        import portal_notify
+
+        portal_notify.notify(
+            client_id,
+            "insights",
+            title,
+            detail,
+            severity=severity,
+            dedupe_key="weekly_problems:" + today,
+            in_app=True,
+        )
+        settings["last_sent_date"] = today
+        _save_weekly_settings(cur, client_id, settings, note="")
+        if conn is not None:
+            try:
+                conn.commit()
+            except Exception:
+                pass
+        portal_db.log_action(
+            cur, client_id, "bi.weekly_problems_sent", "system", None, None,
+            (title)[:200],
+        )
+        if conn is not None:
+            try:
+                conn.commit()
+            except Exception:
+                pass
+        return 1
+    except Exception as error:
+        logger.warning("weekly problems materialize failed: %s", error)
+        return 0
+
+
+@bp.get("/bi/weekly-problems")
+def get_weekly_problems_settings():
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    client_id = int(principal.get("client_id") or 0)
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            data = _load_weekly_settings(cur, client_id)
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({
+        "settings": data,
+        "weekdays": [
+            {"value": 1, "label": "Monday"},
+            {"value": 2, "label": "Tuesday"},
+            {"value": 3, "label": "Wednesday"},
+            {"value": 4, "label": "Thursday"},
+            {"value": 5, "label": "Friday"},
+            {"value": 6, "label": "Saturday"},
+            {"value": 7, "label": "Sunday"},
+        ],
+    }), 200
+
+
+@bp.put("/bi/weekly-problems")
+def update_weekly_problems_settings():
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    try:
+        from portal_auth import ensure_human_principal
+        forbidden = ensure_human_principal(principal)
+        if forbidden is not None:
+            return forbidden
+    except Exception:
+        pass
+    payload = request.get_json(silent=True) or {}
+    raw = payload.get("settings", payload)
+    if not isinstance(raw, dict):
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "settings must be an object."}}), 400
+    client_id = int(principal.get("client_id") or 0)
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            current = _load_weekly_settings(cur, client_id)
+            if "enabled" in raw and isinstance(raw.get("enabled"), bool):
+                current["enabled"] = raw["enabled"]
+            if "hour" in raw:
+                try:
+                    hour = int(raw.get("hour"))
+                    if not (6 <= hour <= 21):
+                        raise ValueError("hour")
+                    current["hour"] = hour
+                except Exception:
+                    return jsonify({"error": {
+                        "code": "bad_request",
+                        "message": "hour must be between 6 and 21."}}), 400
+            if "weekday" in raw:
+                try:
+                    wd = int(raw.get("weekday"))
+                    if not (1 <= wd <= 7):
+                        raise ValueError("weekday")
+                    current["weekday"] = wd
+                except Exception:
+                    return jsonify({"error": {
+                        "code": "bad_request",
+                        "message": "weekday must be 1 (Mon) to 7 (Sun)."}}), 400
+            saved = _save_weekly_settings(
+                cur, client_id, current,
+                actor_user_id=principal.get("user_id"),
+                note=("Weekly problems email "
+                      + ("on" if current["enabled"] else "off") + "."),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "settings": saved}), 200
+
+
+@bp.post("/bi/weekly-problems/send")
+def send_weekly_problems_now():
+    """Owner test: build this week's report and notify immediately (no schedule gate)."""
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    try:
+        from portal_auth import ensure_human_principal
+        forbidden = ensure_human_principal(principal)
+        if forbidden is not None:
+            return forbidden
+    except Exception:
+        pass
+    client_id = int(principal.get("client_id") or 0)
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            data = report(cur, client_id, 7)
+            title, detail, severity = _format_weekly_body(data)
+            import portal_notify
+            result = portal_notify.notify(
+                client_id, "insights", title, detail,
+                severity=severity,
+                dedupe_key="weekly_problems:manual:"
+                + str(int(__import__("time").time())),
+                in_app=True,
+                email_sync=True,
+            )
+            portal_db.log_action(
+                cur, client_id, "bi.weekly_problems_sent", "customer_user",
+                principal.get("user_id"), None, (title + " (manual)")[:200],
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "title": title, "result": result,
+                    "problem_counts": data.get("problem_counts")}), 200
+

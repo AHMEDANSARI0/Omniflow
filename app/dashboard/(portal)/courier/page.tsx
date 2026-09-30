@@ -188,7 +188,7 @@ export default function CourierPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Courier
           </h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Connect your courier accounts, then book or track parcels
             right from this page - with as much automation as you
             allow.
@@ -197,7 +197,7 @@ export default function CourierPage() {
 
         <CourierProvidersCard />
 
-        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+        <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Book parcel</p>
           <p className="mt-0.5 text-[11px] text-ink-3">
             {providers.length === 0
@@ -274,7 +274,7 @@ export default function CourierPage() {
           ) : null}
         </section>
 
-        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+        <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Bookings</p>
           {bookings.length === 0 ? (
             <p className="mt-1 text-[11px] text-ink-3">
@@ -285,7 +285,7 @@ export default function CourierPage() {
               {bookings.map((booking) => (
                 <li
                   key={booking.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-1.5"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-1.5"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-xs text-ink">

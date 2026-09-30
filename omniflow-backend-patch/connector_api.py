@@ -215,6 +215,14 @@ def list_commands():
                         cur, tenant["client_id"], conn
                     )
 
+                    try:
+                        import portal_bi
+                        portal_bi.materialize_weekly_problems(
+                            cur, tenant["client_id"], conn
+                        )
+                    except Exception:
+                        pass
+
                 except Exception:
                     pass
                 try:

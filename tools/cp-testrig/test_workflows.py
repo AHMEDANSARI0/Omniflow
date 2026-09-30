@@ -906,7 +906,9 @@ check("portal.ts workflow helpers", all(token in LIB for token in (
     "export async function setWorkflowStatus",
     "export async function archiveWorkflow",
     "export async function listWorkflowRuns",
-    "export async function runWorkflowNow")), "-")
+    "export async function runWorkflowNow",
+    "export async function listWorkflowVersions",
+    "export async function rollbackWorkflow")), "-")
 check("portal.ts paths", 'api/v1/portal/workflows/catalog' in LIB
       and '"/status"' in LIB and '"/runs?limit="' in LIB
       and '"/run"' in LIB, "-")
@@ -1009,5 +1011,37 @@ check("sidebar + palette link", '"/dashboard/workflows"' in SIDEBAR
 RULES = open(RIG13 + "app/dashboard/(portal)/rules/page.tsx",
              encoding="utf8").read()
 check("Rules page has a workflows icon", "workflows:" in RULES, "-")
+
+
+# ---- workflow version list + rollback (ops polish) ----
+WF_SRC = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "..", "..", "omniflow-backend-patch", "portal_workflows.py"),
+              encoding="utf8").read()
+check("workflow versions + rollback endpoints",
+      "def list_workflow_versions" in WF_SRC and "def rollback_workflow" in WF_SRC
+      and "workflow.rolled_back" in WF_SRC and "restored_from" in WF_SRC
+      and "MAX_VERSIONS_LISTED" in WF_SRC, "-")
+check("portal.ts version paths",
+      "/versions" in LIB and "/rollback" in LIB
+      and "PortalWorkflowVersion" in LIB, "-")
+CLIENT_LIVE = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "..", "app", "dashboard", "(portal)",
+                                "workflows", "WorkflowsClient.tsx"),
+                   encoding="utf8").read()
+check("Workflows client History + Restore",
+      "History" in CLIENT_LIVE and "Version history" in CLIENT_LIVE
+      and "openVersions" in CLIENT_LIVE and "restoreVersion" in CLIENT_LIVE
+      and "/rollback" in CLIENT_LIVE, "-")
+V_ROUTE = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "..", "app", "api", "omniflow", "portal",
+                            "workflows", "[id]", "versions", "route.ts"),
+               encoding="utf8").read()
+R_ROUTE = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "..", "app", "api", "omniflow", "portal",
+                            "workflows", "[id]", "rollback", "route.ts"),
+               encoding="utf8").read()
+check("BFF workflow versions + rollback",
+      "listWorkflowVersions" in V_ROUTE and "rollbackWorkflow" in R_ROUTE
+      and "version must be a positive integer" in R_ROUTE, "-")
 
 raise SystemExit(1 if summary("workflows") else 0)

@@ -94,7 +94,7 @@ export default function KbGapsCard() {
         {gaps.slice(0, 5).map((gap) => (
           <li
             key={gap.id}
-            className="rounded-xl border border-line bg-soft px-3 py-2.5"
+            className="rounded-xl border border-line bg-white shadow-card px-3 py-2.5"
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
@@ -115,7 +115,7 @@ export default function KbGapsCard() {
                 type="button"
                 onClick={() => resolve(gap.id)}
                 disabled={busyId !== null}
-                className="w-full shrink-0 rounded-xl border border-line bg-soft px-3 py-1.5 text-[11px] font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
+                className="w-full shrink-0 rounded-xl border border-line bg-white shadow-card px-3 py-1.5 text-[11px] font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
               >
                 {busyId === gap.id ? "…" : "Resolve"}
               </button>

@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import ApiKeyCard from "./ApiKeyCard";
 import BrandsCard from "./BrandsCard";
 import BusinessHoursCard from "./BusinessHoursCard";
+import BiThresholdsCard from "./BiThresholdsCard";
+import WeeklyProblemsCard from "./WeeklyProblemsCard";
 import WidgetSettingsCard from "./WidgetSettingsCard";
 import PaymentsCard from "./PaymentsCard";
 import DataSafetyCard from "./DataSafetyCard";
@@ -55,13 +57,15 @@ export default async function ClientSettingsPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-ink-3">
+        <p className="mt-1 text-sm text-ink-2">
           Workspace security and integration controls for your tenant.
         </p>
       </div>
 
       <ApiKeyCard keyInfo={keyInfo} />
       <BusinessHoursCard />
+      <BiThresholdsCard />
+      <WeeklyProblemsCard />
       <div className="mt-6">
         <WidgetSettingsCard />
       </div>

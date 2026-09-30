@@ -146,9 +146,9 @@ export default function SavedRepliesPicker({
           setOpen((value) => !value);
           if (!open && !loaded) void load();
         }}
-        className="inline-flex items-center gap-2 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
+        className="inline-flex items-center gap-2 rounded-xl border border-line bg-white shadow-card px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
       >
-        <span aria-hidden>⚡</span>
+        <span aria-hidden>✦</span>
         Saved replies
         <span className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-3">
           {replies.length}
@@ -159,13 +159,13 @@ export default function SavedRepliesPicker({
       </button>
 
       {open && (
-        <div className="mt-3 rounded-2xl border border-line bg-soft p-4">
+        <div className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
           {replies.length > 0 && (
             <ul className="space-y-2">
               {replies.map((reply) => (
                 <li
                   key={reply.id}
-                  className="flex flex-col gap-2 rounded-xl border border-line bg-soft p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 rounded-xl border border-line bg-white shadow-card p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <span className="rounded-md border border-brand/20 bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold text-brand">
@@ -217,14 +217,14 @@ export default function SavedRepliesPicker({
                 onChange={(event) => setShortcut(event.target.value)}
                 maxLength={24}
                 placeholder="shortcut, e.g. thanks"
-                className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
               />
               <input
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
                 maxLength={1000}
                 placeholder="Message text — what gets inserted"
-                className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
               />
               <button
                 type="button"

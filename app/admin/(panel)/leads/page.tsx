@@ -24,7 +24,7 @@ export default async function LeadsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="rounded-xl border border-line bg-soft px-4 py-2 text-xs text-ink-3">
+          <span className="rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs text-ink-3">
             Total: <span className="font-semibold text-ink">{leads.length}</span>
           </span>
           <span className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] px-4 py-2 text-xs text-brand">
@@ -34,8 +34,8 @@ export default async function LeadsPage() {
       </div>
 
       {leads.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-soft px-6 py-16 text-center">
-          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-soft text-ink-3">
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-16 text-center">
+          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white shadow-card text-ink-3">
             ◇
           </div>
           <p className="text-sm font-medium text-ink-2">No leads yet</p>

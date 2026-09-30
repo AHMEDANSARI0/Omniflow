@@ -118,7 +118,7 @@ export default function Features({
 function FeatureVisual({ kind }: { kind: "chat" | "intent" | "timer" | "route" | "workflow" | "channels" }) {
   if (kind === "chat") {
     return (
-      <div className="space-y-1.5 rounded-xl2 border border-line bg-soft p-3.5">
+      <div className="space-y-1.5 rounded-xl2 border border-line bg-white shadow-card p-3.5">
         <p className="w-fit rounded-lg rounded-tl-sm border border-line bg-white px-2.5 py-1.5 text-[11px] text-ink-2">
           Order kab aay ga?
         </p>
@@ -130,7 +130,7 @@ function FeatureVisual({ kind }: { kind: "chat" | "intent" | "timer" | "route" |
   }
   if (kind === "intent") {
     return (
-      <div className="flex flex-wrap items-center gap-1.5 rounded-xl2 border border-line bg-soft p-3.5">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl2 border border-line bg-white shadow-card p-3.5">
         <Badge tone="brand">Intent: order status</Badge>
         <Badge tone="ai">High intent</Badge>
         <Badge tone="success">Qualified</Badge>
@@ -139,7 +139,7 @@ function FeatureVisual({ kind }: { kind: "chat" | "intent" | "timer" | "route" |
   }
   if (kind === "timer") {
     return (
-      <div className="rounded-xl2 border border-line bg-soft p-3.5">
+      <div className="rounded-xl2 border border-line bg-white shadow-card p-3.5">
         <div className="flex items-center justify-between text-[11px] font-medium text-ink-2">
           <span>Follow-up</span>
           <span className="text-ink-3">in 24h</span>
@@ -152,7 +152,7 @@ function FeatureVisual({ kind }: { kind: "chat" | "intent" | "timer" | "route" |
   }
   if (kind === "route") {
     return (
-      <div className="flex items-center gap-2 rounded-xl2 border border-line bg-soft p-3.5 text-[11px] font-medium">
+      <div className="flex items-center gap-2 rounded-xl2 border border-line bg-white shadow-card p-3.5 text-[11px] font-medium">
         <span className="rounded-lg border border-line bg-white px-2 py-1 text-ink-2">
           Sales
         </span>
@@ -165,7 +165,7 @@ function FeatureVisual({ kind }: { kind: "chat" | "intent" | "timer" | "route" |
   }
   if (kind === "workflow") {
     return (
-      <div className="flex items-center gap-1.5 rounded-xl2 border border-line bg-soft p-3.5 text-[10.5px] font-semibold">
+      <div className="flex items-center gap-1.5 rounded-xl2 border border-line bg-white shadow-card p-3.5 text-[10.5px] font-semibold">
         {["Trigger", "AI", "Action"].map((node, index) => (
           <span key={node} className="flex items-center gap-1.5">
             <span className="rounded-lg border border-line bg-white px-2 py-1 text-ink-2">
@@ -180,7 +180,7 @@ function FeatureVisual({ kind }: { kind: "chat" | "intent" | "timer" | "route" |
     );
   }
   return (
-    <div className="flex items-center gap-1.5 rounded-xl2 border border-line bg-soft p-3.5">
+    <div className="flex items-center gap-1.5 rounded-xl2 border border-line bg-white shadow-card p-3.5">
       {["WA", "IG", "MS", "TG"].map((code, index) => (
         <span
           key={code}

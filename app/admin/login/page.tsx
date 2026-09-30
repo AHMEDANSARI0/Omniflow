@@ -63,7 +63,7 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-line bg-soft p-6 backdrop-blur-sm sm:p-7">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6 backdrop-blur-sm sm:p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label

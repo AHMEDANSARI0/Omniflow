@@ -68,6 +68,8 @@ KINDS: Tuple[Tuple[str, str, str], ...] = (
     ("workflow", "Workflow problems", "A workflow run failed."),
     ("knowledge", "Knowledge", "A document import or re-fetch failed."),
     ("system", "System", "Configuration problems and test notifications."),
+    ("insights", "Business insights",
+     "Weekly summary of problems the detector flagged."),
 )
 KIND_KEYS = tuple(k for k, _l, _d in KINDS)
 SEVERITIES: Tuple[str, ...] = ("normal", "high")

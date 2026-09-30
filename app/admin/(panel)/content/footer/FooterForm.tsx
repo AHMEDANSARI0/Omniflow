@@ -20,7 +20,7 @@ export default function FooterForm({ content }: { content: FooterContent }) {
   return (
     <form action={formAction} className="space-y-6">
       {/* Brand card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Brand text</h2>
         <p className="mb-5 text-xs text-ink-3">
           The description under the logo and the small status pill.
@@ -56,7 +56,7 @@ export default function FooterForm({ content }: { content: FooterContent }) {
       </div>
 
       {/* Social links card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Social links</h2>
         <p className="mb-5 text-xs text-ink-3">
           Full URLs (https://…). Use “#” as a placeholder, or leave empty to

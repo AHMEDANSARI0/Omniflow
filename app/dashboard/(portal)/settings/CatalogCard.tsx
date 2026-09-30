@@ -284,15 +284,15 @@ export default function CatalogCard() {
   const active = rows.filter((row) => row.isActive);
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-5">
-      <h2 className="text-sm font-semibold text-white">Saved catalog</h2>
-      <p className="mt-1 text-xs text-slate-500">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-5">
+      <h2 className="text-sm font-semibold text-ink">Saved catalog</h2>
+      <p className="mt-1 text-xs text-ink-3">
         Products and services you sell again and again. The checkout link
         builder picks items from here with one tap, and recommendations read
         the same list.
       <button
         onClick={() => setSyncOpen(!syncOpen)}
-        className="mt-2 text-[11px] text-cyan-300 hover:underline"
+        className="mt-2 text-[11px] text-brand hover:underline"
       >
         Import from store {sync?.source
           ? "(" + sync.source + ")"
@@ -300,7 +300,7 @@ export default function CatalogCard() {
       </button>
       {syncOpen ? (
         <div className="mt-2 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.03] p-3">
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-ink-3">
             One-way import from WooCommerce or Shopify - names, prices,
             stock and images. Your manual items are never touched, and
             re-importing updates the same products in place.
@@ -310,7 +310,7 @@ export default function CatalogCard() {
               value={syncForm.source}
               onChange={(e) => setSyncForm({ ...syncForm,
                 source: e.target.value })}
-              className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+              className="rounded-lg border border-line bg-soft px-2 py-1.5 text-[11px] text-ink outline-none"
               aria-label="Store platform"
             >
               <option value="woo">WooCommerce</option>
@@ -322,7 +322,7 @@ export default function CatalogCard() {
                 base_url: e.target.value })}
               placeholder={sync?.base_url
                 || "Store URL (e.g. https://mystore.com)"}
-              className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+              className="rounded-lg border border-line bg-soft px-2 py-1.5 text-[11px] text-ink outline-none"
             />
             <input
               value={syncForm.api_key}
@@ -332,7 +332,7 @@ export default function CatalogCard() {
                 || (syncForm.source === "woo"
                   ? "Consumer key"
                   : "Admin API access token")}
-              className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+              className="rounded-lg border border-line bg-soft px-2 py-1.5 text-[11px] text-ink outline-none"
             />
             {syncForm.source === "woo" ? (
               <input
@@ -340,7 +340,7 @@ export default function CatalogCard() {
                 onChange={(e) => setSyncForm({ ...syncForm,
                   api_secret: e.target.value })}
                 placeholder={sync?.api_secret_masked || "Consumer secret"}
-                className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+                className="rounded-lg border border-line bg-soft px-2 py-1.5 text-[11px] text-ink outline-none"
               />
             ) : null}
           </div>
@@ -348,25 +348,25 @@ export default function CatalogCard() {
             <button
               onClick={() => void saveSyncSettings()}
               disabled={syncBusy || !syncForm.base_url.trim()}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-[11px] text-slate-300 hover:bg-white/[0.05] disabled:opacity-40"
+              className="rounded-lg border border-line bg-soft px-3 py-1.5 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-40"
             >
               Save source
             </button>
             <button
               onClick={() => void runSync()}
               disabled={syncBusy}
-              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-[11px] text-emerald-200 hover:bg-emerald-400/[0.15] disabled:opacity-40"
+              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-[11px] text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
             >
               Import now
             </button>
             {sync?.last_sync_at ? (
-              <span className="text-[10px] text-slate-600">
+              <span className="text-[10px] text-ink-3">
                 Last import: {sync.last_sync_count} products
               </span>
             ) : null}
           </div>
           {syncNote ? (
-            <p className="mt-1.5 text-[11px] text-slate-300">{syncNote}</p>
+            <p className="mt-1.5 text-[11px] text-ink-2">{syncNote}</p>
           ) : null}
         </div>
       ) : null}
@@ -378,7 +378,7 @@ export default function CatalogCard() {
           onChange={(event) =>
             setForm({ ...form, kind: event.target.value === "service" ? "service" : "product" })
           }
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         >
           <option value="product">Product</option>
           <option value="service">Service</option>
@@ -388,20 +388,20 @@ export default function CatalogCard() {
           onChange={(event) => setForm({ ...form, name: event.target.value })}
           placeholder="Item name (e.g. Lawn 3-piece)"
           maxLength={120}
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         />
         <input
           value={form.priceText}
           onChange={(event) => setForm({ ...form, priceText: event.target.value })}
           placeholder="Price (e.g. Rs 2,500)"
           maxLength={40}
-          className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         />
         {brands.length > 0 && (
           <select
             value={form.brandId}
             onChange={(event) => setForm({ ...form, brandId: event.target.value })}
-            className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+            className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
           >
             <option value="">No brand</option>
             {brands.map((brand) => (
@@ -418,7 +418,7 @@ export default function CatalogCard() {
           onChange={(event) => setForm({ ...form, notes: event.target.value })}
           placeholder="Short note (optional)"
           maxLength={160}
-          className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/40"
+          className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
         />
         <button
           type="button"
@@ -430,7 +430,7 @@ export default function CatalogCard() {
         </button>
       </div>
 
-      {note ? <p className="mt-2 text-[11px] text-amber-300">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] text-amber-600">{note}</p> : null}
 
 
       {brands.length > 0 ? (
@@ -439,7 +439,7 @@ export default function CatalogCard() {
             id="catalogBrandFilter"
             value={brandFilter}
             onChange={(event) => setBrandFilter(event.target.value)}
-            className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-400/40"
+            className="rounded-xl border border-line bg-soft px-3 py-1.5 text-xs text-ink outline-none focus:border-brand/40"
           >
             <option value="">All brands</option>
             {brands.map((brand) => (
@@ -453,7 +453,7 @@ export default function CatalogCard() {
 
       <div className="mt-4">
         {loaded && rows.length === 0 ? (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-3">
             No catalog items yet — add your first product above.
           </p>
         ) : null}
@@ -463,7 +463,7 @@ export default function CatalogCard() {
             {active.map((row) => (
               <li
                 key={row.id}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <span className="float-right flex items-center gap-1.5">
                   {row.brand_name ? (
@@ -472,7 +472,7 @@ export default function CatalogCard() {
                     </span>
                   ) : null}
                   {row.source && row.source !== "manual" ? (
-                    <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[9px] uppercase tracking-wide text-slate-400">
+                    <span className="rounded-full border border-line-2 bg-soft px-2 py-0.5 text-[9px] uppercase tracking-wide text-ink-3">
                       {row.source}
                       {(row.stock ?? 0) > 0 ? " · stock " + row.stock : ""}
                     </span>
@@ -488,7 +488,7 @@ export default function CatalogCard() {
                           kind: event.target.value === "service" ? "service" : "product",
                         })
                       }
-                      className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+                      className="rounded-lg border border-line bg-soft px-2 py-1.5 text-[11px] text-ink outline-none"
                     >
                       <option value="product">Product</option>
                       <option value="service">Service</option>
@@ -499,7 +499,7 @@ export default function CatalogCard() {
                         setEditForm({ ...editForm, name: event.target.value })
                       }
                       maxLength={120}
-                      className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+                      className="rounded-lg border border-line bg-soft px-2 py-1.5 text-[11px] text-ink outline-none"
                     />
                     <input
                       value={editForm.priceText}
@@ -507,7 +507,7 @@ export default function CatalogCard() {
                         setEditForm({ ...editForm, priceText: event.target.value })
                       }
                       maxLength={40}
-                      className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none"
+                      className="rounded-lg border border-line bg-soft px-2 py-1.5 text-[11px] text-ink outline-none"
                     />
                     {brands.length > 0 && (
                       <select
@@ -518,7 +518,7 @@ export default function CatalogCard() {
                             brandId: event.target.value,
                           })
                         }
-                        className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-[11px] text-white outline-none sm:col-span-3"
+                        className="rounded-lg border border-line bg-soft px-2 py-1.5 text-[11px] text-ink outline-none sm:col-span-3"
                       >
                         <option value="">No brand</option>
                         {brands.map((brand) => (
@@ -533,14 +533,14 @@ export default function CatalogCard() {
                         type="button"
                         onClick={() => void saveEdit(row.id)}
                         disabled={busy}
-                        className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.1] px-2.5 py-1 text-[10px] font-medium text-cyan-200 disabled:opacity-50"
+                        className="rounded-lg border border-brand/30 bg-brand-soft px-2.5 py-1 text-[10px] font-medium text-brand disabled:opacity-50"
                       >
                         Save
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingId(0)}
-                        className="rounded-lg border border-white/[0.08] px-2.5 py-1 text-[10px] text-slate-400"
+                        className="rounded-lg border border-line px-2.5 py-1 text-[10px] text-ink-3"
                       >
                         Cancel
                       </button>
@@ -549,17 +549,17 @@ export default function CatalogCard() {
                 ) : (
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-xs text-slate-200">
-                        <span className="mr-1.5 rounded border border-white/[0.08] px-1 py-0.5 text-[9px] uppercase tracking-wider text-slate-400">
+                      <p className="truncate text-xs text-ink">
+                        <span className="mr-1.5 rounded border border-line px-1 py-0.5 text-[9px] uppercase tracking-wider text-ink-3">
                           {row.kind}
                         </span>
                         {row.name}
                         {row.priceText ? (
-                          <span className="text-slate-400"> · {row.priceText}</span>
+                          <span className="text-ink-3"> · {row.priceText}</span>
                         ) : null}
                       </p>
                       {row.notes ? (
-                        <p className="truncate text-[10px] text-slate-500">{row.notes}</p>
+                        <p className="truncate text-[10px] text-ink-3">{row.notes}</p>
                       ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
@@ -575,7 +575,7 @@ export default function CatalogCard() {
                             brandId: row.brand_id ? String(row.brand_id) : "",
                           });
                         }}
-                        className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                        className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                       >
                         Edit
                       </button>
@@ -583,7 +583,7 @@ export default function CatalogCard() {
                         type="button"
                         onClick={() => void remove(row.id)}
                         disabled={busy}
-                        className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] text-slate-400 hover:border-rose-400/40 hover:text-rose-300 disabled:opacity-50"
+                        className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-3 hover:border-rose-400/40 hover:text-danger disabled:opacity-50"
                       >
                         Delete
                       </button>

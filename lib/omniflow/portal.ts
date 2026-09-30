@@ -11194,6 +11194,131 @@ export async function listWorkflowRuns(
     .filter((run): run is WorkflowRun => run !== null);
 }
 
+export interface PortalWorkflowVersion {
+  version: number;
+  createdAt: string;
+  snapshot: {
+    name: string;
+    description: string;
+    triggerType: string;
+    triggerConfig: Record<string, unknown>;
+    stopOnReply: boolean;
+    steps: { kind: string; label: string; config: Record<string, unknown> }[];
+    restoredFrom: number | null;
+  };
+}
+
+function normalizeWorkflowVersion(item: unknown): PortalWorkflowVersion | null {
+  const row = asRecord(item);
+  const version = typeof row.version === "number" ? row.version : 0;
+  if (version <= 0) return null;
+  const snap = asRecord(row.snapshot);
+  const stepsRaw = Array.isArray(snap.steps) ? snap.steps : [];
+  return {
+    version,
+    createdAt: typeof row.created_at === "string" ? row.created_at : "",
+    snapshot: {
+      name: typeof snap.name === "string" ? snap.name : "",
+      description: typeof snap.description === "string" ? snap.description : "",
+      triggerType:
+        typeof snap.trigger_type === "string" ? snap.trigger_type : "manual",
+      triggerConfig: asRecord(snap.trigger_config),
+      stopOnReply: snap.stop_on_reply === true,
+      steps: stepsRaw.map((step) => {
+        const s = asRecord(step);
+        return {
+          kind: typeof s.kind === "string" ? s.kind : "",
+          label: typeof s.label === "string" ? s.label : "",
+          config: asRecord(s.config),
+        };
+      }),
+      restoredFrom:
+        typeof snap.restored_from === "number" ? snap.restored_from : null,
+    },
+  };
+}
+
+export type WorkflowVersionsResult =
+  | { kind: "ok"; versions: PortalWorkflowVersion[] }
+  | { kind: "not_found" }
+  | null;
+
+export async function listWorkflowVersions(
+  accessToken: string,
+  workflowId: number
+): Promise<WorkflowVersionsResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/workflows/" + workflowId + "/versions"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const raw = Array.isArray(payload.versions) ? payload.versions : [];
+  return {
+    kind: "ok",
+    versions: raw
+      .map(normalizeWorkflowVersion)
+      .filter((item): item is PortalWorkflowVersion => item !== null),
+  };
+}
+
+export type WorkflowRollbackResult =
+  | { kind: "ok"; version: number; restoredFrom: number }
+  | { kind: "not_found" }
+  | { kind: "bad_request"; message: string }
+  | null;
+
+export async function rollbackWorkflow(
+  accessToken: string,
+  workflowId: number,
+  version: number
+): Promise<WorkflowRollbackResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/workflows/" + workflowId + "/rollback",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 404) return { kind: "not_found" };
+  if (response.status === 400) {
+    const payload = asRecord(await response.json().catch(() => null));
+    const error = asRecord(payload.error);
+    return {
+      kind: "bad_request",
+      message:
+        typeof error.message === "string"
+          ? error.message
+          : "version must be a positive integer.",
+    };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  return {
+    kind: "ok",
+    version: typeof payload.version === "number" ? payload.version : 0,
+    restoredFrom:
+      typeof payload.restored_from === "number" ? payload.restored_from : version,
+  };
+}
+
 export type WorkflowRunNowResult =
   | { kind: "ok"; runId: number; status: string }
   | { kind: "not_found" }
@@ -13806,6 +13931,228 @@ export interface BiReport {
   problems: BiProblem[];
   problem_counts: { critical: number; warn: number };
   topics: { key: string; label: string }[];
+}
+
+export type BiThresholds = Record<string, number>;
+
+export async function getBiThresholds(
+  accessToken: string
+): Promise<{
+  thresholds: BiThresholds;
+  defaults: BiThresholds;
+  timezoneOffsetHours: number;
+  keys: string[];
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/bi/thresholds");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const thresholds = asRecord(payload.thresholds);
+  const defaults = asRecord(payload.defaults);
+  const keys = Array.isArray(payload.keys)
+    ? payload.keys.filter((k): k is string => typeof k === "string")
+    : Object.keys(thresholds);
+  const toNums = (src: Record<string, unknown>): BiThresholds => {
+    const out: BiThresholds = {};
+    for (const [k, v] of Object.entries(src)) {
+      if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+    }
+    return out;
+  };
+  return {
+    thresholds: toNums(thresholds),
+    defaults: toNums(defaults),
+    timezoneOffsetHours:
+      typeof payload.timezone_offset_hours === "number"
+        ? payload.timezone_offset_hours
+        : 5,
+    keys,
+  };
+}
+
+export async function saveBiThresholds(
+  accessToken: string,
+  thresholds: BiThresholds
+): Promise<
+  | { kind: "ok"; thresholds: BiThresholds }
+  | { kind: "bad_request"; message: string }
+  | null
+> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/bi/thresholds", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ thresholds }),
+    });
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) {
+    const payload = asRecord(await response.json().catch(() => null));
+    const error = asRecord(payload.error);
+    return {
+      kind: "bad_request",
+      message:
+        typeof error.message === "string"
+          ? error.message
+          : "Check the threshold values.",
+    };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const saved = asRecord(payload.thresholds);
+  const out: BiThresholds = {};
+  for (const [k, v] of Object.entries(saved)) {
+    if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  }
+  return { kind: "ok", thresholds: out };
+}
+
+export interface WeeklyProblemsSettings {
+  enabled: boolean;
+  hour: number;
+  weekday: number;
+  lastSentDate: string | null;
+}
+
+export interface WeeklyProblemsWeekday {
+  value: number;
+  label: string;
+}
+
+export async function getWeeklyProblemsSettings(
+  accessToken: string
+): Promise<{
+  settings: WeeklyProblemsSettings;
+  weekdays: WeeklyProblemsWeekday[];
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/bi/weekly-problems"
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const raw = asRecord(payload.settings);
+  const weekdaysRaw = Array.isArray(payload.weekdays) ? payload.weekdays : [];
+  const weekdays: WeeklyProblemsWeekday[] = [];
+  for (const item of weekdaysRaw) {
+    const row = asRecord(item);
+    if (typeof row.value === "number" && typeof row.label === "string") {
+      weekdays.push({ value: row.value, label: row.label });
+    }
+  }
+  return {
+    settings: {
+      enabled: raw.enabled === true,
+      hour: typeof raw.hour === "number" ? raw.hour : 9,
+      weekday: typeof raw.weekday === "number" ? raw.weekday : 1,
+      lastSentDate:
+        typeof raw.last_sent_date === "string" && raw.last_sent_date
+          ? raw.last_sent_date
+          : null,
+    },
+    weekdays,
+  };
+}
+
+export async function saveWeeklyProblemsSettings(
+  accessToken: string,
+  settings: { enabled: boolean; hour: number; weekday: number }
+): Promise<
+  | { kind: "ok"; settings: WeeklyProblemsSettings }
+  | { kind: "bad_request"; message: string }
+  | null
+> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/bi/weekly-problems",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings }),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 400) {
+    const payload = asRecord(await response.json().catch(() => null));
+    const error = asRecord(payload.error);
+    return {
+      kind: "bad_request",
+      message:
+        typeof error.message === "string"
+          ? error.message
+          : "Check the schedule values.",
+    };
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const raw = asRecord(payload.settings);
+  return {
+    kind: "ok",
+    settings: {
+      enabled: raw.enabled === true,
+      hour: typeof raw.hour === "number" ? raw.hour : settings.hour,
+      weekday: typeof raw.weekday === "number" ? raw.weekday : settings.weekday,
+      lastSentDate:
+        typeof raw.last_sent_date === "string" && raw.last_sent_date
+          ? raw.last_sent_date
+          : null,
+    },
+  };
+}
+
+export async function sendWeeklyProblemsNow(
+  accessToken: string
+): Promise<{
+  ok: boolean;
+  title: string;
+  problemCounts: { critical: number; warn: number };
+} | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/bi/weekly-problems/send",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  const payload = asRecord(await response.json().catch(() => null));
+  const counts = asRecord(payload.problem_counts);
+  return {
+    ok: payload.ok === true,
+    title: typeof payload.title === "string" ? payload.title : "",
+    problemCounts: {
+      critical: typeof counts.critical === "number" ? counts.critical : 0,
+      warn: typeof counts.warn === "number" ? counts.warn : 0,
+    },
+  };
 }
 
 export async function getBiReport(

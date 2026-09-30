@@ -30,7 +30,7 @@ export default function DashShell({
       />
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <main className="flex-1 px-5 pb-24 pt-20 sm:px-8 lg:pb-12 lg:pt-10">
+        <main className="flex-1 px-5 pb-24 pt-20 sm:px-8 lg:px-10 lg:pb-12 lg:pt-10">
           {children}
         </main>
       </div>

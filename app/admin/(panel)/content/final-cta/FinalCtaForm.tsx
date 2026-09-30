@@ -20,7 +20,7 @@ export default function FinalCtaForm({ content }: { content: FinalCtaContent }) 
   return (
     <form action={formAction} className="space-y-6">
       {/* Headline card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Headline</h2>
         <p className="mb-5 text-xs text-ink-3">
           Line 2 is shown with the gradient color.
@@ -83,7 +83,7 @@ export default function FinalCtaForm({ content }: { content: FinalCtaContent }) 
       </div>
 
       {/* Buttons card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Buttons</h2>
         <p className="mb-5 text-xs text-ink-3">
           Labels only — behavior stays fixed.
@@ -118,7 +118,7 @@ export default function FinalCtaForm({ content }: { content: FinalCtaContent }) 
       </div>
 
       {/* Notes card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Notes strip</h2>
         <p className="mb-5 text-xs text-ink-3">
           Small notes under the buttons. Separate each note with a “|”

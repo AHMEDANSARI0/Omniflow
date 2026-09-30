@@ -87,7 +87,7 @@ export default function DailyBrief() {
   if (failed || !brief) return null;
 
   return (
-    <section className="mb-6 rounded-2xl border border-line bg-soft p-4">
+    <section className="mb-6 rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold text-ink">Today</p>
         <div className="flex gap-3 text-[10px]">

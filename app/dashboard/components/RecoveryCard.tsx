@@ -96,7 +96,7 @@ export default function RecoveryCard() {
   const open = items.filter((item) => item.status === "open");
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-ink">
@@ -126,7 +126,7 @@ export default function RecoveryCard() {
             {open.slice(0, 5).map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <div className="min-w-0">
                   <p className="truncate text-xs text-ink">

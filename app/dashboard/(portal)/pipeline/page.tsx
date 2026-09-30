@@ -164,7 +164,7 @@ export default function PipelinePage() {
               return (
                 <section
                   key={column.stage}
-                  className="flex w-60 shrink-0 flex-col rounded-2xl border border-line bg-soft"
+                  className="flex w-60 shrink-0 flex-col rounded-2xl border border-line bg-white shadow-card"
                 >
                   <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2.5">
                     <span className="flex items-center gap-2 text-xs font-semibold text-ink">

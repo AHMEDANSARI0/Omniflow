@@ -133,7 +133,7 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold text-ink">Memory</p>
@@ -160,7 +160,7 @@ export default function CustomerMemoryCard({ contact }: { contact: string }) {
               {memory.map((entry) => (
                 <li
                   key={entry.id}
-                  className="rounded-xl border border-line bg-soft px-3 py-2"
+                  className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   {editingId === entry.id ? (
                     <div className="flex gap-2">

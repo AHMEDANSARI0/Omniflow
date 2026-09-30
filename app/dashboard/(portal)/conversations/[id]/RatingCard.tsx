@@ -74,7 +74,7 @@ export default function RatingCard({ conversationId }: { conversationId: number 
 
   if (loaded && csat === null) {
     return (
-      <div className="mb-4 rounded-2xl border border-line bg-soft p-4">
+      <div className="mb-4 rounded-2xl border border-line bg-white shadow-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-xs font-semibold text-ink">Customer rating</h2>
@@ -132,7 +132,7 @@ export default function RatingCard({ conversationId }: { conversationId: number 
           type="button"
           onClick={sendRequest}
           disabled={busy}
-          className="w-full shrink-0 rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
+          className="w-full shrink-0 rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
         >
           {busy ? "Sending…" : "Ask again"}
         </button>

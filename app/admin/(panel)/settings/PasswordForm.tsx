@@ -55,7 +55,7 @@ export default function PasswordForm() {
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-soft p-6">
+    <div className="rounded-2xl border border-line bg-white shadow-card p-6">
       <h2 className="mb-1 text-sm font-semibold text-ink">Change password</h2>
       <p className="mb-5 text-xs text-ink-3">
         Use a strong password of at least 8 characters. You stay signed in

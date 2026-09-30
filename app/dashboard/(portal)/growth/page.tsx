@@ -228,9 +228,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
-      <p className="text-xs font-semibold text-white">{title}</p>
-      <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>
+    <section className="rounded-2xl border border-line bg-white shadow-card p-4">
+      <p className="text-xs font-semibold text-ink">{title}</p>
+      <p className="mt-0.5 text-[11px] text-ink-3">{hint}</p>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -852,17 +852,17 @@ export default function GrowthPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Growth
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-ink-2">
           Churn risk, staffing peaks, broadcast ideas, negotiation limits,
           checkout links, keyword alerts and routing rules - all deterministic.
         </p>
       </div>
 
       {failed ? (
-        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-300">
+        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-600">
           Some insights are temporarily unavailable. Try again shortly.
         </p>
       ) : null}
@@ -876,7 +876,7 @@ export default function GrowthPage() {
                 "omniflow-revenue.csv"
               )
             }
-            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-white/[0.06]"
+            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 hover:bg-white/[0.06]"
           >
             Export revenue CSV
           </button>
@@ -892,8 +892,8 @@ export default function GrowthPage() {
                 onClick={() => setDays(option)}
                 className={`rounded-lg border px-2.5 py-1 text-xs transition-colors ${
                   days === option
-                    ? "border-cyan-400/30 bg-cyan-400/[0.1] text-cyan-300"
-                    : "border-white/[0.08] bg-white/[0.02] text-slate-400 hover:bg-white/[0.05]"
+                    ? "border-brand/30 bg-brand-soft text-brand"
+                    : "border-line bg-soft text-ink-3 hover:bg-soft"
                 }`}
               >
                 {option}d
@@ -903,21 +903,21 @@ export default function GrowthPage() {
           {revenue ? (
             <>
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
-                  <p className="text-[10px] text-slate-500">Revenue</p>
-                  <p className="mt-0.5 text-lg font-semibold text-white">
+                <div className="rounded-xl border border-line bg-white shadow-card px-3 py-2">
+                  <p className="text-[10px] text-ink-3">Revenue</p>
+                  <p className="mt-0.5 text-lg font-semibold text-ink">
                     Rs {revenue.revenue.toLocaleString()}
                   </p>
                   {revenue.deltaPercent === null ? (
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[10px] text-ink-3">
                       no prior window
                     </p>
                   ) : (
                     <p
                       className={`text-[10px] ${
                         revenue.deltaPercent >= 0
-                          ? "text-emerald-300"
-                          : "text-rose-300"
+                          ? "text-ok"
+                          : "text-danger"
                       }`}
                     >
                       {revenue.deltaPercent >= 0 ? "+" : ""}
@@ -925,33 +925,33 @@ export default function GrowthPage() {
                     </p>
                   )}
                 </div>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
-                  <p className="text-[10px] text-slate-500">Orders</p>
-                  <p className="mt-0.5 text-lg font-semibold text-white">
+                <div className="rounded-xl border border-line bg-white shadow-card px-3 py-2">
+                  <p className="text-[10px] text-ink-3">Orders</p>
+                  <p className="mt-0.5 text-lg font-semibold text-ink">
                     {revenue.orders}
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-ink-3">
                     AOV Rs {revenue.aov !== null ? revenue.aov.toLocaleString() : "-"}
                     {revenue.cancelled > 0
                       ? " · " + revenue.cancelled + " cancelled"
                       : ""}
                   </p>
                 </div>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
-                  <p className="text-[10px] text-slate-500">Buyers</p>
-                  <p className="mt-0.5 text-lg font-semibold text-white">
+                <div className="rounded-xl border border-line bg-white shadow-card px-3 py-2">
+                  <p className="text-[10px] text-ink-3">Buyers</p>
+                  <p className="mt-0.5 text-lg font-semibold text-ink">
                     {revenue.newBuyers + revenue.repeatBuyers}
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-ink-3">
                     {revenue.newBuyers} new · {revenue.repeatBuyers} repeat
                   </p>
                 </div>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2">
-                  <p className="text-[10px] text-slate-500">Pipeline</p>
-                  <p className="mt-0.5 text-lg font-semibold text-white">
+                <div className="rounded-xl border border-line bg-white shadow-card px-3 py-2">
+                  <p className="text-[10px] text-ink-3">Pipeline</p>
+                  <p className="mt-0.5 text-lg font-semibold text-ink">
                     Rs {revenue.pipelineValue.toLocaleString()}
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-ink-3">
                     {revenue.openCarts} open carts ·{" "}
                     {revenue.winbackSent} win-backs sent
                   </p>
@@ -959,20 +959,20 @@ export default function GrowthPage() {
               </div>
               {revItems.length > 0 ? (
                 <div className="mt-3">
-                  <p className="text-[10px] font-semibold text-slate-400">
+                  <p className="text-[10px] font-semibold text-ink-3">
                     Top items by revenue
                   </p>
                   <ul className="mt-1.5 space-y-1">
                     {revItems.slice(0, 5).map((item) => (
                       <li
                         key={item.name}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.05] bg-white/[0.015] px-2.5 py-1.5"
+                        className="flex items-center justify-between gap-2 rounded-lg border border-line bg-soft px-2.5 py-1.5"
                       >
-                        <p className="truncate text-xs text-slate-200">
+                        <p className="truncate text-xs text-ink">
                           {item.name}
                         </p>
                         <div className="flex shrink-0 items-center gap-2">
-                          <span className="text-[10px] text-slate-500">
+                          <span className="text-[10px] text-ink-3">
                             {item.units} sold
                             {item.buyers > 0
                               ? " · " + item.buyers + " buyers"
@@ -981,15 +981,15 @@ export default function GrowthPage() {
                           <span
                             className={`rounded-md border px-1.5 py-0.5 text-[10px] ${
                               item.trend === "up"
-                                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
                                 : item.trend === "down"
-                                  ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
-                                  : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+                                  ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
+                                  : "border-line bg-soft text-ink-3"
                             }`}
                           >
                             {item.trend}
                           </span>
-                          <span className="text-[10px] text-slate-300">
+                          <span className="text-[10px] text-ink-2">
                             Rs {item.revenue.toLocaleString()}
                           </span>
                         </div>
@@ -1000,7 +1000,7 @@ export default function GrowthPage() {
               ) : null}
             </>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-3">
               Revenue data unavailable.
             </p>
           )}
@@ -1014,20 +1014,20 @@ export default function GrowthPage() {
             <div className="grid gap-3 md:grid-cols-3">
               {(
                 [
-                  ["Stock up", restock.stockUp, "text-emerald-300"],
-                  ["Watch", restock.watch, "text-amber-300"],
-                  ["Slow movers", restock.slow, "text-slate-400"],
+                  ["Stock up", restock.stockUp, "text-ok"],
+                  ["Watch", restock.watch, "text-amber-600"],
+                  ["Slow movers", restock.slow, "text-ink-3"],
                 ] as const
               ).map(([label, list, tone]) => (
                 <div
                   key={label}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-2.5"
+                  className="rounded-xl border border-line bg-white shadow-card p-2.5"
                 >
                   <p className={`text-[10px] font-semibold ${tone}`}>
                     {label} ({list.length})
                   </p>
                   {list.length === 0 ? (
-                    <p className="mt-1.5 text-[11px] text-slate-600">
+                    <p className="mt-1.5 text-[11px] text-ink-3">
                       Nothing here.
                     </p>
                   ) : (
@@ -1035,17 +1035,17 @@ export default function GrowthPage() {
                       {list.slice(0, 4).map((item) => (
                         <li
                           key={label + item.name}
-                          className="rounded-lg border border-white/[0.05] bg-white/[0.015] px-2 py-1.5"
+                          className="rounded-lg border border-line bg-soft px-2 py-1.5"
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <p className="truncate text-xs text-slate-200">
+                            <p className="truncate text-xs text-ink">
                               {item.name}
                             </p>
-                            <span className="shrink-0 text-[10px] text-slate-500">
+                            <span className="shrink-0 text-[10px] text-ink-3">
                               {item.weeklyRate}/wk
                             </span>
                           </div>
-                          <p className="mt-0.5 text-[10px] text-slate-600">
+                          <p className="mt-0.5 text-[10px] text-ink-3">
                             {item.trend}
                             {item.sharePercent !== null
                               ? " · " + item.sharePercent + "% of revenue"
@@ -1062,7 +1062,7 @@ export default function GrowthPage() {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-3">
               Sell a few orders to see restock signals.
             </p>
           )}
@@ -1073,7 +1073,7 @@ export default function GrowthPage() {
           hint="Scored from quiet chats, unanswered replies, cold carts and slowing orders."
         >
           {radar.length === 0 ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-3">
               No churn signals right now.
             </p>
           ) : (
@@ -1081,14 +1081,14 @@ export default function GrowthPage() {
               {radar.map((entry) => (
                 <li
                   key={entry.contactId}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-slate-200">
+                    <p className="truncate text-sm text-ink">
                       {entry.name || entry.contactId}
                     </p>
                     {entry.reasons[0] ? (
-                      <p className="truncate text-[10px] text-slate-500">
+                      <p className="truncate text-[10px] text-ink-3">
                         {entry.reasons[0]}
                       </p>
                     ) : null}
@@ -1096,8 +1096,8 @@ export default function GrowthPage() {
                   <span
                     className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] ${
                       entry.tier === "at_risk"
-                        ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
-                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                        ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
+                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
                     }`}
                   >
                     {entry.score} ·{" "}
@@ -1114,7 +1114,7 @@ export default function GrowthPage() {
           hint="Customers with no activity for the selected window."
         >
           {churn.length === 0 ? (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-ink-3">
               No quiet customers in this window.
             </p>
           ) : (
@@ -1122,17 +1122,17 @@ export default function GrowthPage() {
               {churn.slice(0, 10).map((contact) => (
                 <li
                   key={contact.contactId}
-                  className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                  className="flex items-center justify-between rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-slate-200">
+                    <p className="truncate text-sm text-ink">
                       {contact.name || contact.contactId}
                     </p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[10px] text-ink-3">
                       {contact.contactId} · {contact.chats} chats
                     </p>
                   </div>
-                  <span className="shrink-0 text-[10px] text-slate-500">
+                  <span className="shrink-0 text-[10px] text-ink-3">
                     {contact.lastAt ? "last: " + contact.lastAt : "unknown"}
                   </span>
                 </li>
@@ -1163,7 +1163,7 @@ export default function GrowthPage() {
                   />
                 ))}
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">
+              <p className="mt-2 text-[11px] text-ink-3">
                 Peak at {staffing.peakHour}:00 ({staffing.peakChats} chats).
                 Suggested coverage:{" "}
                 {staffing.suggested.map((hour) => hour + ":00").join(", ") ||
@@ -1171,7 +1171,7 @@ export default function GrowthPage() {
               </p>
             </>
           ) : (
-            <p className="text-xs text-slate-500">Not enough data yet.</p>
+            <p className="text-xs text-ink-3">Not enough data yet.</p>
           )}
         </Section>
 
@@ -1183,12 +1183,12 @@ export default function GrowthPage() {
             {suggestions.map((idea) => (
               <li
                 key={idea.audience}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
-                <p className="text-sm text-slate-200">
+                <p className="text-sm text-ink">
                   {idea.audience} · {idea.count} contacts
                 </p>
-                <p className="text-[11px] text-slate-500">{idea.note}</p>
+                <p className="text-[11px] text-ink-3">{idea.note}</p>
               </li>
             ))}
           </ul>
@@ -1200,14 +1200,14 @@ export default function GrowthPage() {
         >
           {settings ? (
             <>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-ink-3">
                 <span>Max discount: {settings.maxPercent}%</span>
                 <button
                   onClick={() => void saveLimits(!settings.enabled)}
                   className={`rounded-lg border px-2.5 py-1 text-xs transition-colors ${
                     settings.enabled
-                      ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                      : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+                      ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                      : "border-line bg-soft text-ink-3"
                   }`}
                 >
                   {settings.enabled ? "Guardrails ON" : "Guardrails OFF"}
@@ -1218,31 +1218,31 @@ export default function GrowthPage() {
                   value={ask}
                   onChange={(event) => setAsk(event.target.value)}
                   placeholder="Customer asks (e.g. 1500)"
-                  className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder-slate-600 outline-none focus:border-cyan-400/40"
+                  className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
                 />
                 <input
                   value={price}
                   onChange={(event) => setPrice(event.target.value)}
                   placeholder="Your price (e.g. 2000)"
-                  className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder-slate-600 outline-none focus:border-cyan-400/40"
+                  className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
                 />
                 <button
                   onClick={() => void runQuote()}
-                  className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/[0.14]"
+                  className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft"
                 >
                   Calculate
                 </button>
               </div>
               {quote ? (
-                <p className="mt-2 text-xs text-slate-400">
+                <p className="mt-2 text-xs text-ink-3">
                   Ask {quote.ask} vs price {quote.price} ({quote.discountPercent}
                   % off) →{" "}
                   {quote.verdict === "accept" ? (
-                    <span className="text-emerald-300">
+                    <span className="text-ok">
                       accept {quote.counter}
                     </span>
                   ) : (
-                    <span className="text-amber-300">
+                    <span className="text-amber-600">
                       counter at {quote.counter} (max {quote.maxPercent}%)
                     </span>
                   )}
@@ -1250,7 +1250,7 @@ export default function GrowthPage() {
               ) : null}
             </>
           ) : (
-            <p className="text-xs text-slate-500">Settings unavailable.</p>
+            <p className="text-xs text-ink-3">Settings unavailable.</p>
           )}
         </Section>
 
@@ -1259,7 +1259,7 @@ export default function GrowthPage() {
           hint="Who buys again - and who deserves a VIP price next time."
         >
           {custAnalytics.length === 0 ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-3">
               Paid orders appear here as customers come back.
             </p>
           ) : (
@@ -1267,13 +1267,13 @@ export default function GrowthPage() {
               {custAnalytics.slice(0, 4).map((row) => (
                 <li
                   key={row.contact_id}
-                  className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                  className="flex items-center justify-between rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-slate-200">
+                    <p className="truncate text-sm text-ink">
                       {row.contact_id}
                     </p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[10px] text-ink-3">
                       {row.orders}
                       {row.orders === 1 ? " order" : " orders"} · avg{" "}
                       {row.avg_order}
@@ -1282,10 +1282,10 @@ export default function GrowthPage() {
                   <span
                     className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] uppercase ${
                       row.tier === "vip"
-                        ? "border-violet-400/25 bg-violet-400/[0.08] text-violet-300"
+                        ? "border-violet-400/25 bg-violet-400/[0.08] text-ai"
                         : row.tier === "repeat"
-                          ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                          : "border-white/[0.08] bg-white/[0.02] text-slate-400"
+                          ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                          : "border-line bg-soft text-ink-3"
                     }`}
                   >
                     {row.tier}
@@ -1295,15 +1295,15 @@ export default function GrowthPage() {
             </ul>
           )}
           {langCounts.length > 0 ? (
-            <div className="mt-3 border-t border-white/[0.06] pt-3">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+            <div className="mt-3 border-t border-line pt-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
                 Customer languages
               </p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {langCounts.map((row) => (
                   <span
                     key={row.lang}
-                    className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-slate-300"
+                    className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-2"
                   >
                     {row.lang || "auto"} · {row.count}
                   </span>
@@ -1318,7 +1318,7 @@ export default function GrowthPage() {
           hint="What actually sells, from paid orders only."
         >
           {prodAnalytics.length === 0 ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-3">
               Paid orders appear here.
             </p>
           ) : (
@@ -1326,18 +1326,18 @@ export default function GrowthPage() {
               {prodAnalytics.slice(0, 4).map((row) => (
                 <li
                   key={row.name}
-                  className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                  className="flex items-center justify-between rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-slate-200">
+                    <p className="truncate text-sm text-ink">
                       {row.name}
                     </p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[10px] text-ink-3">
                       {row.qty_sold} sold · {row.orders}
                       {row.orders === 1 ? " order" : " orders"}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm font-medium text-slate-200">
+                  <p className="shrink-0 text-sm font-medium text-ink">
                     {row.revenue}
                   </p>
                 </li>
@@ -1351,10 +1351,10 @@ export default function GrowthPage() {
           hint="Shareable order summaries - the customer opens the link, you close the deal in chat."
         >
           {composer.open ? (
-            <div className="mb-3 rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-3">
+            <div className="mb-3 rounded-xl border border-brand/20 bg-cyan-400/[0.04] p-3">
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-ink-3">
                     Customer WhatsApp ID
                   </span>
                   <input
@@ -1364,11 +1364,11 @@ export default function GrowthPage() {
                       updateComposer({ contact: event.target.value })
                     }
                     placeholder="92300xxxxxxx"
-                    className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-ink-3">
                     Order title
                   </span>
                   <input
@@ -1378,14 +1378,14 @@ export default function GrowthPage() {
                       updateComposer({ title: event.target.value })
                     }
                     placeholder="Eid bundle"
-                    className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
                   />
                 </label>
               </div>
               <div className="mt-2 space-y-2">
                 {catalogItems.filter((item) => item.isActive).length > 0 ? (
                   <div className="mb-2">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
                       From saved catalog
                     </p>
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -1397,7 +1397,7 @@ export default function GrowthPage() {
                             key={item.id}
                             type="button"
                             onClick={() => addCatalogRow(item)}
-                            className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[10px] text-slate-300 hover:border-cyan-400/30 hover:text-cyan-200"
+                            className="rounded-md border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:border-brand/30 hover:text-brand"
                           >
                             + {item.name}
                             {item.priceText ? " · " + item.priceText : ""}
@@ -1418,7 +1418,7 @@ export default function GrowthPage() {
                         updateRow(index, { name: event.target.value })
                       }
                       placeholder="Item"
-                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                     />
                     <input
                       type="number"
@@ -1427,7 +1427,7 @@ export default function GrowthPage() {
                       onChange={(event) =>
                         updateRow(index, { qty: event.target.value })
                       }
-                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                     />
                     <input
                       type="number"
@@ -1438,7 +1438,7 @@ export default function GrowthPage() {
                         updateRow(index, { price: event.target.value })
                       }
                       placeholder="Price"
-                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                     />
                     <button
                       onClick={() =>
@@ -1448,7 +1448,7 @@ export default function GrowthPage() {
                           ),
                         })
                       }
-                      className="rounded-lg border border-white/[0.08] px-1 text-[10px] text-slate-500 hover:bg-white/[0.06]"
+                      className="rounded-lg border border-line px-1 text-[10px] text-ink-3 hover:bg-white/[0.06]"
                     >
                       x
                     </button>
@@ -1465,12 +1465,12 @@ export default function GrowthPage() {
                       ],
                     })
                   }
-                  className="text-[11px] text-cyan-300 hover:text-cyan-200"
+                  className="text-[11px] text-brand hover:text-brand"
                 >
                   + Add item
                 </button>
                 <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                  <label className="flex items-center gap-2 text-[11px] text-ink-3">
                     Discount (Rs)
                     <input
                       type="number"
@@ -1481,10 +1481,10 @@ export default function GrowthPage() {
                         updateComposer({ discount: event.target.value })
                       }
                       placeholder="0"
-                      className="w-20 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                      className="w-20 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                     />
                   </label>
-                  <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                  <label className="flex items-center gap-2 text-[11px] text-ink-3">
                     Advance %
                     <input
                       type="number"
@@ -1495,18 +1495,18 @@ export default function GrowthPage() {
                         updateComposer({ advance: event.target.value })
                       }
                       placeholder="0 = full payment"
-                      className="w-24 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                      className="w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                     />
                   </label>
                   {brandOptions.length > 0 && (
-                    <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                    <label className="flex items-center gap-2 text-[11px] text-ink-3">
                       Brand
                       <select
                         value={composer.brand}
                         onChange={(event) =>
                           updateComposer({ brand: event.target.value })
                         }
-                        className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                        className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                       >
                         <option value="">No brand</option>
                         {brandOptions.map((brand) => (
@@ -1517,14 +1517,14 @@ export default function GrowthPage() {
                       </select>
                     </label>
                   )}
-                  <label className="flex items-center gap-2 text-[11px] text-slate-400">
+                  <label className="flex items-center gap-2 text-[11px] text-ink-3">
                     Expires in
                     <select
                       value={composer.expiry}
                       onChange={(event) =>
                         updateComposer({ expiry: event.target.value })
                       }
-                      className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                      className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                     >
                       <option value="">Never</option>
                       <option value="3">3 days</option>
@@ -1539,13 +1539,13 @@ export default function GrowthPage() {
                 <button
                   onClick={() => void createLink()}
                   disabled={composer.busy}
-                  className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.1] px-3 py-1.5 text-[11px] font-medium text-cyan-200 hover:bg-cyan-400/[0.18] disabled:opacity-50"
+                  className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand hover:bg-cyan-400/[0.18] disabled:opacity-50"
                 >
                   {composer.busy ? "Creating…" : "Create link"}
                 </button>
                 <button
                   onClick={() => setComposer(EMPTY_COMPOSER)}
-                  className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/[0.06]"
+                  className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 hover:bg-white/[0.06]"
                 >
                   Cancel
                 </button>
@@ -1554,7 +1554,7 @@ export default function GrowthPage() {
           ) : (
             <button
               onClick={() => setComposer({ ...EMPTY_COMPOSER, open: true })}
-              className="mb-3 rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-1.5 text-[11px] font-medium text-cyan-200 hover:bg-cyan-400/[0.15]"
+              className="mb-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand hover:bg-brand-soft"
             >
               + New checkout link
             </button>
@@ -1568,19 +1568,19 @@ export default function GrowthPage() {
                 {changeReqs.slice(0, 5).map((req) => (
                   <li
                     key={req.id}
-                    className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                    className="rounded-lg border border-line bg-soft px-3 py-2"
                   >
-                    <p className="text-xs text-slate-200">
+                    <p className="text-xs text-ink">
                       {req.kind === "address" ? "Address change" : "Cancellation"}
                       {req.title ? " · " + req.title : ""}
                     </p>
                     {req.kind === "address" ? (
-                      <p className="mt-0.5 text-[11px] text-slate-400">
+                      <p className="mt-0.5 text-[11px] text-ink-3">
                         New address: {req.addressText}
                       </p>
                     ) : null}
                     {req.message ? (
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="mt-0.5 text-[11px] text-ink-3">
                         Note: {req.message}
                       </p>
                     ) : null}
@@ -1588,14 +1588,14 @@ export default function GrowthPage() {
                       <button
                         onClick={() => void decideChange(req.id, "approve")}
                         disabled={reqBusy === req.id}
-                        className="rounded-md border border-emerald-400/30 bg-emerald-400/[0.1] px-2 py-1 text-[10px] font-medium text-emerald-200 hover:bg-emerald-400/[0.2] disabled:opacity-50"
+                        className="rounded-md border border-emerald-400/30 bg-emerald-400/[0.1] px-2 py-1 text-[10px] font-medium text-ok hover:bg-emerald-400/[0.2] disabled:opacity-50"
                       >
                         Approve
                       </button>
                       <button
                         onClick={() => void decideChange(req.id, "decline")}
                         disabled={reqBusy === req.id}
-                        className="rounded-md border border-white/[0.1] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06] disabled:opacity-50"
+                        className="rounded-md border border-line-2 px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
                       >
                         Decline
                       </button>
@@ -1604,12 +1604,12 @@ export default function GrowthPage() {
                 ))}
               </ul>
               {changeNote ? (
-                <p className="mt-1.5 text-[10px] text-slate-400">{changeNote}</p>
+                <p className="mt-1.5 text-[10px] text-ink-3">{changeNote}</p>
               ) : null}
             </div>
           ) : null}
           {links.length === 0 ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-3">
               No checkout links yet.
             </p>
           ) : (
@@ -1617,14 +1617,14 @@ export default function GrowthPage() {
               {links.slice(0, 8).map((link) => (
                 <li
                   key={link.id}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.015] px-3 py-2"
+                  className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-slate-200">
+                      <p className="truncate text-sm text-ink">
                         {link.title || link.contactId} · {link.total}
                       </p>
-                      <p className="truncate text-[10px] text-slate-500">
+                      <p className="truncate text-[10px] text-ink-3">
                         /c/{link.token}
                         {link.status === "open" && (link.viewCount || 0) > 0
                           ? " · " + (link.viewCount || 0) + " views"
@@ -1647,14 +1647,14 @@ export default function GrowthPage() {
                       <span
                         className={`rounded-md border px-1.5 py-0.5 text-[10px] ${
                           link.status === "paid"
-                            ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                            ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
                             : link.status === "cancelled"
-                              ? "border-rose-400/25 bg-rose-400/[0.08] text-rose-300"
+                              ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
                               : link.status === "shipped"
                                 ? "border-sky-400/25 bg-sky-400/[0.08] text-sky-300"
                                 : link.status === "delivered"
-                                  ? "border-violet-400/25 bg-violet-400/[0.08] text-violet-300"
-                                  : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                                  ? "border-violet-400/25 bg-violet-400/[0.08] text-ai"
+                                  : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
                         }`}
                       >
                         {link.status}
@@ -1674,31 +1674,31 @@ export default function GrowthPage() {
                         <>
                           <button
                             onClick={() => void markLink(link, "paid")}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                           >
                             Paid
                           </button>
                           <button
                             onClick={() => void markLink(link, "cancelled")}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                           >
                             Cancel
                           </button>
                           <button
                             onClick={() => startEdit(link)}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => void duplicateLink(link)}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                           >
                             Duplicate
                           </button>
                           <button
                             onClick={() => void shareLink(link)}
-                            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2 py-1 text-[10px] text-emerald-300 hover:bg-emerald-400/[0.14]"
+                            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2 py-1 text-[10px] text-ok hover:bg-emerald-400/[0.14]"
                           >
                             Send on WhatsApp
                           </button>
@@ -1707,7 +1707,7 @@ export default function GrowthPage() {
                       {link.status === "paid" ? (
                         <button
                           onClick={() => void markLink(link, "shipped")}
-                          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                         >
                           Shipped
                         </button>
@@ -1715,7 +1715,7 @@ export default function GrowthPage() {
                       {link.status === "shipped" ? (
                         <button
                           onClick={() => void markLink(link, "delivered")}
-                          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                         >
                           Delivered
                         </button>
@@ -1729,7 +1729,7 @@ export default function GrowthPage() {
                               returnFor === link.id ? null : link.id
                             )
                           }
-                          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                         >
                           Returned
                         </button>
@@ -1737,14 +1737,14 @@ export default function GrowthPage() {
                       {link.status !== "open" ? (
                         <button
                           onClick={() => openTracking(link)}
-                          className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[10px] text-slate-300 hover:bg-white/[0.06]"
+                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
                         >
                           Tracking
                         </button>
                       ) : null}
                     </div>
                     {trackFor === link.id ? (
-                      <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+                      <div className="mt-2 rounded-xl border border-line bg-white shadow-card p-3">
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             type="text"
@@ -1753,7 +1753,7 @@ export default function GrowthPage() {
                               setTrackCourier(event.target.value)
                             }
                             placeholder="Courier (TCS, Leopards...)"
-                            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                            className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                           />
                           <input
                             type="text"
@@ -1762,20 +1762,20 @@ export default function GrowthPage() {
                               setTrackNumber(event.target.value)
                             }
                             placeholder="Tracking #"
-                            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                            className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                           />
                         </div>
                         <div className="mt-2 flex items-center gap-2">
                           <button
                             onClick={() => void saveTracking()}
                             disabled={trackBusy}
-                            className="rounded-lg border border-cyan-400/30 bg-cyan-400/[0.08] px-2.5 py-1 text-[11px] text-cyan-200 hover:bg-cyan-400/[0.15] disabled:opacity-50"
+                            className="rounded-lg border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11px] text-brand hover:bg-brand-soft disabled:opacity-50"
                           >
                             {trackBusy ? "Saving..." : "Save tracking"}
                           </button>
                           <button
                             onClick={() => setTrackFor(null)}
-                            className="rounded-lg border border-white/[0.08] px-2.5 py-1 text-[11px] text-slate-400 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-3 hover:bg-white/[0.06]"
                           >
                             Cancel
                           </button>
@@ -1783,14 +1783,14 @@ export default function GrowthPage() {
                       </div>
                     ) : null}
                     {statusNoteFor === link.id && statusNote ? (
-                      <p className="mt-1 text-[10px] text-rose-300">
+                      <p className="mt-1 text-[10px] text-danger">
                         {statusNote}
                       </p>
                     ) : null}
                     {editFor === link.id ? (
-                      <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+                      <div className="mt-2 rounded-xl border border-line bg-white shadow-card p-3">
                         <label className="block">
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-ink-3">
                             Title
                           </span>
                           <input
@@ -1799,11 +1799,11 @@ export default function GrowthPage() {
                             onChange={(event) =>
                               setEditTitle(event.target.value)
                             }
-                            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
                           />
                         </label>
                         <label className="mt-2 block">
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-ink-3">
                             Link expiry
                           </span>
                           <select
@@ -1811,7 +1811,7 @@ export default function GrowthPage() {
                             onChange={(event) =>
                               setEditExpiry(event.target.value)
                             }
-                            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
                           >
                             <option value="">Keep current</option>
                             <option value="0">No expiry</option>
@@ -1821,8 +1821,8 @@ export default function GrowthPage() {
                             <option value="30">30 days</option>
                           </select>
                         </label>
-                        <div className="mt-2 rounded-lg border border-white/[0.06] p-2">
-                          <span className="text-[11px] text-slate-400">
+                        <div className="mt-2 rounded-lg border border-line p-2">
+                          <span className="text-[11px] text-ink-3">
                             Advance received (Rs)
                           </span>
                           <div className="mt-1 flex items-center gap-2">
@@ -1835,21 +1835,21 @@ export default function GrowthPage() {
                                 setAdvanceAmount(event.target.value)
                               }
                               placeholder="e.g. 500"
-                              className="w-24 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                              className="w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                             />
                             <button
                               onClick={() => void recordAdvance(link)}
                               disabled={advanceBusy}
-                              className="rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-emerald-300 hover:bg-emerald-400/[0.14] disabled:opacity-50"
+                              className="rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.14] disabled:opacity-50"
                             >
                               {advanceBusy ? "Recording…" : "Record"}
                             </button>
-                            <span className="text-[10px] text-slate-500">
+                            <span className="text-[10px] text-ink-3">
                               Full advance marks the link paid.
                             </span>
                           </div>
                           {advanceNote ? (
-                            <p className="mt-1 text-[10px] text-rose-300">
+                            <p className="mt-1 text-[10px] text-danger">
                               {advanceNote}
                             </p>
                           ) : null}
@@ -1873,7 +1873,7 @@ export default function GrowthPage() {
                                   )
                                 }
                                 placeholder="Item"
-                                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                               />
                               <input
                                 type="number"
@@ -1888,7 +1888,7 @@ export default function GrowthPage() {
                                     )
                                   )
                                 }
-                                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                               />
                               <input
                                 type="number"
@@ -1904,7 +1904,7 @@ export default function GrowthPage() {
                                     )
                                   )
                                 }
-                                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-slate-200 focus:border-white/20 focus:outline-none"
+                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
                               />
                             </div>
                           ))}
@@ -1913,13 +1913,13 @@ export default function GrowthPage() {
                           <button
                             onClick={() => void saveEdit()}
                             disabled={editBusy}
-                            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-emerald-300 hover:bg-emerald-400/[0.14] disabled:opacity-50"
+                            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.14] disabled:opacity-50"
                           >
                             {editBusy ? "Saving…" : "Save changes"}
                           </button>
                           <button
                             onClick={() => setEditFor(null)}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-slate-400 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-3 hover:bg-white/[0.06]"
                           >
                             Cancel
                           </button>
@@ -1935,7 +1935,7 @@ export default function GrowthPage() {
                               setReturnFor(null);
                               void markLink(link, "returned", code);
                             }}
-                            className="rounded-lg border border-amber-400/25 bg-amber-400/[0.08] px-2 py-1 text-[10px] text-amber-300 hover:bg-amber-400/[0.14]"
+                            className="rounded-lg border border-amber-400/25 bg-amber-400/[0.08] px-2 py-1 text-[10px] text-amber-600 hover:bg-amber-400/[0.14]"
                           >
                             {label}
                           </button>
@@ -1964,12 +1964,12 @@ export default function GrowthPage() {
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               placeholder="e.g. franchise, bulk order, complaint"
-              className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder-slate-600 outline-none focus:border-cyan-400/40"
+              className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
             />
             <button
               onClick={() => void addKeyword()}
               disabled={!keyword.trim()}
-              className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/[0.14] disabled:opacity-50"
+              className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
             >
               Watch
             </button>
@@ -1979,7 +1979,7 @@ export default function GrowthPage() {
               {rules.map((rule) => (
                 <span
                   key={rule.id}
-                  className="rounded-md border border-cyan-400/25 bg-cyan-400/[0.08] px-1.5 py-0.5 text-[10px] text-cyan-300"
+                  className="rounded-md border border-brand/25 bg-brand-soft px-1.5 py-0.5 text-[10px] text-brand"
                 >
                   {rule.keyword}
                 </span>
@@ -1989,8 +1989,8 @@ export default function GrowthPage() {
           {hits.length > 0 ? (
             <ul className="mt-3 space-y-1">
               {hits.slice(0, 5).map((hit) => (
-                <li key={hit.id} className="text-[11px] text-slate-500">
-                  <span className="text-cyan-300">{hit.keyword}</span> ·{" "}
+                <li key={hit.id} className="text-[11px] text-ink-3">
+                  <span className="text-brand">{hit.keyword}</span> ·{" "}
                   {hit.contactId} · “{hit.snippet}”
                 </li>
               ))}
@@ -2007,18 +2007,18 @@ export default function GrowthPage() {
               value={match}
               onChange={(event) => setMatch(event.target.value)}
               placeholder="If message contains…"
-              className="flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder-slate-600 outline-none focus:border-cyan-400/40"
+              className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40"
             />
             <input
               value={userId}
               onChange={(event) => setUserId(event.target.value)}
               placeholder="Team user id"
-              className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder-slate-600 outline-none focus:border-cyan-400/40 sm:w-36"
+              className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none focus:border-brand/40 sm:w-36"
             />
             <button
               onClick={() => void addRoute()}
               disabled={!match.trim()}
-              className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/[0.14] disabled:opacity-50"
+              className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
             >
               Add rule
             </button>
@@ -2026,7 +2026,7 @@ export default function GrowthPage() {
           {routing.length > 0 ? (
             <ul className="mt-3 space-y-1">
               {routing.map((rule) => (
-                <li key={rule.id} className="text-[11px] text-slate-500">
+                <li key={rule.id} className="text-[11px] text-ink-3">
                   “{rule.match}” → user {rule.userId} (priority {rule.priority})
                 </li>
               ))}

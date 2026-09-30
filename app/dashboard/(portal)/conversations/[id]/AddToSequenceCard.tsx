@@ -85,7 +85,7 @@ export default function AddToSequenceCard({ contactId }: { contactId: string | n
   if (!contactId || options === null || options.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xs font-semibold text-ink">Add to series</h2>
       </div>

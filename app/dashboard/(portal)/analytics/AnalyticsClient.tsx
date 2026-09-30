@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import type { AnalyticsData } from "../../../../lib/omniflow/portal";
 
 const statClass =
-  "rounded-2xl border border-line bg-soft px-5 py-4";
+  "rounded-2xl border border-line bg-white shadow-card px-5 py-4";
 
 const statLabel = "text-[10px] uppercase tracking-wider text-ink-3";
 const statValue = "mt-1 text-lg font-semibold text-ink";
@@ -96,7 +96,7 @@ export default function AnalyticsClient({
       </div>
 
       {isEmpty ? (
-        <div className="rounded-2xl border border-line bg-soft p-8 text-center">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-8 text-center">
           <p className="text-sm text-ink-3">No data yet</p>
           <p className="mt-1 text-xs leading-relaxed text-ink-3">
             Numbers appear here automatically as customers start chatting on
@@ -127,7 +127,7 @@ export default function AnalyticsClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-6">
+          <div className="rounded-2xl border border-line bg-white shadow-card p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-ink">
                 Messages per day
@@ -205,7 +205,7 @@ export default function AnalyticsClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-6">
+          <div className="rounded-2xl border border-line bg-white shadow-card p-6">
             <h2 className="text-sm font-semibold text-ink">Service level</h2>
             <p className="mt-0.5 text-xs text-ink-3">
               How fast the team responds and how many chats get resolved.
@@ -245,7 +245,7 @@ export default function AnalyticsClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-6">
+          <div className="rounded-2xl border border-line bg-white shadow-card p-6">
             <h2 className="text-sm font-semibold text-ink">
               What customers ask about
             </h2>
@@ -277,7 +277,7 @@ export default function AnalyticsClient({
             )}
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-6">
+          <div className="rounded-2xl border border-line bg-white shadow-card p-6">
             <h2 className="text-sm font-semibold text-ink">
               Most-used answers
             </h2>

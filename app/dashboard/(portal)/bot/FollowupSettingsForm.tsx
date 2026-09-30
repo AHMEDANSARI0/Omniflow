@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { FollowupSettings } from "../../../../lib/omniflow/portal";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
@@ -62,7 +62,7 @@ export default function FollowupSettingsForm({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-soft p-6">
+    <div className="rounded-2xl border border-line bg-white shadow-card p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold text-ink">Follow-up agent</h2>

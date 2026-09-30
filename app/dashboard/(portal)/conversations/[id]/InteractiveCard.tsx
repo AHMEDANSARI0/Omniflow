@@ -248,7 +248,7 @@ export default function InteractiveCard({
   const maxRows = builder.kind === "buttons" ? 3 : 10;
 
   return (
-    <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-medium text-ink">
@@ -267,7 +267,7 @@ export default function InteractiveCard({
       </div>
 
       {showBuilder ? (
-        <div className="mt-3 rounded-xl border border-line bg-soft p-3">
+        <div className="mt-3 rounded-xl border border-line bg-white shadow-card p-3">
           <div className="flex flex-wrap items-center gap-2">
             <input
               value={builder.name}
@@ -418,7 +418,7 @@ export default function InteractiveCard({
           templates.map((template) => (
             <div
               key={template.id}
-              className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
+              className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm text-ink">
@@ -461,7 +461,7 @@ export default function InteractiveCard({
             {watiTemplates.map((template) => (
               <div
                 key={template.name}
-                className="rounded-xl border border-line bg-soft px-3 py-2"
+                className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-sm text-ink">
@@ -507,7 +507,7 @@ export default function InteractiveCard({
             {cloudTemplates.map((template) => (
               <div
                 key={template.name}
-                className="rounded-xl border border-line bg-soft px-3 py-2"
+                className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-sm text-ink">

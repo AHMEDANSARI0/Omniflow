@@ -33,7 +33,7 @@ export default function ProblemSolutionForm({
   return (
     <form action={formAction} className="space-y-6">
       {/* Section heading card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Section heading</h2>
         <p className="mb-5 text-xs text-ink-3">
           Line 2 is shown with the gradient color.
@@ -96,7 +96,7 @@ export default function ProblemSolutionForm({
       </div>
 
       {/* Comparison cards */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">
           Comparison cards
         </h2>
@@ -105,7 +105,7 @@ export default function ProblemSolutionForm({
         </p>
 
         <div className="space-y-5">
-          <div className="rounded-xl border border-line bg-soft p-4">
+          <div className="rounded-xl border border-line bg-white shadow-card p-4">
             <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
               Problem card (Without OmniFlow)
             </p>
@@ -139,7 +139,7 @@ export default function ProblemSolutionForm({
             </div>
           </div>
 
-          <div className="rounded-xl border border-line bg-soft p-4">
+          <div className="rounded-xl border border-line bg-white shadow-card p-4">
             <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
               Solution card (With OmniFlow)
             </p>
@@ -176,7 +176,7 @@ export default function ProblemSolutionForm({
       </div>
 
       {/* Metrics */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Metrics strip</h2>
         <p className="mb-5 text-xs text-ink-3">
           The 4 stats under the comparison (value + label each).
@@ -186,7 +186,7 @@ export default function ProblemSolutionForm({
           {metrics.map((m) => (
             <div
               key={m.i}
-              className="rounded-xl border border-line bg-soft p-4"
+              className="rounded-xl border border-line bg-white shadow-card p-4"
             >
               <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
                 Metric 0{m.i}

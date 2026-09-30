@@ -27,7 +27,7 @@ export default function CustomerMemoryForm({
   return (
     <form action={formAction} className="space-y-6">
       {/* Section heading card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Section heading</h2>
         <p className="mb-5 text-xs text-ink-3">
           Line 2 is shown with the gradient color.
@@ -90,7 +90,7 @@ export default function CustomerMemoryForm({
       </div>
 
       {/* Context points */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Context points</h2>
         <p className="mb-5 text-xs text-ink-3">
           The checkmark list on the left. Separate each with a “|” character.
@@ -107,7 +107,7 @@ export default function CustomerMemoryForm({
       </div>
 
       {/* Bottom note */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Bottom note</h2>
         <p className="mb-5 text-xs text-ink-3">
           The statement under the section.

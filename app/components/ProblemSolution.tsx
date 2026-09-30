@@ -54,7 +54,7 @@ export default function ProblemSolution({
                 </li>
               ))}
             </ul>
-            <div className="mt-6 rounded-xl2 border border-line bg-soft px-4 py-3 text-[13px] text-ink-3">
+            <div className="mt-6 rounded-xl2 border border-line bg-white shadow-card px-4 py-3 text-[13px] text-ink-2">
               Every message becomes manual work for your team.
             </div>
           </Card>

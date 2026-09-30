@@ -61,6 +61,7 @@ MAX_STEPS_PER_TICK = 10
 RUNS_PER_TICK = int(os.environ.get("OF_WORKFLOW_RUNS_PER_TICK", "10") or 10)
 LOG_EVENTS_PER_TICK = 25
 MAX_NAME_CHARS = 80
+MAX_VERSIONS_LISTED = int(os.environ.get("OF_WORKFLOW_VERSIONS_LIST", "30") or 30)
 MAX_DESCRIPTION_CHARS = 300
 MAX_LABEL_CHARS = 60
 MAX_QUESTION_CHARS = 300
@@ -2333,6 +2334,144 @@ def archive_workflow(workflow_id: int):
     finally:
         conn.close()
     return jsonify({"ok": True}), 200
+
+
+def _shape_version(row: Dict[str, Any]) -> Dict[str, Any]:
+    snapshot = _json_obj(row.get("snapshot"))
+    created = row.get("created_at")
+    steps = snapshot.get("steps") if isinstance(snapshot.get("steps"), list) else []
+    return {
+        "version": int(row.get("version") or 0),
+        "created_at": (created.isoformat() if hasattr(created, "isoformat")
+                       else str(created or "")),
+        "snapshot": {
+            "name": str(snapshot.get("name") or ""),
+            "description": str(snapshot.get("description") or ""),
+            "trigger_type": str(snapshot.get("trigger_type") or "manual"),
+            "trigger_config": _json_obj(snapshot.get("trigger_config")),
+            "stop_on_reply": bool(snapshot.get("stop_on_reply")),
+            "steps": [{"kind": str(s.get("kind") or ""),
+                       "label": str(s.get("label") or ""),
+                       "config": _json_obj(s.get("config"))}
+                      for s in steps if isinstance(s, dict)],
+            "restored_from": snapshot.get("restored_from"),
+        },
+    }
+
+
+@bp.get("/workflows/<int:workflow_id>/versions")
+def list_workflow_versions(workflow_id: int):
+    """Version history (newest first). Every save writes a snapshot."""
+    principal, error = _owner_or_error()
+    if error:
+        return error
+    client_id = int(principal.get("client_id") or 0)
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            _ensure_ddl(cur)
+            cur.execute(
+                "SELECT id FROM " + portal_db._q(WORKFLOWS_TABLE) +
+                " WHERE id = %s AND client_id = %s",
+                (workflow_id, client_id),
+            )
+            if not portal_db.rows(cur):
+                return _bad("No such workflow in this workspace.",
+                            "not_found", 404)
+            cur.execute(
+                "SELECT version, snapshot, created_at FROM " +
+                portal_db._q(VERSIONS_TABLE) +
+                " WHERE client_id = %s AND workflow_id = %s"
+                " ORDER BY version DESC LIMIT %s",
+                (client_id, workflow_id, max(1, MAX_VERSIONS_LISTED)),
+            )
+            rows = portal_db.rows(cur)
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"versions": [_shape_version(r) for r in rows]}), 200
+
+
+@bp.post("/workflows/<int:workflow_id>/rollback")
+def rollback_workflow(workflow_id: int):
+    """Restore one snapshot as a NEW current version; history is never rewritten."""
+    principal, error = _owner_or_error()
+    if error:
+        return error
+    client_id = int(principal.get("client_id") or 0)
+    payload = request.get_json(silent=True) or {}
+    version = payload.get("version")
+    if isinstance(version, bool) or not isinstance(version, int) or version <= 0:
+        return _bad("version must be a positive integer.")
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            _ensure_ddl(cur)
+            cur.execute(
+                "SELECT version, snapshot, created_at FROM " +
+                portal_db._q(VERSIONS_TABLE) +
+                " WHERE client_id = %s AND workflow_id = %s AND version = %s",
+                (client_id, workflow_id, version),
+            )
+            rows = portal_db.rows(cur)
+            if not rows:
+                return _bad("No such version for this workflow.",
+                            "not_found", 404)
+            shaped = _shape_version(rows[0])["snapshot"]
+            fields, problem = normalize_definition({
+                "name": shaped["name"] or "Workflow",
+                "description": shaped["description"],
+                "trigger_type": shaped["trigger_type"],
+                "trigger_config": shaped["trigger_config"],
+                "stop_on_reply": shaped["stop_on_reply"],
+                "steps": shaped["steps"],
+            })
+            if problem or not fields:
+                return _bad(problem or "Snapshot is not a valid workflow.")
+            cur.execute(
+                "UPDATE " + portal_db._q(WORKFLOWS_TABLE) +
+                " SET name = %s, description = %s, trigger_type = %s,"
+                " trigger_config = CAST(%s AS JSONB), stop_on_reply = %s,"
+                " version = version + 1, updated_at = NOW()"
+                " WHERE id = %s AND client_id = %s AND status <> 'archived'"
+                " RETURNING version",
+                (fields["name"], fields["description"],
+                 fields["trigger_type"], json.dumps(fields["trigger_config"]),
+                 fields["stop_on_reply"], workflow_id, client_id),
+            )
+            updated = portal_db.rows(cur)
+            if not updated:
+                conn.rollback()
+                return _bad("No such workflow in this workspace.",
+                            "not_found", 404)
+            new_version = int(updated[0].get("version") or 1)
+            snap = _snapshot(
+                fields["name"], fields["description"],
+                fields["trigger_type"], fields["trigger_config"],
+                fields["stop_on_reply"], fields["steps"])
+            snap["restored_from"] = version
+            _write_steps(cur, client_id, workflow_id, fields["steps"])
+            cur.execute(
+                "INSERT INTO " + portal_db._q(VERSIONS_TABLE) +
+                " (client_id, workflow_id, version, snapshot)"
+                " VALUES (%s, %s, %s, CAST(%s AS JSONB))"
+                " ON CONFLICT (client_id, workflow_id, version) DO UPDATE"
+                " SET snapshot = EXCLUDED.snapshot",
+                (client_id, workflow_id, new_version,
+                 json.dumps(snap, ensure_ascii=False)),
+            )
+            portal_db.log_action(
+                cur, client_id, "workflow.rolled_back", "human",
+                principal.get("user_id"), None,
+                ("Workflow " + fields["name"] + " restored to version "
+                 + str(version) + " (now version " + str(new_version)
+                 + ")")[:200],
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "version": new_version,
+                    "restored_from": version}), 200
 
 
 @bp.get("/workflows/<int:workflow_id>/runs")

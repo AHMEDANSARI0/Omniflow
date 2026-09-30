@@ -89,7 +89,7 @@ export default function DataSafetyCard() {
     "mt-1 w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none";
 
   return (
-    <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+    <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
       <h2 className="text-sm font-medium text-ink">Data &amp; backup</h2>
       <p className="mt-0.5 text-xs text-ink-3">
         Download everything (contacts, conversations, orders, returns) as one

@@ -54,7 +54,7 @@ export default function PerfCard() {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold text-ink">Performance</p>
         <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ export default function PerfCard() {
 
       {report ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-line bg-soft p-2.5">
+          <div className="rounded-xl border border-line bg-white shadow-card p-2.5">
             <p className="text-[11px] text-ink-3">Conversations</p>
             <p className="text-sm text-ink">
               {report.counts.conversations}
@@ -95,7 +95,7 @@ export default function PerfCard() {
               recent 10: {ms(report.timings_ms.recent_conversations)}
             </p>
           </div>
-          <div className="rounded-xl border border-line bg-soft p-2.5">
+          <div className="rounded-xl border border-line bg-white shadow-card p-2.5">
             <p className="text-[11px] text-ink-3">Messages</p>
             <p className="text-sm text-ink">
               {report.counts.messages}
@@ -104,7 +104,7 @@ export default function PerfCard() {
               recent 20: {ms(report.timings_ms.recent_messages)}
             </p>
           </div>
-          <div className="rounded-xl border border-line bg-soft p-2.5">
+          <div className="rounded-xl border border-line bg-white shadow-card p-2.5">
             <p className="text-[11px] text-ink-3">Open orders</p>
             <p className="text-sm text-ink">
               {report.counts.checkout_links}

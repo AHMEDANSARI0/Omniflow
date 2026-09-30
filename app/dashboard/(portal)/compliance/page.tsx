@@ -107,20 +107,20 @@ export default function CompliancePage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Compliance
         </h1>
-        <p className="mt-1 text-sm text-ink-3">
+        <p className="mt-1 text-sm text-ink-2">
           Customers who asked to stop receiving messages. Automated sends to
           these contacts are blocked at the source.
         </p>
       </div>
 
-      <section className="rounded-2xl border border-line bg-soft p-4">
+      <section className="rounded-2xl border border-line bg-white shadow-card p-4">
         <p className="text-xs font-semibold text-ink">Add an opt-out</p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             value={contact}
             onChange={(event) => setContact(event.target.value)}
             placeholder="923001234567"
-            className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors focus:border-brand/40"
+            className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-brand/40"
           />
           <select
             value={reason}
@@ -141,7 +141,7 @@ export default function CompliancePage() {
         {note ? <p className="mt-2 text-xs text-ink-3">{note}</p> : null}
       </section>
 
-      <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+      <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs font-semibold text-ink">Opt-out list</p>
           <div className="flex items-center gap-2">
@@ -149,11 +149,11 @@ export default function CompliancePage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search number"
-              className="w-full rounded-xl border border-line bg-soft px-3 py-1.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors focus:border-brand/40 sm:w-48"
+              className="w-full rounded-xl border border-line bg-soft px-3 py-1.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-brand/40 sm:w-48"
             />
             <button
               onClick={() => void load(query)}
-              className="shrink-0 rounded-xl border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:bg-soft"
+              className="shrink-0 rounded-xl border border-line bg-white shadow-card px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:bg-soft"
             >
               Search
             </button>
@@ -180,7 +180,7 @@ export default function CompliancePage() {
             {rows.map((row) => (
               <li
                 key={row.contactId}
-                className="flex flex-col gap-2 rounded-xl border border-line bg-soft px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-ink">{row.contactId}</p>

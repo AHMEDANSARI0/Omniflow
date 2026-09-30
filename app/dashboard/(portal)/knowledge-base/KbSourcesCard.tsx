@@ -74,7 +74,7 @@ const ACCEPTED_FILES = ".txt,.md,.csv,.json,.html,.htm,text/plain,text/markdown,
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 const ghostBtn =
@@ -322,7 +322,7 @@ export default function KbSourcesCard() {
   const canSubmit = !busy && !atCap && (kind === "url" ? url.trim().length > 0 : text.trim().length >= 20);
 
   return (
-    <section className="mb-6 rounded-2xl border border-line bg-soft p-5">
+    <section className="mb-6 rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-ink">Documents &amp; pages</h2>
@@ -363,7 +363,7 @@ export default function KbSourcesCard() {
           {sources.length > 0 ? (
             <ul className="mt-4 space-y-2">
               {sources.map((source) => (
-                <li key={source.id} className="rounded-xl border border-line bg-soft px-3.5 py-3">
+                <li key={source.id} className="rounded-xl border border-line bg-white shadow-card px-3.5 py-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="flex flex-wrap items-center gap-1.5 text-sm text-ink">
@@ -488,7 +488,7 @@ export default function KbSourcesCard() {
             </p>
           )}
 
-          <div className="mt-4 rounded-xl border border-line bg-soft p-4">
+          <div className="mt-4 rounded-xl border border-line bg-white shadow-card p-4">
             <div className="flex flex-wrap gap-1.5">
               {(["text", "file", "url"] as SourceKind[]).map((option) => (
                 <button

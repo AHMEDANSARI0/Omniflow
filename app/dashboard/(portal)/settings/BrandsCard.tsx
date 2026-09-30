@@ -119,9 +119,9 @@ export default function BrandsCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-      <p className="text-xs font-semibold text-white">Brands</p>
-      <p className="mt-0.5 text-[11px] text-slate-500">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-4">
+      <p className="text-xs font-semibold text-ink">Brands</p>
+      <p className="mt-0.5 text-[11px] text-ink-3">
         Name the businesses you sell under. Optional today - knowledge-base
         entries, catalog items and checkout links can carry a brand tag.
       </p>
@@ -135,20 +135,20 @@ export default function BrandsCard() {
           }}
           placeholder="e.g. House of Linen"
           maxLength={60}
-          className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-cyan-400/40 focus:outline-none"
+          className="min-w-0 flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
         />
         <button
           type="button"
           onClick={() => void addBrand()}
           disabled={busy || !name.trim()}
-          className="shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.08] px-3.5 py-2 text-xs font-medium text-cyan-200 transition-colors duration-200 hover:bg-cyan-400/[0.14] disabled:opacity-40"
+          className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-3.5 py-2 text-xs font-medium text-brand transition-colors duration-200 hover:bg-brand-soft disabled:opacity-40"
         >
           Add brand
         </button>
       </div>
 
       {note ? (
-        <p className="mt-2 text-[11px] text-amber-300">{note}</p>
+        <p className="mt-2 text-[11px] text-amber-600">{note}</p>
       ) : null}
 
       {brands === null ? (
@@ -161,7 +161,7 @@ export default function BrandsCard() {
           ))}
         </div>
       ) : brands.length === 0 ? (
-        <p className="mt-3 text-[11px] text-slate-600">
+        <p className="mt-3 text-[11px] text-ink-3">
           No brands yet - everything stays untagged until you add one.
         </p>
       ) : (
@@ -169,7 +169,7 @@ export default function BrandsCard() {
           {brands.map((brand) => (
             <li
               key={brand.id}
-              className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2"
+              className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white/[0.01] px-3 py-2"
             >
               {renaming === brand.id ? (
                 <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -177,7 +177,7 @@ export default function BrandsCard() {
                     value={renameValue}
                     onChange={(event) => setRenameValue(event.target.value)}
                     maxLength={60}
-                    className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-xs text-white focus:border-cyan-400/40 focus:outline-none"
+                    className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/40 focus:outline-none"
                   />
                   <button
                     type="button"
@@ -185,14 +185,14 @@ export default function BrandsCard() {
                     onClick={() =>
                       void patchBrand(brand.id, { name: renameValue.trim() })
                     }
-                    className="text-[11px] text-cyan-300 disabled:opacity-40"
+                    className="text-[11px] text-brand disabled:opacity-40"
                   >
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={() => setRenaming(null)}
-                    className="text-[11px] text-slate-500"
+                    className="text-[11px] text-ink-3"
                   >
                     Cancel
                   </button>
@@ -200,14 +200,14 @@ export default function BrandsCard() {
               ) : (
                 <>
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-sm text-slate-200">
+                    <span className="truncate text-sm text-ink">
                       {brand.name}
                     </span>
                     <span
                       className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${
                         brand.isActive
-                          ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                          : "border-white/[0.08] bg-white/[0.02] text-slate-500"
+                          ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                          : "border-line bg-soft text-ink-3"
                       }`}
                     >
                       {brand.isActive ? "Active" : "Paused"}
@@ -219,7 +219,7 @@ export default function BrandsCard() {
                         href={"/store/" + brand.slug}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-cyan-400/80 transition-colors duration-200 hover:text-cyan-300"
+                        className="text-brand/80 transition-colors duration-200 hover:text-brand"
                         title={"Open the " + brand.name + " store page"}
                       >
                         Store
@@ -231,7 +231,7 @@ export default function BrandsCard() {
                         setRenaming(brand.id);
                         setRenameValue(brand.name);
                       }}
-                      className="text-slate-500 transition-colors duration-200 hover:text-slate-300"
+                      className="text-ink-3 transition-colors duration-200 hover:text-ink-2"
                     >
                       Rename
                     </button>
@@ -243,7 +243,7 @@ export default function BrandsCard() {
                           isActive: !brand.isActive,
                         })
                       }
-                      className="text-slate-500 transition-colors duration-200 hover:text-slate-300 disabled:opacity-40"
+                      className="text-ink-3 transition-colors duration-200 hover:text-ink-2 disabled:opacity-40"
                     >
                       {brand.isActive ? "Pause" : "Resume"}
                     </button>
@@ -251,7 +251,7 @@ export default function BrandsCard() {
                       type="button"
                       disabled={busy}
                       onClick={() => void removeBrand(brand.id)}
-                      className="text-rose-400/80 transition-colors duration-200 hover:text-rose-300 disabled:opacity-40"
+                      className="text-danger/80 transition-colors duration-200 hover:text-danger disabled:opacity-40"
                     >
                       Remove
                     </button>

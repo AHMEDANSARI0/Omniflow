@@ -406,7 +406,7 @@ export default function CustomersClient({
 
   if (expired) {
     return (
-      <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+      <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
         <p className="text-sm text-ink-2">Session expired.</p>
         <Link
           href="/dashboard"
@@ -437,7 +437,7 @@ export default function CustomersClient({
                 key={entry.contactId}
                 href={"/dashboard/customers/profile?contact=" +
                   encodeURIComponent(entry.contactId)}
-                className="rounded-xl border border-line bg-soft px-2.5 py-1.5 transition-colors hover:bg-soft"
+                className="rounded-xl border border-line bg-white shadow-card px-2.5 py-1.5 transition-colors hover:bg-soft"
               >
                 <p className="text-xs text-ink">
                   {entry.name || entry.contactId}
@@ -457,7 +457,7 @@ export default function CustomersClient({
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search by name or contact…"
-          className="w-full rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+          className="w-full rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
         />
       </div>
 
@@ -497,12 +497,12 @@ export default function CustomersClient({
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className="h-20 rounded-2xl border border-line bg-soft"
+              className="h-20 rounded-2xl border border-line bg-white shadow-card"
             />
           ))}
         </div>
       ) : customers.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
           <p className="text-sm text-ink-2">
             {pending
               ? "Connecting to the inbox — customers appear in a minute."
@@ -516,7 +516,7 @@ export default function CustomersClient({
           {customers.map((customer) => (
             <li
               key={customer.contactId}
-              className="overflow-hidden rounded-2xl border border-line bg-soft"
+              className="overflow-hidden rounded-2xl border border-line bg-white shadow-card"
             >
               <div className="flex items-stretch">
               <Link
@@ -750,7 +750,7 @@ export default function CustomersClient({
                       onChange={(event) => setNoteDraft(event.target.value)}
                       maxLength={1000}
                       placeholder="Add a note about this customer…"
-                      className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                      className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                     />
                     <button
                       type="button"
@@ -774,7 +774,7 @@ export default function CustomersClient({
                     maxLength={1000}
                     rows={3}
                     placeholder="Type your message..."
-                    className="w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                    className="w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                   />
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[10px] text-ink-3">

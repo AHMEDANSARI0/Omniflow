@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-line bg-soft p-6 sm:p-7">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6 sm:p-7">
           {done ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-ink-2">
@@ -123,7 +123,7 @@ export default function ResetPasswordPage() {
                   onChange={(event) =>
                     setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
                   }
-                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-center text-lg tracking-[0.4em] text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-center text-lg tracking-[0.4em] text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                   placeholder="••••••"
                 />
               </div>
@@ -145,7 +145,7 @@ export default function ResetPasswordPage() {
                   autoComplete="new-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                   placeholder="At least 8 characters"
                 />
               </div>
@@ -167,7 +167,7 @@ export default function ResetPasswordPage() {
                   autoComplete="new-password"
                   value={confirm}
                   onChange={(event) => setConfirm(event.target.value)}
-                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                   placeholder="Repeat password"
                 />
               </div>

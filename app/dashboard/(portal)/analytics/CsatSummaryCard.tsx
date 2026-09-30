@@ -41,7 +41,7 @@ export default function CsatSummaryCard() {
   const maxCount = Math.max(1, ...summary.dist);
 
   return (
-    <div className="mt-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <div className="mt-6 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xs font-semibold text-ink">Customer rating (CSAT)</h2>

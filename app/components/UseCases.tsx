@@ -86,7 +86,7 @@ export default function UseCases({
               </p>
 
               {/* the mini automation */}
-              <div className="mt-5 space-y-1.5 rounded-xl2 border border-line bg-soft p-3.5">
+              <div className="mt-5 space-y-1.5 rounded-xl2 border border-line bg-white shadow-card p-3.5">
                 <p className="flex items-start gap-2 text-[11.5px] text-ink-2">
                   <UserRound className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-3" aria-hidden />
                   {sample.q}

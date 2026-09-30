@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   PortalWorkflow,
+  PortalWorkflowVersion,
   WorkflowCatalog,
   WorkflowRun,
   WorkflowStepKind,
@@ -28,7 +29,7 @@ import {
 } from "./workflow-model";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 const smallInput =
   "w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink outline-none transition-colors duration-300 focus:border-brand/40";
 const primaryBtn =
@@ -102,6 +103,8 @@ export default function WorkflowsClient({
   const [busyId, setBusyId] = useState<number | null>(null);
   const [runsFor, setRunsFor] = useState<number | null>(null);
   const [runs, setRuns] = useState<WorkflowRun[] | null>(null);
+  const [versionsFor, setVersionsFor] = useState<number | null>(null);
+  const [versions, setVersions] = useState<PortalWorkflowVersion[] | null>(null);
   const [testFor, setTestFor] = useState<number | null>(null);
   const [testConversation, setTestConversation] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -357,6 +360,79 @@ export default function WorkflowsClient({
     }
   }
 
+  async function openVersions(workflow: PortalWorkflow) {
+    if (versionsFor === workflow.id) {
+      setVersionsFor(null);
+      setVersions(null);
+      return;
+    }
+    setVersionsFor(workflow.id);
+    setVersions(null);
+    setBusyId(workflow.id);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/workflows/" + workflow.id + "/versions",
+        { cache: "no-store" }
+      );
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          versions?: PortalWorkflowVersion[];
+        };
+        setVersions(payload.versions ?? []);
+      } else {
+        setVersions([]);
+      }
+    } catch {
+      setVersions([]);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function restoreVersion(workflow: PortalWorkflow, version: number) {
+    if (
+      !window.confirm(
+        "Restore version " +
+          version +
+          "? A new version will be created from that snapshot."
+      )
+    ) {
+      return;
+    }
+    setBusyId(workflow.id);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/workflows/" + workflow.id + "/rollback",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ version }),
+        }
+      );
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          version?: number;
+          restored_from?: number;
+        };
+        flash(
+          "Restored version " +
+            (payload.restored_from ?? version) +
+            " as v" +
+            (payload.version ?? "")
+        );
+        await load();
+        await openVersions(workflow);
+      } else {
+        flash("Could not restore that version.");
+      }
+    } catch {
+      flash("Could not restore that version.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+
   async function runTest(workflow: PortalWorkflow) {
     const conversationId = Number.parseInt(testConversation, 10);
     if (!Number.isFinite(conversationId) || conversationId <= 0) {
@@ -480,7 +556,7 @@ export default function WorkflowsClient({
                 />
               </label>
             </div>
-            <div className="flex items-center gap-1 rounded-xl border border-line bg-soft p-1" aria-label="Zoom">
+            <div className="flex items-center gap-1 rounded-xl border border-line bg-white shadow-card p-1" aria-label="Zoom">
               {ZOOM_LEVELS.map((level) => (
                 <button
                   key={level}
@@ -520,7 +596,7 @@ export default function WorkflowsClient({
               onInsert={handleInsert}
               onRemove={handleRemove}
             />
-            <aside className="rounded-xl2 border border-line bg-soft/60 p-4 lg:max-h-[70vh] lg:overflow-auto">
+            <aside className="rounded-xl2 border border-line bg-white shadow-card/60 p-4 lg:max-h-[70vh] lg:overflow-auto">
               {selectedStep && editor ? (
                 <StepInspector
                   key={selectedStep.key}
@@ -630,7 +706,7 @@ export default function WorkflowsClient({
                   ["Goals", workflow.runs.goals],
                   ["Failed", workflow.runs.failed],
                 ].map(([label, value]) => (
-                  <div key={String(label)} className="rounded-xl border border-line bg-soft px-2 py-1.5">
+                  <div key={String(label)} className="rounded-xl border border-line bg-white shadow-card px-2 py-1.5">
                     <p className="text-[10px] uppercase tracking-wider text-ink-3">{label}</p>
                     <p className="text-sm font-semibold text-ink">{value}</p>
                   </div>
@@ -668,12 +744,15 @@ export default function WorkflowsClient({
                 <button type="button" className={ghostBtn} disabled={busy} onClick={() => void openRuns(workflow)}>
                   Runs
                 </button>
+                <button type="button" className={ghostBtn} disabled={busy} onClick={() => void openVersions(workflow)}>
+                  History
+                </button>
                 <button type="button" className={dangerBtn} disabled={busy} onClick={() => void archive(workflow)}>
                   Archive
                 </button>
               </div>
               {testFor === workflow.id ? (
-                <div className="mt-3 rounded-xl border border-line bg-soft p-3">
+                <div className="mt-3 rounded-xl border border-line bg-white shadow-card p-3">
                   <p className="text-xs font-medium text-ink">Test with a real conversation</p>
                   <p className="mt-0.5 text-[11px] text-ink-3">
                     The run starts immediately and stops at the first wait or approval.
@@ -695,7 +774,7 @@ export default function WorkflowsClient({
                 </div>
               ) : null}
               {runsFor === workflow.id ? (
-                <div className="mt-3 rounded-xl border border-line bg-soft p-3">
+                <div className="mt-3 rounded-xl border border-line bg-white shadow-card p-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-medium text-ink">Recent runs</p>
                     <button type="button" className="text-[11px] text-ink-3 hover:text-ink" onClick={() => setRunsFor(null)}>
@@ -722,6 +801,66 @@ export default function WorkflowsClient({
                                   open chat
                                 </a>
                               ) : null}
+
+              {versionsFor === workflow.id ? (
+                <div className="mt-3 rounded-xl border border-line bg-white shadow-card p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-ink">Version history</p>
+                    <button
+                      type="button"
+                      className="text-[11px] text-ink-3 hover:text-ink"
+                      onClick={() => {
+                        setVersionsFor(null);
+                        setVersions(null);
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-ink-3">
+                    Every save is kept. Restore creates a new version from that snapshot.
+                  </p>
+                  {versions === null ? (
+                    <p className="mt-2 text-xs text-ink-3">Loading versions...</p>
+                  ) : versions.length === 0 ? (
+                    <p className="mt-2 text-xs text-ink-3">No versions recorded yet.</p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {versions.map((entry) => (
+                        <li
+                          key={entry.version}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-white p-2.5"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-ink">
+                              v{entry.version}
+                              {entry.snapshot.restoredFrom
+                                ? " · restored from v" + entry.snapshot.restoredFrom
+                                : ""}
+                            </p>
+                            <p className="mt-0.5 truncate text-[11px] text-ink-3">
+                              {entry.snapshot.name || "Untitled"}
+                              {entry.snapshot.steps.length
+                                ? " · " + entry.snapshot.steps.length + " steps"
+                                : ""}
+                              {entry.createdAt ? " · " + whenLabel(entry.createdAt) : ""}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className={ghostBtn}
+                            disabled={busy}
+                            onClick={() => void restoreVersion(workflow, entry.version)}
+                          >
+                            Restore
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
+
                             </p>
                             <div className="flex items-center gap-2">
                               <span className="text-[11px] text-ink-3">{whenLabel(run.startedAt)}</span>

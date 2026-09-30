@@ -104,7 +104,7 @@ export default function WatiCard() {
 
   if (!loaded) {
     return (
-      <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+      <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
         <h2 className="text-sm font-medium text-ink">WATI templates</h2>
         <p className="mt-0.5 text-xs text-ink-3">Loading...</p>
       </section>
@@ -112,7 +112,7 @@ export default function WatiCard() {
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+    <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
       <h2 className="text-sm font-medium text-ink">WATI templates</h2>
       <p className="mt-0.5 text-xs text-ink-3">
         WATI pe approved templates se direct WhatsApp messages bhejein. Token

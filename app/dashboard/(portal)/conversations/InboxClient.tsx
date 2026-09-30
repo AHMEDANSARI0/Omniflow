@@ -928,7 +928,7 @@ export default function InboxClient({
   if (expired) {
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
           <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
@@ -954,7 +954,7 @@ export default function InboxClient({
         </div>
         <button
           onClick={() => void refresh()}
-          className="shrink-0 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
+          className="shrink-0 rounded-xl border border-line bg-white shadow-card px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
         >
           Refresh
         </button>
@@ -1002,7 +1002,7 @@ export default function InboxClient({
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search by contact name, number, or message text"
-          className="w-full rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+          className="w-full rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
         />
       </div>
 
@@ -1408,7 +1408,7 @@ export default function InboxClient({
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className="h-20 rounded-2xl border border-line bg-soft"
+              className="h-20 rounded-2xl border border-line bg-white shadow-card"
             />
           ))}
         </div>
@@ -1417,7 +1417,7 @@ export default function InboxClient({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-2xl border border-line bg-soft px-6 py-12 text-center"
+          className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center"
         >
           <p className="text-sm font-medium text-ink">
             {pending
@@ -1547,7 +1547,7 @@ export default function InboxClient({
                           : "text-ink-3 hover:text-ink-3"
                       }`}
                     >
-                      {item.starred ? "\u2605" : "\u2606"}
+                      {item.starred ? "\u2605" : "\u25c9"}
                     </button>
                     <button
                       type="button"

@@ -230,13 +230,13 @@ export default function IntegrationsPage() {
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Integrations</h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Get OmniFlow events pushed to your own endpoint - Google Sheets
             bridges, Zapier, or your own tools. Every request is signed.
           </p>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="mb-6 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-ink">Add an endpoint</h2>
           <input
             value={url}
@@ -297,7 +297,7 @@ export default function IntegrationsPage() {
         {webhooks === null ? (
           <p className="text-sm text-ink-3">Loading\u2026</p>
         ) : webhooks.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No endpoints yet.</p>
             <p className="mt-1 text-xs text-ink-3">
               Add one above and COD or broadcast events will arrive there signed.
@@ -308,7 +308,7 @@ export default function IntegrationsPage() {
             {webhooks.map((row) => (
               <li
                 key={row.id}
-                className="rounded-2xl border border-line bg-soft p-4"
+                className="rounded-2xl border border-line bg-white shadow-card p-4"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">

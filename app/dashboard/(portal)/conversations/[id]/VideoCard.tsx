@@ -83,12 +83,12 @@ export default function VideoCard({ conversationId }: { conversationId: number }
   }
 
   return (
-    <section className="of-fade-up rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+    <section className="of-fade-up rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-white">Video invite</p>
-        <span className="text-[10px] text-slate-500">Whereby / Daily / Zoom</span>
+        <p className="text-xs font-semibold text-ink">Video invite</p>
+        <span className="text-[10px] text-ink-3">Whereby / Daily / Zoom</span>
       </div>
-      <p className="mt-1 text-[11px] text-slate-500">
+      <p className="mt-1 text-[11px] text-ink-3">
         Creates a room and drops the link into this chat.
       </p>
       <div className="mt-3 space-y-2">
@@ -96,7 +96,7 @@ export default function VideoCard({ conversationId }: { conversationId: number }
           <select
             value={provider}
             onChange={(event) => setProvider(event.target.value)}
-            className="w-32 rounded-xl border border-white/[0.08] bg-white/[0.02] px-2 py-2 text-xs text-slate-200 focus:border-cyan-400/40 focus:outline-none"
+            className="w-32 rounded-xl border border-line bg-soft px-2 py-2 text-xs text-ink focus:border-brand/40 focus:outline-none"
           >
             <option value="">Default</option>
             <option value="whereby">Whereby</option>
@@ -107,21 +107,21 @@ export default function VideoCard({ conversationId }: { conversationId: number }
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Topic (optional)"
-            className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40 focus:outline-none"
+            className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => void invite()}
             disabled={busy}
-            className="rounded-xl border border-cyan-400/30 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-400/[0.14] disabled:opacity-50"
+            className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
           >
             {busy ? "Creating…" : "Create & send invite"}
           </button>
           {note ? (
             <span
               className={
-                "text-[11px] " + (note.ok ? "text-emerald-300" : "text-rose-300")
+                "text-[11px] " + (note.ok ? "text-ok" : "text-danger")
               }
             >
               {note.text}
@@ -137,10 +137,10 @@ export default function VideoCard({ conversationId }: { conversationId: number }
                 href={room.url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.05] bg-white/[0.015] px-2.5 py-1.5 text-[11px] text-slate-300 hover:bg-white/[0.04]"
+                className="flex items-center justify-between gap-2 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-[11px] text-ink-2 hover:bg-soft"
               >
                 <span className="truncate">{room.url}</span>
-                <span className="shrink-0 rounded-md border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[10px] text-slate-400">
+                <span className="shrink-0 rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-3">
                   {room.provider}
                 </span>
               </a>

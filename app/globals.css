@@ -14,12 +14,12 @@
 
   /* Ink */
   --color-ink: #0b1220;
-  --color-ink-2: #526071;
-  --color-ink-3: #7a8797;
+  --color-ink-2: #3f4f63;
+  --color-ink-3: #5c6b7c;
 
   /* Lines */
-  --color-line: #e5eaf0;
-  --color-line-2: #d9e1ea;
+  --color-line: #d7e0ea;
+  --color-line-2: #c5d0dc;
 
   /* Brand (primary indigo) */
   --color-brand: #4f46e5;
@@ -159,7 +159,7 @@ a {
   *,
   *::before,
   *::after {
-    animation-duration: 0.2ms !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
@@ -512,3 +512,37 @@ html.of-js .of-reveal.of-reveal-in {
   background-image: radial-gradient(rgba(11, 18, 32, 0.07) 1px, transparent 1px);
   background-size: 22px 22px;
 }
+
+/* Elevated surface used for cards on canvas/soft backgrounds.
+   Soft-on-soft cards read as flat boxes; white + hairline + quiet
+   shadow is the professional card standard (D7). */
+.of-card {
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+.of-card-nested {
+  border: 1px solid var(--color-line);
+  background: var(--color-soft);
+}
+.of-page-title {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+.of-page-sub {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-ink-2);
+}
+.of-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+

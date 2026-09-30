@@ -140,7 +140,7 @@ export default function CustomerCard({ contactId }: { contactId: string | null }
   if (!contactId) return null;
 
   return (
-    <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xs font-semibold text-ink">Customer</h2>
         <div className="flex items-center gap-3">
@@ -215,7 +215,7 @@ export default function CustomerCard({ contactId }: { contactId: string | null }
           onChange={(event) => setDraft(event.target.value)}
           maxLength={1000}
           placeholder="Add a note about this customer…"
-          className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+          className="flex-1 rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
         />
         <button
           type="button"

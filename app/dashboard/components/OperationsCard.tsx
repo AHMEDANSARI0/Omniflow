@@ -71,7 +71,7 @@ export default function OperationsCard() {
   if (failed) return null;
 
   return (
-    <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
+    <div className="mb-8 rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold text-ink">
           Operations &mdash; last 30 days

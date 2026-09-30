@@ -602,13 +602,13 @@ export default function SequencesPage() {
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Sequences</h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             A multi-message series that new contacts receive automatically,
             step by step. Great for welcome flows and first-order care.
           </p>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="mb-6 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-ink">New series</h2>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="text-[11px] uppercase tracking-wider text-ink-3">
@@ -752,7 +752,7 @@ export default function SequencesPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-line bg-soft p-5">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-ink">Night guard</p>
@@ -845,7 +845,7 @@ export default function SequencesPage() {
         {sequences === null ? (
           <p className="text-sm text-ink-3">Loading\u2026</p>
         ) : sequences.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No series yet.</p>
             <p className="mt-1 text-xs text-ink-3">
               Create one above; every brand-new contact will walk through it.
@@ -856,7 +856,7 @@ export default function SequencesPage() {
             {sequences.map((row) => (
               <li
                 key={row.id}
-                className="rounded-2xl border border-line bg-soft p-4"
+                className="rounded-2xl border border-line bg-white shadow-card p-4"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">

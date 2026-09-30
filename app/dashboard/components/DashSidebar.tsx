@@ -24,13 +24,13 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       {
         label: "Conversations",
         href: "/dashboard/conversations",
-        icon: "\u270e",
+        icon: "\u25a3",
         enabled: true,
       },
       {
         label: "Customers",
         href: "/dashboard/customers",
-        icon: "\u2606",
+        icon: "\u25c9",
         enabled: true,
       },
       {
@@ -44,7 +44,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   {
     title: "Sell",
     items: [
-      { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "\u27a4", enabled: true },
+      { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "\u21d2", enabled: true },
       { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
       { label: "Approvals", href: "/dashboard/approvals", icon: "\u2713", enabled: true },
       { label: "Rules", href: "/dashboard/rules", icon: "\u25c8", enabled: true },
@@ -127,7 +127,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       {
         label: "Settings",
         href: "/dashboard/settings",
-        icon: "\u2699",
+        icon: "\u25c8",
         enabled: true,
       },
     ],
@@ -149,7 +149,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
           <span className="whitespace-nowrap text-base font-semibold tracking-[-0.03em] text-ink">
             Omni<span className="text-brand">Flow</span>
           </span>
-          <span className="ml-1 rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-3">
+          <span className="ml-1 rounded-md border border-line bg-white px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-2">
             Portal
           </span>
         </>
@@ -234,7 +234,7 @@ function NavLinks({
       {navGroups.map((group) => (
         <div key={group.title} className="space-y-1">
           {!collapsed && (
-            <p className="px-3 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-ink-3">
+            <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-2">
               {group.title}
             </p>
           )}
@@ -375,7 +375,7 @@ export default function DashSidebar({
           onClick={() => setMobileOpen((v) => !v)}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-soft text-ink-2"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white shadow-card text-ink-2"
         >
           {mobileOpen ? "✕" : "☰"}
         </button>

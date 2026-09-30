@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Status strip */}
-      <div className="mb-8 flex items-center gap-3 rounded-2xl border border-line bg-soft px-5 py-4">
+      <div className="mb-8 flex items-center gap-3 rounded-2xl border border-line bg-white shadow-card px-5 py-4">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -76,7 +76,7 @@ export default function AdminDashboardPage() {
                 className="cursor-not-allowed rounded-2xl border border-line bg-white/[0.01] p-5 opacity-50"
               >
                 <div className="mb-4 flex items-start justify-between">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-soft text-sm text-ink-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white shadow-card text-sm text-ink-3">
                     {mod.icon}
                   </div>
                   <span className="rounded-md border border-line bg-soft px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-3">
@@ -97,7 +97,7 @@ export default function AdminDashboardPage() {
             <Link
               key={mod.title}
               href={mod.href}
-              className="group rounded-2xl border border-line bg-soft p-5 transition-colors duration-300 hover:border-brand/20"
+              className="group rounded-2xl border border-line bg-white shadow-card p-5 transition-colors duration-300 hover:border-brand/20"
             >
               <div className="mb-4 flex items-start justify-between">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">

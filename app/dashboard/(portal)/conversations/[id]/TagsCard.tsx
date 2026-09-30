@@ -90,7 +90,7 @@ export default function TagsCard({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xs font-semibold text-ink">Labels</h2>
         <span className="text-[10px] text-ink-3">
@@ -144,7 +144,7 @@ export default function TagsCard({
             tags.length >= MAX_TAGS ? "Label limit reached" : "e.g. wholesale"
           }
           disabled={tags.length >= MAX_TAGS}
-          className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40 disabled:opacity-50"
+          className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40 disabled:opacity-50"
         />
         <button
           type="button"

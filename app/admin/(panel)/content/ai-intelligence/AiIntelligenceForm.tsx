@@ -34,7 +34,7 @@ export default function AiIntelligenceForm({
   return (
     <form action={formAction} className="space-y-6">
       {/* Section heading card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Section heading</h2>
         <p className="mb-5 text-xs text-ink-3">
           Line 2 is shown with the gradient color.
@@ -97,7 +97,7 @@ export default function AiIntelligenceForm({
       </div>
 
       {/* Pillars */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">
           Intelligence pillars
         </h2>
@@ -109,7 +109,7 @@ export default function AiIntelligenceForm({
           {pillars.map((p) => (
             <div
               key={p.i}
-              className="rounded-xl border border-line bg-soft p-4"
+              className="rounded-xl border border-line bg-white shadow-card p-4"
             >
               <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
                 Pillar 0{p.i}

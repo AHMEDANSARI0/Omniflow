@@ -238,13 +238,13 @@ export default function SegmentsPage() {
             OmniFlow
           </p>
           <h1 className="text-2xl font-semibold text-ink">Segments</h1>
-          <p className="mt-1 text-sm text-ink-3">
+          <p className="mt-1 text-sm text-ink-2">
             Save customer groups with simple filters, then message the whole
             group. Counts stay live.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-line bg-soft p-5">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-5">
           <p className="text-sm font-medium text-ink">New segment</p>
           <input
             value={name}
@@ -327,7 +327,7 @@ export default function SegmentsPage() {
         {segments === null ? (
           <p className="text-sm text-ink-3">Loading\u2026</p>
         ) : segments.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No segments yet.</p>
             <p className="mt-1 text-xs text-ink-3">
               Save your first group above \u2014 hot leads, quiet customers, tagged VIPs.
@@ -338,7 +338,7 @@ export default function SegmentsPage() {
             {segments.map((row) => (
               <li
                 key={row.id}
-                className="rounded-2xl border border-line bg-soft p-4"
+                className="rounded-2xl border border-line bg-white shadow-card p-4"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">

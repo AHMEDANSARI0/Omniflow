@@ -128,7 +128,7 @@ export default function OrderUpdatesSettings() {
   if (loaded && !visible) return null;
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">

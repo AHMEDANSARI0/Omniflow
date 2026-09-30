@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { CatalogItem, IndustryPreset } from "../../../../lib/omniflow/portal";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
@@ -12,7 +12,7 @@ const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 
 const ghostBtn =
-  "rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50";
+  "rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50";
 
 const chipClass =
   "rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-3";
@@ -236,7 +236,7 @@ export default function CatalogSection() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="text-sm font-semibold text-ink">Quick setup</h2>
         <p className="mt-1 text-xs leading-relaxed text-ink-3">
           Pick your business type and we will load proven starter answers
@@ -267,7 +267,7 @@ export default function CatalogSection() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold text-ink">

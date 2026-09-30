@@ -68,7 +68,7 @@ export default function ActivityPage() {
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Activity</h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Everything your team and automations did, newest first.
           </p>
         </div>
@@ -105,11 +105,11 @@ export default function ActivityPage() {
         </div>
 
         {items === null ? (
-          <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
             <p className="text-sm text-ink-3">Loading activity...</p>
           </div>
         ) : failed ? (
-          <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
             <p className="text-sm text-ink-3">
               Activity is unavailable right now.
             </p>
@@ -122,7 +122,7 @@ export default function ActivityPage() {
             </button>
           </div>
         ) : visible.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
             <p className="text-sm text-ink-3">Nothing here yet.</p>
           </div>
         ) : (
@@ -130,7 +130,7 @@ export default function ActivityPage() {
             {visible.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-soft px-4 py-3"
+                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white shadow-card px-4 py-3"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-ink">{item.label}</p>

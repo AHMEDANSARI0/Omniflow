@@ -123,7 +123,7 @@ export default function DuplicatesPanel({ onLinked }: { onLinked?: () => void })
   const suggestions = payload?.suggestions ?? [];
 
   return (
-    <section className="mb-4 rounded-2xl border border-line bg-soft">
+    <section className="mb-4 rounded-2xl border border-line bg-white shadow-card">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -169,7 +169,7 @@ export default function DuplicatesPanel({ onLinked }: { onLinked?: () => void })
                 return (
                   <li
                     key={key}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2 text-xs"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2 text-xs"
                   >
                     <span className="min-w-0 text-ink-2">
                       <Link

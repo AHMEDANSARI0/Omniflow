@@ -43,7 +43,7 @@ export default function BlogAdmin({ posts }: { posts: AdminPost[] }) {
           Posts ({posts.length})
         </p>
         {posts.length === 0 ? (
-          <p className="rounded-xl border border-line bg-soft px-3.5 py-3 text-xs text-ink-3">
+          <p className="rounded-xl border border-line bg-white shadow-card px-3.5 py-3 text-xs text-ink-3">
             No posts yet — write the first one. Until a post is saved, the
             website shows the built-in seed articles.
           </p>
@@ -51,7 +51,7 @@ export default function BlogAdmin({ posts }: { posts: AdminPost[] }) {
         {posts.map((post) => (
           <div
             key={post.slug}
-            className="rounded-xl border border-line bg-soft p-3.5"
+            className="rounded-xl border border-line bg-white shadow-card p-3.5"
           >
             <p className="text-[13px] font-medium leading-snug text-ink">
               {post.title}
@@ -90,7 +90,7 @@ export default function BlogAdmin({ posts }: { posts: AdminPost[] }) {
       {/* editor */}
       <form
         action={saveAction}
-        className="space-y-6 rounded-2xl border border-line bg-soft p-6"
+        className="space-y-6 rounded-2xl border border-line bg-white shadow-card p-6"
       >
         <div>
           <h2 className="text-sm font-semibold text-ink">Write a post</h2>

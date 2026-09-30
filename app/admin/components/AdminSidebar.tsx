@@ -208,7 +208,7 @@ export default function AdminSidebar({
           onClick={() => setMobileOpen((v) => !v)}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-soft text-ink-2"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white shadow-card text-ink-2"
         >
           {mobileOpen ? "✕" : "☰"}
         </button>

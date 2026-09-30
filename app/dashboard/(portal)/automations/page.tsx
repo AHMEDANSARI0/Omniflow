@@ -385,7 +385,7 @@ export default function AutomationsPage() {
 
   if (expired) {
     return (
-      <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+      <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
         <p className="text-sm text-ink-2">Session expired.</p>
       </div>
     );
@@ -399,7 +399,7 @@ export default function AutomationsPage() {
         WhatsApp and website. No AI, fully deterministic.
       </p>
 
-      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium text-ink-2">Welcome message</p>
@@ -427,7 +427,7 @@ export default function AutomationsPage() {
           maxLength={500}
           rows={3}
           placeholder="Hi! Thanks for reaching out — how can we help you today?"
-          className="mt-3 w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+          className="mt-3 w-full resize-none rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
         />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-[10px] text-ink-3">
@@ -454,7 +454,7 @@ export default function AutomationsPage() {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium text-ink-2">
@@ -511,7 +511,7 @@ export default function AutomationsPage() {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium text-ink-2">
@@ -557,7 +557,7 @@ export default function AutomationsPage() {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
         <p className="text-xs font-medium text-ink-2">
           When a message contains…
         </p>
@@ -567,7 +567,7 @@ export default function AutomationsPage() {
             onChange={(event) => setKeyword(event.target.value)}
             maxLength={40}
             placeholder="keyword, e.g. wholesale"
-            className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+            className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <select
             value={actionType}
@@ -586,7 +586,7 @@ export default function AutomationsPage() {
               onChange={(event) => setActionValue(event.target.value)}
               maxLength={24}
               placeholder="label, e.g. pricing"
-              className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+              className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
             />
           ) : (
             <select
@@ -630,12 +630,12 @@ export default function AutomationsPage() {
           {[0, 1].map((index) => (
             <div
               key={index}
-              className="h-16 rounded-2xl border border-line bg-soft"
+              className="h-16 rounded-2xl border border-line bg-white shadow-card"
             />
           ))}
         </div>
       ) : rules.length === 0 ? (
-        <div className="mt-4 rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <div className="mt-4 rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
           <p className="text-sm text-ink-2">
             No automations yet — add your first rule above (for example
             &quot;wholesale&quot; adds the label #wholesale).
@@ -646,7 +646,7 @@ export default function AutomationsPage() {
           {rules.map((rule) => (
             <li
               key={rule.id}
-              className="flex flex-col gap-3 rounded-2xl border border-line bg-soft p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-2xl border border-line bg-white shadow-card p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <p className="text-sm text-ink">

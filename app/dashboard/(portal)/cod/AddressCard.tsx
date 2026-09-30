@@ -53,7 +53,7 @@ export default function AddressCard() {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <p className="text-xs font-semibold text-ink">Address check</p>
       <p className="mt-0.5 text-[11px] text-ink-3">
         Paste an address - it is cleaned, the city and phone are
@@ -77,7 +77,7 @@ export default function AddressCard() {
       </div>
 
       {intel ? (
-        <div className="mt-3 space-y-2 rounded-xl border border-line bg-soft p-3">
+        <div className="mt-3 space-y-2 rounded-xl border border-line bg-white shadow-card p-3">
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 break-words text-xs text-ink">
               {intel.normalized}

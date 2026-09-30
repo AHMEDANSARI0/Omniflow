@@ -148,7 +148,7 @@ export default function RiskCard() {
   const reco = result ? RECO[result.recommendation] : null;
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <p className="text-xs font-semibold text-ink">COD risk check</p>
       <p className="mt-0.5 text-[11px] text-ink-3">
         RTO score 0-100 from this customer&apos;s own history - returns,
@@ -180,7 +180,7 @@ export default function RiskCard() {
       </div>
 
       {result ? (
-        <div className="mt-3 rounded-xl border border-line bg-soft p-3">
+        <div className="mt-3 rounded-xl border border-line bg-white shadow-card p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-2xl font-semibold text-ink">
               {result.score}

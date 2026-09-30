@@ -144,7 +144,7 @@ export default function AdminCustomersPage() {
         </div>
         <button
           onClick={() => void load()}
-          className="rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
+          className="rounded-xl border border-line bg-white shadow-card px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
         >
           Refresh
         </button>
@@ -227,7 +227,7 @@ export default function AdminCustomersPage() {
         </motion.div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-line bg-soft">
+      <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
         {loading ? (
           <div className="px-5 py-10 text-center text-sm text-ink-3">
             Loading clients…

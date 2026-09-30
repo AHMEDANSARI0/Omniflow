@@ -6,7 +6,7 @@ import { useUnreadCount } from "./useUnreadCount";
 
 const TABS = [
   { href: "/dashboard", label: "Home", icon: "\u2302", exact: true },
-  { href: "/dashboard/conversations", label: "Inbox", icon: "\u2709", exact: false },
+  { href: "/dashboard/conversations", label: "Inbox", icon: "\u25a1", exact: false },
   { href: "/dashboard/customers", label: "Customers", icon: "\u25a4", exact: false },
   { href: "/dashboard/broadcasts", label: "Broadcasts", icon: "\u21bb", exact: false },
 ];
@@ -35,13 +35,13 @@ export default function MobileTabBar() {
               aria-current={active ? "page" : undefined}
               className={
                 "relative flex min-w-16 flex-1 flex-col items-center gap-0.5 rounded-xl px-2 pb-1 pt-1.5 text-[10px] font-medium transition-colors duration-300 " +
-                (active ? "text-brand" : "text-ink-3 active:text-ink-2")
+                (active ? "text-brand" : "text-ink-2 active:text-ink")
               }
             >
               <span className="relative text-base leading-none">
                 {tab.icon}
                 {tab.label === "Inbox" && unreadCount > 0 ? (
-                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-rose-500/90 px-1 text-center text-[9px] font-semibold leading-4 text-ink">
+                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-rose-500 px-1 text-center text-[9px] font-semibold leading-4 text-white">
                     {unreadCount > 99 ? "99+" : String(unreadCount)}
                   </span>
                 ) : null}

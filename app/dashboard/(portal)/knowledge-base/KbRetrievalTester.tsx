@@ -20,7 +20,7 @@ interface SearchPayload {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 
@@ -59,7 +59,7 @@ export default function KbRetrievalTester() {
   }
 
   return (
-    <section className="mb-6 rounded-2xl border border-line bg-soft p-5">
+    <section className="mb-6 rounded-2xl border border-line bg-white shadow-card p-5">
       <h2 className="text-sm font-semibold text-ink">Test retrieval</h2>
       <p className="mt-1 text-xs text-ink-3">
         Ask a question the way a customer would and see which answers and
@@ -101,7 +101,7 @@ export default function KbRetrievalTester() {
               {result.hits.map((hit, index) => (
                 <li
                   key={hit.kind + "-" + hit.id}
-                  className="rounded-xl border border-line bg-soft px-3 py-2"
+                  className="rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   <p className="flex flex-wrap items-center gap-1.5 text-xs text-ink">
                     <span className="text-ink-3">{index + 1}.</span>
