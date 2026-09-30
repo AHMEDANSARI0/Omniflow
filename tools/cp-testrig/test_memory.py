@@ -388,10 +388,20 @@ check("memory delete 404", r.status_code == 404, r.status_code)
 r = run_api([[{"id": 9}]], "DELETE", "/api/v1/portal/memory/9")
 check("memory delete 200", r.status_code == 200, r.status_code)
 
-r = run_api([[{"id": 1}, {"id": 2}], [], []], "DELETE",
+# §214: purge also deletes the contact's stored files (SAVEPOINT, media
+# table DDL once, DELETE ... RETURNING, RELEASE) before the audit row.
+import portal_inbound_media as _inbound_media
+_inbound_media._DDL_READY = False
+r = run_api([[{"id": 1}, {"id": 2}], [], [], [], [], [], []], "DELETE",
             "/api/v1/portal/memory", query="?contact=92300")
 check("memory purge 200", r.status_code == 200
       and r.get_json()["purged"] == 2, r.get_json())
+_purge_sql = [str(e[0]) for e in portal_memory.portal_db.conn.cur.executed]
+check("memory purge also forgets the contact's files",
+      any("DELETE FROM portal_inbound_media" in q for q in _purge_sql)
+      and any(e[1] == (1, "92300") for e in portal_memory.portal_db.conn.cur
+              .executed if "portal_inbound_media WHERE" in str(e[0])),
+      _purge_sql)
 r = run_api([], "DELETE", "/api/v1/portal/memory")
 check("memory purge 400 no contact", r.status_code == 400, r.status_code)
 

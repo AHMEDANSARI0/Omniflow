@@ -17,6 +17,7 @@ a blank value on PUT keeps the stored secret (the catalog-sync rule).
 import json
 import logging
 import os
+import re
 import secrets as _secrets
 import smtplib
 from email.message import EmailMessage
@@ -167,6 +168,12 @@ def _clean_group(group: str, raw: dict):
                               + str(low) + " and " + str(high) + ".")
         if full == "voice.greeting" and len(text) > 200:
             return None, "voice.greeting must be 200 characters or fewer."
+        if full == "voice.webhook_base" and text:
+            text = text.rstrip("/")
+            if platform_settings.clean_webhook_base(text) != text:
+                return None, ("voice.webhook_base must be the public https"
+                              " address of the Control Plane, e.g."
+                              " https://cp.example.com (no query).")
         if full == "email.smtp_port":
             if text and (not text.isdigit() or not 1 <= int(text) <= 65535):
                 return None, "email.smtp_port must be a port number."
@@ -472,3 +479,125 @@ def put_voice_number():
     return jsonify({"ok": True, "client_id": client_id,
                     "number": result.get("number", "")}), 200
 
+
+
+# ---------------------------------------------------------------------------
+# §214: Twilio number setup from the panel (no manual console step)
+# ---------------------------------------------------------------------------
+
+_PN_SID = re.compile(r"^PN[0-9a-fA-F]{32}$")
+
+
+def _twilio_keys_or_error():
+    import portal_voice
+
+    keys = portal_voice._voice_keys()
+    if not (keys.get("account_sid") and keys.get("auth_token")):
+        return None, (jsonify({"error": {
+            "code": "not_configured",
+            "message": "Save the Twilio Account SID and auth token in the"
+                       " Voice channel group first."}}), 409)
+    return keys, None
+
+
+def _assigned_by_digits() -> dict:
+    import portal_voice
+
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                rows = portal_voice.list_number_assignments(cur)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        return {}
+    return {portal_voice._digits(r["number"]): r["client_id"]
+            for r in rows if r.get("number")}
+
+
+@bp.get("/voice/twilio")
+def list_twilio_numbers_route():
+    import portal_voice
+
+    keys, error = _twilio_keys_or_error()
+    if error:
+        return error
+    base, source = portal_voice.webhook_base()
+    try:
+        raw, truncated = portal_voice.list_twilio_numbers(keys)
+    except portal_voice.TwilioApiError as failure:
+        return jsonify({"error": {"code": "twilio_error",
+                                  "message": "Twilio: " + failure.message}}), \
+            502
+    assigned = _assigned_by_digits()
+    numbers = []
+    for item in raw:
+        public = portal_voice.twilio_number_state(item, base)
+        public["assigned_client_id"] = assigned.get(
+            portal_voice._digits(public["phone_number"]))
+        numbers.append(public)
+    return jsonify({
+        "base_url": base, "base_source": source,
+        "voice_url": (base + portal_voice.INCOMING_PATH) if base else "",
+        "status_url": (base + portal_voice.STATUS_PATH) if base else "",
+        "numbers": numbers, "truncated": truncated,
+    }), 200
+
+
+@bp.post("/voice/twilio/connect")
+def connect_twilio_number_route():
+    import portal_voice
+
+    payload = request.get_json(silent=True) or {}
+    sid = str(payload.get("sid") or "").strip()
+    if not _PN_SID.match(sid):
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "Pick a number from the"
+                                             " Twilio list."}}), 400
+    keys, error = _twilio_keys_or_error()
+    if error:
+        return error
+    base, source = portal_voice.webhook_base()
+    if not base:
+        return jsonify({"error": {
+            "code": "no_webhook_base",
+            "message": "Set the Control Plane address (Voice channel >"
+                       " Webhook address) first."}}), 409
+    try:
+        current = portal_voice.get_twilio_number(keys, sid)
+        state = portal_voice.twilio_number_state(current, base)
+        if state["state"] in ("app", "trunk"):
+            what = "a TwiML app" if state["state"] == "app" else "a SIP trunk"
+            return jsonify({"error": {
+                "code": "number_in_use",
+                "message": "This number is handled by " + what + " in"
+                           " Twilio, so Twilio ignores webhook URLs. Remove"
+                           " it from the number in the Twilio console, then"
+                           " connect again."}}), 409
+        updated = portal_voice.connect_twilio_number(keys, sid, base)
+    except portal_voice.TwilioApiError as failure:
+        status = 404 if failure.status == 404 else 502
+        return jsonify({"error": {"code": "twilio_error",
+                                  "message": "Twilio: " + failure.message}}), \
+            status
+    public = portal_voice.twilio_number_state(updated or current, base)
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                portal_db.log_action(
+                    cur, 0, "voice.twilio_connected", "platform_admin",
+                    None, None,
+                    ("Twilio number ..." + public["phone_number"][-4:]
+                     + " -> " + (portal_voice._host_of(base) or "?")
+                     + " (" + source + ")")[:200])
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    return jsonify({"ok": True, "number": public, "base_url": base}), 200

@@ -410,6 +410,10 @@ def enrich(cur, client_id: int, item: Dict[str, Any],
                 try:
                     data, fetched_mime = fetch_media(entry["url"])
                     mime = mime or fetched_mime
+                    # §214: the media store keeps a copy of these same
+                    # bytes (popped by connector_api; never persisted).
+                    item.setdefault("_media_fetched", {})[index] = (
+                        data, mime)
                 except ValueError as error:
                     note["error"] = str(error)[:120]
                     notes.append(note)

@@ -231,9 +231,15 @@ const GROUPS: GroupDef[] = [
         placeholder: "enforce",
         hint: "enforce, log or off. Enforce rejects webhook calls not signed with the auth token above.",
       },
+      {
+        key: "webhook_base",
+        label: "Webhook address",
+        placeholder: "https://control-plane.example.com",
+        hint: "Public https address of the Control Plane that Twilio calls. Used by Connect below and by the signature check. Leave empty to use the server setting.",
+      },
     ],
     note:
-      "The conversation Call button dials through Twilio with these keys. For inbound calls, point each Twilio number's Voice webhook to /api/v1/public/voice/incoming on the Control Plane and its status callback to /api/v1/public/voice/webhook, then assign the number to a workspace below.",
+      "The conversation Call button dials through Twilio with these keys. For inbound calls, press Connect on a number under Phone numbers below (it sets the number's Voice URL and status callback in Twilio), then assign the number to a workspace.",
   },
   {
     id: "video",

@@ -728,6 +728,18 @@ def purge_contact_memory():
         with conn.cursor() as cur:
             _ensure_ddl(cur)
             purged = purge_memory(cur, client_id, contact)
+            try:
+                import portal_inbound_media
+
+                # §214: "forget this customer" also deletes their files.
+                cur.execute("SAVEPOINT of_forget_media")
+                portal_inbound_media.forget_contact(cur, client_id, contact)
+                cur.execute("RELEASE SAVEPOINT of_forget_media")
+            except Exception:
+                try:
+                    cur.execute("ROLLBACK TO SAVEPOINT of_forget_media")
+                except Exception:
+                    pass
             portal_db.log_action(
                 cur, client_id, "memory.purged", "human", None, None,
                 ("Memory purged for " + contact) + "",

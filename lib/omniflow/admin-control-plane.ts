@@ -452,8 +452,11 @@ export type AdminVoiceNumberResult =
   | { kind: "invalid"; status: number; message: string }
   | { kind: "unavailable" };
 
-async function adminVoiceFetch(init: RequestInit): Promise<Response> {
-  const url = new URL("api/v1/admin/voice/numbers", controlPlaneBaseUrl());
+async function adminVoiceFetch(
+  init: RequestInit,
+  path = "api/v1/admin/voice/numbers"
+): Promise<Response> {
+  const url = new URL(path, controlPlaneBaseUrl());
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   headers.set("X-Omniflow-Key", serviceKey());
@@ -508,4 +511,73 @@ export async function assignAdminVoiceNumber(
     };
   }
   return { kind: "unavailable" };
+}
+
+// ---------------------------------------------------------------------------
+// §214: Twilio number setup from the panel. The Control Plane reads the
+// account's numbers and points one number's Voice URL + status callback at
+// itself when the admin confirms. Numbers on a TwiML app / SIP trunk are
+// refused (Twilio ignores webhook URLs while either is attached).
+// ---------------------------------------------------------------------------
+
+export interface AdminTwilioNumber {
+  sid: string;
+  phone_number: string;
+  friendly_name: string;
+  /** connected | partial | elsewhere | app | trunk | not_set */
+  state: string;
+  voice_host: string;
+  voice_capable: boolean;
+  assigned_client_id: number | null;
+}
+
+export interface AdminTwilioNumbersPayload {
+  base_url: string;
+  /** env | panel | request | none */
+  base_source: string;
+  voice_url: string;
+  status_url: string;
+  numbers: AdminTwilioNumber[];
+  truncated: boolean;
+}
+
+export type AdminTwilioResult<T> =
+  | { kind: "ok"; data: T }
+  | { kind: "invalid"; status: number; message: string }
+  | { kind: "unavailable" };
+
+async function adminTwilioResult<T>(response: Response): Promise<AdminTwilioResult<T>> {
+  const payload = (await response.json().catch(() => null)) as
+    | (T & { error?: { message?: string } })
+    | null;
+  if (response.ok && payload) return { kind: "ok", data: payload };
+  if ([400, 404, 409, 502].includes(response.status)) {
+    return {
+      kind: "invalid",
+      status: response.status,
+      message: payload?.error?.message || "Twilio could not complete that request.",
+    };
+  }
+  return { kind: "unavailable" };
+}
+
+export async function listAdminTwilioNumbers(): Promise<
+  AdminTwilioResult<AdminTwilioNumbersPayload>
+> {
+  const response = await adminVoiceFetch({ method: "GET" }, "api/v1/admin/voice/twilio");
+  return adminTwilioResult<AdminTwilioNumbersPayload>(response);
+}
+
+export async function connectAdminTwilioNumber(
+  sid: string
+): Promise<AdminTwilioResult<{ ok: boolean; number: AdminTwilioNumber; base_url: string }>> {
+  const response = await adminVoiceFetch(
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sid }),
+    },
+    "api/v1/admin/voice/twilio/connect"
+  );
+  return adminTwilioResult(response);
 }

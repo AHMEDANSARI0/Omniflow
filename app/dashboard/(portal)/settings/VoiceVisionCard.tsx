@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import MediaStoreSection from "./MediaStoreSection";
+
 interface VoiceAiSettings {
   enabled: boolean;
   greeting: string;
@@ -449,6 +451,9 @@ export default function VoiceVisionCard() {
           </p>
         </div>
       </div>
+
+      {/* ---- §214: customer file storage ---- */}
+      <MediaStoreSection />
     </section>
   );
 }

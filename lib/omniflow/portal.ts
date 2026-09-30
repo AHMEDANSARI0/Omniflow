@@ -14769,10 +14769,11 @@ export interface MediaAiTestPayload {
   category?: string;
 }
 
-/** serviceResult plus the two statuses D5 routes use for owner-facing
- * messages: 403 (owner sign-in required) and 502 (provider error). */
+/** serviceResult plus the statuses D5 / §214 routes use for owner-facing
+ * messages: 403 (owner sign-in required), 410 (customer file expired) and
+ * 502 (provider error). */
 async function voiceVisionResult<T>(response: Response): Promise<ServiceResult<T>> {
-  if (response.status === 403 || response.status === 502) {
+  if (response.status === 403 || response.status === 410 || response.status === 502) {
     const payload = (await response.json().catch(() => null)) as {
       error?: { code?: unknown; message?: unknown };
     } | null;
@@ -14782,7 +14783,11 @@ async function voiceVisionResult<T>(response: Response): Promise<ServiceResult<T
       code:
         payload && payload.error && typeof payload.error.code === "string"
           ? payload.error.code
-          : response.status === 403 ? "forbidden" : "provider_error",
+          : response.status === 403
+            ? "forbidden"
+            : response.status === 410
+              ? "media_expired"
+              : "provider_error",
       message:
         payload && payload.error && typeof payload.error.message === "string"
           ? payload.error.message
@@ -14859,5 +14864,91 @@ export function testMediaAi(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ asset_id: assetId }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// §214: customer media store (copies of images / voice notes, fresh links)
+// ---------------------------------------------------------------------------
+
+export interface InboundMediaItem {
+  id: number;
+  /** image | audio | video | file */
+  kind: string;
+  mime: string;
+  size_bytes: number;
+  /** stored | link | too_large | failed | expired */
+  status: string;
+  /** copies_off | too_large | unsupported | download_failed | no_source | retention | quota */
+  note: string;
+  channel: string;
+  has_copy: boolean;
+  can_open: boolean;
+  can_refresh: boolean;
+  created_at: string | null;
+}
+
+export interface MediaStoreSettings {
+  keep_copies: boolean;
+  retention_days: number;
+  quota_mb: number;
+}
+
+export interface MediaStorePayload {
+  settings: MediaStoreSettings;
+  usage: { used_bytes: number; copies: number; files: number };
+  limits: {
+    mode: string;
+    max_file_bytes: number;
+    max_quota_mb: number;
+    max_retention_days: number;
+  };
+}
+
+export function listConversationMedia(
+  accessToken: string,
+  conversationId: number
+): Promise<ServiceResult<{ media: InboundMediaItem[] }>> {
+  return voiceVisionCall(
+    accessToken,
+    "api/v1/portal/conversations/" + encodeURIComponent(String(conversationId)) + "/media"
+  );
+}
+
+export function getInboundMediaLink(
+  accessToken: string,
+  mediaId: number
+): Promise<ServiceResult<{ url: string; fresh: boolean }>> {
+  return voiceVisionCall(
+    accessToken,
+    "api/v1/portal/inbound-media/" + encodeURIComponent(String(mediaId)) + "/link"
+  );
+}
+
+export function deleteInboundMedia(
+  accessToken: string,
+  mediaId: number
+): Promise<ServiceResult<{ ok: boolean }>> {
+  return voiceVisionCall(
+    accessToken,
+    "api/v1/portal/inbound-media/" + encodeURIComponent(String(mediaId)),
+    { method: "DELETE" }
+  );
+}
+
+export function getMediaStoreSettings(
+  accessToken: string
+): Promise<ServiceResult<MediaStorePayload>> {
+  return voiceVisionCall<MediaStorePayload>(accessToken, "api/v1/portal/media-store/settings");
+}
+
+export function saveMediaStoreSettings(
+  accessToken: string,
+  settings: Partial<MediaStoreSettings>
+): Promise<ServiceResult<MediaStorePayload & { ok: boolean }>> {
+  return voiceVisionCall(accessToken, "api/v1/portal/media-store/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ settings }),
   });
 }

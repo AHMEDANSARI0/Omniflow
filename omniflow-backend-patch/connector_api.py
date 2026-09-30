@@ -258,6 +258,14 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_inbound_media
+
+                    # §214: retention sweep for stored customer files
+                    # (own connection, throttled per process).
+                    portal_inbound_media.maybe_purge(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
                     import portal_events
 
                     portal_events.requeue_due_commands(
@@ -743,6 +751,7 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                 # idempotency row is written (never stored in events).
                 media_blobs: Dict[int, Any] = {}
                 media_budget = None
+                store_budget = None
                 try:
                     import portal_media_ai
 
@@ -750,6 +759,12 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                     media_budget = portal_media_ai.Budget()
                 except Exception:
                     media_blobs, media_budget = {}, None
+                try:
+                    import portal_inbound_media
+
+                    store_budget = portal_inbound_media.Budget()
+                except Exception:
+                    store_budget = None
                 for item in normalized:
                     try:
                         import portal_events
@@ -815,6 +830,19 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                          item["body"], item["name"],
                          "received" if item["direction"] == "in" else "sent"),
                     )
+                    if item.get("media") and item["direction"] == "in" \
+                            and store_budget is not None:
+                        try:
+                            # §214: keep customer images / voice notes so
+                            # the inbox can show them after provider links
+                            # expire (savepoint-guarded, never raises).
+                            portal_inbound_media.capture(
+                                cur, tenant["client_id"], conversation_id,
+                                item, media_blobs.get(id(item)),
+                                store_budget)
+                        except Exception:
+                            pass
+                    item.pop("_media_fetched", None)
                     # One-reply law (B2): the first automation that sends a
                     # customer-visible reply claims the message; the other
                     # reply hooks stay quiet. Side-effect hooks (language

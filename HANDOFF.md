@@ -1401,3 +1401,135 @@ Remaining after §212:
 - **Urdu (ur-PK) caller speech** depends on the speech model your Twilio account supports; the language and speech model are workspace settings.
 - `test_pagespeed` is env-only in the sandbox.
 - Laptop run and push of patchers 205 → D7 → 207 → 208 → 209 → 210 → 211 → 212 (in order).
+
+
+## 213. BUILD FIX — WRONG "../" DEPTH IN TEN API ROUTES (fixer fix_import_depth_213.mjs; website repo only)
+
+**Symptom (laptop `npm run build`, Turbopack):** `Module not found: Can't resolve '../../../../../../../../lib/omniflow/control-plane'` in `portal/bi/weekly-problems{,/send}`, `portal/ai/{quality,labels}`, `portal/bi/thresholds`, `admin/ai/quality` (15 errors).
+
+**Root cause:** the §205, §207 and §209 patchers wrote ten route files with one `../` too many:
+- §205: `portal/workflows/[id]/{versions,rollback}`, `portal/bi/thresholds`
+- §207: `portal/bi/weekly-problems`, `portal/bi/weekly-problems/send`
+- §209: `portal/ai/quality`, `portal/ai/labels`, `portal/ai/labels/[id]`, `portal/ai/labels/[id]/run`, `admin/ai/quality`
+
+§211 already rewrites all ten correctly (simulated: 10 REPAIRED), so the build breaks only when it runs before §211 has landed. The old markers (`sendWeeklyProblemsNow`, …) also matched the broken files, so re-running §205/§207/§209 could not repair them.
+
+**Fix (three layers):**
+1. **`tools/patchers/fix_import_depth_213.mjs`**: a generic fixer, not a hard-coded list.
+   - Scans `app/`, `lib/`, `components/`, … for relative imports that don't resolve. Case is checked exactly, because Vercel builds on case-sensitive Linux.
+   - Rewrites an import only when exactly one other `../` depth resolves; anything else is reported and left untouched.
+   - Keeps `*.pre_import_fix_213.bak` and preserves CRLF.
+   - Safe at any point in the sequence and on reruns.
+2. **Patchers §205/§207/§209 corrected:** the content now has the right depth (31 imports). The markers for those ten files are now the correct import line, so a rerun repairs a broken copy and leaves a correct (§211+) copy alone.
+3. **`tools/patchers/gen_batch.py` self-check:** generation fails if any relative import in a TS/JS op does not resolve with exact case from the op's own path. The §212 patcher regenerates byte-identical.
+
+**Verification:**
+- Workspace: 589 files scanned, 0 fixed, 0 unresolved.
+- Broken copy: 10 files / 32 imports fixed, output byte-identical to the committed §211 files; rerun fixed 0. The case-mismatch probe was reported and left untouched.
+- Corrected §205/§207/§209 on a broken laptop: 10 REPAIRED. On a correct laptop: 10 already. On a fresh tree: 10 new. All three are byte-identical to the workspace.
+- All patchers scanned: 0 modern patchers with unresolvable imports.
+
+**Runbook (website root):**
+```
+node tools/patchers/fix_import_depth_213.mjs
+# expect first run: "fixed: N files ... unresolved: 0"; rerun: "fixed: 0 files"
+npm run build
+# build passes -> website repo: add all, commit, push (as usual)
+```
+If `unresolved` is non-zero, the listed file is missing locally. Run the batch patchers in order (205 → D7 → 207 → 208 → 209 → 210 → 211 → 212), then run the fixer again. It does not touch `OmniFlow-Control-Plane/`.
+
+## 214. TWILIO NUMBER SETUP FROM THE PANEL + CUSTOMER MEDIA STORE (patcher add_batch_twilio_media_store_214.mjs; pending user run - BOTH repos)
+
+Owner scope ("option 2, 3, 4 aik sath"): **3 = Twilio setup, 4 = Instagram CDN expiry**. Option 2 (WhatsApp media capture) was **skipped for now** by the owner. It needs the laptop `run_channel.py` + adapter files. The CP contract `ingest_message(..., media=[...])` is already in place and the new store already accepts WhatsApp media.
+
+### A. Twilio number setup (no Twilio-console step)
+Before this batch the admin pasted two webhook URLs into the Twilio console for every number. Now it is done under **Admin > Integrations > Phone numbers > Twilio account numbers**.
+
+**Reading the numbers:** the CP reads the account's numbers (`GET /2010-04-01/Accounts/{sid}/IncomingPhoneNumbers.json`). Each number shows one state:
+
+| State | Meaning |
+| --- | --- |
+| `connected` | Voice URL and status callback both point at this CP |
+| `partial` | Voice URL is ours, status callback is missing |
+| `elsewhere` | Points to another host (only the host is shown) |
+| `not_set` | No Voice URL |
+| `app` | A TwiML app is attached |
+| `trunk` | A SIP trunk is attached |
+
+**Connect button:** it shows a confirmation dialog with the exact URLs. It then POSTs only `VoiceUrl`, `VoiceMethod=POST`, `StatusCallback` and `StatusCallbackMethod=POST`, and logs the action as `voice.twilio_connected` (last 4 digits only).
+
+**App/trunk numbers are refused (409).** Twilio ignores `voice_url` while either one is attached. The admin must detach it in the console. The CP never deletes the admin's app or trunk.
+
+**Use button:** fills the assign form, which still maps the number to a workspace. Autonomy stays a manual workspace decision.
+
+**Webhook address:**
+- New provider field `voice.webhook_base`, validated as https with no query, fragment or credentials.
+- Resolution order: env `OMNIFLOW_TWILIO_WEBHOOK_BASE` → panel `voice.webhook_base` → the request's public host (flagged "detected"; localhost is never used).
+- The same base now feeds the signature check candidates and the TwiML action URLs, so Twilio's signed URL and our reconstruction match behind proxies. Without a configured base the behaviour is unchanged (`OMNIFLOW_SITE_URL` or the host URL).
+
+**CP code:**
+- `portal_voice.py`: `webhook_base()`, `_twilio_api()` (module-level, so tests can stub it; Twilio's error text is surfaced), `list_twilio_numbers`, `get_twilio_number`, `connect_twilio_number`, `twilio_number_state`.
+- `admin_providers.py`: `GET /api/v1/admin/voice/twilio` and `POST /api/v1/admin/voice/twilio/connect`.
+- Optional env: `OF_TWILIO_API_BASE` (default `https://api.twilio.com`) and `OF_TWILIO_NUMBERS_PAGE_SIZE` (default 200).
+
+### B. Customer media store (Instagram links expire, Telegram/WhatsApp bytes are inline)
+New module `portal_inbound_media.py` with table `portal_inbound_media` (created lazily). It has a unique ref index on `(client_id, channel, external_id, media_index)`, so replays add nothing.
+
+**Capture (connector_api):** runs right after the message row is written and before the reply hooks, under SAVEPOINT `of_inbound_media`. It never raises and never delays the message.
+- A reference row is recorded for **every** inbound attachment.
+- Images and voice notes get a **copy**. It is taken from the Telegram/laptop inline bytes, from bytes media understanding already downloaded (`item["_media_fetched"]`, so nothing is fetched twice), or by downloading the link once.
+- Link downloads are SSRF-guarded (`portal_knowledge.assert_public_url` plus re-checked redirects), https only, and size-capped.
+- Videos and other files are kept as links.
+- `_media_fetched` is popped right after capture.
+
+**Bytes decide:** the magic bytes must say JPEG/PNG/WebP/GIF or OGG/MP3/M4A/WAV/WebM/AMR. SVG and HTML are never stored or served. Responses carry `nosniff`, a `sandbox` CSP and `inline`. The website proxy passes only those MIME types.
+
+**Bounds:**
+
+| Setting | Default | Range / ceiling |
+| --- | --- | --- |
+| Per-file cap | 4 MB | Must fit the Vercel 4.5 MB response limit |
+| Workspace quota | 50 MB | 10 to 200 MB; oldest copies are released first |
+| Retention | 30 days | 1 to 90 days |
+
+- The bounds are applied after a capture, on the settings screen, and in a throttled per-workspace sweep on the connector tick. The sweep uses its own connection and starts only after `OF_MEDIA_STORE_PURGE_EVERY_SECONDS`.
+- Platform env: `OF_MEDIA_STORE_MODE`, `OF_MEDIA_STORE_MAX_FILE_BYTES`, `OF_MEDIA_STORE_MAX_QUOTA_MB`, `OF_MEDIA_STORE_MAX_RETENTION_DAYS`, `OF_MEDIA_STORE_DEFAULT_QUOTA_MB`, `OF_MEDIA_STORE_DEFAULT_RETENTION_DAYS`, `OF_MEDIA_STORE_PER_REQUEST`, `OF_MEDIA_STORE_FETCH_TIMEOUT`.
+- Workspace choices are stored in `client_settings.media_store`.
+
+**Opening a file:** the stored copy is used first, then the provider link (kept as a copy if copies are on), then, for Instagram, a fresh Graph link (`GET /<mid>?fields=attachments`, reading image_data/video_data/audio_data/file_url/payload.url). Otherwise the response is **410** with the "Instagram only re-sends the latest messages" hint (Meta answers only for the 20 most recent messages, which is why the copy exists).
+
+**Data safety:** Memory "forget this customer" also deletes the contact's files, under SAVEPOINT `of_forget_media`. The owner can delete one file (human-only, audited as `media_store.deleted`). Settings changes are audited as `media_store.settings`.
+
+**Owner API:**
+- `GET /api/v1/portal/conversations/<id>/media`
+- `GET /api/v1/portal/inbound-media/<id>/content`
+- `GET /api/v1/portal/inbound-media/<id>/link`
+- `DELETE /api/v1/portal/inbound-media/<id>`
+- `GET` and `PUT /api/v1/portal/media-store/settings`
+
+**Website:**
+- Conversation **Files from the customer** card (`MediaCard.tsx`): lazy-loaded and hidden when empty. Images and voice notes play inline; videos and files use "Get link" and then "Open file".
+- **Customer file storage** section inside Settings > Voice and images (`MediaStoreSection.tsx`).
+- Admin `TwilioNumbersSection.tsx`, plus the **Webhook address** field in the Voice channel group.
+- BFF routes under `app/api/omniflow/portal/{conversations/[id]/media, inbound-media/[id], inbound-media/[id]/content, inbound-media/[id]/link, media-store/settings}` and `app/api/omniflow/admin/voice/twilio{,/connect}`.
+
+**Neon note:** copies live in Postgres (`BYTEA`). With Neon Free (0.5 GB) keep the per-workspace quota small. The platform ceiling `OF_MEDIA_STORE_MAX_QUOTA_MB` caps what an owner can choose.
+
+### Verification
+- New suite `test_twilio_media_store.py`: 201 PASS.
+- `test_memory` fixture updated for the purge-forgets-files statements: 104 PASS.
+- Full sweep: 161 suites, 6300 PASS, 1 FAIL. The failure is `test_pagespeed`, which needs `/tmp/p13` (env-only, pre-existing).
+- `npx tsc --noEmit -p .`: 0 errors.
+- Mutation probes were caught: accepting SVG as JPEG gives 4 FAIL, and dropping the app/trunk refusal gives 4 FAIL.
+
+### Runbook (website root, after 212 and the 213 fixer)
+```
+node tools/patchers/add_batch_twilio_media_store_214.mjs
+# first run: new/updated per file; rerun: "already" everywhere
+npm run build
+# website repo: add all, commit, push
+# CP repo:      cd OmniFlow-Control-Plane && git add -A && commit && push
+```
+After deploying:
+1. Admin > Integrations > Voice channel: set **Webhook address** to the CP's public https address. This is optional when the CP host is detected correctly.
+2. Phone numbers: press **Connect** on each number, then **Use** to assign it to a workspace.

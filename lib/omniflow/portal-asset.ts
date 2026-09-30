@@ -28,3 +28,31 @@ export async function portalAssetDownload(
     return null;
   }
 }
+
+/**
+ * §214: raw bytes of a customer image / voice note from the media store
+ * (stored copy, provider link or a refreshed Instagram link - the Control
+ * Plane decides). Same contract as portalAssetDownload.
+ */
+export async function portalInboundMediaContent(
+  accessToken: string,
+  mediaId: number
+): Promise<Response | null> {
+  const url = new URL(
+    "api/v1/portal/inbound-media/" + mediaId + "/content",
+    controlPlaneBaseUrl()
+  );
+  try {
+    return await fetch(url, {
+      headers: {
+        Accept: "image/*, audio/*",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch {
+    return null;
+  }
+}

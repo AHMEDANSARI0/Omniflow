@@ -51,9 +51,12 @@ GROUP_KEYS = {
     # platform switch for the D5 phone AI assistant (on|off, default on -
     # each workspace still opts in); signature_check = Twilio webhook
     # signature policy (enforce|log|off, default enforce). Env fallbacks:
-    # OF_VOICE_AI_LOOP, OF_TWILIO_SIGNATURE.
+    # OF_VOICE_AI_LOOP, OF_TWILIO_SIGNATURE. webhook_base (§214) = the
+    # public https origin Twilio calls (the Control Plane); used by the
+    # "Connect in Twilio" button and the signature check. Env fallback:
+    # OMNIFLOW_TWILIO_WEBHOOK_BASE.
     "voice": ["provider", "account_sid", "auth_token", "from_number",
-              "greeting", "ai_loop", "signature_check"],
+              "greeting", "ai_loop", "signature_check", "webhook_base"],
     "video": ["provider", "api_key", "zoom_account_id",
               "zoom_client_id", "zoom_client_secret"],
     "payments": ["provider", "publishable_key", "secret_key",
@@ -519,5 +522,24 @@ def voice_platform() -> dict:
     if check not in SIGNATURE_MODES:
         check = "enforce"
     return {"ai_loop": loop, "signature_check": check,
-            "greeting": _cached("voice.greeting")[:200]}
+            "greeting": _cached("voice.greeting")[:200],
+            "webhook_base": clean_webhook_base(_cached("voice.webhook_base"))}
+
+
+def clean_webhook_base(value: str) -> str:
+    """https origin (optionally with a path prefix) or "" - never a query,
+    fragment, credentials or plain http (Twilio signs the exact URL)."""
+    import urllib.parse
+
+    text = str(value or "").strip().rstrip("/")
+    if not text:
+        return ""
+    try:
+        parts = urllib.parse.urlsplit(text)
+    except ValueError:
+        return ""
+    if parts.scheme != "https" or not parts.hostname or parts.query \
+            or parts.fragment or parts.username or parts.password:
+        return ""
+    return text[:300]
 

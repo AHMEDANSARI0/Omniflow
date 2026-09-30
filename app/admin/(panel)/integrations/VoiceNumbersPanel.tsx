@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import TwilioNumbersSection from "./TwilioNumbersSection";
+
 interface VoiceNumber {
   client_id: number;
   number: string;
@@ -83,6 +85,7 @@ export default function VoiceNumbersPanel() {
         answer it. Calls to unassigned numbers go to voicemail. The workspace
         turns its assistant on under Settings &gt; Voice and images.
       </p>
+      <TwilioNumbersSection onPick={(picked) => setNumber(picked)} />
       {numbers === null ? (
         <p className="text-xs text-ink-3">Loading…</p>
       ) : numbers.length === 0 ? (

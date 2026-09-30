@@ -31,6 +31,7 @@ import json
 import logging
 import os
 import re
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
@@ -836,6 +837,9 @@ def _candidate_urls() -> List[str]:
         value = os.environ.get(env, "").strip().rstrip("/")
         if value:
             bases.append(value)
+    panel_base = _panel_webhook_base()
+    if panel_base:
+        bases.append(panel_base)
     host = (request.headers.get("X-Forwarded-Host") or request.host or "")
     host = host.split(",")[0].strip()
     proto = (request.headers.get("X-Forwarded-Proto") or "https")
@@ -893,6 +897,173 @@ def _twilio_guard():
     logger.warning("twilio signature rejected on %s", request.path)
     return jsonify({"error": {"code": "forbidden",
                               "message": "Invalid Twilio signature."}}), 403
+
+
+# ---- Twilio number setup (§214) -------------------------------------------
+#
+# The admin used to paste two webhook URLs into the Twilio console by hand
+# for every number. The Integrations > Phone numbers panel now reads the
+# account's numbers (IncomingPhoneNumbers) and points a number's Voice URL
+# and status callback at this Control Plane with one click. Numbers wired
+# to a TwiML app or SIP trunk are never taken over silently - Twilio
+# ignores voice_url while either is set, so the admin must detach it in
+# the Twilio console first.
+
+TWILIO_API_BASE = (os.environ.get("OF_TWILIO_API_BASE", "").strip().rstrip("/")
+                   or "https://api.twilio.com")
+INCOMING_PATH = "/api/v1/public/voice/incoming"
+STATUS_PATH = "/api/v1/public/voice/webhook"
+TWILIO_PAGE_SIZE = _env_int("OF_TWILIO_NUMBERS_PAGE_SIZE", 200, 20, 1000)
+
+
+class TwilioApiError(Exception):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = int(status or 502)
+        self.message = str(message or "Twilio rejected the request.")[:300]
+
+
+def _env_webhook_base() -> str:
+    try:
+        return platform_settings.clean_webhook_base(
+            os.environ.get("OMNIFLOW_TWILIO_WEBHOOK_BASE", ""))
+    except Exception:
+        return ""
+
+
+def _panel_webhook_base() -> str:
+    try:
+        return str(platform_settings.voice_platform().get("webhook_base")
+                   or "")
+    except Exception:
+        return ""
+
+
+def webhook_base() -> Tuple[str, str]:
+    """(public https origin Twilio should call, where it came from):
+    env OMNIFLOW_TWILIO_WEBHOOK_BASE, then the admin panel
+    (voice.webhook_base), then this request's public host."""
+    base = _env_webhook_base()
+    if base:
+        return base, "env"
+    base = _panel_webhook_base()
+    if base:
+        return base, "panel"
+    try:
+        host = (request.headers.get("X-Forwarded-Host") or request.host
+                or "").split(",")[0].strip()
+    except RuntimeError:
+        host = ""
+    if host and not host.startswith(("localhost", "127.", "0.0.0.0")):
+        return platform_settings.clean_webhook_base("https://" + host), \
+            "request"
+    return "", "none"
+
+
+def _twilio_api(keys: Dict[str, str], method: str, path: str,
+                params: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    """One call to Twilio's REST API (module-level so tests can stub it).
+    Raises TwilioApiError with Twilio's own message on failure."""
+    url = (TWILIO_API_BASE + "/2010-04-01/Accounts/"
+           + urllib.parse.quote(keys["account_sid"], safe="") + path)
+    data = None
+    if params and method.upper() == "GET":
+        url += "?" + urllib.parse.urlencode(params)
+    elif params is not None:
+        data = urllib.parse.urlencode(params).encode("utf8")
+    token = base64.b64encode(
+        (keys["account_sid"] + ":" + keys["auth_token"]).encode("utf8")
+    ).decode("ascii")
+    headers = {"Authorization": "Basic " + token, "Accept": "application/json"}
+    if data is not None:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+    req = urllib.request.Request(url, data=data, method=method.upper(),
+                                 headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            parsed = json.loads(resp.read().decode("utf8") or "{}")
+            return parsed if isinstance(parsed, dict) else {}
+    except urllib.error.HTTPError as error:
+        try:
+            detail = json.loads(error.read().decode("utf8", "replace") or "{}")
+        except Exception:
+            detail = {}
+        message = detail.get("message") if isinstance(detail, dict) else None
+        raise TwilioApiError(error.code, message or (
+            "Twilio answered HTTP " + str(error.code) + "."))
+    except (urllib.error.URLError, TimeoutError, OSError):
+        raise TwilioApiError(502, "Twilio is unreachable right now.")
+    except ValueError:
+        raise TwilioApiError(502, "Twilio returned an unreadable answer.")
+
+
+def _host_of(url: str) -> str:
+    try:
+        return urllib.parse.urlsplit(str(url or "")).hostname or ""
+    except ValueError:
+        return ""
+
+
+def twilio_number_state(number: Dict[str, Any], base: str) -> Dict[str, Any]:
+    """Public view of one Twilio number and whether it reaches us.
+    state: connected | partial | elsewhere | app | trunk | not_set"""
+    voice_url = str(number.get("voice_url") or "").strip()
+    status_url = str(number.get("status_callback") or "").strip()
+    want_voice = (base + INCOMING_PATH) if base else ""
+    want_status = (base + STATUS_PATH) if base else ""
+    voice_ok = bool(want_voice) and voice_url.rstrip("/") == want_voice
+    status_ok = bool(want_status) and status_url.rstrip("/") == want_status
+    if number.get("trunk_sid"):
+        state = "trunk"
+    elif number.get("voice_application_sid"):
+        state = "app"
+    elif voice_ok and status_ok:
+        state = "connected"
+    elif voice_ok:
+        state = "partial"
+    elif voice_url:
+        state = "elsewhere"
+    else:
+        state = "not_set"
+    caps = number.get("capabilities")
+    return {
+        "sid": str(number.get("sid") or ""),
+        "phone_number": str(number.get("phone_number") or ""),
+        "friendly_name": str(number.get("friendly_name") or "")[:64],
+        "state": state,
+        "voice_host": _host_of(voice_url),
+        "voice_capable": bool(caps.get("voice", True))
+        if isinstance(caps, dict) else True,
+    }
+
+
+def list_twilio_numbers(keys: Dict[str, str]) -> Tuple[List[Dict[str, Any]],
+                                                       bool]:
+    """(raw IncomingPhoneNumbers, truncated)."""
+    payload = _twilio_api(keys, "GET", "/IncomingPhoneNumbers.json",
+                          {"PageSize": str(TWILIO_PAGE_SIZE)})
+    numbers = payload.get("incoming_phone_numbers")
+    numbers = [n for n in numbers if isinstance(n, dict)] \
+        if isinstance(numbers, list) else []
+    return numbers, bool(payload.get("next_page_uri"))
+
+
+def get_twilio_number(keys: Dict[str, str], sid: str) -> Dict[str, Any]:
+    return _twilio_api(keys, "GET", "/IncomingPhoneNumbers/"
+                       + urllib.parse.quote(sid, safe="") + ".json")
+
+
+def connect_twilio_number(keys: Dict[str, str], sid: str, base: str
+                          ) -> Dict[str, Any]:
+    """Point one number's Voice URL + status callback at this Control
+    Plane. Only the four voice routing fields are sent."""
+    return _twilio_api(keys, "POST", "/IncomingPhoneNumbers/"
+                       + urllib.parse.quote(sid, safe="") + ".json", {
+                           "VoiceUrl": base + INCOMING_PATH,
+                           "VoiceMethod": "POST",
+                           "StatusCallback": base + STATUS_PATH,
+                           "StatusCallbackMethod": "POST",
+                       })
 
 
 # ---- assistant readiness ----------------------------------------------------
@@ -960,7 +1131,11 @@ def _attr(text: str) -> str:
 
 
 def _public_base() -> str:
-    return (os.environ.get("OMNIFLOW_SITE_URL", "").strip().rstrip("/")
+    """Origin for TwiML action URLs. A configured Twilio webhook base wins
+    (so the follow-up requests are signed for the same URL Twilio was set
+    up with); otherwise the previous behaviour is unchanged."""
+    return (_env_webhook_base() or _panel_webhook_base()
+            or os.environ.get("OMNIFLOW_SITE_URL", "").strip().rstrip("/")
             or request.host_url.rstrip("/"))
 
 
