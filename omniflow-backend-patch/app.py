@@ -66,6 +66,8 @@ from portal_agents import bp as portal_agents_bp  # noqa: E402
 from portal_workflows import bp as portal_workflows_bp  # noqa: E402
 from portal_identity import bp as portal_identity_bp  # noqa: E402
 from portal_knowledge import bp as portal_knowledge_bp  # noqa: E402
+from portal_kb_semantic import bp as portal_kb_semantic_bp  # noqa: E402
+from portal_media_ai import bp as portal_media_ai_bp  # noqa: E402
 from portal_notify import bp as portal_notify_bp  # noqa: E402
 from portal_escalation import bp as portal_escalation_bp  # noqa: E402
 from portal_ai_usage import bp as portal_ai_usage_bp  # noqa: E402
@@ -152,6 +154,8 @@ aux_app.register_blueprint(portal_agents_bp)
 aux_app.register_blueprint(portal_workflows_bp)
 aux_app.register_blueprint(portal_identity_bp)
 aux_app.register_blueprint(portal_knowledge_bp)
+aux_app.register_blueprint(portal_kb_semantic_bp)
+aux_app.register_blueprint(portal_media_ai_bp)
 aux_app.register_blueprint(portal_notify_bp)
 aux_app.register_blueprint(portal_escalation_bp)
 aux_app.register_blueprint(portal_ai_usage_bp)

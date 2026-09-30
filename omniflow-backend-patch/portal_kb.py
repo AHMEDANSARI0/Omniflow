@@ -561,3 +561,16 @@ def delete_kb_entry(entry_id):
         return jsonify({"error": {"code": "not_found",
                                   "message": "Knowledge base entry not found."}}), 404
     return jsonify({"ok": True}), 200
+
+
+@bp.after_request
+def _kb_semantic_after(response):
+    """D1: a successful answer create/edit/delete schedules a semantic-index
+    sync (portal_kb_semantic); never alters the response."""
+    try:
+        import portal_kb_semantic
+
+        return portal_kb_semantic.kick_after_mutation(response)
+    except Exception:
+        return response
+

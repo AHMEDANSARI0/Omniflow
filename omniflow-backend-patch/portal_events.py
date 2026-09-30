@@ -119,9 +119,15 @@ def _ensure_ddl(cur) -> None:
 # ---------------------------------------------------------------------------
 
 def _content_fingerprint(client_id: int, item: Dict[str, Any]) -> str:
-    """Stable fingerprint of an inbound message's business content."""
+    """Stable fingerprint of an inbound message's business content.
+
+    D5: media understanding rewrites ``body`` after the event is recorded;
+    ``_orig_body`` keeps the delivered text so the key never drifts."""
+    source = dict(item)
+    if "_orig_body" in item:
+        source["body"] = item.get("_orig_body")
     raw = "|".join(
-        str(item.get(field) or "")
+        str(source.get(field) or "")
         for field in ("channel", "from", "direction", "body")
     )
     digest = hashlib.sha256(

@@ -18,6 +18,7 @@ import NegotiationCard from "./NegotiationCard";
 import PerfCard from "./PerfCard";
 import PlanCard from "./PlanCard";
 import NotificationsCard from "./NotificationsCard";
+import VoiceVisionCard from "./VoiceVisionCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -73,6 +74,9 @@ export default async function ClientSettingsPage() {
       <DataSafetyCard />
       <WatiCard />
       <InstagramCard />
+      <div className="mt-6">
+        <VoiceVisionCard />
+      </div>
       <CatalogCard />
       <CouponsCard />
       <DeliveriesCard />

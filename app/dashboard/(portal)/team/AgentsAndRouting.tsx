@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { AgentSchedule } from "../../../../lib/omniflow/portal";
 
 type Risk = "low" | "medium" | "high";
 
@@ -15,6 +16,55 @@ interface Agent {
   allowedActions: string[] | null;
   maxRisk: Risk;
   canAutoReply: boolean;
+  /** Weekly auto-reply windows; enabled false = always on (§208). */
+  schedule?: AgentSchedule;
+  /** Live clock from the server: inside the schedule right now. */
+  inHours?: boolean;
+}
+
+/** Day order matches the Control Plane (portal_agents.agent_in_hours):
+ * index 0 = Sunday ... 6 = Saturday. */
+const SCHEDULE_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Client mirror of portal.ts defaultAgentSchedule (server-only helper). */
+function defaultSchedule(): AgentSchedule {
+  return {
+    enabled: false,
+    timezone: "Asia/Karachi",
+    days: Array.from({ length: 7 }, () => ({
+      enabled: true,
+      start: "09:00",
+      end: "17:00",
+    })),
+  };
+}
+
+/** Client mirror of portal.ts normalizeAgentSchedule. */
+function normalizeSchedule(raw: unknown): AgentSchedule {
+  const fallback = defaultSchedule();
+  if (raw === null || typeof raw !== "object") return fallback;
+  const row = raw as Record<string, unknown>;
+  const daysRaw = Array.isArray(row.days) ? row.days : [];
+  const days = fallback.days.map((day, index) => {
+    const item =
+      daysRaw[index] !== null && typeof daysRaw[index] === "object"
+        ? (daysRaw[index] as Record<string, unknown>)
+        : null;
+    if (!item) return day;
+    return {
+      enabled: item.enabled !== false,
+      start: typeof item.start === "string" ? item.start : day.start,
+      end: typeof item.end === "string" ? item.end : day.end,
+    };
+  });
+  return {
+    enabled: row.enabled === true,
+    timezone:
+      typeof row.timezone === "string" && row.timezone.trim()
+        ? row.timezone.trim().slice(0, 64)
+        : fallback.timezone,
+    days,
+  };
 }
 
 interface CatalogAction {

@@ -521,9 +521,11 @@ check("no hardcoded limits", all(e in KSRC for e in (
     "OF_KB_CHUNK_OVERLAP", "OF_KB_VERSIONS_MAX", "OF_KB_URL_TIMEOUT",
     "OF_KB_URL_BYTES_MAX", "OF_KB_URL_STALE_DAYS", "OF_KB_RETRIEVE_CANDIDATES")),
       "-")
-check("no embeddings (D1 deferred) - honest docstring",
-      "no embeddings" in KSRC and "embedding" not in KSRC.lower().replace(
-          "no embeddings", "").replace("an embedding index", ""), "-")
+# D1 delivered (§211): semantic recall plugs into retrieve() via
+# portal_kb_semantic; keyword-only stays the automatic fallback.
+check("D1 honest docstring: hybrid via portal_kb_semantic, keyword fallback",
+      "portal_kb_semantic" in KSRC and "no embeddings" not in KSRC
+      and "keyword-only is\nthe automatic fallback" in KSRC, "-")
 
 LIB = read(RIG13 + "lib/omniflow/portal.ts")
 check("portal.ts knowledge client", all(t in LIB for t in (

@@ -192,7 +192,13 @@ class ControlPlaneBridge:
         body,
         direction="in",
         display_name=None,
+        media=None,
     ):
+        """Queue one message for the CP. ``media`` (D5, optional): a list of
+        {"type": "audio"|"image", "mime": "...", "data_b64": "..."} so the
+        CP can transcribe voice notes / understand images before the
+        assistant reads the message (same contract as the Telegram bridge).
+        """
         item = {
             "from": str(external_user_id or "").strip(),
             "body": "" if body is None else str(body),
@@ -203,6 +209,15 @@ class ControlPlaneBridge:
 
         if not item["from"]:
             return
+
+        if isinstance(media, list) and media and item["direction"] == "in":
+            item["media"] = [m for m in media[:3] if isinstance(m, dict)]
+            if not item["body"].strip():
+                item["body"] = (
+                    "[Voice note]" if item["media"]
+                    and item["media"][0].get("type") == "audio"
+                    else "[Image]"
+                )
 
         if (
             display_name

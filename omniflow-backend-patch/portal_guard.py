@@ -348,6 +348,12 @@ def sanitize_context(context: Dict[str, Any]) -> Dict[str, Any]:
                 dict(item, content=sanitize(item.get("content"), 200))
                 if isinstance(item, dict) else item
                 for item in out["memory"]]
+        if isinstance(out.get("call_transcript"), list):
+            # D5: earlier phone-call turns are caller speech (untrusted).
+            out["call_transcript"] = [
+                dict(item, text=sanitize(item.get("text"), 300))
+                if isinstance(item, dict) else item
+                for item in out["call_transcript"]]
         if isinstance(out.get("kb"), list):
             out["kb"] = [
                 dict(item, content=sanitize(item.get("content"), 400),

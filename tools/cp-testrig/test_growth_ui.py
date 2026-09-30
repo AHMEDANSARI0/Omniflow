@@ -114,8 +114,9 @@ EMOJI_CAPABLE = ("\\u260e", "\\u2733", "\\u2709", "\\u263a", "\\u26a1",
                  "\\u2696", "\\u26a")
 for code in EMOJI_CAPABLE:
     check("sidebar no emoji " + code, code not in SIDEBAR, code)
-for code in ("\\u2302", "\\u25a6", "\\u2706", "\\u2736", "\\u270e",
-             "\\u2606", "\\u2301", "\\u25c9", "\\u25ad", "\\u26e8",
+# D7 grouped sidebar: the pencil/star glyphs were retired with the regroup.
+for code in ("\\u2302", "\\u25a6", "\\u2706", "\\u2736",
+             "\\u2301", "\\u25c9", "\\u25ad", "\\u26e8",
              "\\u25b2"):
     check("sidebar has " + code, code in SIDEBAR, code)
 check("growth nav", '{ label: "Growth", href: "/dashboard/growth",'

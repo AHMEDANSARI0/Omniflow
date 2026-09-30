@@ -11,6 +11,8 @@ interface KbHit {
   position: number;
   score: number;
   matched: string[];
+  via?: "keyword" | "semantic" | "both";
+  semantic?: number | null;
 }
 
 interface SearchPayload {
@@ -28,7 +30,25 @@ const primaryBtn =
  * Knowledge base -> Test retrieval: type a customer question and see the
  * exact ranked knowledge (answers + published document sections) the
  * assistant would be given, with the matched words and a relevance score.
+ * With semantic search on, each hit also says whether it was found by
+ * words, by meaning, or both, plus the meaning similarity.
  */
+
+function hitDetail(hit: KbHit): string {
+  const parts: string[] = [];
+  if (hit.via === "semantic") {
+    parts.push("found by meaning");
+  } else if (hit.via === "both") {
+    parts.push("found by words and meaning");
+  } else {
+    parts.push("score " + hit.score.toFixed(2));
+  }
+  if (typeof hit.semantic === "number") {
+    parts.push("similarity " + Math.round(hit.semantic * 100) + "%");
+  }
+  if (hit.matched.length > 0) parts.push(hit.matched.join(", "));
+  return parts.join(" \u00b7 ");
+}
 export default function KbRetrievalTester() {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<SearchPayload | null>(null);
@@ -89,7 +109,9 @@ export default function KbRetrievalTester() {
           <p className="text-[11px] text-ink-3">
             {result.tokens.length > 0
               ? "Matched on: " + result.tokens.join(", ")
-              : "No searchable words in that question."}
+              : result.hits.length > 0
+                ? "Matched by meaning."
+                : "No searchable words in that question."}
           </p>
           {result.hits.length === 0 ? (
             <p className="mt-2 text-xs text-ink-3">
@@ -114,7 +136,7 @@ export default function KbRetrievalTester() {
                       {hit.kind === "chunk" ? "document" : "answer"}
                     </span>
                     <span className="text-[10px] text-ink-3">
-                      {"score " + hit.score.toFixed(2) + " \u00b7 " + hit.matched.join(", ")}
+                      {hitDetail(hit)}
                     </span>
                   </p>
                   <p className="mt-1 whitespace-pre-line text-xs text-ink-2">{hit.content}</p>

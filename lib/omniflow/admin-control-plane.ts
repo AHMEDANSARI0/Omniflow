@@ -74,7 +74,10 @@ export type AdminProviderGroup =
   | "video"
   | "payments"
   | "whatsapp_e2e"
-  | "ai";
+  | "ai"
+  | "stt"
+  | "embeddings"
+  | "vision";
 
 export interface AdminProviderGroups {
   [group: string]: {
@@ -430,4 +433,79 @@ export async function setAdminClientAutonomy(
     throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
   }
   return payload as AdminAutonomyResult;
+}
+
+// ---------------------------------------------------------------------------
+// D5 (§212): phone numbers -> workspaces (the dialled number decides which
+// workspace's assistant answers). 400/409 carry owner-readable messages, so
+// these calls do not use adminRequest (which throws on every non-2xx).
+// ---------------------------------------------------------------------------
+
+export interface AdminVoiceNumber {
+  client_id: number;
+  number: string;
+  enabled: boolean;
+}
+
+export type AdminVoiceNumberResult =
+  | { kind: "ok"; clientId: number; number: string }
+  | { kind: "invalid"; status: number; message: string }
+  | { kind: "unavailable" };
+
+async function adminVoiceFetch(init: RequestInit): Promise<Response> {
+  const url = new URL("api/v1/admin/voice/numbers", controlPlaneBaseUrl());
+  const headers = new Headers(init.headers);
+  headers.set("Accept", "application/json");
+  headers.set("X-Omniflow-Key", serviceKey());
+  try {
+    return await fetch(url, {
+      ...init,
+      headers,
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch {
+    throw new ControlPlaneRequestError(503, "control_plane_unavailable");
+  }
+}
+
+export async function listAdminVoiceNumbers(): Promise<AdminVoiceNumber[] | null> {
+  const response = await adminVoiceFetch({ method: "GET" });
+  if (!response.ok) return null;
+  const payload = (await response.json().catch(() => null)) as {
+    numbers?: AdminVoiceNumber[];
+  } | null;
+  return payload && Array.isArray(payload.numbers) ? payload.numbers : null;
+}
+
+export async function assignAdminVoiceNumber(
+  clientId: number,
+  number: string
+): Promise<AdminVoiceNumberResult> {
+  const response = await adminVoiceFetch({
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: clientId, number }),
+  });
+  const payload = (await response.json().catch(() => null)) as {
+    client_id?: number;
+    number?: string;
+    error?: { message?: string };
+  } | null;
+  if (response.ok && payload) {
+    return {
+      kind: "ok",
+      clientId: Number(payload.client_id || clientId),
+      number: String(payload.number || ""),
+    };
+  }
+  if (response.status === 400 || response.status === 409) {
+    return {
+      kind: "invalid",
+      status: response.status,
+      message: payload?.error?.message || "That number could not be assigned.",
+    };
+  }
+  return { kind: "unavailable" };
 }

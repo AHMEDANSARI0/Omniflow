@@ -9489,6 +9489,10 @@ export interface VoiceCall {
   direction: "inbound" | "outbound";
   hasRecording: boolean;
   durationSeconds: number;
+  /** D5: assistant turns spoken on this call (0 = voicemail only). */
+  aiTurns: number;
+  /** D5: ai | handoff | turn_limit | no_speech | voicemail | transfer_missed | "" */
+  outcome: string;
   createdAt: string | null;
 }
 
@@ -9525,6 +9529,8 @@ export async function listVoiceCalls(
     direction: row.direction === "inbound" ? "inbound" as const : "outbound" as const,
     hasRecording: row.has_recording === true,
     durationSeconds: Number(row.duration_seconds || 0),
+    aiTurns: Number(row.ai_turns || 0),
+    outcome: String(row.outcome || ""),
     createdAt: typeof row.created_at === "string" ? row.created_at : null,
   }));
 }
@@ -9573,6 +9579,8 @@ export async function callContact(
       direction: row.direction === "inbound" ? "inbound" as const : "outbound" as const,
       hasRecording: row.has_recording === true,
       durationSeconds: Number(row.duration_seconds || 0),
+      aiTurns: Number(row.ai_turns || 0),
+      outcome: String(row.outcome || ""),
       createdAt: typeof row.created_at === "string" ? row.created_at : null,
     },
   };
@@ -13285,6 +13293,83 @@ export interface KbHit {
   position: number;
   score: number;
   matched: string[];
+  /** D1 hybrid retrieval: which ranker found the hit. */
+  via?: "keyword" | "semantic" | "both";
+  /** Cosine similarity (0..1) when the semantic index matched, else null. */
+  semantic?: number | null;
+}
+
+export interface KbSemanticStatus {
+  active: boolean;
+  reason: "active" | "off" | "no_key" | "llm_disabled" | string;
+  mode: string;
+  model: string;
+  dimensions: number;
+  min_similarity: number;
+  key_source: string;
+  total: number;
+  indexed: number;
+  pending: number;
+  coverage: number;
+  running: boolean;
+  provider_cooldown: boolean;
+  last_sync_at: string | null;
+  last_error: string;
+  last_embedded: number;
+  last_reused: number;
+  started?: boolean;
+}
+
+export type KbSemanticSyncResult =
+  | { kind: "ok"; status: KbSemanticStatus }
+  | { kind: "invalid"; code: string; message: string; status: number }
+  | { kind: "unavailable" };
+
+export async function getKbSemanticStatus(
+  accessToken: string
+): Promise<KbSemanticStatus | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, "api/v1/portal/kb/semantic");
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  if (!response.ok) return null;
+  return (await response.json().catch(() => null)) as KbSemanticStatus | null;
+}
+
+export async function syncKbSemantic(
+  accessToken: string
+): Promise<KbSemanticSyncResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/semantic/sync",
+      { method: "POST" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  const payload = (await response.json().catch(() => null)) as
+    | (KbSemanticStatus & { error?: { code?: string; message?: string } })
+    | null;
+  if (response.ok && payload) return { kind: "ok", status: payload };
+  if (response.status >= 400 && response.status < 500) {
+    return {
+      kind: "invalid",
+      code: payload?.error?.code || "bad_request",
+      message: payload?.error?.message || "Request rejected.",
+      status: response.status,
+    };
+  }
+  return { kind: "unavailable" };
 }
 
 export interface KbSearchPayload {
@@ -13766,6 +13851,15 @@ export interface AiUsagePayload {
   totals: AiUsageTotals;
   by_feature: { feature: string; label: string; calls: number; failed: number; tokens: number; cost_usd: number | null }[];
   by_model: { model: string; calls: number; failed: number; tokens: number; cost_usd: number | null }[];
+  by_agent?: {
+    agent_id: number | null;
+    name: string;
+    calls: number;
+    failed: number;
+    tokens: number;
+    cost_usd: number | null;
+    share: number;
+  }[];
   by_day: { day: string; calls: number; tokens: number }[];
   prices_configured: boolean;
   features: { key: string; label: string }[];
@@ -13819,371 +13913,6 @@ export async function getAiUsage(
   return (await response.json().catch(() => null)) as AiUsagePayload | null;
 }
 
-
-// ---------------------------------------------------------------------------
-// Live AI quality + human-labelled answer sets (CP: portal_ai_quality)
-// ---------------------------------------------------------------------------
-
-export interface AiQualitySignal {
-  key: string;
-  severity: string;
-  title: string;
-  detail: string;
-}
-
-export interface AiQualitySample {
-  days: number;
-  generatedAt: string;
-  scope: string;
-  traces: {
-    total: number;
-    byDecision: Record<string, number>;
-    byKind: Record<string, number>;
-    avgConfidence: number | null;
-    groundedShare: number | null;
-    citedShare: number | null;
-    autoReplyBlockedShare: number | null;
-    guardBlocked: number;
-    handoffReasons: Record<string, number>;
-  };
-  usage: {
-    calls: number;
-    failed: number;
-    failShare: number | null;
-    avgLatencyMs: number;
-  } | null;
-  signals: AiQualitySignal[];
-}
-
-function normalizeAiQuality(payload: Record<string, unknown>): AiQualitySample {
-  const traces = asRecord(payload.traces);
-  const usage = payload.usage === null || payload.usage === undefined
-    ? null
-    : asRecord(payload.usage);
-  const signalsRaw = Array.isArray(payload.signals) ? payload.signals : [];
-  const signals: AiQualitySignal[] = [];
-  for (const item of signalsRaw) {
-    const row = asRecord(item);
-    if (typeof row.title === "string") {
-      signals.push({
-        key: typeof row.key === "string" ? row.key : "",
-        severity: typeof row.severity === "string" ? row.severity : "info",
-        title: row.title,
-        detail: typeof row.detail === "string" ? row.detail : "",
-      });
-    }
-  }
-  const numMap = (src: unknown): Record<string, number> => {
-    const out: Record<string, number> = {};
-    const rec = asRecord(src);
-    for (const [k, v] of Object.entries(rec)) {
-      if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
-    }
-    return out;
-  };
-  return {
-    days: typeof payload.days === "number" ? payload.days : 7,
-    generatedAt:
-      typeof payload.generated_at === "string" ? payload.generated_at : "",
-    scope: typeof payload.scope === "string" ? payload.scope : "workspace",
-    traces: {
-      total: typeof traces.total === "number" ? traces.total : 0,
-      byDecision: numMap(traces.by_decision),
-      byKind: numMap(traces.by_kind),
-      avgConfidence:
-        typeof traces.avg_confidence === "number" ? traces.avg_confidence : null,
-      groundedShare:
-        typeof traces.grounded_share === "number" ? traces.grounded_share : null,
-      citedShare:
-        typeof traces.cited_share === "number" ? traces.cited_share : null,
-      autoReplyBlockedShare:
-        typeof traces.auto_reply_blocked_share === "number"
-          ? traces.auto_reply_blocked_share
-          : null,
-      guardBlocked:
-        typeof traces.guard_blocked === "number" ? traces.guard_blocked : 0,
-      handoffReasons: numMap(traces.handoff_reasons),
-    },
-    usage: usage
-      ? {
-          calls: typeof usage.calls === "number" ? usage.calls : 0,
-          failed: typeof usage.failed === "number" ? usage.failed : 0,
-          failShare:
-            typeof usage.fail_share === "number" ? usage.fail_share : null,
-          avgLatencyMs:
-            typeof usage.avg_latency_ms === "number" ? usage.avg_latency_ms : 0,
-        }
-      : null,
-    signals,
-  };
-}
-
-export async function getAiQualitySample(
-  accessToken: string,
-  days = 7
-): Promise<AiQualitySample | null> {
-  let response: Response;
-  try {
-    response = await portalRequest(
-      accessToken,
-      "api/v1/portal/ai/quality?days=" + encodeURIComponent(String(days))
-    );
-  } catch (error) {
-    assertNotAuthError(error);
-    return null;
-  }
-  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
-  if (!response.ok) return null;
-  const payload = asRecord(await response.json().catch(() => null));
-  return normalizeAiQuality(payload);
-}
-
-export interface AiLabelItem {
-  message: string;
-  expectedDecision: "send" | "handoff" | "draft";
-  expectedKeywords: string[];
-  forbiddenPhrases: string[];
-  note: string;
-}
-
-export interface AiLabelSet {
-  id: number;
-  name: string;
-  notes: string;
-  items: AiLabelItem[];
-  itemCount: number;
-  isActive: boolean;
-  updatedAt: string;
-}
-
-function normalizeLabelItem(raw: unknown): AiLabelItem | null {
-  const row = asRecord(raw);
-  const message = typeof row.message === "string" ? row.message : "";
-  if (!message) return null;
-  const decision = String(row.expected_decision || row.expectedDecision || "send");
-  const dec =
-    decision === "handoff" || decision === "draft" || decision === "send"
-      ? decision
-      : "send";
-  const kw = Array.isArray(row.expected_keywords)
-    ? row.expected_keywords.filter((x): x is string => typeof x === "string")
-    : Array.isArray(row.expectedKeywords)
-      ? row.expectedKeywords.filter((x): x is string => typeof x === "string")
-      : [];
-  const fb = Array.isArray(row.forbidden_phrases)
-    ? row.forbidden_phrases.filter((x): x is string => typeof x === "string")
-    : Array.isArray(row.forbiddenPhrases)
-      ? row.forbiddenPhrases.filter((x): x is string => typeof x === "string")
-      : [];
-  return {
-    message,
-    expectedDecision: dec,
-    expectedKeywords: kw,
-    forbiddenPhrases: fb,
-    note: typeof row.note === "string" ? row.note : "",
-  };
-}
-
-function normalizeLabelSet(raw: unknown): AiLabelSet | null {
-  const row = asRecord(raw);
-  const id = typeof row.id === "number" ? row.id : 0;
-  if (id <= 0) return null;
-  const itemsRaw = Array.isArray(row.items) ? row.items : [];
-  const items: AiLabelItem[] = [];
-  for (const item of itemsRaw) {
-    const n = normalizeLabelItem(item);
-    if (n) items.push(n);
-  }
-  return {
-    id,
-    name: typeof row.name === "string" ? row.name : "",
-    notes: typeof row.notes === "string" ? row.notes : "",
-    items,
-    itemCount:
-      typeof row.item_count === "number" ? row.item_count : items.length,
-    isActive: row.is_active !== false,
-    updatedAt: typeof row.updated_at === "string" ? row.updated_at : "",
-  };
-}
-
-export async function listAiLabelSets(
-  accessToken: string
-): Promise<{ sets: AiLabelSet[]; decisions: string[] } | null> {
-  let response: Response;
-  try {
-    response = await portalRequest(accessToken, "api/v1/portal/ai/labels");
-  } catch (error) {
-    assertNotAuthError(error);
-    return null;
-  }
-  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
-  if (!response.ok) return null;
-  const payload = asRecord(await response.json().catch(() => null));
-  const setsRaw = Array.isArray(payload.sets) ? payload.sets : [];
-  const sets: AiLabelSet[] = [];
-  for (const item of setsRaw) {
-    const n = normalizeLabelSet(item);
-    if (n) sets.push(n);
-  }
-  const decisions = Array.isArray(payload.decisions)
-    ? payload.decisions.filter((x): x is string => typeof x === "string")
-    : ["send", "handoff", "draft"];
-  return { sets, decisions };
-}
-
-function labelSetBody(input: {
-  name: string;
-  notes?: string;
-  items: AiLabelItem[];
-  isActive?: boolean;
-}): Record<string, unknown> {
-  return {
-    name: input.name,
-    notes: input.notes || "",
-    is_active: input.isActive !== false,
-    items: input.items.map((item) => ({
-      message: item.message,
-      expected_decision: item.expectedDecision,
-      expected_keywords: item.expectedKeywords,
-      forbidden_phrases: item.forbiddenPhrases,
-      note: item.note,
-    })),
-  };
-}
-
-export async function createAiLabelSet(
-  accessToken: string,
-  input: { name: string; notes?: string; items: AiLabelItem[] }
-): Promise<AiLabelSet | null> {
-  let response: Response;
-  try {
-    response = await portalRequest(accessToken, "api/v1/portal/ai/labels", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(labelSetBody(input)),
-    });
-  } catch (error) {
-    assertNotAuthError(error);
-    return null;
-  }
-  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
-  if (!response.ok) return null;
-  const payload = asRecord(await response.json().catch(() => null));
-  return normalizeLabelSet(payload.set);
-}
-
-export async function updateAiLabelSet(
-  accessToken: string,
-  setId: number,
-  input: { name: string; notes?: string; items: AiLabelItem[]; isActive?: boolean }
-): Promise<boolean> {
-  let response: Response;
-  try {
-    response = await portalRequest(
-      accessToken,
-      "api/v1/portal/ai/labels/" + setId,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(labelSetBody(input)),
-      }
-    );
-  } catch (error) {
-    assertNotAuthError(error);
-    return false;
-  }
-  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
-  return response.ok;
-}
-
-export async function archiveAiLabelSet(
-  accessToken: string,
-  setId: number
-): Promise<boolean> {
-  let response: Response;
-  try {
-    response = await portalRequest(
-      accessToken,
-      "api/v1/portal/ai/labels/" + setId,
-      { method: "DELETE" }
-    );
-  } catch (error) {
-    assertNotAuthError(error);
-    return false;
-  }
-  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
-  return response.ok;
-}
-
-export interface AiLabelRunResult {
-  setId: number;
-  name: string;
-  mode: string;
-  llmCalls: number;
-  passed: number;
-  total: number;
-  score: number;
-  status: string;
-  results: {
-    message: string;
-    expectedDecision: string;
-    actualDecision: string | null;
-    passed: boolean;
-    detail: string;
-    liveReply: string | null;
-  }[];
-}
-
-export async function runAiLabelSet(
-  accessToken: string,
-  setId: number,
-  includeLive = false
-): Promise<AiLabelRunResult | null> {
-  let response: Response;
-  try {
-    response = await portalRequest(
-      accessToken,
-      "api/v1/portal/ai/labels/" + setId + "/run",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ include_live: includeLive === true }),
-      }
-    );
-  } catch (error) {
-    assertNotAuthError(error);
-    return null;
-  }
-  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
-  if (!response.ok) return null;
-  const payload = asRecord(await response.json().catch(() => null));
-  const resultsRaw = Array.isArray(payload.results) ? payload.results : [];
-  const results = [];
-  for (const item of resultsRaw) {
-    const row = asRecord(item);
-    results.push({
-      message: typeof row.message === "string" ? row.message : "",
-      expectedDecision:
-        typeof row.expected_decision === "string" ? row.expected_decision : "",
-      actualDecision:
-        typeof row.actual_decision === "string" ? row.actual_decision : null,
-      passed: row.passed === true,
-      detail: typeof row.detail === "string" ? row.detail : "",
-      liveReply: typeof row.live_reply === "string" ? row.live_reply : null,
-    });
-  }
-  return {
-    setId: typeof payload.set_id === "number" ? payload.set_id : setId,
-    name: typeof payload.name === "string" ? payload.name : "",
-    mode: typeof payload.mode === "string" ? payload.mode : "deterministic",
-    llmCalls: typeof payload.llm_calls === "number" ? payload.llm_calls : 0,
-    passed: typeof payload.passed === "number" ? payload.passed : 0,
-    total: typeof payload.total === "number" ? payload.total : 0,
-    score: typeof payload.score === "number" ? payload.score : 0,
-    status: typeof payload.status === "string" ? payload.status : "fail",
-    results,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Live AI quality + human-labelled answer sets (CP: portal_ai_quality)
@@ -14724,6 +14453,14 @@ export interface BiReport {
   problems: BiProblem[];
   problem_counts: { critical: number; warn: number };
   topics: { key: string; label: string }[];
+  narrative?: {
+    mode: string;
+    llm_used: boolean;
+    headline: string;
+    paragraphs: string[];
+    bullets: string[];
+    generated_at?: string;
+  } | null;
 }
 
 export type BiThresholds = Record<string, number>;
@@ -14966,4 +14703,161 @@ export async function getBiReport(
     throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   return (await response.json().catch(() => null)) as BiReport | null;
+}
+
+// ---------------------------------------------------------------------------
+// D5 (§212): phone assistant + customer voice notes / images
+// ---------------------------------------------------------------------------
+
+export interface VoiceAiSettings {
+  enabled: boolean;
+  greeting: string;
+  handoff_message: string;
+  language: string;
+  speech_model: string;
+  tts_voice: string;
+  max_turns: number;
+  forward_to: string;
+  /** Admin-assigned; read-only for the workspace. */
+  number: string;
+}
+
+export interface VoiceAiStatus {
+  active: boolean;
+  /** active | off | platform_off | no_twilio | no_number | no_llm | autonomy */
+  reason: string;
+  number: string;
+  twilio_ready: boolean;
+  llm_ready: boolean;
+  platform_ai_loop: string;
+  autonomy: string;
+}
+
+export interface VoiceAiPayload {
+  settings: VoiceAiSettings;
+  status: VoiceAiStatus;
+  languages?: string[];
+  max_turns_limit?: number;
+}
+
+export interface VoiceTranscriptTurn {
+  role: string;
+  text: string;
+}
+
+export interface MediaAiSettings {
+  voice_notes: boolean;
+  images: boolean;
+}
+
+export interface MediaAiCapability {
+  active: boolean;
+  reason: string;
+  model: string;
+}
+
+export interface MediaAiPayload {
+  settings: MediaAiSettings;
+  platform: { voice_notes: MediaAiCapability; images: MediaAiCapability };
+  max_bytes?: number;
+}
+
+export interface MediaAiTestPayload {
+  ok: boolean;
+  kind: "audio" | "image";
+  text: string;
+  category?: string;
+}
+
+/** serviceResult plus the two statuses D5 routes use for owner-facing
+ * messages: 403 (owner sign-in required) and 502 (provider error). */
+async function voiceVisionResult<T>(response: Response): Promise<ServiceResult<T>> {
+  if (response.status === 403 || response.status === 502) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: { code?: unknown; message?: unknown };
+    } | null;
+    return {
+      kind: "invalid",
+      status: response.status,
+      code:
+        payload && payload.error && typeof payload.error.code === "string"
+          ? payload.error.code
+          : response.status === 403 ? "forbidden" : "provider_error",
+      message:
+        payload && payload.error && typeof payload.error.message === "string"
+          ? payload.error.message
+          : "That request could not be completed.",
+    };
+  }
+  return serviceResult<T>(response);
+}
+
+async function voiceVisionCall<T>(
+  accessToken: string,
+  path: string,
+  init?: RequestInit
+): Promise<ServiceResult<T>> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, path, init);
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return voiceVisionResult<T>(response);
+}
+
+export function getVoiceAiSettings(
+  accessToken: string
+): Promise<ServiceResult<VoiceAiPayload>> {
+  return voiceVisionCall<VoiceAiPayload>(accessToken, "api/v1/portal/voice/ai-settings");
+}
+
+export function saveVoiceAiSettings(
+  accessToken: string,
+  settings: Partial<VoiceAiSettings>
+): Promise<ServiceResult<VoiceAiPayload & { ok: boolean }>> {
+  return voiceVisionCall(accessToken, "api/v1/portal/voice/ai-settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ settings }),
+  });
+}
+
+export function getVoiceCallTranscript(
+  accessToken: string,
+  sid: string
+): Promise<ServiceResult<{ sid: string; turns: VoiceTranscriptTurn[] }>> {
+  return voiceVisionCall(
+    accessToken,
+    "api/v1/portal/voice/calls/" + encodeURIComponent(sid) + "/transcript"
+  );
+}
+
+export function getMediaAiSettings(
+  accessToken: string
+): Promise<ServiceResult<MediaAiPayload>> {
+  return voiceVisionCall<MediaAiPayload>(accessToken, "api/v1/portal/media-ai/settings");
+}
+
+export function saveMediaAiSettings(
+  accessToken: string,
+  settings: Partial<MediaAiSettings>
+): Promise<ServiceResult<MediaAiPayload & { ok: boolean }>> {
+  return voiceVisionCall(accessToken, "api/v1/portal/media-ai/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ settings }),
+  });
+}
+
+export function testMediaAi(
+  accessToken: string,
+  assetId: number
+): Promise<ServiceResult<MediaAiTestPayload>> {
+  return voiceVisionCall<MediaAiTestPayload>(accessToken, "api/v1/portal/media-ai/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ asset_id: assetId }),
+  });
 }

@@ -234,6 +234,41 @@ export default function InsightsClient() {
     <div className="space-y-4">
       {rangeButtons}
 
+      {report.narrative ? (
+        <Section
+          title="Snapshot"
+          description={
+            report.narrative.llm_used
+              ? "Short owner brief (optional LLM polish over the same numbers)."
+              : "Short owner brief written from the numbers on this page. No extra AI cost."
+          }
+        >
+          <div className="rounded-xl border border-line bg-canvas px-4 py-3">
+            <p className="text-sm font-semibold text-ink">
+              {report.narrative.headline}
+            </p>
+            {(report.narrative.paragraphs || []).map((para, index) => (
+              <p key={index} className="mt-2 text-xs leading-relaxed text-ink-2">
+                {para}
+              </p>
+            ))}
+            {(report.narrative.bullets || []).length > 0 ? (
+              <ul className="mt-3 space-y-1">
+                {(report.narrative.bullets || []).map((bullet, index) => (
+                  <li key={index} className="text-xs text-ink-2">
+                    <span className="text-ink-3">{"•"}</span> {bullet}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="mt-2 text-[10px] text-ink-3">
+              Mode: {report.narrative.mode}
+              {report.narrative.llm_used ? " · LLM used" : " · deterministic"}
+            </p>
+          </div>
+        </Section>
+      ) : null}
+
       <Section
         title="Problems worth fixing"
         description="Detected from your own conversations, orders, deliveries and the assistant's decisions. Each one names its evidence and the next step."

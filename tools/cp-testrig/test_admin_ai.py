@@ -358,7 +358,9 @@ check("app.py registers admin_ai bp",
       and "aux_app.register_blueprint(admin_ai_bp)" in APP, "bp")
 ACP = read("lib/omniflow/admin-control-plane.ts")
 check("admin client: ai group + overview + autonomy helpers",
-      '| "ai";' in ACP and "export async function getAdminAiOverview" in ACP
+      '| "ai"' in ACP and '| "stt"' in ACP and '| "embeddings"' in ACP
+      and '| "vision";' in ACP  # D5 (§212) appended vision
+      and "export async function getAdminAiOverview" in ACP
       and "export async function setAdminClientAutonomy" in ACP
       and "api/v1/admin/ai/overview?days=" in ACP, "acp")
 PROV = read("app/api/omniflow/admin/providers/route.ts")

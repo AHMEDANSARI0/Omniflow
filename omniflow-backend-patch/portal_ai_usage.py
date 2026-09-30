@@ -48,6 +48,12 @@ FEATURES = (
     ("sentiment", "Sentiment"),
     ("negotiation", "Negotiation replies"),
     ("copy", "Broadcast copy"),
+    ("bi_narrative", "Business insights narrative"),
+    ("kb_embed", "Knowledge semantic index"),
+    ("ai_quality_label", "Labelled-set live checks"),
+    ("voice_call", "Phone AI assistant"),
+    ("voice_note", "Voice note transcription"),
+    ("vision", "Image understanding"),
     ("other", "Other"),
 )
 FEATURE_LABELS = dict(FEATURES)
@@ -68,6 +74,10 @@ CREATE TABLE IF NOT EXISTS portal_ai_usage (
 );
 CREATE INDEX IF NOT EXISTS idx_portal_ai_usage_client_time
   ON portal_ai_usage (client_id, created_at DESC);
+ALTER TABLE portal_ai_usage
+  ADD COLUMN IF NOT EXISTS agent_id BIGINT;
+CREATE INDEX IF NOT EXISTS idx_portal_ai_usage_agent
+  ON portal_ai_usage (client_id, agent_id, created_at DESC);
 """
 
 
@@ -84,21 +94,23 @@ def _ensure_ddl(cur) -> None:
 # ---------------------------------------------------------------------------
 
 def _insert(cur, client_id: int, feature: str, model: str, prompt_tokens: int,
-            completion_tokens: int, latency_ms: int, ok: bool) -> None:
+            completion_tokens: int, latency_ms: int, ok: bool,
+            agent_id: int = 0) -> None:
+    aid = int(agent_id or 0) or None
     cur.execute(
         "INSERT INTO " + portal_db._q(TABLE) +
         " (client_id, feature, model, prompt_tokens, completion_tokens,"
-        " latency_ms, ok) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        " latency_ms, ok, agent_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
         (int(client_id or 0), str(feature or "other")[:40],
          str(model or "")[:80], max(0, int(prompt_tokens or 0)),
          max(0, int(completion_tokens or 0)), max(0, int(latency_ms or 0)),
-         bool(ok)),
+         bool(ok), aid),
     )
 
 
 def record(client_id: int, feature: str, model: str, prompt_tokens: int,
            completion_tokens: int, latency_ms: int, ok: bool,
-           cur=None) -> bool:
+           cur=None, agent_id: int = 0) -> bool:
     """Append one call to the ledger. Never raises; False when skipped."""
     if not ENABLED:
         return False
@@ -108,7 +120,7 @@ def record(client_id: int, feature: str, model: str, prompt_tokens: int,
             cur.execute("SAVEPOINT of_ai_usage")
             _ensure_ddl(cur)
             _insert(cur, client_id, feature, model, prompt_tokens,
-                    completion_tokens, latency_ms, ok)
+                    completion_tokens, latency_ms, ok, agent_id=agent_id)
             cur.execute("RELEASE SAVEPOINT of_ai_usage")
             return True
         except Exception as error:
@@ -124,7 +136,7 @@ def record(client_id: int, feature: str, model: str, prompt_tokens: int,
             with conn.cursor() as own:
                 _ensure_ddl(own)
                 _insert(own, client_id, feature, model, prompt_tokens,
-                        completion_tokens, latency_ms, ok)
+                        completion_tokens, latency_ms, ok, agent_id=agent_id)
             conn.commit()
         finally:
             conn.close()
@@ -302,13 +314,13 @@ def usage_report(cur, client_id: int, days: int = DEFAULT_DAYS) -> Dict[str, Any
     """Totals + per-feature / per-model / per-day rollups for the window."""
     days = _days(days)
     cur.execute(
-        "SELECT feature, model, ok, COUNT(*) AS calls,"
+        "SELECT feature, model, ok, agent_id, COUNT(*) AS calls,"
         " COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens,"
         " COALESCE(SUM(completion_tokens), 0) AS completion_tokens,"
         " COALESCE(AVG(latency_ms), 0) AS avg_latency_ms"
         " FROM " + portal_db._q(TABLE) +
         " WHERE client_id = %s AND created_at > NOW() - make_interval(days => %s)"
-        " GROUP BY feature, model, ok",
+        " GROUP BY feature, model, ok, agent_id",
         (client_id, days),
     )
     groups = portal_db.rows(cur)
@@ -327,6 +339,7 @@ def usage_report(cur, client_id: int, days: int = DEFAULT_DAYS) -> Dict[str, Any
               "cost_usd": 0.0, "unpriced_calls": 0}
     by_feature: Dict[str, Dict[str, Any]] = {}
     by_model: Dict[str, Dict[str, Any]] = {}
+    by_agent: Dict[int, Dict[str, Any]] = {}
     for row in groups:
         calls = int(row.get("calls") or 0)
         p_tok = int(row.get("prompt_tokens") or 0)
@@ -334,6 +347,10 @@ def usage_report(cur, client_id: int, days: int = DEFAULT_DAYS) -> Dict[str, Any
         ok = bool(row.get("ok"))
         model = str(row.get("model") or "")
         feature = str(row.get("feature") or "other")
+        try:
+            agent_id = int(row.get("agent_id") or 0)
+        except Exception:
+            agent_id = 0
         cost = estimate_cost(model, p_tok, c_tok, table)
         totals["calls"] += calls
         totals["failed"] += 0 if ok else calls
@@ -354,8 +371,44 @@ def usage_report(cur, client_id: int, days: int = DEFAULT_DAYS) -> Dict[str, Any
                 entry["priced"] = False
             else:
                 entry["cost_usd"] += cost
+        # agent_id 0 / NULL = unattributed (default brain, no persona)
+        akey = agent_id if agent_id > 0 else 0
+        aentry = by_agent.setdefault(akey, {"calls": 0, "failed": 0, "tokens": 0,
+                                            "cost_usd": 0.0, "priced": True})
+        aentry["calls"] += calls
+        aentry["failed"] += 0 if ok else calls
+        aentry["tokens"] += p_tok + c_tok
+        if cost is None:
+            aentry["priced"] = False
+        else:
+            aentry["cost_usd"] += cost
     priced = bool(table) and totals["unpriced_calls"] == 0
     calls = totals["calls"]
+    agent_names: Dict[int, str] = {}
+    try:
+        ids = [aid for aid in by_agent.keys() if aid > 0]
+        if ids:
+            cur.execute(
+                "SELECT id, name FROM " + portal_db._q("portal_agents") +
+                " WHERE client_id = %s AND id = ANY(%s)",
+                (client_id, ids),
+            )
+            for row in portal_db.rows(cur):
+                agent_names[int(row.get("id") or 0)] = str(row.get("name") or "")
+    except Exception as error:
+        logger.warning("ai usage agent names failed: %s", error)
+    by_agent_list = []
+    for aid, v in sorted(by_agent.items(), key=lambda i: -i[1]["calls"]):
+        by_agent_list.append({
+            "agent_id": aid if aid > 0 else None,
+            "name": (agent_names.get(aid) if aid > 0 else None) or (
+                "Unattributed" if aid == 0 else ("Agent #" + str(aid))),
+            "calls": v["calls"],
+            "failed": v["failed"],
+            "tokens": v["tokens"],
+            "cost_usd": round(v["cost_usd"], 4) if v["priced"] and table else None,
+            "share": round(v["calls"] / calls, 3) if calls else 0.0,
+        })
     return {
         "days": days,
         "totals": {
@@ -391,6 +444,7 @@ def usage_report(cur, client_id: int, days: int = DEFAULT_DAYS) -> Dict[str, Any
         ],
         "prices_configured": bool(table),
         "features": [{"key": k, "label": l} for k, l in FEATURES],
+        "by_agent": by_agent_list,
     }
 
 

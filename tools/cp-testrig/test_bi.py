@@ -457,8 +457,12 @@ def read(path):
 
 check("blueprint registered", "aux_app.register_blueprint(portal_bi_bp)" in read(os.path.join(CP, "app.py")), "-")
 SRC = read(bi.__file__)
-check("zero LLM cost: no portal_llm / chat_json in the BI layer",
-      "portal_llm" not in SRC and "chat_json" not in SRC, "-")
+# §210: the only LLM use in the BI layer is the OPTIONAL narrative polish
+# (default off) - one chat_json under the gated/ledgered bi_narrative scope.
+check("zero LLM cost by default: one optional, gated narrative polish only",
+      SRC.count("chat_json(") == 1 and SRC.count("import portal_llm") == 1
+      and 'usage_scope("bi_narrative"' in SRC
+      and "OF_BI_NARRATIVE_LLM" in SRC and bi.NARRATIVE_LLM is False, "-")
 check("no new BI tables: report stays a read model; thresholds reuse client_settings",
       "CREATE TABLE portal_bi" not in SRC and "portal_bi_" not in SRC
       and "thresholds_for" in SRC and "bi_thresholds" in SRC

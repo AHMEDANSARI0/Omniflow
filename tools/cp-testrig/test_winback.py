@@ -244,7 +244,8 @@ check("200 send", status(response) == 200 and payload["sent"] is True
       and payload["kind"] == "cart" and payload["command_id"] == 99, payload)
 inserts = commands_inserts(conn)
 check("command inserted once", len(inserts) == 1, len(inserts))
-sent_payload = json.loads(inserts[0][1][1])
+sent_payload = next(json.loads(x) for x in inserts[0][1]
+                    if isinstance(x, str) and x.startswith("{"))
 check("command payload shape", sent_payload["source"] == "winback"
       and sent_payload["external_user_id"] == "9230012345678"
       and sent_payload["body"].startswith("Hi Ali!")

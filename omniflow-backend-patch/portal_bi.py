@@ -34,6 +34,7 @@ workspace cannot make the page wait. Tenant-scoped; open to API keys
 (read-only).
 """
 
+import json
 import logging
 import json
 import os
@@ -1127,13 +1128,216 @@ def detect_problems(ins: Optional[Dict[str, Any]], quality: Optional[Dict[str, A
 # report
 # ---------------------------------------------------------------------------
 
-def report(cur, client_id: int, days: int) -> Dict[str, Any]:
+
+
+# ---------------------------------------------------------------------------
+# Narrative summary (deterministic by default; optional one LLM polish)
+# ---------------------------------------------------------------------------
+
+NARRATIVE_LLM = os.environ.get(
+    "OF_BI_NARRATIVE_LLM", "0").strip().lower() not in ("0", "false", "no", "off")
+
+
+def _narrative_deterministic(ins: Dict[str, Any], quality: Dict[str, Any],
+                             fun: Dict[str, Any], problems: List[Dict[str, Any]],
+                             days: int) -> Dict[str, Any]:
+    """English owner brief from numbers already computed. Zero LLM."""
+    paragraphs: List[str] = []
+    bullets: List[str] = []
+    topics = (ins or {}).get("topics") or {}
+    topic_list = topics.get("topics") or []
+    messages = int(topics.get("messages") or 0)
+    top = topic_list[0] if topic_list else None
+    if messages:
+        line = (
+            "In the last " + str(days) + " days customers sent about "
+            + str(messages) + " inbound messages"
+        )
+        if top and top.get("label"):
+            line += ", led by " + str(top.get("label"))
+            if top.get("count"):
+                line += " (" + str(top.get("count")) + ")"
+        line += "."
+        paragraphs.append(line)
+    else:
+        paragraphs.append(
+            "Not enough inbound chat volume in the last " + str(days)
+            + " days to describe customer topics yet."
+        )
+
+    q = quality or {}
+    decisions = int(
+        q.get("decisions")
+        or q.get("total_decisions")
+        or (q.get("decisions_total") if isinstance(q.get("decisions_total"), int) else 0)
+        or 0
+    )
+    if not decisions and isinstance(q.get("send"), dict):
+        decisions = int(q.get("send", {}).get("count") or 0) + int(
+            (q.get("handoff") or {}).get("count") or 0
+        )
+    handoff_share = q.get("handoff_share")
+    if handoff_share is None and isinstance(q.get("handoff"), dict):
+        handoff_share = q["handoff"].get("share")
+    if handoff_share is None and isinstance(q.get("handoffs"), dict):
+        handoff_share = q["handoffs"].get("share")
+    conf = q.get("avg_confidence")
+    if conf is None and isinstance(q.get("confidence"), dict):
+        conf = q["confidence"].get("avg")
+    if decisions:
+        blurb = "The assistant made " + str(decisions) + " decisions"
+        if handoff_share is not None:
+            try:
+                blurb += (
+                    " with a "
+                    + str(int(round(float(handoff_share) * 100)))
+                    + "% handoff rate"
+                )
+            except Exception:
+                pass
+        if conf is not None:
+            try:
+                blurb += (
+                    " and average confidence "
+                    + str(int(round(float(conf) * 100)))
+                    + "%"
+                )
+            except Exception:
+                pass
+        blurb += "."
+        paragraphs.append(blurb)
+
+    fun = fun or {}
+    contacts = fun.get("contacts") or fun.get("total_contacts")
+    if contacts:
+        paragraphs.append(
+            "Journey tracking covers "
+            + str(int(contacts))
+            + " contacts in this window."
+        )
+
+    critical = [p for p in (problems or []) if p.get("severity") == "critical"]
+    warn = [p for p in (problems or []) if p.get("severity") == "warn"]
+    if critical or warn:
+        paragraphs.append(
+            "Problem detector flagged "
+            + str(len(critical))
+            + " to fix now and "
+            + str(len(warn))
+            + " worth a look."
+        )
+    else:
+        paragraphs.append(
+            "No problem-detector thresholds were crossed in this window."
+        )
+
+    for problem in (problems or [])[:5]:
+        title = str(problem.get("title") or "").strip()
+        if not title:
+            continue
+        sev = str(problem.get("severity") or "warn")
+        action = (problem.get("action") or {}).get("label") or ""
+        bullet = ("[" + ("FIX" if sev == "critical" else "LOOK") + "] " + title)
+        if action:
+            bullet += " — " + str(action)
+        bullets.append(bullet)
+
+    headline = "Business snapshot — last " + str(days) + " days"
+    if critical:
+        headline = (
+            str(len(critical))
+            + " critical issue"
+            + ("s" if len(critical) != 1 else "")
+            + " need attention"
+        )
+    elif warn:
+        headline = "A few signals are worth a look"
+    elif messages:
+        headline = "Operations look steady this period"
+
+    return {
+        "mode": "deterministic",
+        "llm_used": False,
+        "headline": headline[:160],
+        "paragraphs": paragraphs[:6],
+        "bullets": bullets[:8],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _narrative_llm_polish(base: Dict[str, Any], client_id: int,
+                          cur=None) -> Dict[str, Any]:
+    """Optional one-shot polish. Fail-soft → return base unchanged."""
+    if not NARRATIVE_LLM:
+        return base
+    try:
+        import portal_llm
+        system = (
+            "You write a short owner briefing for a WhatsApp commerce workspace. "
+            "Return JSON {\"headline\": string, \"paragraphs\": string[1..4], "
+            "\"bullets\": string[0..6]}. Professional English. No hype, no "
+            "invented numbers — only rephrase the facts provided."
+        )
+        user = json.dumps({
+            "headline": base.get("headline"),
+            "paragraphs": base.get("paragraphs"),
+            "bullets": base.get("bullets"),
+        }, ensure_ascii=False)[:2500]
+        scope = portal_llm.usage_scope("bi_narrative", client_id, cur)
+        scope.__enter__()
+        try:
+            payload = portal_llm.chat_json(system, user, max_tokens=220)
+        finally:
+            try:
+                scope.__exit__(None, None, None)
+            except Exception:
+                pass
+        if not isinstance(payload, dict):
+            return base
+        out = dict(base)
+        if isinstance(payload.get("headline"), str) and payload["headline"].strip():
+            out["headline"] = payload["headline"].strip()[:160]
+        paras = payload.get("paragraphs")
+        if isinstance(paras, list):
+            cleaned = [str(p).strip() for p in paras if str(p).strip()][:6]
+            if cleaned:
+                out["paragraphs"] = cleaned
+        bullets = payload.get("bullets")
+        if isinstance(bullets, list):
+            cleaned_b = [str(b).strip() for b in bullets if str(b).strip()][:8]
+            if cleaned_b:
+                out["bullets"] = cleaned_b
+        out["mode"] = "llm_polish"
+        out["llm_used"] = True
+        return out
+    except Exception as error:
+        logger.warning("bi narrative llm polish failed: %s", error)
+        return base
+
+
+def build_narrative(ins, quality, fun, problems, days: int,
+                    client_id: int = 0, cur=None,
+                    use_llm=None) -> Dict[str, Any]:
+    base = _narrative_deterministic(ins or {}, quality or {}, fun or {},
+                                    problems or [], days)
+    want = NARRATIVE_LLM if use_llm is None else bool(use_llm)
+    if want:
+        return _narrative_llm_polish(base, client_id, cur=cur)
+    return base
+
+
+def report(cur, client_id: int, days: int,
+           narrative_llm: bool = None) -> Dict[str, Any]:
     days = _days(days)
     T = thresholds_for(cur, client_id)
     ins = insights(cur, client_id, days)
     quality = ai_quality(cur, client_id, days, gaps=ins.get("gaps"))
     fun = _guarded(cur, "funnel", lambda: funnel(cur, client_id, days))
     problems = detect_problems(ins, quality, fun, days, thresholds=T)
+    narrative = build_narrative(
+        ins, quality, fun, problems, days,
+        client_id=client_id, cur=cur, use_llm=narrative_llm,
+    )
     return {
         "days": days,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -1148,6 +1352,7 @@ def report(cur, client_id: int, days: int) -> Dict[str, Any]:
         "topics": [{"key": k, "label": l} for k, l, _kw in TOPICS],
         "thresholds": T,
         "timezone_offset_hours": ins.get("timezone_offset_hours", TZ_OFFSET_HOURS),
+        "narrative": narrative,
     }
 
 
@@ -1175,10 +1380,16 @@ def get_report():
         return error
     client_id = int(principal.get("client_id") or 0)
     days = _days(request.args.get("days"))
+    raw_llm = str(request.args.get("narrative_llm") or "").strip().lower()
+    narrative_llm = None
+    if raw_llm in ("1", "true", "yes", "on"):
+        narrative_llm = True
+    elif raw_llm in ("0", "false", "no", "off"):
+        narrative_llm = False
     conn = portal_db._conn()
     try:
         with conn.cursor() as cur:
-            data = report(cur, client_id, days)
+            data = report(cur, client_id, days, narrative_llm=narrative_llm)
         conn.commit()
     finally:
         conn.close()

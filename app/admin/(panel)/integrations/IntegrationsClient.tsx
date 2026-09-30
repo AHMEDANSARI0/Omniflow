@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import VoiceNumbersPanel from "./VoiceNumbersPanel";
 
 type GroupKey =
   | "email"
@@ -10,7 +11,9 @@ type GroupKey =
   | "video"
   | "payments"
   | "whatsapp_e2e"
-  | "stt";
+  | "stt"
+  | "embeddings"
+  | "vision";
 
 type Field = {
   key: string;
@@ -83,12 +86,100 @@ const GROUPS: GroupDef[] = [
     id: "stt",
     title: "Speech-to-Text (voice notes)",
     description:
-      "Transcribes WhatsApp voice notes for the media library. Works with any OpenAI-compatible endpoint. Saving takes effect immediately - no redeploy needed.",
+      "Transcribes customer voice notes (Telegram and any bridge that forwards audio) before the assistant reads them, and powers the media library transcribe button. Works with any OpenAI-compatible endpoint (OpenAI Whisper, Groq). Saving takes effect immediately - no redeploy needed.",
     fields: [
+      {
+        key: "mode",
+        label: "Customer voice notes",
+        placeholder: "on",
+        hint: "on or off. Off stops automatic transcription of customer voice notes (the media library button keeps working).",
+      },
       { key: "api_key", label: "API key", secret: true },
       { key: "base_url", label: "Base URL", placeholder: "https://api.openai.com/v1" },
       { key: "model", label: "Model", placeholder: "whisper-1" },
     ],
+    note:
+      "Workspaces can switch this off for themselves under Settings > Voice and images. Every transcription goes through the AI kill switch and daily cap and is billed to the Voice note transcription line in AI usage.",
+  },
+  {
+    id: "vision",
+    title: "Image understanding (customer photos)",
+    description:
+      "Describes pictures customers send (product photos, payment screenshots, damage) so the assistant can answer them. Uses any OpenAI-compatible model that reads images. Leave the key, base URL and model blank to reuse the AI engine above (Gemini Flash and GPT-4o-mini both read images).",
+    fields: [
+      {
+        key: "mode",
+        label: "Mode",
+        placeholder: "on",
+        hint: "on or off.",
+      },
+      {
+        key: "api_key",
+        label: "API key",
+        secret: true,
+        hint: "Blank = reuse the AI engine key.",
+      },
+      {
+        key: "base_url",
+        label: "Base URL",
+        placeholder: "https://api.openai.com/v1",
+        hint: "Set this together with a separate key. Blank = the AI engine base URL.",
+      },
+      {
+        key: "model",
+        label: "Model",
+        placeholder: "gpt-4o-mini",
+        hint: "Blank = the AI engine model.",
+      },
+    ],
+    note:
+      "Text inside images is treated as customer data, never as instructions. Every call goes through the AI kill switch and daily cap and is billed to the Image understanding line in AI usage.",
+  },
+  {
+    id: "embeddings",
+    title: "Knowledge semantic search (embeddings)",
+    description:
+      "Lets the assistant find knowledge by meaning, not only by exact words. Works with any OpenAI-compatible /embeddings endpoint. Leave the key and base URL blank to reuse the AI engine above. Saving takes effect immediately - no redeploy needed.",
+    fields: [
+      {
+        key: "mode",
+        label: "Mode",
+        placeholder: "on",
+        hint: "on or off. Off keeps keyword-only retrieval.",
+      },
+      {
+        key: "api_key",
+        label: "API key",
+        secret: true,
+        hint: "Blank = reuse the AI engine key.",
+      },
+      {
+        key: "base_url",
+        label: "Base URL",
+        placeholder: "https://api.openai.com/v1",
+        hint: "Blank = reuse the AI engine base URL.",
+      },
+      {
+        key: "model",
+        label: "Model",
+        placeholder: "text-embedding-3-small",
+        hint: "Blank = gemini-embedding-001 on Gemini, text-embedding-3-small elsewhere.",
+      },
+      {
+        key: "dimensions",
+        label: "Dimensions",
+        placeholder: "256",
+        hint: "0 = provider default. Changing model or dimensions rebuilds the index automatically.",
+      },
+      {
+        key: "min_similarity",
+        label: "Minimum similarity (%)",
+        placeholder: "30",
+        hint: "Blank = 60 for Gemini models, 30 for others. Raise it if unrelated sections show up.",
+      },
+    ],
+    note:
+      "Workspaces see index progress under Knowledge base. Every embedding call goes through the AI kill switch and daily cap, and is billed to the Knowledge semantic index line in AI usage.",
   },
   {
     id: "flags",
@@ -122,9 +213,27 @@ const GROUPS: GroupDef[] = [
       { key: "account_sid", label: "Account SID" },
       { key: "auth_token", label: "Auth token", secret: true },
       { key: "from_number", label: "From number", placeholder: "+92300..." },
+      {
+        key: "greeting",
+        label: "Voicemail greeting",
+        placeholder: "Thanks for calling. Please leave your message after the tone.",
+        hint: "Played to callers when no workspace assistant answers. 200 characters max.",
+      },
+      {
+        key: "ai_loop",
+        label: "Phone assistant",
+        placeholder: "on",
+        hint: "on or off. Off sends every call to voicemail (platform-wide pause).",
+      },
+      {
+        key: "signature_check",
+        label: "Twilio signature check",
+        placeholder: "enforce",
+        hint: "enforce, log or off. Enforce rejects webhook calls not signed with the auth token above.",
+      },
     ],
     note:
-      "The conversation Call button dials through Twilio with these keys.",
+      "The conversation Call button dials through Twilio with these keys. For inbound calls, point each Twilio number's Voice webhook to /api/v1/public/voice/incoming on the Control Plane and its status callback to /api/v1/public/voice/webhook, then assign the number to a workspace below.",
   },
   {
     id: "video",
@@ -430,6 +539,7 @@ export default function IntegrationsClient() {
           </div>
         );
       })}
+      <VoiceNumbersPanel />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 > Source: owner answers on the gap-analysis questions (docs/MASTER_UPGRADE_GAP_ANALYSIS.md).
 > Ye document implementation batches ki single source of truth hai. Production ko touch nahi kiya.
 
-## D1 — KB Embeddings: DEFERRED
+## D1 — KB Embeddings: ~~DEFERRED~~ → DELIVERED (§211, owner reversed the deferral; see D1-UPDATE below)
 - Vector/embeddings abhi NAHI. Knowledge retrieval pehle keyword/search-based rahega.
 - Jab KB Sources/ingestion batch aaye, tab dobara evaluate hoga (owner approval ke saath).
 
@@ -34,7 +34,7 @@
 - Config/template architecture (koi per-industry hardcoded system NAHI). Baqi industries baad me.
 - Delivered: V2 B15 VERTICAL_PACKS (ecommerce/salon/clinic/restaurant/real_estate/education) ab workflow drafts bhi seed karte hain (portal_workflows.WORKFLOW_TEMPLATES 21, vertical-tagged data, `seed_templates` = drafts only, savepoint fail-soft); Workflows page ka template picker applied pack ke hisaab se group hota he. Koi parallel template system nahi.
 
-## D5 — Voice AI loop + Vision: DEFERRED (this round)
+## D5 — Voice AI loop + Vision: ~~DEFERRED~~ → DELIVERED (§212, owner reversed the deferral; see D5-UPDATE below)
 - Voice speech-loop (Gather/speech→intent→agent) aur Vision dono substantial hain — agli rounds ke liye.
 - Existing voice infra (inbound, voicemail recordings, outbound, video) waisa hi chalta rahega.
 
@@ -48,10 +48,10 @@
 - Owner ne purani UI me "box aur text ka color same / ajeeb structure / unprofessional" ka zikr kiya.
 - Confirm chahiye: ye current naye light-redesign ke masle hain ya purani wali ki baat? Agar current ho to ek **UI-polish batch** add hoga: contrast audit (sab text/bg pairs), spacing/hierarchy system, structure cleanup — "professional developer" standard.
 
-## D7-UPDATE — UI polish batch CONFIRMED
+## D7-UPDATE — UI polish batch CONFIRMED ✅ DELIVERED (§206)
 - Owner: masle NAYI light site me bhi hain (box/text same color, structure). Ek UI-polish batch hoga:
   contrast audit (sab text/bg pairs), spacing/hierarchy scale, structure cleanup — professional standard.
-- Voice/Vision (D5) deferred rehta hai (substantial work).
+- ~~Voice/Vision (D5) deferred rehta hai (substantial work).~~ → DELIVERED §212 (owner: "D5 voice loop + Vision, yeh de do ab poora complete").
 
 ## Build order (owner ke faislon ke mutabiq)
 1. **Admin Keys Panel** (D2) — **GO mil gaya (owner)** — pehla batch, AB shuru
@@ -75,5 +75,33 @@
 6f. Prompt-injection defense + AI behavioral evaluation ✅ (§203: `portal_guard` detects English/Roman-Urdu/role-marker/encoded manipulation, sanitises untrusted context, blocks output leaks, records `ai.guard_blocked`, and supports DB/env-backed `guard_mode` off|standard|strict; `portal_ai_eval` runs 17 deterministic zero-LLM contracts across injection, grounding, knowledge, permissions, workflows and channels; Admin > AI Control Center exposes the score and each case). Live provider quality sampling, human-labelled answer sets and agent cost split remain deferred.
 6g. **Omnichannel adapters** (next: IG first - identity.resolve() + workflows + escalation ready)
 7. BI layer (Insights + Problem Detector + AI Quality + Journey funnel)
-8. Omnichannel adapters → (baad me) Voice loop + Vision (D5)
+8. Omnichannel adapters → Voice loop + Vision (D5) ✅ (§212)
 9. UI polish batch (D7 — jawab ke mutabiq)
+
+## Weekly problems email — DELIVERED (§207)
+
+Opt-in weekly email of BI Problem Detector items via portal_notify `insights` kind. Defaults OFF. Connector tick + Settings card. No new engine.
+
+## Scheduled agent hours — DELIVERED (§208)
+
+Per-persona weekly auto-reply windows on portal_agents.schedule. Defaults OFF (always on). Outside hours = brain drafts only. Versions/rollback carry schedule.
+
+## Live provider quality + labelled sets — DELIVERED (§209)
+
+Trace/usage live sample (0 LLM) + owner human-labelled answer sets with optional live provider run under existing usage gate. Extends §203 contracts; does not replace them.
+
+## Per-agent cost + BI narrative — DELIVERED (§210)
+- Ledger column `agent_id` (nullable, additive); Configure AI → By agent persona (unattributed rows labelled). BI Snapshot narrative is deterministic by default; optional LLM polish behind `OF_BI_NARRATIVE_LLM` under feature `bi_narrative` (cap/kill switch/ledger apply). Rig: test_agent_cost_narrative.py 36 PASS.
+
+## D1-UPDATE — KB Embeddings: deferral REVERSED by owner → DELIVERED (§211)
+- Owner: "d1 de do ab". Extends §198 `portal_knowledge.retrieve()` (same contract + citations) with a hybrid semantic step; keyword retrieval stays the automatic fallback (no key / mode off / provider down / nothing indexed).
+- Embeddings via existing `portal_llm` gate + ledger (feature `kb_embed`); key from Admin → Integrations → Knowledge semantic search, else the existing AI engine key. Vectors in Postgres `REAL[]` (no vector DB, no new dependency). Only published sources + active answers are indexed (§52 lock intact).
+- Rig: test_kb_semantic.py 92 PASS; real-Postgres run 15/15; sweep 5916 PASS (pagespeed env-only); tsc 0 errors.
+
+## D5-UPDATE — Voice AI loop + Vision: deferral REVERSED by owner → DELIVERED (§212)
+- Owner: "D5 voice loop + Vision, yeh de do ab poora complete". Extends the existing `portal_voice` (same calls table, voicemail, recordings, outbound call button untouched), `portal_brain` (one reasoning pipeline: guard → tools → one LLM call → policy/output guard), `portal_llm` gate + ledger and `platform_settings` keys. No second engine.
+- Phone: admin assigns a Twilio number to a workspace; the dialled number decides the tenant. Assistant answers only at effective autonomy **auto**, speaks short plain replies, and hands off (live transfer to the owner's number, else voicemail) on low confidence / needs-human / policy / guard block / turn limit. Every turn is stored (`portal_voice_turns`) and shown as a transcript. Twilio webhooks are signature-checked (enforce by default).
+- Vision/voice notes: customer images and voice notes become text **before** the one ingest path (`[Image: category] …` / `[Voice note] …`), so thread, brain, KB, intents and workflows use them unchanged. Image text is untrusted data; spend is gated and ledgered (`voice_call`, `voice_note`, `vision`). Per-workspace switches + platform switches.
+- Security fix folded in: voicemail playback lookup was cross-tenant (`OR direction = 'inbound'`) → strict `client_id`.
+- Rig: test_voice_vision.py 182 PASS; real-Postgres run 19/19.
+

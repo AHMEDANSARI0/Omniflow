@@ -22,7 +22,7 @@ RIG13 = "/tmp/p13/Omniflow/"
 # driven by GROUP_KEYS / SECRET_HINTS respectively.
 check("stt group registered",
       platform_settings.GROUP_KEYS.get("stt")
-      == ["api_key", "base_url", "model"], "registry")
+      == ["api_key", "base_url", "model", "mode"], "registry")  # D5 +mode
 check("stt key masked", "api_key" in platform_settings.SECRET_HINTS,
       "registry")
 

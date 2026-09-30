@@ -32,6 +32,9 @@ portal_voice._twilio_fetch_media = lambda keys, url: b"MP3BYTES"
 KEYS = {"account_sid": "AC1", "auth_token": "tok",
         "from_number": "+15550001"}
 platform_settings.get_group = lambda group: dict(KEYS) if group == "voice" else {}
+# D5: these legacy fixtures post unsigned; signature enforcement has its
+# own coverage in test_voice_vision.py.
+portal_voice._signature_mode = lambda: "off"
 
 print("== incoming call webhook ==")
 
@@ -156,9 +159,12 @@ check("playback 200 audio", r.status_code == 200
 check("playback media mp3", portal_voice._media_url("https://api.twilio.com/RE1").endswith(".mp3")
       and fetched["url"] == "https://api.twilio.com/RE1"
       and fetched["sid"] == "AC1", fetched)
+# D5: strict tenant scope - the old "OR direction = 'inbound'" let any
+# workspace stream another workspace's inbound voicemail.
 check("playback lookup scoped", any(
-    "client_id = %s OR direction = 'inbound'" in e[0]
-    for e in conn.cur.executed), "sql")
+    "recording_url <> '' AND client_id = %s" in e[0]
+    and "OR direction" not in e[0]
+    for e in conn.cur.executed), conn.cur.executed)
 
 print("== app wiring ==")
 

@@ -122,7 +122,9 @@ r = run_api([[{"total": 10}]], "POST", "/api/v1/portal/agents",
             json_body={"name": "X", "tone": "", "instructions": ""})
 check("agents create 400 max", r.status_code == 400, r.status_code)
 
-r = run_api([[{"id": 7}], [], []], "PUT", "/api/v1/portal/agents/7",
+# §205: an update without "schedule" first reads the stored schedule so
+# partial saves never wipe business hours (one extra SELECT).
+r = run_api([[{"schedule": None}], [{"id": 7}], [], []], "PUT", "/api/v1/portal/agents/7",
             json_body={"name": "Support Pro v2", "tone": "formal",
                        "instructions": "x", "escalation_user_id": None,
                        "is_active": False})
@@ -227,15 +229,15 @@ r = run_api([[]], "POST", "/api/v1/portal/agents",
 check("create 400 allowed_actions not a list", r.status_code == 400,
       r.status_code)
 
-r = run_api([[{"id": 7}], [], []], "PUT", "/api/v1/portal/agents/7",
+r = run_api([[{"schedule": None}], [{"id": 7}], [], []], "PUT", "/api/v1/portal/agents/7",
             json_body={"name": "Support Pro", "tone": "", "instructions": "",
                        "allowed_actions": None, "max_risk": "low",
                        "can_auto_reply": True})
-upd = portal_agents.portal_db.conn.cur.executed[0]
+upd = portal_agents.portal_db.conn.cur.executed[1]
 check("update persists permissions (null = every action)",
       r.status_code == 200 and "allowed_actions = CAST(%s AS JSONB)" in upd[0]
       and upd[1][5] is None and upd[1][6] == "low" and upd[1][7] is True, upd)
-ver = portal_agents.portal_db.conn.cur.executed[1]
+ver = portal_agents.portal_db.conn.cur.executed[2]
 check("update appends a version row (never rewrites)",
       "INSERT INTO portal_agent_versions" in ver[0]
       and "COALESCE(MAX(version), 0) + 1" in ver[0]

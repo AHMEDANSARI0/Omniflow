@@ -102,7 +102,11 @@ check("compliance nav", '{ label: "Compliance", href: "/dashboard/compliance",'
       ' icon: "\\u26e8", enabled: true }' in SIDEBAR, "nav")
 check("sidebar icons filled", '\\u2302' in SIDEBAR and '\\u2301' in SIDEBAR
       and '\\u25ad' in SIDEBAR, "icons")
-check("settings icon kept", '\\u2699' in SIDEBAR, "icon")
+# Icon law (Ph369b): U+2699 is emoji-capable and was retired in the D7
+# sidebar; Settings keeps a text-presentation glyph instead.
+_settings = SIDEBAR[SIDEBAR.find('label: "Settings"'):][:200]
+check("settings icon text-presentation (no U+2699)",
+      '\\u2699' not in SIDEBAR and 'icon: "' in _settings, "icon")
 check("nav scrolls both containers", SIDEBAR.count("overflow-y-auto") >= 2,
       SIDEBAR.count("overflow-y-auto"))
 

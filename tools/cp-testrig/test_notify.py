@@ -78,7 +78,8 @@ check("defaults: email opt-in OFF, every kind on, normal threshold",
       d["email_enabled"] is False and d["min_severity"] == "normal"
       and all(d["kinds"][k] for k in pn.KIND_KEYS), d)
 check("kind registry covers the platform events", pn.KIND_KEYS == (
-    "escalation", "approval", "delivery", "workflow", "knowledge", "system"),
+    "escalation", "approval", "delivery", "workflow", "knowledge", "system",
+    "insights"),
       pn.KIND_KEYS)
 shaped = pn._shape_settings({"email_enabled": True, "email_to": " a@b.co ",
                              "min_severity": "silly",

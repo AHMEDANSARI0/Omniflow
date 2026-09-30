@@ -12,8 +12,30 @@ interface VoiceCall {
   direction: "inbound" | "outbound";
   hasRecording: boolean;
   durationSeconds: number;
+  aiTurns?: number;
+  outcome?: string;
   createdAt: string | null;
 }
+
+interface TranscriptTurn {
+  role: string;
+  text: string;
+}
+
+const OUTCOME_LABELS: Record<string, string> = {
+  ai: "Answered by assistant",
+  handoff: "Handed to team",
+  turn_limit: "Reply limit reached",
+  no_speech: "Caller silent",
+  voicemail: "Voicemail",
+  transfer_missed: "Transfer missed",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  caller: "Caller",
+  assistant: "Assistant",
+  system: "Note",
+};
 
 function durationLabel(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -27,6 +49,29 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
   const [calls, setCalls] = useState<VoiceCall[]>([]);
+  const [openSid, setOpenSid] = useState("");
+  const [transcript, setTranscript] = useState<TranscriptTurn[] | null>(null);
+
+  async function toggleTranscript(sid: string) {
+    if (openSid === sid) {
+      setOpenSid("");
+      return;
+    }
+    setOpenSid(sid);
+    setTranscript(null);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/voice/calls/" + encodeURIComponent(sid) + "/transcript",
+        { cache: "no-store" }
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        turns?: TranscriptTurn[];
+      } | null;
+      setTranscript(response.ok && payload?.turns ? payload.turns : []);
+    } catch {
+      setTranscript([]);
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -156,11 +201,48 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
                   >
                     {entry.direction === "inbound" ? "In" : "Out"}
                   </span>
+                  {entry.aiTurns ? (
+                    <span className="rounded-md border border-brand/25 bg-brand-soft px-1.5 py-0.5 text-[10px] text-brand">
+                      AI
+                    </span>
+                  ) : null}
                   <span className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-3">
                     {entry.status}
                   </span>
                 </span>
               </div>
+              {entry.direction === "inbound" && (entry.aiTurns || entry.outcome) ? (
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-ink-3">
+                    {OUTCOME_LABELS[entry.outcome || ""] || "Phone assistant"}
+                    {entry.aiTurns ? " · " + entry.aiTurns + " replies" : ""}
+                  </span>
+                  <button
+                    onClick={() => void toggleTranscript(entry.sid)}
+                    className="text-[10px] font-medium text-brand"
+                  >
+                    {openSid === entry.sid ? "Hide transcript" : "Transcript"}
+                  </button>
+                </div>
+              ) : null}
+              {openSid === entry.sid ? (
+                <div className="mt-1.5 space-y-1 rounded-md border border-line bg-white p-2">
+                  {transcript === null ? (
+                    <p className="text-[10px] text-ink-3">Loading…</p>
+                  ) : transcript.length === 0 ? (
+                    <p className="text-[10px] text-ink-3">No transcript for this call.</p>
+                  ) : (
+                    transcript.map((turn, index) => (
+                      <p key={index} className="text-[10px] text-ink-2">
+                        <span className="font-medium text-ink">
+                          {ROLE_LABELS[turn.role] || turn.role}:
+                        </span>{" "}
+                        {turn.text}
+                      </p>
+                    ))
+                  )}
+                </div>
+              ) : null}
               {entry.hasRecording ? (
                 <div className="mt-1.5 flex items-center gap-2">
                   <audio

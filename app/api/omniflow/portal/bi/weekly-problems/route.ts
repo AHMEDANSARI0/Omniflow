@@ -1,10 +1,10 @@
-import { ControlPlaneRequestError } from "../../../../../../../lib/omniflow/control-plane";
+import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
 import {
   getWeeklyProblemsSettings,
   requirePortalAccessToken,
   saveWeeklyProblemsSettings,
-} from "../../../../../../../lib/omniflow/portal";
-import { safeJson } from "../../../../../../../lib/omniflow/request-security";
+} from "../../../../../../lib/omniflow/portal";
+import { safeJson } from "../../../../../../lib/omniflow/request-security";
 
 const UNAUTH = { error: { code: "unauthorized", message: "Sign in required." } };
 const EXPIRED = { error: { code: "unauthorized", message: "Session expired." } };

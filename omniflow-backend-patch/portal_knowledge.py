@@ -1,7 +1,9 @@
 """Knowledge engine (MASTER-UPGRADE engine 4): document / page ingestion,
 deterministic chunking, versioning, health and keyword retrieval for the
-AI - no embeddings (owner decision D1: deferred; the retrieval contract
-below is what an embedding index would later plug into).
+AI. D1 (delivered §211): ``portal_kb_semantic`` plugs meaning-based
+recall into ``retrieve`` below (hybrid keyword + embeddings, reciprocal
+rank fusion) without changing the retrieval contract; keyword-only is
+the automatic fallback.
 
 Audit-first (what already existed and stays):
 
@@ -763,9 +765,43 @@ def list_versions(cur, client_id: int, source_id: int) -> List[Dict[str, Any]]:
 def retrieve(cur, client_id: int, query: str, n: int = 5,
              include_entries: bool = True) -> List[Dict[str, Any]]:
     """The one knowledge read for the brain and the owner's tester: active
-    Q&A entries + chunks of PUBLISHED sources matching any query token,
-    ranked deterministically. Empty query -> [] without touching the DB."""
+    Q&A entries + chunks of PUBLISHED sources, ranked deterministically.
+
+    Keyword ranking first (BM25-style over the query tokens); when the
+    semantic index is active and populated, meaning-based hits are fused
+    in (portal_kb_semantic.hybrid). Every hit carries ``via``
+    (keyword|semantic|both) and ``semantic`` (similarity or None).
+    Blank query -> [] without touching the DB."""
+    if not str(query or "").strip():
+        return []
     tokens = query_tokens(query)
+    keyword = _keyword_hits(cur, client_id, tokens,
+                            max(n, SEMANTIC_KEYWORD_POOL), include_entries)
+    try:
+        import portal_kb_semantic
+
+        fused = portal_kb_semantic.hybrid(cur, client_id, query, keyword, n,
+                                          include_entries, SNIPPET_CHARS)
+    except Exception as error:  # fail-soft: keyword ranking stands
+        logger.info("semantic retrieval skipped: %s", error)
+        fused = None
+    if fused is not None:
+        return fused
+    out = []
+    for hit in keyword[:max(1, n)]:
+        hit["via"] = "keyword"
+        hit["semantic"] = None
+        out.append(hit)
+    return out
+
+
+SEMANTIC_KEYWORD_POOL = _env_int("OF_KB_HYBRID_KEYWORD_POOL", 12, 1, 100)
+
+
+def _keyword_hits(cur, client_id: int, tokens: List[str], n: int,
+                  include_entries: bool) -> List[Dict[str, Any]]:
+    """Keyword candidates (ILIKE on the tokens) ranked by score_candidates.
+    No tokens -> [] without touching the DB."""
     if not tokens:
         return []
     patterns = ["%" + t + "%" for t in tokens]
@@ -1158,3 +1194,15 @@ def search_knowledge():
         conn.close()
     return jsonify({"query": query, "tokens": query_tokens(query),
                     "hits": hits}), 200
+
+
+@bp.after_request
+def _kb_semantic_after(response):
+    """D1: a successful owner write schedules a semantic-index sync."""
+    try:
+        import portal_kb_semantic
+
+        return portal_kb_semantic.kick_after_mutation(response)
+    except Exception:
+        return response
+

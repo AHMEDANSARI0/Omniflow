@@ -113,7 +113,8 @@ check("lang-aware select", any("lang FROM" in sql and "portal_kb_entries"
                                in sql for sql, _ in executed), "-")
 queued = [params for sql, params in executed
           if "INSERT INTO" in sql and "portal_connector_commands" in sql]
-check("answer queued", queued and "Hi Ali" in queued[0][1], queued)
+# commands now carry a channel column (Instagram adapter): payload position moved.
+check("answer queued", queued and any("Hi Ali" in str(p) for p in queued[0]), queued)
 
 
 print("== endpoints ==")

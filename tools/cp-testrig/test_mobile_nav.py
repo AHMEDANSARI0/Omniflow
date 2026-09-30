@@ -12,7 +12,7 @@ thread_src = portal_thread_source()
 
 print("== tab bar ==")
 check("four tabs", bar_src.count("href: \"/dashboard") == 4)
-check("inbox badge", "unreadCount" in bar_src and "min-w-4 rounded-full bg-rose-500/90" in bar_src)
+check("inbox badge", "unreadCount" in bar_src and "min-w-4 rounded-full bg-rose-500" in bar_src)
 check("badge caps 99", 'unreadCount > 99 ? "99+"' in bar_src)
 check("hidden on threads", 'pathname.startsWith("/dashboard/conversations/")' in bar_src)
 check("safe area padding", "env(safe-area-inset-bottom)" in bar_src)

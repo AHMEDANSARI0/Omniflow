@@ -1,10 +1,10 @@
-import { createClient } from "../../../../../../../lib/supabase/server";
-import { ControlPlaneRequestError } from "../../../../../../../lib/omniflow/control-plane";
-import { getAdminAiQuality } from "../../../../../../../lib/omniflow/admin-control-plane";
+import { createClient } from "../../../../../../lib/supabase/server";
+import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
+import { getAdminAiQuality } from "../../../../../../lib/omniflow/admin-control-plane";
 import {
   safeJson,
   sameOrigin,
-} from "../../../../../../../lib/omniflow/request-security";
+} from "../../../../../../lib/omniflow/request-security";
 
 async function requireAdminSession() {
   const supabase = await createClient();

@@ -44,10 +44,21 @@ PROVIDER_WHITELISTS = {
     "ai.kill_switch": ("on", "off"),
     "ai.autonomy_cap": ("off", "suggest", "auto"),
     "ai.guard_mode": ("off", "standard", "strict"),
+    "embeddings.mode": ("on", "off"),
+    # D5 voice + vision switches
+    "vision.mode": ("on", "off"),
+    "stt.mode": ("on", "off"),
+    "voice.ai_loop": ("on", "off"),
+    "voice.signature_check": ("enforce", "log", "off"),
 }
 
+#: Groups whose whitelisted values are case-insensitive switches.
+LOWERCASE_SWITCH_GROUPS = ("ai", "embeddings", "vision", "stt", "voice")
+
 # Numeric settings (blank = unset).
-NUMERIC_KEYS = {"ai.daily_call_cap": (0, 1000000)}
+NUMERIC_KEYS = {"ai.daily_call_cap": (0, 1000000),
+                "embeddings.dimensions": (0, 4096),
+                "embeddings.min_similarity": (0, 100)}
 
 
 def _authorized() -> bool:
@@ -106,6 +117,12 @@ def _configured(group: str, values: dict) -> bool:
         return bool(values.get("live_number"))
     if group == "ai":
         return any(str(v or "").strip() for v in values.values())
+    if group == "embeddings":
+        return any(str(v or "").strip() for v in values.values())
+    if group == "vision":
+        return any(str(v or "").strip() for v in values.values())
+    if group == "stt":
+        return bool(values.get("api_key"))
     return False
 
 
@@ -138,7 +155,8 @@ def _clean_group(group: str, raw: dict):
         text = "" if value is None else str(value).strip()
         full = group + "." + name
         if full in PROVIDER_WHITELISTS:
-            text = text.lower() if group == "ai" else text
+            text = text.lower() if group in LOWERCASE_SWITCH_GROUPS \
+                and full != "voice.provider" else text
             if text and text not in PROVIDER_WHITELISTS[full]:
                 return None, (full + " must be one of: "
                               + ", ".join(PROVIDER_WHITELISTS[full]) + ".")
@@ -147,6 +165,8 @@ def _clean_group(group: str, raw: dict):
             if not text.isdigit() or not low <= int(text) <= high:
                 return None, (full + " must be a whole number between "
                               + str(low) + " and " + str(high) + ".")
+        if full == "voice.greeting" and len(text) > 200:
+            return None, "voice.greeting must be 200 characters or fewer."
         if full == "email.smtp_port":
             if text and (not text.isdigit() or not 1 <= int(text) <= 65535):
                 return None, "email.smtp_port must be a port number."
@@ -386,3 +406,69 @@ def _render_weekly(rows: list) -> str:
     lines.append("")
     lines.append("Sent by the OmniFlow admin panel.")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# D5: phone numbers -> workspaces (the Twilio account is platform-owned, so
+# only the platform admin decides which number answers for which workspace)
+# ---------------------------------------------------------------------------
+
+@bp.get("/voice/numbers")
+def list_voice_numbers():
+    import portal_voice
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                numbers = portal_voice.list_number_assignments(cur)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(
+            error, "voice numbers")[0]), 503
+    return jsonify({"numbers": numbers}), 200
+
+
+@bp.put("/voice/numbers")
+def put_voice_number():
+    import portal_voice
+    payload = request.get_json(silent=True) or {}
+    try:
+        client_id = int(payload.get("client_id") or 0)
+    except (TypeError, ValueError):
+        client_id = 0
+    if client_id <= 0:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "client_id is required."}}), 400
+    number = str(payload.get("number") or "").strip()
+    if number and not portal_voice.valid_e164(number):
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "Use the full international"
+                                             " format, e.g. +14155550100."}}), 400
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                result = portal_voice.assign_number(cur, client_id, number)
+                if result.get("error"):
+                    conn.rollback()
+                    return jsonify({"error": {"code": "conflict",
+                                              "message": result["error"]}}), 409
+                portal_db.log_action(
+                    cur, client_id, "voice.number_assigned",
+                    "platform_admin", None, None,
+                    ("Phone number " + (number[-4:] if number else "removed")
+                     )[:200],
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(
+            error, "voice numbers")[0]), 503
+    return jsonify({"ok": True, "client_id": client_id,
+                    "number": result.get("number", "")}), 200
+

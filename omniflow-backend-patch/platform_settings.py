@@ -47,18 +47,37 @@ GROUP_KEYS = {
               "smtp_password", "smtp_from", "brevo_api_key", "reports_to"],
     "llm": ["base_url", "api_key", "model", "prices_json"],
     "flags": ["true_sentiment", "kb_autodraft", "phone_verification"],
-    "voice": ["provider", "account_sid", "auth_token", "from_number"],
+    # Voice (Twilio). greeting = platform voicemail greeting; ai_loop =
+    # platform switch for the D5 phone AI assistant (on|off, default on -
+    # each workspace still opts in); signature_check = Twilio webhook
+    # signature policy (enforce|log|off, default enforce). Env fallbacks:
+    # OF_VOICE_AI_LOOP, OF_TWILIO_SIGNATURE.
+    "voice": ["provider", "account_sid", "auth_token", "from_number",
+              "greeting", "ai_loop", "signature_check"],
     "video": ["provider", "api_key", "zoom_account_id",
               "zoom_client_id", "zoom_client_secret"],
     "payments": ["provider", "publishable_key", "secret_key",
                  "webhook_secret"],
     "whatsapp_e2e": ["live_number"],
-    "stt": ["api_key", "base_url", "model"],
+    # mode (D5) = platform switch for automatic customer voice-note
+    # transcription (on|off, default on). Env fallback: OF_STT_MODE.
+    "stt": ["api_key", "base_url", "model", "mode"],
     # Platform AI controls (admin AI Control Center): a global pause, the
     # highest autonomy any workspace may run at, and a per-workspace daily
     # LLM call cap (0 = unlimited). Env fallbacks: OF_AI_KILL_SWITCH,
     # OF_AI_AUTONOMY_CAP, OF_AI_DAILY_CALL_CAP.
     "ai": ["kill_switch", "autonomy_cap", "daily_call_cap", "guard_mode"],
+    # Knowledge semantic index (D1): OpenAI-compatible /embeddings. Blank
+    # key/base reuse the AI engine above. Env fallbacks: OF_KB_EMBED_MODE,
+    # OF_EMBED_API_KEY, OF_EMBED_BASE_URL, OF_EMBED_MODEL,
+    # OF_EMBED_DIMENSIONS, OF_KB_EMBED_MIN_SIM (percent).
+    "embeddings": ["mode", "api_key", "base_url", "model", "dimensions",
+                   "min_similarity"],
+    # Image understanding (D5): OpenAI-compatible multimodal chat. Blank
+    # key/base/model reuse the AI engine above (Gemini Flash / GPT-4o-mini
+    # read images). Env fallbacks: OF_VISION_MODE, OF_VISION_API_KEY,
+    # OF_VISION_BASE_URL, OF_VISION_MODEL.
+    "vision": ["mode", "api_key", "base_url", "model"],
 }
 
 AUTONOMY_LEVELS = ("off", "suggest", "auto")
@@ -334,3 +353,171 @@ def stt_config() -> dict:
         "model": str(stored.get("model")
                      or _env("OMNIFLOW_STT_MODEL", "")),
     }
+
+
+EMBED_MODES = ("on", "off")
+GEMINI_HOST_HINT = "generativelanguage.googleapis.com"
+
+
+def _embed_default_model(base_url: str) -> str:
+    if GEMINI_HOST_HINT in str(base_url or ""):
+        return _env("OF_EMBED_MODEL_GEMINI", "gemini-embedding-001")
+    return _env("OF_EMBED_MODEL_DEFAULT", "text-embedding-3-small")
+
+
+def _embed_default_min_sim(model: str) -> int:
+    # Similarity scales differ per model family: Gemini vectors sit higher
+    # for unrelated text than OpenAI's. Owner/env can always override.
+    if "gemini" in str(model or "").lower():
+        return int(_env("OF_KB_EMBED_MIN_SIM_GEMINI", "60") or 60)
+    return int(_env("OF_KB_EMBED_MIN_SIM_DEFAULT", "30") or 30)
+
+
+def _int_or(value, default: int, low: int, high: int) -> int:
+    try:
+        number = int(str(value).strip())
+    except Exception:
+        return default
+    return max(low, min(high, number))
+
+
+def embed_config() -> dict:
+    """Effective knowledge-embedding config: admin panel first, env next,
+    then the AI engine's own base/key. Uses get_setting (30 s TTL cache)
+    because retrieval consults it on the reply path. Fail-soft.
+
+    {mode: on|off, active: bool, reason: active|off|no_key|llm_disabled,
+     api_key, base_url, model, dimensions (0 = provider default),
+     min_similarity (0..1), key_source: embeddings|env|llm|none}
+    """
+    def setting(name: str) -> str:
+        try:
+            return str(get_setting("embeddings." + name, "") or "").strip()
+        except Exception:
+            return ""
+
+    def llm_setting(name: str) -> str:
+        try:
+            return str(get_setting("llm." + name, "") or "").strip()
+        except Exception:
+            return ""
+
+    mode = (setting("mode") or _env("OF_KB_EMBED_MODE", "on")).lower()
+    if mode not in EMBED_MODES:
+        mode = "on"
+    key_source = "none"
+    api_key = setting("api_key")
+    if api_key:
+        key_source = "embeddings"
+    elif _env("OF_EMBED_API_KEY", ""):
+        api_key, key_source = _env("OF_EMBED_API_KEY", ""), "env"
+    else:
+        api_key = llm_setting("api_key") or _env("OF_LLM_API_KEY", "")
+        key_source = "llm" if api_key else "none"
+    base_url = (setting("base_url") or _env("OF_EMBED_BASE_URL", "")
+                or llm_setting("base_url")
+                or _env("OF_LLM_BASE_URL", "https://api.openai.com/v1"))
+    base_url = base_url.rstrip("/")
+    model = (setting("model") or _env("OF_EMBED_MODEL", "")
+             or _embed_default_model(base_url))
+    dimensions = _int_or(setting("dimensions")
+                         or _env("OF_EMBED_DIMENSIONS", "256"), 256, 0, 4096)
+    min_sim = _int_or(setting("min_similarity")
+                      or _env("OF_KB_EMBED_MIN_SIM", ""),
+                      _embed_default_min_sim(model), 0, 100)
+    llm_enabled = _env("OF_LLM_ENABLED", "1").lower() not in (
+        "0", "false", "no", "off")
+    if mode == "off":
+        reason = "off"
+    elif not api_key:
+        reason = "no_key"
+    elif key_source == "llm" and not llm_enabled:
+        reason = "llm_disabled"
+    else:
+        reason = "active"
+    return {
+        "mode": mode,
+        "active": reason == "active",
+        "reason": reason,
+        "api_key": api_key,
+        "base_url": base_url,
+        "model": model,
+        "dimensions": dimensions,
+        "min_similarity": min_sim / 100.0,
+        "key_source": key_source,
+    }
+
+
+# ---------------------------------------------------------------------------
+# D5: voice + vision resolution (panel first, env next, AI engine last)
+# ---------------------------------------------------------------------------
+
+VISION_MODES = ("on", "off")
+STT_MODES = ("on", "off")
+VOICE_AI_LOOP_MODES = ("on", "off")
+SIGNATURE_MODES = ("enforce", "log", "off")
+
+
+def _cached(name: str) -> str:
+    try:
+        return str(get_setting(name, "") or "").strip()
+    except Exception:
+        return ""
+
+
+def vision_config() -> dict:
+    """Effective image-understanding config (30 s TTL cache via
+    get_setting - it is consulted on the ingest path). Fail-soft.
+
+    {mode, active, reason: active|off|no_key|llm_disabled, api_key,
+     base_url, model, key_source: vision|env|llm|none}
+    """
+    mode = (_cached("vision.mode") or _env("OF_VISION_MODE", "on")).lower()
+    if mode not in VISION_MODES:
+        mode = "on"
+    api_key = _cached("vision.api_key")
+    key_source = "vision" if api_key else "none"
+    if not api_key and _env("OF_VISION_API_KEY", ""):
+        api_key, key_source = _env("OF_VISION_API_KEY", ""), "env"
+    if not api_key:
+        api_key = _cached("llm.api_key") or _env("OF_LLM_API_KEY", "")
+        key_source = "llm" if api_key else "none"
+    base_url = (_cached("vision.base_url") or _env("OF_VISION_BASE_URL", "")
+                or _cached("llm.base_url")
+                or _env("OF_LLM_BASE_URL", "https://api.openai.com/v1"))
+    model = (_cached("vision.model") or _env("OF_VISION_MODEL", "")
+             or _cached("llm.model") or _env("OF_LLM_MODEL", "gpt-4o-mini"))
+    llm_enabled = _env("OF_LLM_ENABLED", "1").lower() not in (
+        "0", "false", "no", "off")
+    if mode == "off":
+        reason = "off"
+    elif not api_key:
+        reason = "no_key"
+    elif key_source == "llm" and not llm_enabled:
+        reason = "llm_disabled"
+    else:
+        reason = "active"
+    return {"mode": mode, "active": reason == "active", "reason": reason,
+            "api_key": api_key, "base_url": base_url.rstrip("/"),
+            "model": model, "key_source": key_source}
+
+
+def stt_mode() -> str:
+    """Platform switch for automatic customer voice-note transcription."""
+    mode = (_cached("stt.mode") or _env("OF_STT_MODE", "on")).lower()
+    return mode if mode in STT_MODES else "on"
+
+
+def voice_platform() -> dict:
+    """Platform voice policy: {ai_loop: on|off, signature_check:
+    enforce|log|off, greeting}. Panel first, env fallback."""
+    loop = (_cached("voice.ai_loop") or _env("OF_VOICE_AI_LOOP", "on")).lower()
+    if loop not in VOICE_AI_LOOP_MODES:
+        loop = "on"
+    check = (_cached("voice.signature_check")
+             or _env("OF_TWILIO_SIGNATURE", "enforce")).lower()
+    if check not in SIGNATURE_MODES:
+        check = "enforce"
+    return {"ai_loop": loop, "signature_check": check,
+            "greeting": _cached("voice.greeting")[:200]}
+

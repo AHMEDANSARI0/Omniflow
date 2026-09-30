@@ -4,6 +4,7 @@ import KnowledgeBaseClient from "./KnowledgeBaseClient";
 import KbGapsCard from "./KbGapsCard";
 import KbSourcesCard from "./KbSourcesCard";
 import KbRetrievalTester from "./KbRetrievalTester";
+import KbSemanticCard from "./KbSemanticCard";
 
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,7 @@ export default async function KnowledgeBasePage() {
         <>
           <KbGapsCard />
           <KbSourcesCard />
+          <KbSemanticCard />
           <KbRetrievalTester />
           <KnowledgeBaseClient
             initial={data}

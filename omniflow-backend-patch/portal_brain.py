@@ -396,6 +396,19 @@ def _system_prompt(tone: str) -> str:
     )
 
 
+#: D5 phone-call rules appended to the brain prompt for voice turns: the
+#: reply is read aloud by text-to-speech, so it must be short plain speech.
+VOICE_RULES = (
+    " This is a LIVE PHONE CALL: your reply is read aloud by text-to-speech."
+    " Use at most two short sentences of plain spoken words - no lists, no"
+    " links, no emoji, no symbols, no order codes read character by"
+    " character. CONTEXT may include call_transcript (earlier turns of this"
+    " call); stay consistent with it. If the caller wants a person, is"
+    " upset, or asks for anything you cannot answer from CONTEXT, set"
+    " needs_human=true."
+)
+
+
 def _security_rules() -> str:
     """The override-proof trust-boundary block (portal_guard) appended to
     every brain prompt. Fail-soft: an import problem never silences the
@@ -410,11 +423,16 @@ def _security_rules() -> str:
 
 def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
             contact_name: str, message_text: str,
-            tone: str) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
+            tone: str, *, channel: str = "",
+            extra_context: Optional[Dict[str, Any]] = None,
+            usage_feature: str = "brain"
+            ) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
     """Run the budgeted tools, then one LLM call.
 
     Returns (llm_payload_or_None, grounding_dict). Never raises beyond
-    what the callers already guard.
+    what the callers already guard. D5: ``channel="voice"`` adds the
+    spoken-reply rules, ``extra_context`` (e.g. the live call transcript)
+    rides the same sanitised CONTEXT, ``usage_feature`` tags the ledger.
     """
     grounding: Dict[str, Any] = {"tools": []}
     context: Dict[str, Any] = {}
@@ -508,6 +526,13 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
 
     context["customer_name"] = str(contact_name or "")
     context["customer_message"] = str(message_text or "")
+    if channel:
+        context["channel"] = str(channel)[:20]
+        grounding["channel"] = str(channel)[:20]
+    if isinstance(extra_context, dict):
+        for key, value in extra_context.items():
+            if key not in context:
+                context[str(key)[:40]] = value
     try:
         import portal_guard
 
@@ -517,9 +542,19 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
 
     import portal_llm
 
-    with portal_llm.usage_scope("brain", client_id, cur):
+    _agent_id = 0
+    try:
+        if agent and agent.get("id"):
+            _agent_id = int(agent.get("id") or 0)
+    except Exception:
+        _agent_id = 0
+    system_prompt = _system_prompt(tone)
+    if channel == "voice":
+        system_prompt += VOICE_RULES
+    with portal_llm.usage_scope(usage_feature or "brain", client_id, cur,
+                                agent_id=_agent_id):
         payload = portal_llm.chat_json(
-            _system_prompt(tone),
+            system_prompt,
             json.dumps(context, ensure_ascii=False, default=str),
             max_tokens=300,
         )
@@ -705,6 +740,55 @@ def maybe_answer(client_id, conversation_id, contact_id, contact_name,
     except Exception as error:
         logger.warning("brain maybe_answer failed: %s", error)
         return None
+
+
+def voice_answer(cur, client_id: int, conversation_id: int, contact_id: str,
+                 contact_name: str, utterance: str,
+                 transcript: Optional[List[Dict[str, str]]] = None
+                 ) -> Tuple[str, str, Dict[str, Any]]:
+    """D5 phone AI turn: the same guard -> tools -> one LLM call ->
+    policy/output-guard pipeline as a chat answer, with spoken-reply rules.
+
+    Returns (decision "send"|"handoff", reply, grounding). The caller
+    (portal_voice) owns the TwiML; this writes the trace and, on a real
+    handoff, opens the usual escalation. Voice never runs below 'auto'
+    autonomy or for a draft-only persona. Never raises.
+    """
+    grounding: Dict[str, Any] = {"channel": "voice"}
+    try:
+        _ensure_ddl(cur)
+        settings = _load_settings(cur, client_id)
+        if effective_autonomy(str(settings.get("autonomy") or "")) != "auto":
+            grounding["reason"] = "autonomy_not_auto"
+            return "handoff", "", grounding
+        extra = {}
+        if transcript:
+            extra["call_transcript"] = [
+                {"role": str(turn.get("role") or "")[:10],
+                 "text": str(turn.get("text") or "")[:300]}
+                for turn in transcript[-8:] if isinstance(turn, dict)]
+        payload, grounding = _reason(
+            cur, client_id, int(conversation_id or 0), str(contact_id or ""),
+            str(contact_name or ""), str(utterance or ""),
+            str(settings.get("tone") or ""), channel="voice",
+            extra_context=extra, usage_feature="voice_call")
+        decision, reply, grounding = _decide(payload, grounding)
+        if decision == "send" and grounding.get("agent_auto_reply") is False:
+            decision = "handoff"
+            grounding["reason"] = "agent_draft_only"
+        _write_trace(cur, client_id, int(conversation_id or 0),
+                     "voice_answer", decision, grounding)
+        if decision != "send":
+            if int(conversation_id or 0) > 0:
+                _handoff(cur, client_id, int(conversation_id), grounding)
+            elif str(grounding.get("reason") or "") == "injection_suspected":
+                _record_guard_block(cur, client_id, 0, grounding, "voice")
+            return "handoff", "", grounding
+        return "send", reply, grounding
+    except Exception as error:
+        logger.warning("brain voice_answer failed: %s", error)
+        grounding["reason"] = "error"
+        return "handoff", "", grounding
 
 
 def draft_reply(cur, client_id: int, conversation_id: int,

@@ -396,7 +396,7 @@ queued = conn.cur.executed[2]
 check("action queued through the registry (opt-out aware)",
       "portal_connector_commands" in queued[0]
       and "portal_optouts" in queued[0]
-      and '"body": "Hi Ali"' in queued[1][1], queued)
+      and '"body": "Hi Ali"' in str(queued[1]), queued)
 check("action audit line", "action.queue_whatsapp_message"
       in str(conn.cur.executed[3][1]), conn.cur.executed[3][1])
 waiting = conn.cur.executed[6]

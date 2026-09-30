@@ -211,9 +211,12 @@ portal_actions.resolve_approval(conn.cursor(), 1, {
 }, approved=False)
 send = next((p for sql, p in conn.cur.executed
              if "portal_connector_commands" in sql), None)
+# commands carry a channel column now: find the JSON payload by shape.
+_hold = next((json.loads(x) for x in (send or ())
+              if isinstance(x, str) and x.startswith("{")), {})
 check("rejected -> hold message", send is not None
-      and "process nahi ho saki" in json.loads(send[1])["body"],
-      json.loads(send[1])["body"] if send else None)
+      and "process nahi ho saki" in str(_hold.get("body") or ""),
+      _hold.get("body"))
 
 print("== portal API ==")
 

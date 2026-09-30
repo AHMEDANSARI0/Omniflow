@@ -29,6 +29,15 @@ interface Usage {
   totals: UsageTotals;
   by_feature: { feature: string; label: string; calls: number; failed: number; tokens: number; cost_usd: number | null }[];
   by_model: { model: string; calls: number; failed: number; tokens: number; cost_usd: number | null }[];
+  by_agent?: {
+    agent_id: number | null;
+    name: string;
+    calls: number;
+    failed: number;
+    tokens: number;
+    cost_usd: number | null;
+    share: number;
+  }[];
   by_day: { day: string; calls: number; tokens: number }[];
   prices_configured: boolean;
 }
@@ -304,6 +313,29 @@ export default function AiOpsCard() {
                     </li>
                   ))}
                 </ul>
+                {(usage.by_agent && usage.by_agent.length > 0) ? (
+                  <>
+                    <p className="mt-3 text-[11px] text-ink-3">By agent persona</p>
+                    <ul className="space-y-1">
+                      {usage.by_agent.map((entry) => (
+                        <li
+                          key={String(entry.agent_id ?? "none") + entry.name}
+                          className="flex items-baseline justify-between gap-2 text-xs"
+                        >
+                          <span className="text-ink">{entry.name}</span>
+                          <span className="text-ink-3">
+                            {entry.calls} calls
+                            {" · "}
+                            {Math.round((entry.share || 0) * 100)}%
+                            {entry.cost_usd !== null
+                              ? " · $" + entry.cost_usd.toFixed(4)
+                              : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
                 <p className="mt-2 text-[10px] text-ink-3">
                   {formatTokens(usage.totals.prompt_tokens)} prompt + {formatTokens(usage.totals.completion_tokens)} completion tokens
                   {" \u00b7 "}avg {usage.totals.avg_latency_ms} ms per call

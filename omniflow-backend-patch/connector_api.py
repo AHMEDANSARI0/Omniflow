@@ -250,6 +250,14 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_kb_semantic
+
+                    # D1: throttled background top-up of the knowledge
+                    # semantic index (no-op when off or up to date).
+                    portal_kb_semantic.kick(tenant["client_id"], "tick")
+                except Exception:
+                    pass
+                try:
                     import portal_events
 
                     portal_events.requeue_due_commands(
@@ -731,6 +739,17 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                     raise
                 except Exception:
                     pass
+                # D5: inline media bytes leave the records before the
+                # idempotency row is written (never stored in events).
+                media_blobs: Dict[int, Any] = {}
+                media_budget = None
+                try:
+                    import portal_media_ai
+
+                    media_blobs = portal_media_ai.detach_blobs(normalized)
+                    media_budget = portal_media_ai.Budget()
+                except Exception:
+                    media_blobs, media_budget = {}, None
                 for item in normalized:
                     try:
                         import portal_events
@@ -741,6 +760,16 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                             continue
                     except Exception:
                         pass
+                    if item.get("media") and media_budget is not None:
+                        try:
+                            # D5: voice notes / images -> text before the
+                            # one ingest path runs (deduped above, so a
+                            # replayed delivery never spends twice).
+                            portal_media_ai.enrich(
+                                cur, tenant["client_id"], item,
+                                media_blobs.get(id(item)), media_budget)
+                        except Exception:
+                            pass
                     if item["channel"] == "instagram":
                         try:
                             import portal_identity

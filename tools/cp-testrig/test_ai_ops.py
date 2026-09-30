@@ -51,15 +51,16 @@ def run_api(module, script, path, principal=PRINCIPAL):
 # ---------- llm scope + hook ----------
 
 print("== llm scope ==")
-check("no scope -> defaults", portal_llm.current_scope() == ("", 0, None), "-")
+# §210: scope is a 4-tuple (feature, client_id, cur, agent_id).
+check("no scope -> defaults", portal_llm.current_scope() == ("", 0, None, 0), "-")
 with portal_llm.usage_scope("brain", 7, "CUR"):
     inner = portal_llm.current_scope()
     with portal_llm.usage_scope("intent", 7):
         nested = portal_llm.current_scope()
     after_inner = portal_llm.current_scope()
 check("scopes nest, innermost wins, and unwind",
-      inner == ("brain", 7, "CUR") and nested == ("intent", 7, None)
-      and after_inner == inner and portal_llm.current_scope() == ("", 0, None),
+      inner == ("brain", 7, "CUR", 0) and nested == ("intent", 7, None, 0)
+      and after_inner == inner and portal_llm.current_scope() == ("", 0, None, 0),
       (inner, nested, after_inner))
 
 recorded = []
@@ -72,7 +73,7 @@ with portal_llm.usage_scope("brain", 7, "CUR"):
 check("hook passes feature/client/model/tokens/latency/ok + the scope cursor",
       recorded and recorded[0][0][:5] == (7, "brain", "gpt-4o-mini", 120, 30)
       and 200 <= recorded[0][0][5] <= 5000 and recorded[0][0][6] is True
-      and recorded[0][1] == {"cur": "CUR"}, recorded)
+      and recorded[0][1] == {"cur": "CUR", "agent_id": 0}, recorded)
 recorded[:] = []
 portal_llm._record_usage("m", None, False, time.time())
 check("no usage block -> zero tokens, feature 'other', workspace 0",
@@ -125,7 +126,7 @@ ex = conn.cur.executed
 check("caller cursor: SAVEPOINT / INSERT / RELEASE (transaction-safe)",
       ok is True and ex[0][0] == "SAVEPOINT of_ai_usage"
       and ex[1][0].startswith("INSERT INTO portal_ai_usage")
-      and ex[1][1] == (1, "brain", "gpt-4o-mini", 100, 20, 850, True)
+      and ex[1][1] == (1, "brain", "gpt-4o-mini", 100, 20, 850, True, None)
       and ex[2][0] == "RELEASE SAVEPOINT of_ai_usage", ex)
 conn = install_db_stub(pu, [[], Exception("no table"), []])
 ok = pu.record(1, "brain", "m", 1, 1, 1, True, cur=conn.cur)
@@ -135,7 +136,7 @@ check("insert failure -> ROLLBACK TO SAVEPOINT, caller's transaction survives",
 conn = install_db_stub(pu, [[]])
 ok = pu.record(2, "bogus-feature", "m", -5, 3, 10, False)
 check("own connection path: one INSERT, committed, feature normalised, negatives clamped",
-      ok is True and conn.cur.executed[0][1] == (2, "other", "m", 0, 3, 10, False)
+      ok is True and conn.cur.executed[0][1] == (2, "other", "m", 0, 3, 10, False, None)
       and conn.committed and conn.closed, conn.cur.executed)
 pu.ENABLED = False
 conn = install_db_stub(pu, [])
