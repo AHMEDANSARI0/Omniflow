@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 const CodCard = dynamic(() => import("./CodCard"));
 const VoiceCard = dynamic(() => import("./VoiceCard"));
 const MediaCard = dynamic(() => import("./MediaCard"));
+const MessageMedia = dynamic(() => import("./MessageMedia"));
 const VideoCard = dynamic(() => import("./VideoCard"));
 const InteractiveCard = dynamic(() => import("./InteractiveCard"));
 const TeamCard = dynamic(() => import("./TeamCard"));
@@ -26,6 +27,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  MEDIA_CHANGED_EVENT,
+  fetchConversationMedia,
+  groupByMessage,
+  type InboundMediaItem,
+} from "./inbound-media-shared";
 const MESSAGE_URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
 function linkifyText(text: string, keyPrefix: string): ReactNode[] {
@@ -164,6 +171,32 @@ export default function ThreadClient({
       // Transient network issue — next poll retries.
     }
   }, [id]);
+
+  // §215: customer files inside their chat bubbles. Reloaded when a newer
+  // customer message arrives (the poll above) or a file is deleted.
+  const [mediaByMessage, setMediaByMessage] = useState<
+    Record<number, InboundMediaItem[]>
+  >({});
+  const latestInboundId = (messages ?? []).reduce(
+    (latest, message) =>
+      message.direction === "in" && message.id > latest ? message.id : latest,
+    0
+  );
+  useEffect(() => {
+    if (!id || !latestInboundId) return;
+    let cancelled = false;
+    const load = async () => {
+      const media = await fetchConversationMedia(id);
+      if (!cancelled && media) setMediaByMessage(groupByMessage(media));
+    };
+    void load();
+    const onChanged = () => void load();
+    window.addEventListener(MEDIA_CHANGED_EVENT, onChanged);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(MEDIA_CHANGED_EVENT, onChanged);
+    };
+  }, [id, latestInboundId]);
 
   function copyNumber() {
     const value = conversation?.contactId || "";
@@ -722,6 +755,9 @@ export default function ThreadClient({
                     : "border-line bg-soft"
                 }`}
               >
+                {message.direction === "in" && mediaByMessage[message.id] ? (
+                  <MessageMedia items={mediaByMessage[message.id]} />
+                ) : null}
                 <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-100">
                   {renderMessageBody(message.body, threadQuery)}
                 </p>

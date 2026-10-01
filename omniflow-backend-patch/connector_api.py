@@ -821,17 +821,30 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                     )
                     conv = portal_db.rows(cur)
                     conversation_id = conv[0]["id"] if conv else None
+                    # §215: inbound media needs the message id (chat-bubble
+                    # previews); every other message keeps the plain INSERT.
+                    keep_media = bool(item.get("media")) \
+                        and item["direction"] == "in" \
+                        and store_budget is not None
                     cur.execute(
                         "INSERT INTO " + portal_db._q(portal_db.MSGS_TABLE) +
                         " (conversation_id, client_id, direction, body,"
                         " sender_name, status, created_at) "
-                        "VALUES (%s, %s, %s, %s, %s, %s, NOW())",
+                        "VALUES (%s, %s, %s, %s, %s, %s, NOW())"
+                        + (" RETURNING id" if keep_media else ""),
                         (conversation_id, tenant["client_id"], item["direction"],
                          item["body"], item["name"],
                          "received" if item["direction"] == "in" else "sent"),
                     )
-                    if item.get("media") and item["direction"] == "in" \
-                            and store_budget is not None:
+                    message_id = None
+                    if keep_media:
+                        try:
+                            returned = portal_db.rows(cur)
+                            message_id = returned[0].get("id") \
+                                if returned else None
+                        except Exception:
+                            message_id = None
+                    if keep_media:
                         try:
                             # §214: keep customer images / voice notes so
                             # the inbox can show them after provider links
@@ -839,7 +852,7 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                             portal_inbound_media.capture(
                                 cur, tenant["client_id"], conversation_id,
                                 item, media_blobs.get(id(item)),
-                                store_budget)
+                                store_budget, message_id)
                         except Exception:
                             pass
                     item.pop("_media_fetched", None)

@@ -1533,3 +1533,44 @@ npm run build
 After deploying:
 1. Admin > Integrations > Voice channel: set **Webhook address** to the CP's public https address. This is optional when the CP host is detected correctly.
 2. Phone numbers: press **Connect** on each number, then **Use** to assign it to a workspace.
+
+## 215. CUSTOMER IMAGES AND VOICE NOTES INSIDE CHAT BUBBLES (patcher add_batch_thread_media_215.mjs; pending user run - BOTH repos; run AFTER 214)
+
+Owner pick: "Show customer images inside chat bubbles", built on the §214 media store.
+
+**What the owner sees:**
+- A customer message that carried a file shows it **inside its bubble**, above the text: an image thumbnail (click opens the full image), a voice-note player, or "Get link" → "Open file" for videos and other files.
+- A file that is gone (link expired with no copy, deleted, or over quota) shows "Image no longer available · <reason>".
+- The side card "Files from the customer" stays for management (Delete). Files already shown in the chat get a compact row ("Shown in the conversation.") instead of a second preview.
+- Deleting a file refreshes the bubbles at once (`omniflow:inbound-media-changed` event).
+- The bubbles reload their files whenever a newer customer message arrives through the existing 10-second poll. No extra polling.
+
+**Linking a file to its message:**
+- `portal_inbound_media`: the DDL migrates in place (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS message_id BIGINT` plus a partial index on `(client_id, message_id)`). `capture(..., message_id=None)` stores the id; junk or zero becomes NULL.
+- `connector_api`: **only** an inbound message with media (and the store available) uses `INSERT ... RETURNING id`. Every other message keeps the exact plain INSERT, so the hot path and legacy fixtures are unchanged.
+- Files captured before §215 are matched in the list query to the single inbound message written in the same transaction (same `NOW()`). If a batch makes this ambiguous (`HAVING COUNT(*) = 1` fails), the file stays unattached and remains visible in the side card. The match is tenant- and conversation-scoped.
+- The list API returns `message_id`. The list size is env-backed: `OF_MEDIA_STORE_LIST_LIMIT` (default 100, range 10 to 500).
+
+**Website:**
+- New `conversations/[id]/inbound-media-shared.ts`: type, labels, `fetchConversationMedia`, `fetchMediaLink`, `groupByMessage`, `MEDIA_CHANGED_EVENT`.
+- New `MessageMedia.tsx` (lazy-loaded).
+- `ThreadClient.tsx` wiring.
+- `MediaCard.tsx` refactored onto the shared helpers.
+- `portal.ts` `InboundMediaItem.message_id`.
+
+**Bug caught before delivery:** the first draft named the RETURNING result `inserted`, which overwrote the connector's message counter. Every inbound media message would have failed with `IngestFailure`. The new functional test runs `ingest_messages_for_tenant` and asserts that it completes. A mutation probe confirmed the test catches the bug.
+
+**Verification:**
+- New `test_thread_media.py`: 42 PASS. It covers the DDL migration, capture ids, the list SQL fallback and tenant scope, a functional connector ingest for inbound media, plain and outbound messages, and website pins.
+- `test_twilio_media_store`: 201 PASS.
+- Full sweep after `sh tools/mirror_p13.sh`: 162 suites, 6381 PASS, 0 FAIL.
+- `tsc`: 0 errors.
+- `next build`: compiles; the only errors are the sandbox's blocked Google Fonts fetch.
+
+**Runbook (website root, after 214):**
+```
+node tools/patchers/add_batch_thread_media_215.mjs
+npm run build
+# website repo: add all, commit, push;  CP repo: cd OmniFlow-Control-Plane, add all, commit, push
+```
+Check: send an image and a voice note to the shop on Telegram or Instagram, open the conversation, and confirm both appear inside the customer's bubble.

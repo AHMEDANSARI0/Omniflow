@@ -2,49 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import {
+  KIND_LABELS,
+  NOTE_LABELS,
+  contentUrl,
+  fetchConversationMedia,
+  fetchMediaLink,
+  MEDIA_CHANGED_EVENT,
+  sizeLabel,
+  type InboundMediaItem,
+} from "./inbound-media-shared";
+
 /** §214: files the customer sent - kept copies of images / voice notes,
- * and fresh links for videos and other files (Instagram links expire). */
-interface InboundMediaItem {
-  id: number;
-  kind: string;
-  mime: string;
-  size_bytes: number;
-  status: string;
-  note: string;
-  channel: string;
-  has_copy: boolean;
-  can_open: boolean;
-  can_refresh: boolean;
-  created_at: string | null;
-}
-
-const KIND_LABELS: Record<string, string> = {
-  image: "Image",
-  audio: "Voice note",
-  video: "Video",
-  file: "File",
-};
-
-const NOTE_LABELS: Record<string, string> = {
-  copies_off: "Copies are off",
-  too_large: "Too large to keep",
-  unsupported: "Format not kept",
-  download_failed: "Could not be saved",
-  no_source: "No file received",
-  retention: "Removed after the keep period",
-  quota: "Removed to stay within storage",
-};
-
-function sizeLabel(bytes: number): string {
-  if (!bytes) return "";
-  if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-}
-
-function contentUrl(id: number): string {
-  return "/api/omniflow/portal/inbound-media/" + id + "/content";
-}
-
+ * and fresh links for videos and other files (Instagram links expire).
+ * §215: the same files also show inside their chat bubbles. */
 export default function MediaCard({ conversationId }: { conversationId: number }) {
   const [items, setItems] = useState<InboundMediaItem[]>([]);
   const [broken, setBroken] = useState<Record<number, boolean>>({});
@@ -53,19 +24,8 @@ export default function MediaCard({ conversationId }: { conversationId: number }
   const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      const response = await fetch(
-        "/api/omniflow/portal/conversations/" + conversationId + "/media",
-        { cache: "no-store" }
-      );
-      if (!response.ok) return;
-      const payload = (await response.json().catch(() => null)) as {
-        media?: InboundMediaItem[];
-      } | null;
-      if (payload && Array.isArray(payload.media)) setItems(payload.media);
-    } catch {
-      return;
-    }
+    const media = await fetchConversationMedia(conversationId);
+    if (media) setItems(media);
   }, [conversationId]);
 
   useEffect(() => {
@@ -76,28 +36,13 @@ export default function MediaCard({ conversationId }: { conversationId: number }
     if (busy !== null) return;
     setBusy(item.id);
     setNote(null);
-    try {
-      const response = await fetch(
-        "/api/omniflow/portal/inbound-media/" + item.id + "/link",
-        { cache: "no-store" }
-      );
-      const payload = (await response.json().catch(() => null)) as {
-        url?: string;
-        error?: { message?: string };
-      } | null;
-      if (response.ok && payload && typeof payload.url === "string") {
-        setLinks((current) => ({ ...current, [item.id]: payload.url as string }));
-      } else {
-        setNote({
-          text: payload?.error?.message || "This file is no longer available.",
-          ok: false,
-        });
-      }
-    } catch {
-      setNote({ text: "Could not reach the server - try again.", ok: false });
-    } finally {
-      setBusy(null);
+    const result = await fetchMediaLink(item.id);
+    if ("url" in result) {
+      setLinks((current) => ({ ...current, [item.id]: result.url }));
+    } else {
+      setNote({ text: result.error, ok: false });
     }
+    setBusy(null);
   }
 
   async function remove(item: InboundMediaItem) {
@@ -117,6 +62,7 @@ export default function MediaCard({ conversationId }: { conversationId: number }
       if (response.ok) {
         setItems((current) => current.filter((entry) => entry.id !== item.id));
         setNote({ text: "File deleted.", ok: true });
+        window.dispatchEvent(new CustomEvent(MEDIA_CHANGED_EVENT));
       } else {
         setNote({ text: payload?.error?.message || "Could not delete the file.", ok: false });
       }
@@ -143,7 +89,10 @@ export default function MediaCard({ conversationId }: { conversationId: number }
       <ul className="mt-3 space-y-2">
         {items.map((item) => {
           const inline = item.kind === "image" || item.kind === "audio";
-          const showInline = inline && item.can_open && !broken[item.id];
+          // Files attached to a message are previewed in their chat bubble;
+          // the card keeps a compact row (and Delete) for them.
+          const inBubble = Boolean(item.message_id);
+          const showInline = inline && item.can_open && !broken[item.id] && !inBubble;
           return (
             <li
               key={item.id}
@@ -203,7 +152,10 @@ export default function MediaCard({ conversationId }: { conversationId: number }
                   onError={() => setBroken((current) => ({ ...current, [item.id]: true }))}
                 />
               ) : null}
-              {inline && (broken[item.id] || !item.can_open) ? (
+              {inBubble && inline && item.can_open ? (
+                <p className="mt-1 text-[10px] text-ink-3">Shown in the conversation.</p>
+              ) : null}
+              {inline && !inBubble && (broken[item.id] || !item.can_open) ? (
                 <p className="mt-1 text-[10px] text-ink-3">
                   No longer available from the channel.
                 </p>

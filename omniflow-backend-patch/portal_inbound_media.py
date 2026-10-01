@@ -90,7 +90,7 @@ FETCH_TIMEOUT = _env_int("OF_MEDIA_STORE_FETCH_TIMEOUT", 8, 2, 30)
 PURGE_EVERY_SECONDS = _env_int("OF_MEDIA_STORE_PURGE_EVERY_SECONDS", 900,
                                60, 86400)
 MAX_PER_MESSAGE = 5
-LIST_LIMIT = 50
+LIST_LIMIT = _env_int("OF_MEDIA_STORE_LIST_LIMIT", 100, 10, 500)
 
 KINDS_WITH_COPY = ("image", "audio")
 VIDEO_TYPES = ("video", "reel", "ig_reel")
@@ -126,7 +126,11 @@ _DDL = (
     " (client_id, id) WHERE content IS NOT NULL;"
     " CREATE UNIQUE INDEX IF NOT EXISTS portal_inbound_media_ref_uq ON "
     + TABLE + " (client_id, channel, external_id, media_index)"
-    " WHERE external_id <> ''"
+    " WHERE external_id <> '';"
+    # §215: the message row the file arrived with (chat-bubble previews).
+    " ALTER TABLE " + TABLE + " ADD COLUMN IF NOT EXISTS message_id BIGINT;"
+    " CREATE INDEX IF NOT EXISTS portal_inbound_media_msg_idx ON " + TABLE +
+    " (client_id, message_id) WHERE message_id IS NOT NULL"
 )
 
 _DDL_READY = False
@@ -396,7 +400,8 @@ def usage(cur, client_id: int) -> Dict[str, int]:
 
 def capture(cur, client_id: int, conversation_id: Optional[int],
             item: Dict[str, Any], blobs: Optional[List[bytes]] = None,
-            budget: Optional[Budget] = None) -> int:
+            budget: Optional[Budget] = None,
+            message_id: Optional[int] = None) -> int:
     """Record every inbound attachment; keep copies of images and voice
     notes. Returns the number of copies stored. Never raises; savepoint
     guarded so the customer's message is never affected."""
@@ -426,6 +431,10 @@ def capture(cur, client_id: int, conversation_id: Optional[int],
         channel = str(item.get("channel") or "")[:40]
         contact = str(item.get("from") or "")[:200]
         external_id = str(item.get("id") or "")[:300]
+        try:
+            message_id = int(message_id) if message_id else None
+        except (TypeError, ValueError):
+            message_id = None
         for index, entry in entries:
             kind = classify(entry)
             url = _public_url(entry.get("url"))
@@ -461,15 +470,15 @@ def capture(cur, client_id: int, conversation_id: Optional[int],
                 "INSERT INTO " + TABLE +
                 " (client_id, conversation_id, channel, contact_id,"
                 " external_id, media_index, kind, mime, size_bytes,"
-                " source_url, content, status, note, stored_at)"
+                " source_url, content, status, note, stored_at, message_id)"
                 " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,"
-                " %s, CASE WHEN %s THEN NOW() ELSE NULL END)"
+                " %s, CASE WHEN %s THEN NOW() ELSE NULL END, %s)"
                 " ON CONFLICT (client_id, channel, external_id, media_index)"
                 " WHERE external_id <> '' DO NOTHING",
                 (client_id, conversation_id, channel, contact, external_id,
                  index, kind, mime or str(entry.get("mime") or "")[:80],
                  size, url, _binary(content) if content else None, status,
-                 note, bool(content)),
+                 note, bool(content), message_id),
             )
             if content:
                 stored += 1
@@ -617,6 +626,8 @@ def _row_public(row: Dict[str, Any]) -> Dict[str, Any]:
     has_link = bool(row.get("has_link"))
     return {
         "id": int(row.get("id") or 0),
+        "message_id": int(row["message_id"]) if row.get("message_id")
+        else None,
         "kind": str(row.get("kind") or "file"),
         "mime": str(row.get("mime") or ""),
         "size_bytes": int(row.get("size_bytes") or 0),
@@ -657,13 +668,24 @@ def list_conversation_media(conversation_id: int):
                                               "message": "Conversation not"
                                                          " found."}}), 404
                 ensure_ddl(cur)
+                # message_id: recorded at capture (§215). Files captured
+                # before that are matched to the one inbound message
+                # written in the same transaction (same NOW()); when a
+                # batch makes that ambiguous the file stays unattached.
+                msgs = portal_db._q(portal_db.MSGS_TABLE)
                 cur.execute(
-                    "SELECT id, kind, mime, size_bytes, status, note, channel,"
-                    " external_id, created_at,"
-                    " (content IS NOT NULL) AS has_copy,"
-                    " (source_url <> '') AS has_link FROM " + TABLE +
-                    " WHERE client_id = %s AND conversation_id = %s"
-                    " ORDER BY id DESC LIMIT %s",
+                    "SELECT f.id, f.kind, f.mime, f.size_bytes, f.status,"
+                    " f.note, f.channel, f.external_id, f.created_at,"
+                    " (f.content IS NOT NULL) AS has_copy,"
+                    " (f.source_url <> '') AS has_link,"
+                    " COALESCE(f.message_id, (SELECT MIN(m.id) FROM " + msgs +
+                    " m WHERE m.client_id = f.client_id"
+                    " AND m.conversation_id = f.conversation_id"
+                    " AND m.direction = 'in' AND m.created_at = f.created_at"
+                    " HAVING COUNT(*) = 1)) AS message_id"
+                    " FROM " + TABLE + " f"
+                    " WHERE f.client_id = %s AND f.conversation_id = %s"
+                    " ORDER BY f.id DESC LIMIT %s",
                     (client_id, conversation_id, LIST_LIMIT),
                 )
                 items = [_row_public(r) for r in portal_db.rows(cur)]

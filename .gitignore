@@ -35,7 +35,7 @@ yarn-error.log*
 # env files (commit only the secret-free example)
 .env*
 !.env.example
-
+.env.example
 # vercel
 .vercel
 

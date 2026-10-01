@@ -14873,6 +14873,8 @@ export function testMediaAi(
 
 export interface InboundMediaItem {
   id: number;
+  /** §215: message the file arrived with (null when it cannot be matched). */
+  message_id: number | null;
   /** image | audio | video | file */
   kind: string;
   mime: string;
