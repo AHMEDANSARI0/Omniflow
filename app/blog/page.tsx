@@ -8,11 +8,14 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Reveal from "../components/Reveal";
 import { formatDate, listPosts } from "../../lib/blog";
+import { BLOG_COPY, PAGE_HEROES } from "../../lib/marketing/pages";
+import { SITE_ROUTES } from "../../lib/marketing/site";
 
 export const metadata: Metadata = {
   title: "Blog",
   description:
-    "Insights for the automated business — AI automation, WhatsApp automation, customer support and workflow playbooks from the OmniFlow team.",
+    "Insights for the automated business: AI automation, WhatsApp automation, customer support and workflow playbooks from the OmniFlow team.",
+  alternates: { canonical: "/blog" },
 };
 
 export default async function BlogPage() {
@@ -21,18 +24,7 @@ export default async function BlogPage() {
 
   return (
     <PageShell>
-      <PageHero
-        eyebrow="Blog"
-        title={
-          <>
-            Insights for the{" "}
-            <em className="of-gradient bg-clip-text italic text-transparent">
-              automated business.
-            </em>
-          </>
-        }
-        copy="Practical thinking on AI automation, WhatsApp-first commerce and running customer conversations that don't eat your day."
-      />
+      <PageHero hero={PAGE_HEROES.blog} />
 
       <Section tone="canvas">
         {featured ? (
@@ -65,15 +57,15 @@ export default async function BlogPage() {
                       {featured.reading_minutes} min read
                     </span>
                   </div>
-                  <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand">
-                    Read the article
+                  <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-2">
+                    {BLOG_COPY.readArticle}
                     <ArrowRight className="h-4 w-4" aria-hidden />
                   </span>
                 </div>
-                <div className="of-gradient relative hidden min-h-[260px] items-center justify-center lg:flex">
-                  <p className="px-10 font-display text-2xl font-semibold leading-snug text-white/95">
-                    “Customers don&apos;t wait. Neither should your
-                    answers.”
+                <div className="relative hidden min-h-[260px] items-center justify-center border-l border-line bg-[linear-gradient(180deg,#F5F4FF_0%,#FFFFFF_100%)] lg:flex">
+                  <div aria-hidden className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_0%,rgba(99,91,255,0.14),transparent_70%)]" />
+                  <p className="relative px-10 font-display text-2xl font-semibold leading-snug text-ink">
+                    {BLOG_COPY.featuredQuote}
                   </p>
                 </div>
               </a>
@@ -113,8 +105,8 @@ export default async function BlogPage() {
 
         <Reveal>
           <div className="mt-12 text-center">
-            <Button href="/dashboard/login" variant="secondary">
-              Get the platform these posts are about
+            <Button href={SITE_ROUTES.start} variant="secondary">
+              {BLOG_COPY.indexCta}
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
           </div>

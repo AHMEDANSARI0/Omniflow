@@ -14,15 +14,15 @@ export interface HeroContent extends Record<string, unknown> {
 }
 
 export const HERO_DEFAULTS: HeroContent = {
-  badge: "AI customer automation platform",
-  heading_line1: "Your business,",
-  heading_line2: "on autopilot.",
+  badge: "AI-powered customer automation",
+  heading_line1: "Turn every customer conversation",
+  heading_line2: "into action.",
   description:
-    "OmniFlow connects the channels your customers already use with AI that understands your business, responds in context and triggers the right actions automatically.",
-  primary_button: "Get Started",
+    "OmniFlow understands customer messages, applies your business context and automatically triggers the right response, workflow or action.",
+  primary_button: "Start Building",
   secondary_button: "See How It Works",
   channels_label: "Works with the channels your customers already use",
-  integrations: "WhatsApp, Instagram, Messenger, Telegram, TikTok",
+  integrations: "WhatsApp, Telegram, Website chat, Instagram, Messenger",
 };
 
 export interface FinalCtaContent extends Record<string, unknown> {
@@ -37,14 +37,14 @@ export interface FinalCtaContent extends Record<string, unknown> {
 
 export const FINAL_CTA_DEFAULTS: FinalCtaContent = {
   badge: "Get started",
-  heading_line1: "Stop managing every",
-  heading_line2: "conversation manually",
+  heading_line1: "Every conversation can become",
+  heading_line2: "an automated workflow.",
   description:
-    "Let OmniFlow handle the repetitive work while your team focuses on what matters. WhatsApp automation is live today — more channels as OmniFlow expands.",
-  primary_button: "Get Started",
+    "Connect a channel, teach OmniFlow your business and launch your first automation. Your team steps in only where a human makes the difference.",
+  primary_button: "Start Building Free",
   secondary_button: "See How It Works",
   notes:
-    "Pricing — coming soon | Early access opening soon | WhatsApp today, multi-channel by design",
+    "WhatsApp, Telegram and website chat live | Human handoff anytime | Pricing announced before public launch",
 };
 export interface FooterContent extends Record<string, unknown> {
   description: string;
@@ -275,16 +275,16 @@ export interface ProblemSolutionContent extends Record<string, unknown> {
 
 export const PROBLEM_SOLUTION_DEFAULTS: ProblemSolutionContent = {
   badge: "From chaos to automation",
-  heading_line1: "Stop managing conversations.",
-  heading_line2: "Start automating them.",
+  heading_line1: "What breaks in customer conversations,",
+  heading_line2: "and how OmniFlow fixes it.",
   description:
-    "Every customer conversation creates work. OmniFlow turns that work into intelligent, automated workflows that keep running without constant human intervention.",
-  problem_title: "The old way",
+    "Every customer conversation creates work. OmniFlow turns that work into intelligent workflows that keep running without constant manual effort.",
+  problem_title: "What breaks in customer conversations",
   problems:
-    "Customers waiting for replies | Messages scattered across platforms | Repetitive manual conversations",
-  solution_title: "The intelligent way",
+    "Slow replies lose interested buyers | The same questions answered by hand all day | Leads go cold without a follow-up | Messages scattered across channels and phones | Nobody knows which chats are high intent | Context is lost when a chat changes hands",
+  solution_title: "How OmniFlow solves it",
   solutions:
-    "Instant AI-powered responses | One intelligent automation layer | Workflows that run automatically",
+    "Instant replies grounded in your business knowledge | Repeated questions answered automatically, in context | Follow-ups triggered by your workflow rules | Every channel in one automation layer | Intent detection flags buyers ready to act | Human handoff with the full conversation history",
   m1_value: "24/7",
   m1_label: "Always available",
   m2_value: "AI",
@@ -417,26 +417,26 @@ export interface HowItWorksContent extends Record<string, unknown> {
 
 export const HOW_IT_WORKS_DEFAULTS: HowItWorksContent = {
   badge: "How it works",
-  heading_line1: "Build once.",
-  heading_line2: "Let it run.",
+  heading_line1: "Live in four steps.",
+  heading_line2: "Then it runs itself.",
   description:
-    "Turn repetitive conversations into intelligent workflows with a simple visual automation system.",
-  s1_type: "Trigger",
-  s1_title: "Customer sends a message",
+    "Set OmniFlow up once and every conversation is handled the same reliable way, on every connected channel.",
+  s1_type: "Connect",
+  s1_title: "Connect your channels",
   s1_desc:
-    "Start your automation whenever a customer reaches out through a connected channel.",
-  s2_type: "AI",
-  s2_title: "OmniFlow understands",
+    "Link WhatsApp, Telegram or your website chat. Every message lands in one workspace.",
+  s2_type: "Teach",
+  s2_title: "Teach it your business",
   s2_desc:
-    "AI analyzes the message, conversation context and customer intent in real time.",
-  s3_type: "Decision",
-  s3_title: "Choose what happens next",
+    "Add products, policies and FAQs. OmniFlow answers from your knowledge, not from guesses.",
+  s3_type: "Build",
+  s3_title: "Build your workflows",
   s3_desc:
-    "Use intelligent conditions and workflow logic to decide the right next action.",
-  s4_type: "Action",
-  s4_title: "Automation takes action",
+    "Start from a template or set triggers, conditions and actions in the visual builder.",
+  s4_type: "Run",
+  s4_title: "Let it run",
   s4_desc:
-    "Send a reply, qualify a lead, route the conversation or trigger another workflow.",
+    "OmniFlow replies, qualifies, follows up and routes, and hands off to your team when needed.",
   bottom_note: "Your workflows can evolve as your business grows.",
 };
 export interface FaqContent extends Record<string, unknown> {
@@ -471,7 +471,7 @@ export const FAQ_DEFAULTS: FaqContent = {
   q2: "How long does setup take?",
   a2: "OmniFlow is designed so you can go live quickly: connect a channel, add your business details and switch on your assistant. During early access, our team personally helps you get set up.",
   q3: "Which channels are supported?",
-  a3: "We're launching with WhatsApp first, with Instagram, Messenger and Telegram rolling out next. The platform is built multi-channel from day one, so new channels plug into the same automation layer.",
+  a3: "WhatsApp, Telegram and website chat are live today. Instagram is in early access, and Messenger and TikTok are on the roadmap. Every channel plugs into the same automation layer, so your workflows carry over.",
   q4: "Is my customer data secure?",
   a4: "Your customer conversations belong to your business — full stop. OmniFlow is being built privacy-first: you define what the AI can say and do, every automation step is visible, and your data is never shared.",
   q5: "Do I need technical skills to use OmniFlow?",

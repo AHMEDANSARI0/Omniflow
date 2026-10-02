@@ -1,18 +1,21 @@
-"use client";
-
-import { motion } from "motion/react";
 import { ArrowRight, PlayCircle } from "lucide-react";
 import type { HeroContent } from "../../lib/content-defaults";
+import { SITE_ROUTES } from "../../lib/marketing/site";
+import { HERO_SECTION } from "../../lib/marketing/sections";
+import { statusForChannel } from "../../lib/marketing/integrations";
 import Button from "./ui/Button";
 import Container from "./ui/Container";
-import WorkflowAnimation from "./WorkflowAnimation";
+import { AvailabilityBadge } from "./ui/StatusIndicator";
+import HeroVisual from "./hero/HeroVisual";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
+const delay = (ms: number) => ({ ["--of-delay" as string]: `${ms}ms` });
 
 /**
- * The hero: light, calm, product-led. Copy on the left, the live
- * OmniFlow automation run on the right, and an honest channel strip
- * underneath — WhatsApp is live today, the rest are on the roadmap.
+ * The hero (§216): server-rendered, CSS-only entrance (no animation
+ * library on first paint). Copy is CMS-driven (site_content.hero); the
+ * visual is a reserved AI slot (see lib/marketing/site.ts). Channel
+ * availability comes from the shared integrations data, so it stays
+ * honest everywhere.
  */
 export default function Hero({ content }: { content: HeroContent }) {
   const channels = content.integrations
@@ -21,111 +24,73 @@ export default function Hero({ content }: { content: HeroContent }) {
     .filter(Boolean);
 
   return (
-    <section className="of-hero-glow relative overflow-hidden bg-canvas">
-      <Container className="pb-16 pt-28 sm:pb-20 sm:pt-32 lg:pt-36">
-        <div className="grid items-center gap-14 lg:grid-cols-[1.02fr_0.98fr]">
-          <div>
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, ease: EASE }}
-              className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand-soft px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-2"
+    <section className="of-hero-glow relative overflow-hidden" aria-labelledby="hero-title">
+      <div aria-hidden className="of-grid-fade pointer-events-none absolute inset-0 opacity-60" />
+      <Container wide className="relative pb-16 pt-32 sm:pb-20 sm:pt-36 lg:pb-24 lg:pt-44">
+        <div className="grid items-center gap-14 lg:grid-cols-[1.04fr_0.96fr] lg:gap-8">
+          <div className="text-center lg:text-left">
+            <p
+              className="of-enter inline-flex items-center gap-2 rounded-full border border-brand/15 bg-white/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
             >
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brand" />
               {content.badge}
-            </motion.p>
+            </p>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.06, ease: EASE }}
-              className="mt-5 font-display text-[44px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink sm:text-[56px] lg:text-[68px]"
+            <h1
+              id="hero-title"
+              className="of-enter mt-6 text-balance font-display text-[42px] font-semibold leading-[1.03] tracking-[-0.035em] text-ink sm:text-[58px] lg:text-[68px] xl:text-[74px]"
+              style={delay(60)}
             >
               {content.heading_line1}{" "}
-              <em className="of-gradient bg-clip-text italic text-transparent">
+              <span className="of-gradient bg-clip-text text-transparent">
                 {content.heading_line2}
-              </em>
-            </motion.h1>
+              </span>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.12, ease: EASE }}
-              className="mt-5 max-w-xl text-base leading-relaxed text-ink-2 sm:text-lg"
+            <p
+              className="of-enter mx-auto mt-6 max-w-xl text-pretty text-base leading-relaxed text-ink-2 sm:text-lg lg:mx-0"
+              style={delay(120)}
             >
               {content.description}
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.18, ease: EASE }}
-              className="mt-8 flex flex-wrap items-center gap-3"
+            <div
+              className="of-enter mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start"
+              style={delay(180)}
             >
-              <Button href="/dashboard/login" size="lg">
+              <Button href={SITE_ROUTES.start} size="lg">
                 {content.primary_button}
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Button>
-              <Button href="/#how-it-works" variant="secondary" size="lg">
+              <Button href={SITE_ROUTES.howItWorks} variant="secondary" size="lg">
                 <PlayCircle className="h-4 w-4 text-brand" aria-hidden />
                 {content.secondary_button}
               </Button>
-            </motion.div>
+            </div>
+
+            {channels.length > 0 ? (
+              <div className="of-enter mt-12" style={delay(260)}>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">
+                  {content.channels_label}
+                </p>
+                <ul className="mt-3.5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                  {channels.map((name) => (
+                    <li
+                      key={name}
+                      className="inline-flex items-center gap-2 rounded-full border border-line bg-white/90 py-1 pl-3 pr-1.5 text-[13px] font-medium text-ink shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+                    >
+                      {name}
+                      <AvailabilityBadge status={statusForChannel(name)} size="xs" />
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2.5 text-xs text-ink-3">{HERO_SECTION.channelsNote}</p>
+              </div>
+            ) : null}
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-            className="flex justify-center lg:justify-end"
-          >
-            <WorkflowAnimation />
-          </motion.div>
+          <HeroVisual />
         </div>
-
-        {/* channel strip — honest availability */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-          className="mt-16 border-t border-line/80 pt-8 sm:mt-20"
-        >
-          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">
-            {content.channels_label}
-          </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
-            {channels.map((name) => {
-              const live = name.toLowerCase() === "whatsapp";
-              return (
-                <span
-                  key={name}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13px] font-medium ${
-                    live
-                      ? "border-ok/25 bg-ok-soft text-ok"
-                      : "border-line bg-white text-ink-2"
-                  }`}
-                >
-                  {live ? (
-                    <span
-                      aria-hidden
-                      className="of-pulse h-1.5 w-1.5 rounded-full bg-ok"
-                    />
-                  ) : null}
-                  {name}
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-wider ${
-                      live ? "text-ok" : "text-ink-3"
-                    }`}
-                  >
-                    {live ? "Live" : "Soon"}
-                  </span>
-                </span>
-              );
-            })}
-          </div>
-          <p className="mt-3 text-center text-xs text-ink-3">
-            WhatsApp today. More channels as OmniFlow expands.
-          </p>
-        </motion.div>
       </Container>
     </section>
   );

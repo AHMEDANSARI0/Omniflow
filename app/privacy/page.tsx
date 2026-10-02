@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Privacy",
   description:
     "How OmniFlow handles your data and your customers' conversations: ownership, minimization, access and control.",
+  alternates: { canonical: "/privacy" },
 };
 
 const SECTIONS = [
@@ -49,9 +50,9 @@ export default function PrivacyPage() {
         title={
           <>
             Your customers&apos; data{" "}
-            <em className="of-gradient bg-clip-text italic text-transparent">
+            <span className="of-gradient bg-clip-text text-transparent">
               stays yours.
-            </em>
+            </span>
           </>
         }
         copy="Plain-language answers on how OmniFlow stores, uses and protects business and customer data."

@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "FAQ",
   description:
     "Answers about OmniFlow: pricing, setup time, supported channels, data security, human handoff and more.",
+  alternates: { canonical: "/faq" },
 };
 
 export default async function FaqPage() {
@@ -46,9 +47,9 @@ export default async function FaqPage() {
         title={
           <>
             {faqContent.heading_line1}{" "}
-            <em className="of-gradient bg-clip-text italic text-transparent">
+            <span className="of-gradient bg-clip-text text-transparent">
               {faqContent.heading_line2}
-            </em>
+            </span>
           </>
         }
         copy={faqContent.description}

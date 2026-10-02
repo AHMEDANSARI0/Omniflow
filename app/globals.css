@@ -42,6 +42,11 @@
   --color-danger: #dc2626;
   --color-danger-soft: #fef2f2;
 
+  /* Marketing additions (§216) — new names only, no existing value changed */
+  --color-tint: #eef2ff;
+  --color-muted: #98a2b3;
+  --color-success: #12b76a;
+
   /* Dark sections */
   --color-night: #080d18;
   --color-night-2: #0d1422;
@@ -426,11 +431,34 @@ html.of-js .of-reveal:not(.of-reveal-in) {
   transform: translateY(24px);
 }
 
+/* Rises in with a soft bounce, staggered by --d (set by Reveal).
+   backwards fill only, so hover transforms stay free afterwards. */
 html.of-js .of-reveal.of-reveal-in {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: of-rise 0.9s cubic-bezier(0.34, 1.4, 0.64, 1) var(--d, 0ms) backwards;
+}
+
+@keyframes of-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(48px) scale(0.96);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.of-js .of-reveal:not(.of-reveal-in) {
+    opacity: 1;
+    transform: none;
+  }
+  html.of-js .of-reveal.of-reveal-in {
+    animation: none;
+  }
 }
 
 /* ============================================================
@@ -546,3 +574,368 @@ html.of-js .of-reveal.of-reveal-in {
   color: var(--color-ink-2);
 }
 
+/* ============================================================
+   §216 Marketing site — premium light system.
+   Scoped to .of-site (homepage + PageShell) so the dashboard and
+   admin keep their own tokens. Tailwind utilities read these vars.
+   ============================================================ */
+
+.of-site {
+  /* decorative glows bleed past the edge; clip (not hidden) keeps sticky working */
+  overflow-x: clip;
+
+  /* Design tokens */
+  --color-bg: #f8fafc;
+  --color-surface-muted: #f4f6f9;
+  --color-text: #101828;
+  --color-text-muted: #667085;
+  --color-border: #e4e7ec;
+  --color-primary: #635bff;
+  --color-secondary: #0ea5e9;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px -16px rgba(16, 24, 40, 0.14);
+  --shadow-lg: 0 2px 6px rgba(16, 24, 40, 0.04), 0 28px 60px -28px rgba(16, 24, 40, 0.24);
+  --container-width: 1200px;
+  --navbar-height: 76px;
+  --navbar-height-scrolled: 60px;
+  --navbar-offset: 16px;
+  --section-spacing: clamp(80px, 9vw, 128px);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.3, 1.32, 0.5, 1);
+
+  /* Tailwind theme vars, re-pointed for the marketing site */
+  --color-canvas: var(--color-bg);
+  --color-surface: #ffffff;
+  --color-soft: var(--color-surface-muted);
+  --color-ink: var(--color-text);
+  --color-ink-2: #475467;
+  --color-ink-3: var(--color-text-muted);
+  --color-line: var(--color-border);
+  --color-line-2: #d0d5dd;
+  --color-brand: var(--color-primary);
+  --color-brand-2: #4f46e5;
+  --color-brand-soft: #f0efff;
+  --color-ai: #7a5af8;
+  --color-ai-soft: #f4f3ff;
+  --color-flow: var(--color-secondary);
+  --color-flow-soft: #f0f9ff;
+  /* success: #12B76A for dots/fills; darker green for text contrast (AA) */
+  --color-ok: #067647;
+  --color-ok-soft: #ecfdf3;
+  --shadow-card: var(--shadow-md);
+  --shadow-card-hover: var(--shadow-lg);
+  --shadow-cta: 0 10px 24px -12px rgba(99, 91, 255, 0.6);
+
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.of-site ::selection {
+  background: rgba(99, 91, 255, 0.16);
+}
+
+.of-site :focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Subtle surfaces */
+.of-site .of-hero-glow {
+  background:
+    radial-gradient(46rem 30rem ellipse at 82% -8%, rgba(99, 91, 255, 0.11), transparent 62%),
+    radial-gradient(36rem 26rem ellipse at 6% 4%, rgba(14, 165, 233, 0.07), transparent 58%),
+    var(--color-bg);
+}
+.of-site .of-gradient {
+  background-image: linear-gradient(120deg, #635bff 0%, #7a5af8 50%, #0ea5e9 100%);
+}
+.of-tint-glow {
+  background:
+    radial-gradient(40rem 26rem ellipse at 50% 0%, rgba(99, 91, 255, 0.1), transparent 65%),
+    radial-gradient(30rem 20rem ellipse at 100% 100%, rgba(14, 165, 233, 0.08), transparent 60%),
+    #f5f6ff;
+}
+.of-grid-fade {
+  background-image:
+    linear-gradient(rgba(16, 24, 40, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 24, 40, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+}
+
+/* ---------- Navbar ---------- */
+
+.of-nav {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 50;
+  padding-top: var(--navbar-offset);
+  pointer-events: none;
+  transition: padding-top 0.45s var(--ease-out);
+}
+.of-nav-bar {
+  pointer-events: auto;
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: calc(100% - 32px);
+  max-width: 1280px;
+  height: var(--navbar-height);
+  padding-inline: 28px;
+  border-radius: var(--radius-lg);
+  /* glassmorphism: translucent white, frosted blur, light edge */
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.32));
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 8px 32px -12px rgba(16, 24, 40, 0.18);
+  transition:
+    max-width 0.5s var(--ease-out),
+    height 0.45s var(--ease-out),
+    padding 0.45s var(--ease-out),
+    border-radius 0.45s var(--ease-out),
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+  animation: of-nav-enter 0.95s var(--ease-spring) both;
+}
+.of-nav[data-scrolled="true"] {
+  padding-top: 10px;
+}
+.of-nav[data-scrolled="true"] .of-nav-bar {
+  max-width: 1040px;
+  height: var(--navbar-height-scrolled);
+  padding-inline: 16px;
+  border-radius: var(--radius-md);
+  border-color: rgba(255, 255, 255, 0.7);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.45));
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 1px 2px rgba(16, 24, 40, 0.05),
+    0 16px 40px -18px rgba(16, 24, 40, 0.28);
+}
+@keyframes of-nav-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(26px) scale(0.98);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.of-nav-panel {
+  pointer-events: auto;
+  margin: 8px auto 0;
+  width: calc(100% - 20px);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: var(--shadow-lg);
+  transform-origin: top center;
+  transition: opacity 0.22s ease, transform 0.28s var(--ease-out), visibility 0s linear 0.28s;
+}
+.of-nav-panel[data-open="false"] {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+  visibility: hidden;
+}
+.of-nav-panel[data-open="true"] {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition: opacity 0.22s ease, transform 0.28s var(--ease-out), visibility 0s;
+}
+@media (max-width: 1023px) {
+  .of-site {
+    --navbar-height: 64px;
+    --navbar-height-scrolled: 58px;
+    --navbar-offset: 10px;
+  }
+  .of-nav-bar {
+    width: calc(100% - 20px);
+    padding-inline: 14px;
+    /* lighter blur keeps scrolling smooth on phones */
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+  }
+  .of-nav[data-scrolled="true"] .of-nav-bar {
+    padding-inline: 12px;
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .of-nav-bar,
+  .of-nav[data-scrolled="true"] .of-nav-bar {
+    background: rgba(255, 255, 255, 0.94);
+  }
+}
+
+/* ---------- Entrances ---------- */
+
+/* Page load: content bounces up into place. */
+@keyframes of-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(44px);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(-8px);
+  }
+  78% {
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.of-enter {
+  animation: of-enter 0.95s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--of-delay, 0ms);
+}
+
+/* ---------- Motion helpers (compositor-only) ---------- */
+
+/* A light streak travelling along a connector (any length). */
+.of-connector {
+  /* always paired with Tailwind's absolute (which also anchors ::after) */
+  overflow: hidden;
+  background: repeating-linear-gradient(90deg, rgba(99, 91, 255, 0.35) 0 6px, transparent 6px 12px);
+}
+.of-connector-v {
+  background: repeating-linear-gradient(180deg, rgba(99, 91, 255, 0.35) 0 6px, transparent 6px 12px);
+}
+.of-connector::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(99, 91, 255, 0.95), transparent);
+  animation: of-streak-x 2.6s var(--ease-out) infinite;
+}
+.of-connector-v::after {
+  width: 100%;
+  height: 35%;
+  background: linear-gradient(180deg, transparent, rgba(99, 91, 255, 0.95), transparent);
+  animation-name: of-streak-y;
+}
+@keyframes of-streak-x {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+@keyframes of-streak-y {
+  from {
+    transform: translateY(-110%);
+  }
+  to {
+    transform: translateY(300%);
+  }
+}
+
+/* Infinite logo marquee; duplicates are aria-hidden in markup. */
+.of-marquee-wrap {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.of-marquee {
+  display: flex;
+  width: max-content;
+  gap: 12px;
+  animation: of-marquee var(--of-marquee-duration, 48s) linear infinite;
+}
+.of-marquee[data-reverse="true"] {
+  animation-direction: reverse;
+}
+.of-marquee-wrap:hover .of-marquee,
+.of-marquee-wrap:focus-within .of-marquee {
+  animation-play-state: paused;
+}
+@keyframes of-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - 6px));
+  }
+}
+
+/* Live demo step states */
+.of-step {
+  transition: opacity 0.35s ease, transform 0.35s var(--ease-out);
+}
+.of-step[data-state="idle"] {
+  opacity: 0.38;
+  transform: translateY(4px);
+}
+.of-step[data-state="running"],
+.of-step[data-state="done"] {
+  opacity: 1;
+  transform: none;
+}
+.of-bubble {
+  transition: opacity 0.4s ease, transform 0.45s var(--ease-out);
+}
+.of-bubble[data-shown="false"] {
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+}
+.of-bubble[data-shown="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Card hover elevation */
+.of-hover-lift {
+  transition: transform 0.3s var(--ease-out, ease-out), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.of-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-line-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .of-nav-bar,
+  .of-enter {
+    animation: none;
+  }
+  .of-connector::after {
+    display: none;
+  }
+  .of-marquee {
+    animation: none;
+    flex-wrap: wrap;
+    width: auto;
+    justify-content: center;
+  }
+  .of-marquee [data-duplicate="true"] {
+    display: none;
+  }
+  .of-hover-lift:hover {
+    transform: none;
+  }
+}

@@ -66,22 +66,46 @@ for path, needle in [
     check("primitive " + path.rsplit("/", 1)[-1] + " " + needle[:20],
           needle in read(path), "pin")
 
-print("== navbar ==")
+print("== navbar (redesign v2) ==")
 
 NAV = read("app/components/Navbar.tsx")
-for needle in ("window.scrollY > 12", "backdrop-blur-xl",
-               '"/dashboard/login"', '"/use-cases"', '"/features"',
-               '"/blog"', '"/pricing"', "aria-expanded={open}",
-               "AnimatePresence"):
-    check("navbar " + needle[:24], needle in NAV, "pin")
+NAVCFG = read("lib/marketing/navigation.ts")
+SITE = read("lib/marketing/site.ts")
+CSS = read("app/globals.css")
+for needle in ("useScrolled(NAVBAR_SCROLL_THRESHOLD)", "NAV_ITEMS.map",
+               "NAV_ACTIONS.primary", "aria-expanded={open}",
+               "aria-controls={panelId}", '"Escape"', "inert={!open}"):
+    check("navbar " + needle[:28], needle in NAV, "pin")
+check("navbar no animation lib", "motion/react" not in NAV
+      and "AnimatePresence" not in NAV, "css only")
+check("navbar threshold constant", "NAVBAR_SCROLL_THRESHOLD = 40" in SITE, "config")
+for needle in ('"Platform"', '"Solutions"', '"Integrations"', '"How it works"',
+               '"Pricing"', '"Resources"', '"Log in"', '"Start Building"',
+               '"/dashboard/login"'):
+    check("nav config " + needle, needle in NAVCFG + SITE, "config")
+for needle in (".of-nav-bar {", 'data-scrolled="true"', "@keyframes of-nav-enter",
+               "backdrop-filter: blur(", ".of-nav-panel[data-open"):
+    check("navbar css " + needle[:24], needle in CSS, "css")
+check("navbar glassmorphism", "backdrop-filter: blur(20px) saturate(180%);" in CSS
+      and "inset 0 1px 0 rgba(255, 255, 255, 0.75)" in CSS, "glass")
+check("site clips edge glows", "overflow-x: clip;" in CSS, "mobile overflow")
+check("load bounce-up", "@keyframes of-enter" in CSS and "transform: translateY(-8px);" in CSS, "bounce")
+check("card scroll rise", "@keyframes of-rise" in CSS and "var(--d, 0ms) backwards" in CSS, "rise")
+TPL = read("app/components/home/AutomationTemplates.tsx")
+check("templates reveal on scroll", '<Reveal as="li" key={template.id}>' in TPL
+      and 'className="of-enter"' not in TPL, "scroll")
 
 print("== footer ==")
 
 FOOT = read("app/components/Footer.tsx")
+check("footer config driven", "FOOTER_COLUMNS.map" in FOOT, "config")
 for needle in ('href: "/features"', 'href: "/blog"', 'href: "/about"',
-               'href: "/privacy"', 'href: "/terms"',
-               'href: "/security"', 'href: "/integrations"',
-               "content.status_label", "content.description",
+               'href: "/privacy"', 'href: "/terms"', 'href: "/contact"',
+               'href: "/security"', 'href: "/integrations"'):
+    check("footer " + needle[:24], needle in NAVCFG, "pin")
+for title in ("Product", "Solutions", "Integrations", "Resources", "Company", "Legal"):
+    check("footer column " + title, 'title: "%s"' % title in NAVCFG, "cols")
+for needle in ("content.status_label", "content.description",
                '© {new Date().getFullYear()} OmniFlow'):
     check("footer " + needle[:24], needle in FOOT, "pin")
 
@@ -94,44 +118,52 @@ check("shell cms footer", 'getSectionContent("footer", FOOTER_DEFAULTS)'
       in SHELL, "cms")
 check("shell skip link", 'href="#main"' in SHELL, "a11y")
 
-print("== homepage (P2) ==")
+import os
+print("== homepage (redesign v2) ==")
 
 PAGE = read("app/page.tsx")
 order = [PAGE.index(marker) for marker in (
-    "<Hero content", "<ProblemSolution content", "<AIIntelligence content",
-    "<CustomerMemory content", "<HowItWorks content",
-    "<Features content", "<DashboardShowcase />",
-    "<MultiChannel content", "<UseCases content",
-    "<WhyOmniFlow content", "<Trust content", "<FAQ content",
+    "<Hero content", "<AIIntelligence content", "<ProblemSolution content",
+    "<AutomationTemplates />", "<HowItWorks content", "<Integrations />",
+    "<Features content", "<CustomerMemory content", "<LiveDemo />",
+    "<DashboardShowcase />", "<Trust content", "<FAQ content",
     "<FinalCTA content")]
 check("homepage order", order == sorted(order), order)
 check("jsonld before navbar", PAGE.index("application/ld+json")
       < PAGE.index("<Navbar />"), "seo")
+check("homepage canonical", 'canonical: "/"' in PAGE, "seo")
+check("homepage marketing scope", 'className="of-site' in PAGE, "tokens")
 check("old dark shell gone", 'bg-[#07111f]' not in PAGE, "light")
 
 HERO = read("app/components/Hero.tsx")
-check("hero is a motion island", "motion/react" in HERO, "island")
-check("hero honest channels", '"Soon"' in HERO
-      and "WhatsApp today. More channels as OmniFlow expands." in HERO,
-      "honesty")
-check("hero workflow island", 'import WorkflowAnimation from "./WorkflowAnimation"' in HERO, "run")
+check("hero has no animation lib", "motion/react" not in HERO, "lcp")
+check("hero honest channels", "statusForChannel(name)" in HERO
+      and "AvailabilityBadge" in HERO, "honesty")
+check("hero visual slot", "<HeroVisual />" in HERO, "slot")
+check("hero visual asset config", "heroVisualAsset: AIVisualAsset | null" in SITE, "config")
+check("workflow animation retired", not os.path.exists(ROOT + "app/components/WorkflowAnimation.tsx"), "removed")
 
-WF = read("app/components/WorkflowAnimation.tsx")
-for needle in ("Assalam o Alaikum, mujhe black hoodie medium size mein",
-               "Intent detected", "Workflow decision",
-               "Customer history", "Follow-up scheduled",
-               "prefers-reduced-motion"):
-    check("workflow " + needle[:28], needle in WF, "pin")
+INTEG = read("lib/marketing/integrations.ts")
+check("integration statuses honest", 'id: "whatsapp"' in INTEG
+      and 'status: "live"' in INTEG and 'status: "beta"' in INTEG
+      and 'status: "soon"' in INTEG, "honesty")
 
 SHOW = read("app/components/DashboardShowcase.tsx")
-check("showcase product ui", "Live conversations" in SHOW
-      and "WhatsApp connected" in SHOW, "ui")
+DASH = read("lib/marketing/dashboard.ts")
+check("showcase product ui", "DASHBOARD_PREVIEW" in SHOW
+      and '"Live conversations"' in DASH and '"Channel status"' in DASH, "ui")
+check("showcase sample-data caption", "sample data" in DASH, "honesty")
+
+CTA = read("app/components/FinalCTA.tsx")
+check("final cta light", "of-cta-gradient" not in CTA
+      and "night-outline" not in CTA, "light")
 
 DEFAULTS = read("lib/content-defaults.ts")
-check("hero defaults copy", '"Your business,"' in DEFAULTS
-      and '"on autopilot."' in DEFAULTS, "copy")
+check("hero defaults copy", '"Turn every customer conversation"' in DEFAULTS
+      and '"into action."' in DEFAULTS, "copy")
 check("ai defaults meet", '"Meet OmniFlow"' in DEFAULTS, "dark head")
-check("cta defaults copy", '"Stop managing every"' in DEFAULTS, "cta")
+check("cta defaults copy", '"Every conversation can become"' in DEFAULTS
+      and '"Start Building Free"' in DEFAULTS, "cta")
 check("hexgrid retired", "HEX" not in DEFAULTS, "n/a")
 
 import os

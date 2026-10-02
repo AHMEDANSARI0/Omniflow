@@ -1,4 +1,5 @@
 import type { FooterContent } from "../../lib/content-defaults";
+import { FOOTER_COLUMNS, FOOTER_TAGLINE } from "../../lib/marketing/navigation";
 import Container from "./ui/Container";
 import Logo from "./ui/Logo";
 
@@ -30,39 +31,9 @@ function InstagramIcon({ className }: IconProps) {
   );
 }
 
-const COLUMNS = [
-  {
-    title: "Product",
-    links: [
-      { label: "Features", href: "/features" },
-      { label: "Use cases", href: "/use-cases" },
-      { label: "Integrations", href: "/integrations" },
-      { label: "Pricing", href: "/pricing" },
-    ],
-  },
-  {
-    title: "Resources",
-    links: [
-      { label: "Blog", href: "/blog" },
-      { label: "FAQ", href: "/faq" },
-      { label: "Security", href: "/security" },
-      { label: "Contact", href: "/contact" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About", href: "/about" },
-      { label: "Get started", href: "/dashboard/login" },
-      { label: "Privacy", href: "/privacy" },
-      { label: "Terms", href: "/terms" },
-    ],
-  },
-];
-
 /**
- * The premium SaaS footer. Brand + description + honest status pill on
- * the left (all CMS-driven), route columns on the right.
+ * Site footer (§216). Brand, description and status pill are CMS-driven
+ * (site_content.footer); link columns come from lib/marketing/navigation.
  */
 export default function Footer({ content }: { content: FooterContent }) {
   const socials = [
@@ -73,19 +44,14 @@ export default function Footer({ content }: { content: FooterContent }) {
 
   return (
     <footer className="border-t border-line bg-white">
-      <Container className="py-14 lg:py-16">
-        <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+      <Container wide className="py-14 lg:py-16">
+        <div className="grid gap-10 lg:grid-cols-[1.4fr_3fr] lg:gap-12">
           <div>
             <Logo />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-ink-2">
-              {content.description}
-            </p>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-ink-2">{content.description}</p>
             {content.status_label ? (
               <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2">
-                <span
-                  aria-hidden
-                  className="of-pulse inline-block h-1.5 w-1.5 rounded-full bg-ok"
-                />
+                <span aria-hidden className="of-pulse inline-block h-1.5 w-1.5 rounded-full bg-success" />
                 {content.status_label}
               </p>
             ) : null}
@@ -98,42 +64,34 @@ export default function Footer({ content }: { content: FooterContent }) {
                     aria-label={label}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink-2 transition-colors hover:border-brand/40 hover:text-brand"
                   >
-                    <Icon className="h-4 w-4" aria-hidden />
+                    <Icon className="h-4 w-4" />
                   </a>
                 ))}
               </div>
             ) : null}
           </div>
 
-          {COLUMNS.map((column) => (
-            <nav key={column.title} aria-label={column.title}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-                {column.title}
-              </p>
-              <ul className="mt-4 space-y-2.5">
-                {column.links.map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-sm text-ink-2 transition-colors hover:text-brand"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 xl:grid-cols-6">
+            {FOOTER_COLUMNS.map((column) => (
+              <nav key={column.title} aria-label={column.title}>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{column.title}</p>
+                <ul className="mt-4 space-y-2.5">
+                  {column.links.map((link) => (
+                    <li key={link.label}>
+                      <a href={link.href} className="rounded text-sm text-ink-2 transition-colors hover:text-brand">
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ))}
+          </div>
         </div>
 
         <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-line pt-6 sm:flex-row sm:items-center">
-          <p className="text-xs text-ink-3">
-            © {new Date().getFullYear()} OmniFlow. All rights reserved.
-          </p>
-          <p className="text-xs text-ink-3">
-            The intelligent automation layer between a business and its
-            customers.
-          </p>
+          <p className="text-xs text-ink-3">© {new Date().getFullYear()} OmniFlow. All rights reserved.</p>
+          <p className="text-xs text-ink-3">{FOOTER_TAGLINE}</p>
         </div>
       </Container>
     </footer>

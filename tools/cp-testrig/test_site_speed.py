@@ -23,7 +23,10 @@ check("reveal observes", "IntersectionObserver" in reveal_src, "observer")
 check("reveal classes", '"of-reveal" +' in reveal_src and '" of-reveal-in"' in reveal_src, "classes")
 check("reveal lift prop", "lift" in reveal_src and '" of-lift"' in reveal_src, "lift")
 check("reveal dynamic tag", 'const Tag = as as "div";' in reveal_src, "tag")
-check("reveal disconnects", "observer.disconnect()" in reveal_src, "cleanup")
+check("reveal shared observer", "let shared: IntersectionObserver | null = null;" in reveal_src, "one observer")
+check("reveal unobserves", "shared?.unobserve(entry.target);" in reveal_src and "observer.unobserve(node);" in reveal_src, "cleanup")
+check("reveal auto stagger", "Math.min(index, STAGGER_MAX) * STAGGER_MS" in reveal_src, "stagger")
+check("reveal delay prop", "setShownDelay(delay ?? autoDelay)" in reveal_src and '"--d"' in reveal_src, "delay")
 
 print("== sections are server components ==")
 
@@ -52,7 +55,8 @@ check("of-js bootstrap", "document.documentElement.classList.add('of-js')" in la
 check("bootstrap before children", layout_src.find("dangerouslySetInnerHTML") < layout_src.find("{children}"), "order")
 
 hero_src = open(COMPONENTS + "/Hero.tsx").read()
-check("hero intentionally still motion", "motion/react" in hero_src, "hero")
+check("hero has no motion (CSS entrance only)", "motion/react" not in hero_src
+      and "of-enter" in hero_src, "hero")
 
 print("== team server split ==")
 

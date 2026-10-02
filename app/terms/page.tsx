@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Terms",
   description:
     "The terms that govern the use of OmniFlow: accounts, acceptable use, AI responsibility and service evolution.",
+  alternates: { canonical: "/terms" },
 };
 
 const SECTIONS = [
@@ -53,9 +54,9 @@ export default function TermsPage() {
         title={
           <>
             Fair terms for a{" "}
-            <em className="of-gradient bg-clip-text italic text-transparent">
+            <span className="of-gradient bg-clip-text text-transparent">
               shared job.
-            </em>
+            </span>
           </>
         }
         copy="What you can expect from OmniFlow, and what OmniFlow expects from you — written to be read."

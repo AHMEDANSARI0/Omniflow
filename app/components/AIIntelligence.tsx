@@ -1,144 +1,134 @@
-import {
-  ArrowRight,
-  Brain,
-  Inbox,
-  MessagesSquare,
-  Sparkles,
-  Workflow,
-  Zap,
-} from "lucide-react";
 import type { AiIntelligenceContent } from "../../lib/content-defaults";
+import { STORY_NODES } from "../../lib/marketing/workflow";
+import { STORY_SECTION } from "../../lib/marketing/sections";
 import Reveal from "./Reveal";
-import Section, { SectionHead } from "./ui/Section";
-import Badge from "./ui/Badge";
+import Section, { Emphasis, SectionHead } from "./ui/Section";
+import WorkflowNode from "./ui/WorkflowNode";
+
+/*
+ * Desktop snake layout: row 1 runs left -> right, row 2 runs right -> left,
+ * so the path reads as one continuous flow. Static class strings keep
+ * Tailwind able to see them.
+ */
+const PLACEMENT = [
+  "lg:col-start-1 lg:row-start-1",
+  "lg:col-start-2 lg:row-start-1",
+  "lg:col-start-3 lg:row-start-1",
+  "lg:col-start-3 lg:row-start-2",
+  "lg:col-start-2 lg:row-start-2",
+  "lg:col-start-1 lg:row-start-2",
+];
+
+function Connectors({ index, last }: { index: number; last: boolean }) {
+  if (last) return null;
+  return (
+    <>
+      {/* phones/tablets: vertical link to the next node */}
+      <span
+        aria-hidden
+        className="of-connector of-connector-v absolute left-10 top-full h-5 w-[2px] lg:hidden"
+      />
+      {/* desktop */}
+      {index < 2 ? (
+        <span aria-hidden className="of-connector absolute left-full top-1/2 hidden h-[2px] w-12 lg:block" />
+      ) : null}
+      {index === 2 ? (
+        <span aria-hidden className="of-connector of-connector-v absolute left-1/2 top-full hidden h-14 w-[2px] lg:block" />
+      ) : null}
+      {index > 2 ? (
+        <span
+          aria-hidden
+          className="of-connector absolute right-full top-1/2 hidden h-[2px] w-12 [&::after]:[animation-direction:reverse] lg:block"
+        />
+      ) : null}
+    </>
+  );
+}
 
 /**
- * The dark cinematic section: "Meet OmniFlow" — one intelligence layer.
- * Message -> Understand -> Context -> Decide -> Act, rendered as a
- * processing pipeline over the night surface with ambient glow.
- * Server component; Reveal islands only.
+ * The OmniFlow core story (§216): connected workflow nodes from customer
+ * message to automated action, then the three CMS-driven pillars
+ * (Understand / Decide / Act). Server component; reveals are CSS.
  */
-export default function AIIntelligence({
-  content,
-}: {
-  content: AiIntelligenceContent;
-}) {
-  const steps = [
-    {
-      title: content.i1_title,
-      desc: content.i1_desc,
-      tags: content.i1_tags.split(",").map((tag) => tag.trim()),
-      Icon: Brain,
-    },
-    {
-      title: content.i2_title,
-      desc: content.i2_desc,
-      tags: content.i2_tags.split(",").map((tag) => tag.trim()),
-      Icon: Workflow,
-    },
-    {
-      title: content.i3_title,
-      desc: content.i3_desc,
-      tags: content.i3_tags.split(",").map((tag) => tag.trim()),
-      Icon: Zap,
-    },
-  ];
-
-  const pipeline = [
-    { label: "Message", Icon: Inbox },
-    { label: "Understand", Icon: Brain },
-    { label: "Context", Icon: MessagesSquare },
-    { label: "Decide", Icon: Workflow },
-    { label: "Act", Icon: Zap },
-  ];
+export default function AIIntelligence({ content }: { content: AiIntelligenceContent }) {
+  const pillars = [
+    { title: content.i1_title, desc: content.i1_desc, tags: content.i1_tags },
+    { title: content.i2_title, desc: content.i2_desc, tags: content.i2_tags },
+    { title: content.i3_title, desc: content.i3_desc, tags: content.i3_tags },
+  ]
+    .filter((pillar) => pillar.title.trim())
+    .map((pillar) => ({
+      ...pillar,
+      tags: pillar.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+    }));
 
   return (
-    <Section id="intelligence" tone="night" className="overflow-hidden">
-      <SectionHead
-        dark
-        eyebrow={content.badge}
-        title={
-          <>
-            {content.heading_line1} {content.heading_line2}
-          </>
-        }
-        copy={content.description}
-      />
-
-      {/* the processing pipeline */}
+    <Section id={STORY_SECTION.id} tone="white" labelledBy="story-title">
       <Reveal>
-        <div className="mx-auto mt-14 max-w-4xl rounded-xl3 border border-white/10 bg-white/[0.04] p-6 sm:p-8">
-          <div className="flex flex-wrap items-center justify-center gap-y-4">
-            {pipeline.map(({ label, Icon }, index) => (
-              <div key={label} className="flex items-center">
-                <div className="flex flex-col items-center gap-2 px-3 sm:px-4">
-                  <span
-                    aria-hidden
-                    className="of-gradient inline-flex h-11 w-11 items-center justify-center rounded-xl2 shadow-[0_8px_24px_-10px_rgba(124,58,237,0.7)]"
-                  >
-                    <Icon className="h-5 w-5 text-white" />
-                  </span>
-                  <span className="text-[12px] font-medium text-snow">
-                    {label}
-                  </span>
-                </div>
-                {index < pipeline.length - 1 ? (
-                  <span
-                    aria-hidden
-                    className="mb-5 h-px w-6 bg-gradient-to-r from-indigo-400/70 to-violet-400/50 sm:w-10"
-                  />
-                ) : null}
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 text-center text-[13px] text-night-muted">
-            The AI never acts blindly — intent, business knowledge and your
-            rules decide every action.
-          </p>
-        </div>
+        <SectionHead
+          id="story-title"
+          eyebrow={content.badge}
+          title={
+            <>
+              {content.heading_line1} <Emphasis>{content.heading_line2}</Emphasis>
+            </>
+          }
+          copy={content.description}
+        />
       </Reveal>
 
-      <div className="mt-12 grid gap-5 lg:grid-cols-3">
-        {steps.map(({ title, desc, tags, Icon }, index) => (
-          <Reveal key={title} lift>
-            <div className="h-full rounded-xl3 border border-white/10 bg-white/[0.04] p-6 transition-colors duration-300 hover:border-white/20">
-              <div className="flex items-center justify-between">
-                <span
-                  aria-hidden
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl2 border border-white/10 bg-white/[0.06] text-indigo-300"
-                >
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="font-display text-sm font-semibold text-white/25">
-                  0{index + 1}
-                </span>
-              </div>
-              <h3 className="mt-4 font-display text-lg font-semibold text-snow">
-                {title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-night-muted">
-                {desc}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {tags.map((tag) => (
-                  <Badge key={tag} tone="night" className="!text-[11px]">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-        ))}
+      <div className="relative mt-16">
+        <div aria-hidden className="of-grid-fade pointer-events-none absolute -inset-x-10 -inset-y-12 opacity-50" />
+        <ol className="relative mx-auto grid max-w-xl gap-5 lg:max-w-none lg:grid-cols-3 lg:gap-x-12 lg:gap-y-14">
+          {STORY_NODES.map((node, index) => (
+            <li key={node.key} className={`relative ${PLACEMENT[index]}`}>
+              <Reveal className="h-full">
+                <WorkflowNode
+                  index={index + 1}
+                  icon={node.icon}
+                  label={node.label}
+                  description={node.description}
+                  status={node.status}
+                  highlight={index === STORY_NODES.length - 1}
+                />
+              </Reveal>
+              <Connectors index={index} last={index === STORY_NODES.length - 1} />
+            </li>
+          ))}
+        </ol>
       </div>
 
-      <Reveal>
-        <p className="mx-auto mt-10 flex max-w-2xl items-center justify-center gap-2 text-center text-sm text-night-muted">
-          <Sparkles className="h-4 w-4 shrink-0 text-indigo-300" aria-hidden />
-          The same intelligence powers replies, qualification, routing and
-          follow-ups.
-          <ArrowRight className="h-4 w-4 shrink-0 text-indigo-300" aria-hidden />
-        </p>
+      <Reveal as="p" className="mx-auto mt-10 max-w-2xl text-center text-sm text-ink-3">
+        {STORY_SECTION.footnote}
       </Reveal>
+
+      {pillars.length > 0 ? (
+        <div className="mt-14 grid gap-4 md:grid-cols-3">
+          {pillars.map((pillar, index) => (
+            <Reveal key={pillar.title} lift className="h-full">
+              <div className="h-full rounded-xl3 border border-line bg-soft/60 p-6">
+                <p className="font-display text-xs font-semibold tabular-nums text-brand-2">
+                  {String(index + 1).padStart(2, "0")}
+                </p>
+                <h3 className="mt-2 font-display text-xl font-semibold text-ink">{pillar.title}</h3>
+                <p className="mt-2 text-[14px] leading-relaxed text-ink-2">{pillar.desc}</p>
+                {pillar.tags.length > 0 ? (
+                  <ul className="mt-4 flex flex-wrap gap-1.5">
+                    {pillar.tags.map((tag) => (
+                      <li
+                        key={tag}
+                        className="rounded-full border border-line bg-white px-2.5 py-0.5 text-[11.5px] font-medium text-ink-2"
+                      >
+                        {tag}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      ) : null}
     </Section>
   );
 }

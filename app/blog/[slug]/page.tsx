@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, CalendarDays, Clock } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock } from "lucide-react";
 import PageShell from "../../components/PageShell";
 import Section from "../../components/ui/Section";
 import Badge from "../../components/ui/Badge";
-import Button from "../../components/ui/Button";
 import Reveal from "../../components/Reveal";
 import Container from "../../components/ui/Container";
 import { formatDate, getPost, listPosts } from "../../../lib/blog";
+import PageCta from "../../components/ui/PageCta";
+import { BLOG_COPY, PAGE_CTAS } from "../../../lib/marketing/pages";
 
 export async function generateMetadata({
   params,
@@ -20,6 +21,7 @@ export async function generateMetadata({
   return {
     title: post.title,
     description: post.excerpt,
+    alternates: { canonical: `/blog/${slug}` },
     openGraph: {
       type: "article",
       title: post.title,
@@ -104,14 +106,14 @@ export default async function ArticlePage({
       />
       <article>
         <section className="of-hero-glow relative overflow-hidden bg-canvas">
-          <Container className="pb-12 pt-28 sm:pt-32 lg:pt-36">
+          <Container className="pb-12 pt-32 sm:pt-36 lg:pt-40">
             <div className="mx-auto max-w-3xl">
               <a
                 href="/blog"
                 className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-brand"
               >
                 <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-                All articles
+                {BLOG_COPY.allArticles}
               </a>
               <div className="mt-5">
                 <Badge tone="brand">{post.category}</Badge>
@@ -143,27 +145,13 @@ export default async function ArticlePage({
             </p>
             <ArticleBody content={post.content} />
 
-            <div className="of-cta-gradient mt-14 rounded-xl3 px-7 py-8 text-center sm:px-10">
-              <p className="font-display text-xl font-semibold text-white sm:text-2xl">
-                Ready to put your conversations on autopilot?
-              </p>
-              <div className="mt-5 flex flex-wrap justify-center gap-3">
-                <Button href="/dashboard/login" variant="dark">
-                  Get Started
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                </Button>
-                <Button href="/features" variant="night-outline" className="border-white/40">
-                  Explore features
-                </Button>
-              </div>
-            </div>
           </div>
         </Section>
 
         {related.length > 0 ? (
           <Section tone="canvas" containerClassName="!py-14">
             <h2 className="font-display text-xl font-semibold text-ink">
-              Keep reading
+              {BLOG_COPY.keepReading}
             </h2>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               {related.map((item) => (
@@ -185,6 +173,7 @@ export default async function ArticlePage({
             </div>
           </Section>
         ) : null}
+        <PageCta cta={PAGE_CTAS.article} />
       </article>
     </PageShell>
   );
