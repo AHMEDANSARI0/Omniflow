@@ -1,6 +1,6 @@
 import { Bot, Check, CornerDownRight, UserRound } from "lucide-react";
 import type { UseCasesContent } from "../../lib/content-defaults";
-import { USE_CASE_SAMPLES } from "../../lib/marketing/pages";
+import { getMarketingList } from "../../lib/marketing/cms";
 import Reveal from "./Reveal";
 import Section, { Emphasis, SectionHead } from "./ui/Section";
 import StatusIndicator from "./ui/StatusIndicator";
@@ -11,7 +11,8 @@ import StatusIndicator from "./ui/StatusIndicator";
  * (lib/marketing/pages) and the automations it runs. Each row has a
  * stable anchor (#use-case-N) used by the footer. Server component.
  */
-export default function UseCases({ content }: { content: UseCasesContent }) {
+export default async function UseCases({ content }: { content: UseCasesContent }) {
+  const samples = await getMarketingList("use_case_samples");
   const cases = [
     { label: content.u1_label, headline: content.u1_headline, desc: content.u1_desc, automations: content.u1_automations, status: content.u1_status },
     { label: content.u2_label, headline: content.u2_headline, desc: content.u2_desc, automations: content.u2_automations, status: content.u2_status },
@@ -22,7 +23,7 @@ export default function UseCases({ content }: { content: UseCasesContent }) {
     .map((item, index) => ({
       ...item,
       anchor: `use-case-${index + 1}`,
-      sample: USE_CASE_SAMPLES[index],
+      sample: samples[index],
       automations: item.automations.split("|").map((a) => a.trim()).filter(Boolean),
     }))
     .filter((item) => item.label.trim());

@@ -1,112 +1,53 @@
 import Link from "next/link";
+import { COPY_BLOCKS } from "../../../../lib/marketing/copy";
+import { MARKETING_LISTS } from "../../../../lib/marketing/lists";
 
-interface ContentSection {
+interface ContentLink {
   label: string;
   description: string;
   href: string;
   icon: string;
-  enabled: boolean;
 }
 
-const sections: ContentSection[] = [
-  {
-    label: "Hero",
-    description: "Main headline, description, buttons and channel chips.",
-    href: "/admin/content/hero",
-    icon: "◇",
-    enabled: true,
-  },
-    {
-    label: "AI Intelligence",
-    description: "Section heading and the 3 intelligence pillars.",
-    href: "/admin/content/ai-intelligence",
-    icon: "✦",
-    enabled: true,
-  },
-    {
-    label: "How It Works",
-    description: "Section heading and the 4 workflow steps.",
-    href: "/admin/content/how-it-works",
-    icon: "↗",
-    enabled: true,
-  },
-  {
-    label: "Problem / Solution",
-    description: "The problem framing and OmniFlow's answer.",
-    href: "/admin/content/problem-solution",
-    icon: "◇",
-    enabled: true,
-  },
-  {
-    label: "Features",
-    description: "Capability cards and the section heading.",
-    href: "/admin/content/features",
-    icon: "◇",
-    enabled: true,
-  },
-    {
-    label: "Use cases",
-    description: "The 5 business tabs — headlines, automations and statuses.",
-    href: "/admin/content/use-cases",
-    icon: "◇",
-    enabled: true,
-  },
-  {
-    label: "Why OmniFlow",
-    description: "Section heading and the 4 benefit rows.",
-    href: "/admin/content/why-omniflow",
-    icon: "◆",
-    enabled: true,
-  },
-  {
-    label: "Final CTA",
-    description: "Early-access headline, copy and notes.",
-    href: "/admin/content/final-cta",
-    icon: "◇",
-    enabled: true,
-  },
-    {
-    label: "FAQ",
-    description: "Questions, answers and contact email.",
-    href: "/admin/content/faq",
-    icon: "◎",
-    enabled: true,
-  },
-    {
-    label: "Multi-Channel",
-    description: "Channel cards, workflow strip and section heading.",
-    href: "/admin/content/multi-channel",
-    icon: "◈",
-    enabled: true,
-  },
-  {
-    label: "Footer",
-    description: "Footer description and link labels.",
-    href: "/admin/content/footer",
-    icon: "⌘",
-    enabled: true,
-  },
-    {
-    label: "Trust",
-    description: "The 4 trust pillars and principles strip.",
-    href: "/admin/content/trust",
-    icon: "✦",
-    enabled: true,
-  },
-    {
-    label: "Customer Memory",
-    description: "Section heading, context points and bottom note.",
-    href: "/admin/content/customer-memory",
-    icon: "◉",
-    enabled: true,
-  },
+const sections: ContentLink[] = [
+  { label: "Hero", description: "Main headline, description, buttons and channel chips.", href: "/admin/content/hero", icon: "◇" },
+  { label: "AI Intelligence", description: "Section heading and the 3 intelligence pillars.", href: "/admin/content/ai-intelligence", icon: "✦" },
+  { label: "How It Works", description: "Section heading and the 4 workflow steps.", href: "/admin/content/how-it-works", icon: "↗" },
+  { label: "Problem / Solution", description: "The problem framing and OmniFlow's answer.", href: "/admin/content/problem-solution", icon: "◇" },
+  { label: "Features", description: "Capability cards and the section heading.", href: "/admin/content/features", icon: "◇" },
+  { label: "Use cases", description: "The 5 business tabs — headlines, automations and statuses.", href: "/admin/content/use-cases", icon: "◇" },
+  { label: "Why OmniFlow", description: "Section heading and the 4 benefit rows.", href: "/admin/content/why-omniflow", icon: "◆" },
+  { label: "Final CTA", description: "Early-access headline, copy and notes.", href: "/admin/content/final-cta", icon: "◇" },
+  { label: "FAQ", description: "Questions, answers and contact email.", href: "/admin/content/faq", icon: "◎" },
+  { label: "Multi-Channel", description: "Channel cards, workflow strip and section heading.", href: "/admin/content/multi-channel", icon: "◈" },
+  { label: "Footer", description: "Footer description and link labels.", href: "/admin/content/footer", icon: "⌘" },
+  { label: "Trust", description: "The 4 trust pillars and principles strip.", href: "/admin/content/trust", icon: "✦" },
+  { label: "Customer Memory", description: "Section heading, context points and bottom note.", href: "/admin/content/customer-memory", icon: "◉" },
+  { label: "Blog", description: "Write, publish and manage blog articles.", href: "/admin/content/blog", icon: "✎" },
+];
 
+// Lists and copy blocks: one generic editor each, config-driven.
+const groups: { title: string; copy: string; links: ContentLink[] }[] = [
+  { title: "Website sections", copy: "The main homepage sections and the blog.", links: sections },
   {
-    href: "/admin/content/blog",
-    label: "Blog",
-    icon: "✎",
-    description: "Write, publish and manage blog articles.",
-    enabled: true,
+    title: "Lists",
+    copy: "Repeating items: add, remove, reorder and edit.",
+    links: Object.entries(MARKETING_LISTS).map(([key, spec]) => ({
+      label: spec.title,
+      description: spec.description,
+      href: `/admin/content/lists/${key}`,
+      icon: spec.hubIcon,
+    })),
+  },
+  {
+    title: "Page copy & product mockups",
+    copy: "Headings, inner-page text and the sample content inside the product mockups.",
+    links: Object.entries(COPY_BLOCKS).map(([key, spec]) => ({
+      label: spec.title,
+      description: spec.description,
+      href: `/admin/content/copy/${key}`,
+      icon: spec.hubIcon,
+    })),
   },
 ];
 
@@ -114,64 +55,39 @@ export default function ContentHubPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
-          Content
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Content</h1>
         <p className="mt-1.5 text-sm text-ink-3">
-          Edit website sections without touching code. More sections are being
-          made editable step by step.
+          Edit all website text without touching code. Anything left unchanged uses the built-in default.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {sections.map((section) => {
-          if (!section.enabled) {
-            return (
-              <div
-                key={section.href}
-                className="cursor-not-allowed rounded-2xl border border-line bg-white/[0.01] p-5 opacity-50"
-              >
-                <div className="mb-4 flex items-start justify-between">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white shadow-card text-sm text-ink-3">
-                    {section.icon}
+      <div className="space-y-10">
+        {groups.map((group) => (
+          <section key={group.title}>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-2">{group.title}</h2>
+            <p className="mb-4 mt-1 text-xs text-ink-3">{group.copy}</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {group.links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="group rounded-2xl border border-line bg-white p-5 shadow-card transition-colors duration-300 hover:border-brand/20"
+                >
+                  <div className="mb-4 flex items-start justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
+                      {link.icon}
+                    </div>
+                    <span className="text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-brand">
+                      →
+                    </span>
                   </div>
-                  <span className="rounded-md border border-line bg-soft px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-3">
-                    Soon
-                  </span>
-                </div>
-                <h2 className="text-sm font-semibold text-ink-3">
-                  {section.label}
-                </h2>
-                <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
-                  {section.description}
-                </p>
-              </div>
-            );
-          }
-
-          return (
-            <Link
-              key={section.href}
-              href={section.href}
-              className="group rounded-2xl border border-line bg-white shadow-card p-5 transition-colors duration-300 hover:border-brand/20"
-            >
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
-                  {section.icon}
-                </div>
-                <span className="text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-brand">
-                  →
-                </span>
-              </div>
-              <h2 className="text-sm font-semibold text-ink">
-                {section.label}
-              </h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
-                {section.description}
-              </p>
-            </Link>
-          );
-        })}
+                  <h3 className="text-sm font-semibold text-ink">{link.label}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-ink-3">{link.description}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );

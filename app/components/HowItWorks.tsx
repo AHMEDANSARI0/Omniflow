@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import type { HowItWorksContent } from "../../lib/content-defaults";
-import { HOW_IT_WORKS_MOCKUPS, HOW_IT_WORKS_SECTION } from "../../lib/marketing/sections";
+import { HOW_IT_WORKS_MOCKUPS } from "../../lib/marketing/sections";
+import { getCopy } from "../../lib/marketing/cms";
 import { SITE_ROUTES } from "../../lib/marketing/site";
 import Reveal from "./Reveal";
 import Section, { Emphasis, SectionHead } from "./ui/Section";
@@ -11,7 +12,8 @@ import StepMockup from "./home/StepMockup";
  * How it works (§216): four numbered steps (CMS copy), each with a
  * small CSS product mockup. Server component.
  */
-export default function HowItWorks({ content }: { content: HowItWorksContent }) {
+export default async function HowItWorks({ content }: { content: HowItWorksContent }) {
+  const section = (await getCopy("home_sections")).howItWorks;
   const steps = [
     { type: content.s1_type, title: content.s1_title, desc: content.s1_desc },
     { type: content.s2_type, title: content.s2_title, desc: content.s2_desc },
@@ -20,7 +22,7 @@ export default function HowItWorks({ content }: { content: HowItWorksContent }) 
   ].filter((step) => step.title.trim());
 
   return (
-    <Section id={HOW_IT_WORKS_SECTION.id} tone="tint" labelledBy="how-title">
+    <Section id={section.id} tone="tint" labelledBy="how-title">
       <Reveal>
         <SectionHead
           id="how-title"
@@ -63,7 +65,7 @@ export default function HowItWorks({ content }: { content: HowItWorksContent }) 
       <Reveal className="mt-12 flex flex-col items-center gap-4 text-center">
         {content.bottom_note ? <p className="text-sm text-ink-2">{content.bottom_note}</p> : null}
         <Button href={SITE_ROUTES.start}>
-          {HOW_IT_WORKS_SECTION.cta}
+          {section.cta}
           <ArrowRight className="h-4 w-4" aria-hidden />
         </Button>
       </Reveal>

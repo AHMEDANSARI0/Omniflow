@@ -1,8 +1,8 @@
 import { ArrowRight, PlayCircle } from "lucide-react";
 import type { HeroContent } from "../../lib/content-defaults";
 import { SITE_ROUTES } from "../../lib/marketing/site";
-import { HERO_SECTION } from "../../lib/marketing/sections";
 import { statusForChannel } from "../../lib/marketing/integrations";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 import Button from "./ui/Button";
 import Container from "./ui/Container";
 import { AvailabilityBadge } from "./ui/StatusIndicator";
@@ -17,7 +17,8 @@ const delay = (ms: number) => ({ ["--of-delay" as string]: `${ms}ms` });
  * availability comes from the shared integrations data, so it stays
  * honest everywhere.
  */
-export default function Hero({ content }: { content: HeroContent }) {
+export default async function Hero({ content }: { content: HeroContent }) {
+  const [integrations, home] = await Promise.all([getMarketingList("integrations"), getCopy("home_sections")]);
   const channels = content.integrations
     .split(",")
     .map((name) => name.trim())
@@ -80,11 +81,11 @@ export default function Hero({ content }: { content: HeroContent }) {
                       className="inline-flex items-center gap-2 rounded-full border border-line bg-white/90 py-1 pl-3 pr-1.5 text-[13px] font-medium text-ink shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
                     >
                       {name}
-                      <AvailabilityBadge status={statusForChannel(name)} size="xs" />
+                      <AvailabilityBadge status={statusForChannel(name, integrations)} size="xs" />
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2.5 text-xs text-ink-3">{HERO_SECTION.channelsNote}</p>
+                <p className="mt-2.5 text-xs text-ink-3">{home.hero.channelsNote}</p>
               </div>
             ) : null}
           </div>

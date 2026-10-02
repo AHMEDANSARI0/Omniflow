@@ -10,9 +10,9 @@ import Reveal from "../components/Reveal";
 import MultiChannel from "../components/MultiChannel";
 import { getSectionContent } from "../../lib/content";
 import { MULTI_CHANNEL_DEFAULTS } from "../../lib/content-defaults";
-import { INTEGRATIONS, INTEGRATION_CATEGORIES, STATUS_META } from "../../lib/marketing/integrations";
-import { PAGE_CTAS, PAGE_HEROES } from "../../lib/marketing/pages";
+import { INTEGRATION_CATEGORIES, STATUS_META } from "../../lib/marketing/integrations";
 import { NAV_ACTIONS } from "../../lib/marketing/navigation";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 
 export const metadata: Metadata = {
   title: "Integrations",
@@ -22,17 +22,22 @@ export const metadata: Metadata = {
 };
 
 export default async function IntegrationsPage() {
-  const multiChannel = await getSectionContent("multi_channel", MULTI_CHANNEL_DEFAULTS);
-  const cta = PAGE_CTAS.integrations;
+  const [multiChannel, integrations, heroes, ctas] = await Promise.all([
+    getSectionContent("multi_channel", MULTI_CHANNEL_DEFAULTS),
+    getMarketingList("integrations"),
+    getCopy("page_heroes"),
+    getCopy("page_ctas"),
+  ]);
+  const cta = ctas.integrations;
   const counts = (["live", "beta", "soon"] as const).map((status) => ({
     status,
     label: STATUS_META[status].label,
-    count: INTEGRATIONS.filter((item) => item.status === status).length,
+    count: integrations.filter((item) => item.status === status).length,
   }));
 
   return (
     <PageShell>
-      <PageHero hero={PAGE_HEROES.integrations}>
+      <PageHero hero={heroes.integrations}>
         <Button href={NAV_ACTIONS.primary.href} size="lg">
           {NAV_ACTIONS.primary.label}
           <ArrowRight className="h-4 w-4" aria-hidden />
@@ -58,7 +63,7 @@ export default async function IntegrationsPage() {
 
         <div className="mt-14 space-y-16">
           {INTEGRATION_CATEGORIES.map((category) => {
-            const items = INTEGRATIONS.filter((item) => item.category === category.key);
+            const items = integrations.filter((item) => item.category === category.key);
             if (items.length === 0) return null;
             return (
               <section key={category.key} aria-labelledby={`cat-${category.key}`}>

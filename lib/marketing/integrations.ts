@@ -174,10 +174,13 @@ export const INTEGRATIONS: Integration[] = [
   },
 ];
 
-/** Status for a channel name typed in the CMS (e.g. hero channel list). */
-export function statusForChannel(name: string): AvailabilityStatus {
+/**
+ * Status for a channel name typed in the CMS (e.g. hero channel list).
+ * Pass the admin-edited list from getMarketingList("integrations").
+ */
+export function statusForChannel(name: string, list: readonly Integration[] = INTEGRATIONS): AvailabilityStatus {
   const key = name.trim().toLowerCase();
-  const match = INTEGRATIONS.find(
+  const match = list.find(
     (item) => item.name.toLowerCase() === key || item.id === key
   );
   return match ? match.status : "soon";

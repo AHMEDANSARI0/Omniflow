@@ -1,5 +1,7 @@
 import type { FooterContent } from "../../lib/content-defaults";
-import { FOOTER_COLUMNS, FOOTER_TAGLINE } from "../../lib/marketing/navigation";
+import { FOOTER_TAGLINE } from "../../lib/marketing/navigation";
+import { getMarketingList } from "../../lib/marketing/cms";
+import { groupFooterLinks } from "../../lib/marketing/lists";
 import Container from "./ui/Container";
 import Logo from "./ui/Logo";
 
@@ -33,9 +35,10 @@ function InstagramIcon({ className }: IconProps) {
 
 /**
  * Site footer (§216). Brand, description and status pill are CMS-driven
- * (site_content.footer); link columns come from lib/marketing/navigation.
+ * (site_content.footer); link columns are the admin-editable footer list.
  */
-export default function Footer({ content }: { content: FooterContent }) {
+export default async function Footer({ content }: { content: FooterContent }) {
+  const columns = groupFooterLinks(await getMarketingList("footer"));
   const socials = [
     { label: "LinkedIn", href: content.linkedin_url || "#", Icon: LinkedinIcon },
     { label: "X (Twitter)", href: content.x_url || "#", Icon: XIcon },
@@ -72,7 +75,7 @@ export default function Footer({ content }: { content: FooterContent }) {
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 xl:grid-cols-6">
-            {FOOTER_COLUMNS.map((column) => (
+            {columns.map((column) => (
               <nav key={column.title} aria-label={column.title}>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{column.title}</p>
                 <ul className="mt-4 space-y-2.5">

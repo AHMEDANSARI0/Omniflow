@@ -1,6 +1,6 @@
 import { ArrowRight, Sparkles } from "lucide-react";
-import { DASHBOARD_PREVIEW, type DashboardTone } from "../../lib/marketing/dashboard";
-import { DASHBOARD_SECTION } from "../../lib/marketing/sections";
+import type { DashboardTone } from "../../lib/marketing/dashboard";
+import { getCopy } from "../../lib/marketing/cms";
 import { SITE_ROUTES } from "../../lib/marketing/site";
 import Reveal from "./Reveal";
 import Section, { SectionHead } from "./ui/Section";
@@ -21,16 +21,17 @@ const TAG_TONES: Record<DashboardTone, string> = {
  * lib/marketing/dashboard.ts (sample data, labelled as such). Stats
  * count up once in view; everything else is static server HTML.
  */
-export default function DashboardShowcase() {
-  const d = DASHBOARD_PREVIEW;
+export default async function DashboardShowcase() {
+  const [home, d] = await Promise.all([getCopy("home_sections"), getCopy("dashboard_preview")]);
+  const section = home.dashboard;
   return (
-    <Section id={DASHBOARD_SECTION.id} tone="canvas" labelledBy="dashboard-title" wide>
+    <Section id={section.id} tone="canvas" labelledBy="dashboard-title" wide>
       <Reveal>
         <SectionHead
           id="dashboard-title"
-          eyebrow={DASHBOARD_SECTION.eyebrow}
-          title={DASHBOARD_SECTION.title}
-          copy={DASHBOARD_SECTION.copy}
+          eyebrow={section.eyebrow}
+          title={section.title}
+          copy={section.copy}
         />
       </Reveal>
 
@@ -155,7 +156,7 @@ export default function DashboardShowcase() {
 
       <div className="mt-8 text-center">
         <Button href={SITE_ROUTES.start} variant="secondary">
-          {DASHBOARD_SECTION.cta}
+          {section.cta}
           <ArrowRight className="h-4 w-4" aria-hidden />
         </Button>
       </div>

@@ -1,6 +1,5 @@
 import type { AiIntelligenceContent } from "../../lib/content-defaults";
-import { STORY_NODES } from "../../lib/marketing/workflow";
-import { STORY_SECTION } from "../../lib/marketing/sections";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 import Reveal from "./Reveal";
 import Section, { Emphasis, SectionHead } from "./ui/Section";
 import WorkflowNode from "./ui/WorkflowNode";
@@ -50,7 +49,9 @@ function Connectors({ index, last }: { index: number; last: boolean }) {
  * message to automated action, then the three CMS-driven pillars
  * (Understand / Decide / Act). Server component; reveals are CSS.
  */
-export default function AIIntelligence({ content }: { content: AiIntelligenceContent }) {
+export default async function AIIntelligence({ content }: { content: AiIntelligenceContent }) {
+  const [storyNodes, home] = await Promise.all([getMarketingList("story"), getCopy("home_sections")]);
+  const storySection = home.story;
   const pillars = [
     { title: content.i1_title, desc: content.i1_desc, tags: content.i1_tags },
     { title: content.i2_title, desc: content.i2_desc, tags: content.i2_tags },
@@ -63,7 +64,7 @@ export default function AIIntelligence({ content }: { content: AiIntelligenceCon
     }));
 
   return (
-    <Section id={STORY_SECTION.id} tone="white" labelledBy="story-title">
+    <Section id={storySection.id} tone="white" labelledBy="story-title">
       <Reveal>
         <SectionHead
           id="story-title"
@@ -80,7 +81,7 @@ export default function AIIntelligence({ content }: { content: AiIntelligenceCon
       <div className="relative mt-16">
         <div aria-hidden className="of-grid-fade pointer-events-none absolute -inset-x-10 -inset-y-12 opacity-50" />
         <ol className="relative mx-auto grid max-w-xl gap-5 lg:max-w-none lg:grid-cols-3 lg:gap-x-12 lg:gap-y-14">
-          {STORY_NODES.map((node, index) => (
+          {storyNodes.map((node, index) => (
             <li key={node.key} className={`relative ${PLACEMENT[index]}`}>
               <Reveal className="h-full">
                 <WorkflowNode
@@ -89,17 +90,17 @@ export default function AIIntelligence({ content }: { content: AiIntelligenceCon
                   label={node.label}
                   description={node.description}
                   status={node.status}
-                  highlight={index === STORY_NODES.length - 1}
+                  highlight={index === storyNodes.length - 1}
                 />
               </Reveal>
-              <Connectors index={index} last={index === STORY_NODES.length - 1} />
+              <Connectors index={index} last={index === storyNodes.length - 1} />
             </li>
           ))}
         </ol>
       </div>
 
       <Reveal as="p" className="mx-auto mt-10 max-w-2xl text-center text-sm text-ink-3">
-        {STORY_SECTION.footnote}
+        {storySection.footnote}
       </Reveal>
 
       {pillars.length > 0 ? (

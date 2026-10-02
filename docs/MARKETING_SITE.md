@@ -8,18 +8,48 @@ and motion only; no copied text, assets, stats or testimonials).
 | What | Where |
 | --- | --- |
 | Hero, problem/solution, how it works, features, customer memory, trust, FAQ, final CTA, footer text, use cases, multi-channel, why OmniFlow | Admin CMS (`site_content` rows). `lib/content-defaults.ts` is only the fallback when no DB row exists. |
-| Navbar items, footer columns | `lib/marketing/navigation.ts` |
+| Navbar links, footer links | **Admin → Content → Navigation links / Footer links** (default: `lib/marketing/navigation.ts`) |
 | Navbar compact threshold | `NAVBAR_SCROLL_THRESHOLD` in `lib/marketing/site.ts` |
 | CTA routes | `SITE_ROUTES` in `lib/marketing/site.ts` |
 | Hero AI visual (future 3D bot) | `heroVisualAsset` in `lib/marketing/site.ts` (`null` = CSS placeholder; `{ kind: "image", ... }` for PNG/WebP/SVG; `{ kind: "video", ... }` for a muted loop). Lottie/WebGL: render through `<AIVisual>` children when the asset exists. |
-| Automation templates | `lib/marketing/templates.ts` |
-| Integrations + honest status (Live / Early access / Coming soon) | `lib/marketing/integrations.ts` (single source; hero chips, cards and diagrams read it) |
-| Core story nodes | `lib/marketing/workflow.ts` |
-| Live demo conversations + timing | `lib/marketing/live-demo.ts` |
-| Dashboard preview (sample data) | `lib/marketing/dashboard.ts` |
-| Section copy without a CMS form yet, mockup text | `lib/marketing/sections.ts` |
-| Inner-page heroes, CTAs, pricing, about, security, contact | `lib/marketing/pages.ts` |
+| Automation templates | **Admin → Content → Automation templates** (default: `lib/marketing/templates.ts`) |
+| Integrations + honest status (Live / Early access / Coming soon) | **Admin → Content → Integrations** (default: `lib/marketing/integrations.ts`; single source - hero chips, cards and diagrams read it) |
+| Core story nodes (exactly 6) | **Admin → Content → Workflow story nodes** (default: `lib/marketing/workflow.ts`) |
+| Live demo conversations | **Admin → Content → Live demo scenarios** (default: `lib/marketing/live-demo.ts`; timing stays in code) |
+| Pricing plans, /features pillars, /about principles, /security areas, use case sample chats | **Admin → Content → Lists** (defaults: `lib/marketing/pages.ts`) |
+| Homepage section headings, mockup sample text, dashboard preview, inner-page heroes and CTAs, pricing/about/security/contact/blog copy | **Admin → Content → Page copy & product mockups** (defaults: `lib/marketing/sections.ts`, `pages.ts`, `dashboard.ts`) |
+| Layout mappings (mockup per step, visual per feature, capability icons) | `lib/marketing/sections.ts` (code on purpose) |
 | Design tokens (marketing only) | `.of-site` block in `app/globals.css` (scoped so the dashboard tokens stay unchanged) |
+
+## Editable lists (batch 217)
+
+- One schema per list in `lib/marketing/lists.ts` (`MARKETING_LISTS`): fields, limits, defaults.
+  Adding a list = one entry there + reading it with `getMarketingList(key)`; the admin hub card and
+  editor (`/admin/content/lists/<key>`) come from the config.
+- Stored as `site_content` rows (`marketing_templates`, `marketing_integrations`, `marketing_demo`,
+  `marketing_story`, `marketing_nav`, `marketing_footer`) holding `{ items: [...] }` - no migration.
+- `sanitizeList` validates on save AND on read (required fields, allowed options/icons, hex colours,
+  safe links only, length and count caps, unique slugs). Missing/empty/invalid rows fall back to the
+  defaults, so the site never breaks. "Reset to defaults" stores an empty row.
+- Saving requires an admin profile (checked inside the server action too) and revalidates the site.
+- Batch 218 added `pricing_plans`, `feature_pillars`, `about_values`, `security_areas` and the fixed
+  `use_case_samples` (5, matched by position to the CMS use case tabs), plus the `toggle` field type.
+
+## Editable page copy (batch 218)
+
+- `lib/marketing/copy.ts` (`COPY_BLOCKS`): eight blocks, each a nested object whose default is the
+  code constant. No per-field schema: `copyFields` derives the editor fields from the default's shape
+  (text / long text / link / icon / number / toggle / line list; nested objects and fixed-length
+  arrays), labelled from the key path and grouped by top-level key.
+- Stored as `site_content` rows `copy_<block>` holding **only the edited values**
+  (`copyOverrides`), so untouched text keeps following the code defaults when they change.
+- `sanitizeCopy` walks the default's shape on save and on read: wrong types, empty values, unsafe
+  links and unknown icons fall back to the default; unknown keys are dropped; arrays keep their
+  length; `id` and `tone` (anchors, colours) are locked to the code values.
+- Components read `getCopy(block)` (cached per request, like `getMarketingList`); the two client
+  components (templates, live demo) receive their copy as a prop from the page.
+- Shared field rules live in `lib/marketing/fields.ts`; shared editor inputs in
+  `app/admin/(panel)/content/editor-ui.tsx`; the admin gate and row write in `lib/supabase/site-admin.ts`.
 
 ## Structure
 
@@ -45,6 +75,5 @@ and motion only; no copied text, assets, stats or testimonials).
 
 ## Not included (later batches)
 
-- Admin forms for the new data lists (templates, integrations, demo, nav).
 - Testimonials: none until there are real customer quotes (Trust section
   stands in).

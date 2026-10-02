@@ -11,8 +11,8 @@ import DashboardShowcase from "../components/DashboardShowcase";
 import FeatureVisual from "../components/home/FeatureVisual";
 import { getSectionContent } from "../../lib/content";
 import { FEATURES_DEFAULTS } from "../../lib/content-defaults";
-import { FEATURE_PILLARS, PAGE_CTAS, PAGE_HEROES } from "../../lib/marketing/pages";
 import { NAV_ACTIONS } from "../../lib/marketing/navigation";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 
 export const metadata: Metadata = {
   title: "Platform",
@@ -22,12 +22,17 @@ export const metadata: Metadata = {
 };
 
 export default async function FeaturesPage() {
-  const featuresContent = await getSectionContent("features", FEATURES_DEFAULTS);
-  const cta = PAGE_CTAS.features;
+  const [featuresContent, heroes, ctas, pillars] = await Promise.all([
+    getSectionContent("features", FEATURES_DEFAULTS),
+    getCopy("page_heroes"),
+    getCopy("page_ctas"),
+    getMarketingList("feature_pillars"),
+  ]);
+  const cta = ctas.features;
 
   return (
     <PageShell>
-      <PageHero hero={PAGE_HEROES.features}>
+      <PageHero hero={heroes.features}>
         <Button href={NAV_ACTIONS.primary.href} size="lg">
           {NAV_ACTIONS.primary.label}
           <ArrowRight className="h-4 w-4" aria-hidden />
@@ -41,8 +46,8 @@ export default async function FeaturesPage() {
 
       <Section tone="white">
         <div className="space-y-6">
-          {FEATURE_PILLARS.map((pillar, index) => (
-            <Reveal key={pillar.eyebrow}>
+          {pillars.map((pillar, index) => (
+            <Reveal key={index}>
               <article className="grid items-center gap-10 rounded-xl3 border border-line bg-white p-6 shadow-card sm:p-8 lg:grid-cols-2 lg:gap-14 lg:p-10">
                 <div className={index % 2 === 1 ? "lg:order-2" : ""}>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-2">{pillar.eyebrow}</p>
@@ -51,8 +56,8 @@ export default async function FeaturesPage() {
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-ink-2">{pillar.copy}</p>
                   <ul className="mt-5 space-y-2.5">
-                    {pillar.points.map((point) => (
-                      <li key={point} className="flex items-start gap-2.5 text-[14.5px] font-medium text-ink-2">
+                    {pillar.points.map((point, pointIndex) => (
+                      <li key={pointIndex} className="flex items-start gap-2.5 text-[14.5px] font-medium text-ink-2">
                         <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden />
                         {point}
                       </li>

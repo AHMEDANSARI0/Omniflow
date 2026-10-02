@@ -1,9 +1,11 @@
 import type { IconName } from "./types";
 
 /**
- * Section-level copy for homepage blocks that do not have a CMS form yet
- * (hybrid CMS, §216). Text that the admin already edits stays in
- * Supabase `site_content`; these blocks get admin forms in a later batch.
+ * Section-level copy and mockup sample content for homepage blocks.
+ * These are the DEFAULTS: the admin edits them under Admin -> Content ->
+ * "Page copy & mockups" (lib/marketing/copy.ts); components read the
+ * edited values through getCopy(). Layout mappings (mockup order,
+ * feature visuals, icons) stay code.
  */
 export const TEMPLATES_SECTION = {
   id: "templates",
@@ -52,15 +54,19 @@ export const STORY_SECTION = {
 export type StepMockup = "channels" | "knowledge" | "workflow" | "run";
 export const HOW_IT_WORKS_MOCKUPS: StepMockup[] = ["channels", "knowledge", "workflow", "run"];
 
+/** Product visuals a feature row can show (see FeatureVisual.tsx). */
+export const FEATURE_VISUAL_KINDS = [
+  "conversation",
+  "qualification",
+  "follow-up",
+  "routing",
+  "workflow",
+  "channels",
+  "handoff",
+] as const;
+export type FeatureVisual = (typeof FEATURE_VISUAL_KINDS)[number];
+
 /** Visual per CMS feature (f1..f6), in order. */
-export type FeatureVisual =
-  | "conversation"
-  | "qualification"
-  | "follow-up"
-  | "routing"
-  | "workflow"
-  | "channels"
-  | "handoff";
 export const FEATURE_VISUALS: FeatureVisual[] = [
   "conversation",
   "qualification",

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { getSectionContent } from "../../lib/content";
+import { getMarketingList } from "../../lib/marketing/cms";
 import {
   FOOTER_DEFAULTS,
   type FooterContent,
@@ -28,7 +29,7 @@ export default async function PageShell({
       >
         Skip to content
       </a>
-      <Navbar />
+      <Navbar items={await getMarketingList("nav")} />
       <main id="main">{children}</main>
       <Footer content={footerContent} />
     </div>

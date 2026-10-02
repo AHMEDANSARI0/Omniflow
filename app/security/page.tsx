@@ -8,7 +8,7 @@ import Reveal from "../components/Reveal";
 import Trust from "../components/Trust";
 import { getSectionContent } from "../../lib/content";
 import { TRUST_DEFAULTS } from "../../lib/content-defaults";
-import { PAGE_HEROES, SECURITY_AREAS, SECURITY_NOTE } from "../../lib/marketing/pages";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 
 export const metadata: Metadata = {
   title: "Security",
@@ -18,16 +18,21 @@ export const metadata: Metadata = {
 };
 
 export default async function SecurityPage() {
-  const trustContent = await getSectionContent("trust", TRUST_DEFAULTS);
+  const [trustContent, heroes, areas, pagesCopy] = await Promise.all([
+    getSectionContent("trust", TRUST_DEFAULTS),
+    getCopy("page_heroes"),
+    getMarketingList("security_areas"),
+    getCopy("other_pages"),
+  ]);
 
   return (
     <PageShell>
-      <PageHero hero={PAGE_HEROES.security} />
+      <PageHero hero={heroes.security} />
 
       <Section tone="canvas">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {SECURITY_AREAS.map((area) => (
-            <Reveal key={area.title} lift className="h-full">
+          {areas.map((area, index) => (
+            <Reveal key={index} lift className="h-full">
               <Card className="h-full p-6">
                 <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl2 border border-brand/15 bg-brand-soft text-brand">
                   <Icon name={area.icon} />
@@ -40,7 +45,7 @@ export default async function SecurityPage() {
         </div>
 
         <Reveal>
-          <p className="mx-auto mt-10 max-w-2xl text-center text-sm leading-relaxed text-ink-3">{SECURITY_NOTE}</p>
+          <p className="mx-auto mt-10 max-w-2xl text-center text-sm leading-relaxed text-ink-3">{pagesCopy.securityNote}</p>
         </Reveal>
       </Section>
 

@@ -10,13 +10,8 @@ import Reveal from "../components/Reveal";
 import FAQ from "../components/FAQ";
 import { getSectionContent } from "../../lib/content";
 import { FAQ_DEFAULTS } from "../../lib/content-defaults";
-import {
-  PAGE_HEROES,
-  PRICING_FEATURED_LABEL,
-  PRICING_NOTE,
-  PRICING_PLANS,
-} from "../../lib/marketing/pages";
 import { NAV_ACTIONS } from "../../lib/marketing/navigation";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -26,11 +21,17 @@ export const metadata: Metadata = {
 };
 
 export default async function PricingPage() {
-  const faqContent = await getSectionContent("faq", FAQ_DEFAULTS);
+  const [faqContent, heroes, plans, pricingCopy] = await Promise.all([
+    getSectionContent("faq", FAQ_DEFAULTS),
+    getCopy("page_heroes"),
+    getMarketingList("pricing_plans"),
+    getCopy("pricing_page"),
+  ]);
+  const { featuredLabel, note } = pricingCopy;
 
   return (
     <PageShell>
-      <PageHero hero={PAGE_HEROES.pricing}>
+      <PageHero hero={heroes.pricing}>
         <Button href={NAV_ACTIONS.primary.href} size="lg">
           {NAV_ACTIONS.primary.label}
           <ArrowRight className="h-4 w-4" aria-hidden />
@@ -39,8 +40,8 @@ export default async function PricingPage() {
 
       <Section tone="white">
         <div className="grid gap-5 lg:grid-cols-3">
-          {PRICING_PLANS.map((plan) => (
-            <Reveal key={plan.name} lift className="h-full">
+          {plans.map((plan, index) => (
+            <Reveal key={index} lift className="h-full">
               <Card
                 gradientRing={plan.featured}
                 className={`flex h-full flex-col p-7 ${plan.featured ? "shadow-card-hover" : ""}`}
@@ -48,7 +49,7 @@ export default async function PricingPage() {
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="font-display text-lg font-semibold text-ink">{plan.name}</h2>
                   {plan.featured ? (
-                    <StatusIndicator label={PRICING_FEATURED_LABEL} tone="success" pulse />
+                    <StatusIndicator label={featuredLabel} tone="success" pulse />
                   ) : null}
                 </div>
                 <p className="mt-3 font-display text-[28px] font-semibold tracking-[-0.02em] text-ink">
@@ -56,8 +57,8 @@ export default async function PricingPage() {
                 </p>
                 <p className="mt-2.5 text-[14px] leading-relaxed text-ink-2">{plan.description}</p>
                 <ul className="mt-6 flex-1 space-y-2.5 border-t border-line pt-6">
-                  {plan.points.map((point) => (
-                    <li key={point} className="flex items-start gap-2.5 text-[14px] font-medium text-ink-2">
+                  {plan.points.map((point, pointIndex) => (
+                    <li key={pointIndex} className="flex items-start gap-2.5 text-[14px] font-medium text-ink-2">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden />
                       {point}
                     </li>
@@ -86,7 +87,7 @@ export default async function PricingPage() {
               <Bell className="h-5 w-5" />
             </span>
             <p className="text-sm leading-relaxed text-ink-2">
-              <span className="font-semibold text-ink">{PRICING_NOTE.lead}</span> {PRICING_NOTE.copy}
+              <span className="font-semibold text-ink">{note.lead}</span> {note.copy}
             </p>
           </div>
         </Reveal>

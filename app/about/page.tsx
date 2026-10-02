@@ -9,13 +9,7 @@ import Reveal from "../components/Reveal";
 import WhyOmniFlow from "../components/WhyOmniFlow";
 import { getSectionContent } from "../../lib/content";
 import { WHY_OMNIFLOW_DEFAULTS } from "../../lib/content-defaults";
-import {
-  ABOUT_STORY,
-  ABOUT_VALUES,
-  ABOUT_VALUES_HEAD,
-  PAGE_CTAS,
-  PAGE_HEROES,
-} from "../../lib/marketing/pages";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 
 export const metadata: Metadata = {
   title: "About",
@@ -25,20 +19,27 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
-  const whyContent = await getSectionContent("why_omniflow", WHY_OMNIFLOW_DEFAULTS);
+  const [whyContent, heroes, ctas, aboutCopy, values] = await Promise.all([
+    getSectionContent("why_omniflow", WHY_OMNIFLOW_DEFAULTS),
+    getCopy("page_heroes"),
+    getCopy("page_ctas"),
+    getCopy("about_page"),
+    getMarketingList("about_values"),
+  ]);
+  const { story, valuesHead } = aboutCopy;
 
   return (
     <PageShell>
-      <PageHero hero={PAGE_HEROES.about} />
+      <PageHero hero={heroes.about} />
 
       <Section tone="white">
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <h2 className="font-display text-[28px] font-semibold leading-tight tracking-[-0.02em] text-ink sm:text-[36px]">
-              {ABOUT_STORY.title}
+              {story.title}
             </h2>
-            {ABOUT_STORY.paragraphs.map((paragraph) => (
-              <p key={paragraph.slice(0, 32)} className="mt-5 text-base leading-relaxed text-ink-2 sm:text-[17px]">
+            {story.paragraphs.map((paragraph, index) => (
+              <p key={index} className="mt-5 text-base leading-relaxed text-ink-2 sm:text-[17px]">
                 {paragraph}
               </p>
             ))}
@@ -47,10 +48,10 @@ export default async function AboutPage() {
           <Reveal>
             <div className="mt-10 rounded-xl3 border border-brand/15 bg-brand-soft/60 p-6 sm:p-7">
               <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-brand-2">
-                {ABOUT_STORY.oneLinerLabel}
+                {story.oneLinerLabel}
               </p>
               <p className="mt-3 font-display text-xl font-semibold leading-snug text-ink sm:text-2xl">
-                {ABOUT_STORY.oneLiner}
+                {story.oneLiner}
               </p>
             </div>
           </Reveal>
@@ -62,14 +63,14 @@ export default async function AboutPage() {
       <Section tone="white">
         <Reveal>
           <SectionHead
-            eyebrow={ABOUT_VALUES_HEAD.eyebrow}
-            title={ABOUT_VALUES_HEAD.title}
-            copy={ABOUT_VALUES_HEAD.copy}
+            eyebrow={valuesHead.eyebrow}
+            title={valuesHead.title}
+            copy={valuesHead.copy}
           />
         </Reveal>
         <div className="mt-12 grid gap-5 sm:grid-cols-2">
-          {ABOUT_VALUES.map((value) => (
-            <Reveal key={value.title} lift className="h-full">
+          {values.map((value, index) => (
+            <Reveal key={index} lift className="h-full">
               <Card className="h-full p-6 sm:p-7">
                 <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl2 border border-brand/15 bg-brand-soft text-brand">
                   <Icon name={value.icon} />
@@ -82,7 +83,7 @@ export default async function AboutPage() {
         </div>
       </Section>
 
-      <PageCta cta={PAGE_CTAS.about} />
+      <PageCta cta={ctas.about} />
     </PageShell>
   );
 }

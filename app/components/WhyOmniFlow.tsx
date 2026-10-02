@@ -2,24 +2,25 @@ import { Clock, GitBranch, Layers, UserCheck } from "lucide-react";
 import type { WhyOmniFlowContent } from "../../lib/content-defaults";
 import Reveal from "./Reveal";
 import Section, { Emphasis, SectionHead } from "./ui/Section";
-import { WHY_OMNIFLOW_STATES } from "../../lib/marketing/sections";
+import { getCopy } from "../../lib/marketing/cms";
 
 /**
  * The editorial "why" — four principles as numbered editorial rows
  * with small state visuals. Server component.
  */
-export default function WhyOmniFlow({
+export default async function WhyOmniFlow({
   content,
 }: {
   content: WhyOmniFlowContent;
 }) {
+  const states = (await getCopy("home_sections")).whyStates;
   const blocks = [
     { title: content.b1_title, desc: content.b1_desc, Icon: Clock },
     { title: content.b2_title, desc: content.b2_desc, Icon: GitBranch },
     { title: content.b3_title, desc: content.b3_desc, Icon: UserCheck },
     { title: content.b4_title, desc: content.b4_desc, Icon: Layers },
   ]
-    .map((block, index) => ({ ...block, state: WHY_OMNIFLOW_STATES[index] ?? "" }))
+    .map((block, index) => ({ ...block, state: states[index] ?? "" }))
     .filter((block) => block.title.trim());
 
   return (

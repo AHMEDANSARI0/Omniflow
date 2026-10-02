@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Check, Loader2, RotateCcw, Sparkles } from "lucide-react";
-import { DEMO_SCENARIOS, DEMO_TIMING } from "../../../lib/marketing/live-demo";
-import { LIVE_DEMO_SECTION } from "../../../lib/marketing/sections";
+import { DEMO_TIMING, type DemoScenario } from "../../../lib/marketing/live-demo";
+import type { CopyValue } from "../../../lib/marketing/copy";
 import useInView from "../hooks/useInView";
 import useReducedMotion from "../hooks/useReducedMotion";
 import Reveal from "../Reveal";
@@ -47,10 +47,16 @@ function StepRow({ label, state }: { label: string; state: StepState }) {
  * library), can be replayed, and shows the finished run directly for
  * reduced-motion users and in server HTML.
  */
-export default function LiveDemo() {
+export default function LiveDemo({
+  scenarios,
+  copy,
+}: {
+  scenarios: readonly DemoScenario[];
+  copy: CopyValue<"home_sections">["liveDemo"];
+}) {
   const [active, setActive] = useState(0);
   const [runId, setRunId] = useState(0);
-  const scenario = DEMO_SCENARIOS[active];
+  const scenario = scenarios[active] ?? scenarios[0];
   const steps = [...scenario.understanding, ...scenario.workflow];
   const finalPhase = steps.length + 3;
   const [phase, setPhase] = useState(finalPhase);
@@ -83,18 +89,18 @@ export default function LiveDemo() {
   const finished = phase >= finalPhase;
 
   return (
-    <Section id={LIVE_DEMO_SECTION.id} tone="tint" labelledBy="demo-title">
+    <Section id={copy.id} tone="tint" labelledBy="demo-title">
       <Reveal>
         <SectionHead
           id="demo-title"
-          eyebrow={LIVE_DEMO_SECTION.eyebrow}
-          title={LIVE_DEMO_SECTION.title}
-          copy={LIVE_DEMO_SECTION.copy}
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          copy={copy.copy}
         />
       </Reveal>
 
       <div role="group" aria-label="Choose a scenario" className="mt-10 flex flex-wrap justify-center gap-2">
-        {DEMO_SCENARIOS.map((item, index) => {
+        {scenarios.map((item, index) => {
           const selected = index === active;
           return (
             <button
@@ -127,13 +133,13 @@ export default function LiveDemo() {
                 <Sparkles className="h-4 w-4" />
               </span>
               <div>
-                <p className="text-[14px] font-semibold text-ink">{LIVE_DEMO_SECTION.agentName}</p>
+                <p className="text-[14px] font-semibold text-ink">{copy.agentName}</p>
                 <p className="text-[12px] text-ink-3">
                   {scenario.channel} · {scenario.customer.name}
                 </p>
               </div>
             </div>
-            <StatusIndicator label={LIVE_DEMO_SECTION.liveLabel} tone="success" pulse size="xs" />
+            <StatusIndicator label={copy.liveLabel} tone="success" pulse size="xs" />
           </div>
 
           <div className="flex min-h-[260px] flex-1 flex-col gap-3 bg-soft/50 p-5" aria-live="off">
@@ -147,7 +153,7 @@ export default function LiveDemo() {
             {phase >= 2 && !replyShown ? (
               <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-ink-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                 <Loader2 className="h-3 w-3 animate-spin text-brand motion-reduce:animate-none" aria-hidden />
-                {LIVE_DEMO_SECTION.workingLabel}
+                {copy.workingLabel}
               </p>
             ) : null}
 
@@ -155,7 +161,7 @@ export default function LiveDemo() {
               <p className="rounded-2xl rounded-tr-sm bg-brand px-4 py-2.5 text-[14px] leading-snug text-white shadow-cta">
                 {scenario.reply}
               </p>
-              <p className="mt-1 text-right text-[11px] text-ink-3">{LIVE_DEMO_SECTION.agentName}</p>
+              <p className="mt-1 text-right text-[11px] text-ink-3">{copy.agentName}</p>
             </div>
           </div>
         </div>
@@ -163,7 +169,7 @@ export default function LiveDemo() {
         {/* process */}
         <div className="flex flex-col rounded-xl3 border border-line bg-white p-5 shadow-card sm:p-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-            {LIVE_DEMO_SECTION.understandingLabel}
+            {copy.understandingLabel}
           </p>
           <ul className="mt-2">
             {scenario.understanding.map((label, index) => (
@@ -172,7 +178,7 @@ export default function LiveDemo() {
           </ul>
 
           <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-            {LIVE_DEMO_SECTION.workflowLabel}
+            {copy.workflowLabel}
           </p>
           <ul className="mt-2">
             {scenario.workflow.map((label, index) => (
@@ -190,7 +196,7 @@ export default function LiveDemo() {
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-2 bg-white px-3 text-[13px] font-semibold text-ink transition-colors hover:border-brand/40 hover:text-brand"
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-              {LIVE_DEMO_SECTION.replay}
+              {copy.replay}
             </button>
           </div>
           <p className="sr-only" aria-live="polite">

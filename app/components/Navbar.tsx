@@ -4,17 +4,17 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, Menu, X } from "lucide-react";
 import Logo from "./ui/Logo";
 import useScrolled from "./hooks/useScrolled";
-import { NAV_ACTIONS, NAV_ITEMS } from "../../lib/marketing/navigation";
+import { NAV_ACTIONS, NAV_ITEMS, type NavItem } from "../../lib/marketing/navigation";
 import { NAVBAR_SCROLL_THRESHOLD } from "../../lib/marketing/site";
 
 /**
  * The glass navbar (§216). Enters with a soft spring (CSS), starts
  * large and hero-integrated, and compacts into a floating bar once the
  * page scrolls past NAVBAR_SCROLL_THRESHOLD. All styling lives in
- * globals.css (.of-nav*) so the transition is pure CSS; links come
- * from lib/marketing/navigation.
+ * globals.css (.of-nav*) so the transition is pure CSS; links are the
+ * admin-editable nav list (server pages pass getMarketingList("nav")).
  */
-export default function Navbar() {
+export default function Navbar({ items = NAV_ITEMS }: { items?: readonly NavItem[] }) {
   const scrolled = useScrolled(NAVBAR_SCROLL_THRESHOLD);
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -49,8 +49,8 @@ export default function Navbar() {
         </a>
 
         <ul className="hidden items-center gap-0.5 lg:flex">
-          {NAV_ITEMS.map((item) => (
-            <li key={item.href}>
+          {items.map((item) => (
+            <li key={item.label + item.href}>
               <a
                 href={item.href}
                 className="rounded-lg px-3 py-2 text-[14px] font-medium text-ink-2 transition-colors duration-200 hover:bg-white/80 hover:text-ink"
@@ -96,8 +96,8 @@ export default function Navbar() {
         inert={!open}
       >
         <ul className="space-y-0.5 p-3">
-          {NAV_ITEMS.map((item) => (
-            <li key={item.href}>
+          {items.map((item) => (
+            <li key={item.label + item.href}>
               <a
                 href={item.href}
                 onClick={close}

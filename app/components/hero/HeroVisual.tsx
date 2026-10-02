@@ -2,7 +2,7 @@ import { Check, MessageCircle, Sparkles, Zap } from "lucide-react";
 import AIVisual from "./AIVisual";
 import BotVisualPlaceholder from "./BotVisualPlaceholder";
 import { heroVisualAsset } from "../../../lib/marketing/site";
-import { HERO_SECTION, HERO_VISUAL_CARDS } from "../../../lib/marketing/sections";
+import { getCopy } from "../../../lib/marketing/cms";
 
 const delay = (ms: number) => ({ ["--of-delay" as string]: `${ms}ms` });
 
@@ -10,14 +10,15 @@ const delay = (ms: number) => ({ ["--of-delay" as string]: `${ms}ms` });
  * Hero visual: the AI slot (future 3D bot via `heroVisualAsset`) with
  * floating product cards and faint workflow lines around it.
  */
-export default function HeroVisual() {
-  const cards = HERO_VISUAL_CARDS;
+export default async function HeroVisual() {
+  const [home, mockups] = await Promise.all([getCopy("home_sections"), getCopy("home_mockups")]);
+  const cards = mockups.heroCards;
   return (
     <div
       className="of-enter relative mx-auto w-full max-w-[440px] sm:max-w-[520px] lg:max-w-[560px]"
       style={delay(160)}
       role="img"
-      aria-label={`${HERO_SECTION.visualLabel}: a ${cards.message.channel} message is understood, intent is detected and a workflow runs automatically.`}
+      aria-label={`${home.hero.visualLabel}: a ${cards.message.channel} message is understood, intent is detected and a workflow runs automatically.`}
     >
       <AIVisual asset={heroVisualAsset} fallback={<BotVisualPlaceholder />} priority>
         {/* workflow lines (decorative) */}

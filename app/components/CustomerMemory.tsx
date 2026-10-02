@@ -1,6 +1,6 @@
 import { BadgeCheck, Sparkles, UserRound } from "lucide-react";
 import type { CustomerMemoryContent } from "../../lib/content-defaults";
-import { CUSTOMER_PROFILE_SAMPLE } from "../../lib/marketing/sections";
+import { getCopy } from "../../lib/marketing/cms";
 import Reveal from "./Reveal";
 import Section from "./ui/Section";
 import Icon from "./ui/Icon";
@@ -11,12 +11,12 @@ import StatusIndicator from "./ui/StatusIndicator";
  * answer. A sample profile card (lib/marketing/sections) shows what the
  * AI knows; CMS copy explains why it matters. Server component.
  */
-export default function CustomerMemory({ content }: { content: CustomerMemoryContent }) {
+export default async function CustomerMemory({ content }: { content: CustomerMemoryContent }) {
   const items = content.context_items
     .split("|")
     .map((item) => item.trim())
     .filter(Boolean);
-  const profile = CUSTOMER_PROFILE_SAMPLE;
+  const profile = (await getCopy("home_mockups")).profile;
 
   return (
     <Section id="memory" tone="white" labelledBy="memory-title">

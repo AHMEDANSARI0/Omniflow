@@ -1,11 +1,12 @@
-import { HERO_SECTION } from "../../../lib/marketing/sections";
+import { getCopy } from "../../../lib/marketing/cms";
 
 /**
  * Lightweight stand-in for the future 3D AI bot: a calm "AI core"
  * (gradient ring + OmniFlow mark) on soft concentric rings. CSS and
  * inline SVG only, no images.
  */
-export default function BotVisualPlaceholder() {
+export default async function BotVisualPlaceholder() {
+  const hero = (await getCopy("home_sections")).hero;
   return (
     <div className="relative flex h-full w-full items-center justify-center">
       <div
@@ -30,10 +31,10 @@ export default function BotVisualPlaceholder() {
           </span>
         </div>
         <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-[12px] font-semibold text-ink shadow-card">
-          {HERO_SECTION.visualLabel}
+          {hero.visualLabel}
           <span className="inline-flex items-center gap-1 text-ok">
             <span aria-hidden className="of-pulse h-1.5 w-1.5 rounded-full bg-success" />
-            {HERO_SECTION.visualStatus}
+            {hero.visualStatus}
           </span>
         </p>
       </div>

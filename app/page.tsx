@@ -15,6 +15,7 @@ import FAQ from "./components/FAQ";
 import FinalCTA from "./components/FinalCTA";
 import Footer from "./components/Footer";
 import { getSectionContent } from "../lib/content";
+import { getCopy, getMarketingList } from "../lib/marketing/cms";
 import { getSiteSettings } from "../lib/settings";
 import {
   HERO_DEFAULTS, FINAL_CTA_DEFAULTS, FOOTER_DEFAULTS, FEATURES_DEFAULTS, TRUST_DEFAULTS,
@@ -45,6 +46,10 @@ export default async function Home() {
     customerMemoryContent,
     faqContent,
     footerContent,
+    navItems,
+    templates,
+    demoScenarios,
+    homeCopy,
   ] = await Promise.all([
     getSectionContent("hero", HERO_DEFAULTS),
     getSectionContent("ai_intelligence", AI_INTELLIGENCE_DEFAULTS),
@@ -56,6 +61,10 @@ export default async function Home() {
     getSectionContent("customer_memory", CUSTOMER_MEMORY_DEFAULTS),
     getSectionContent("faq", FAQ_DEFAULTS),
     getSectionContent("footer", FOOTER_DEFAULTS),
+    getMarketingList("nav"),
+    getMarketingList("templates"),
+    getMarketingList("demo"),
+    getCopy("home_sections"),
   ]);
 
   const siteSettings = await getSiteSettings();
@@ -105,17 +114,17 @@ export default async function Home() {
       >
         Skip to content
       </a>
-      <Navbar />
+      <Navbar items={navItems} />
       <main id="main">
         <Hero content={heroContent} />
         <AIIntelligence content={aiIntelligenceContent} />
         <ProblemSolution content={problemSolutionContent} />
-        <AutomationTemplates />
+        <AutomationTemplates templates={templates} copy={homeCopy.templates} />
         <HowItWorks content={howItWorksContent} />
         <Integrations />
         <Features content={featuresContent} />
         <CustomerMemory content={customerMemoryContent} />
-        <LiveDemo />
+        <LiveDemo scenarios={demoScenarios} copy={homeCopy.liveDemo} />
         <DashboardShowcase />
         <Trust content={trustContent} />
         <FAQ content={faqContent} />

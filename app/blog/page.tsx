@@ -8,8 +8,8 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Reveal from "../components/Reveal";
 import { formatDate, listPosts } from "../../lib/blog";
-import { BLOG_COPY, PAGE_HEROES } from "../../lib/marketing/pages";
 import { SITE_ROUTES } from "../../lib/marketing/site";
+import { getCopy } from "../../lib/marketing/cms";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -19,12 +19,13 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogPage() {
-  const posts = await listPosts();
+  const [posts, heroes, pagesCopy] = await Promise.all([listPosts(), getCopy("page_heroes"), getCopy("other_pages")]);
+  const blogCopy = pagesCopy.blog;
   const [featured, ...rest] = posts;
 
   return (
     <PageShell>
-      <PageHero hero={PAGE_HEROES.blog} />
+      <PageHero hero={heroes.blog} />
 
       <Section tone="canvas">
         {featured ? (
@@ -58,14 +59,14 @@ export default async function BlogPage() {
                     </span>
                   </div>
                   <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-2">
-                    {BLOG_COPY.readArticle}
+                    {blogCopy.readArticle}
                     <ArrowRight className="h-4 w-4" aria-hidden />
                   </span>
                 </div>
                 <div className="relative hidden min-h-[260px] items-center justify-center border-l border-line bg-[linear-gradient(180deg,#F5F4FF_0%,#FFFFFF_100%)] lg:flex">
                   <div aria-hidden className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_0%,rgba(99,91,255,0.14),transparent_70%)]" />
                   <p className="relative px-10 font-display text-2xl font-semibold leading-snug text-ink">
-                    {BLOG_COPY.featuredQuote}
+                    {blogCopy.featuredQuote}
                   </p>
                 </div>
               </a>
@@ -106,7 +107,7 @@ export default async function BlogPage() {
         <Reveal>
           <div className="mt-12 text-center">
             <Button href={SITE_ROUTES.start} variant="secondary">
-              {BLOG_COPY.indexCta}
+              {blogCopy.indexCta}
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
           </div>

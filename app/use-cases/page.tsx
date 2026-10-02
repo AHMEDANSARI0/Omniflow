@@ -8,9 +8,9 @@ import UseCases from "../components/UseCases";
 import AutomationTemplates from "../components/home/AutomationTemplates";
 import { getSectionContent } from "../../lib/content";
 import { USE_CASES_DEFAULTS } from "../../lib/content-defaults";
-import { PAGE_CTAS, PAGE_HEROES } from "../../lib/marketing/pages";
 import { NAV_ACTIONS } from "../../lib/marketing/navigation";
 import { SITE_ROUTES } from "../../lib/marketing/site";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 
 export const metadata: Metadata = {
   title: "Solutions",
@@ -20,11 +20,16 @@ export const metadata: Metadata = {
 };
 
 export default async function UseCasesPage() {
-  const useCasesContent = await getSectionContent("use_cases", USE_CASES_DEFAULTS);
+  const [useCasesContent, heroes, ctas, homeCopy] = await Promise.all([
+    getSectionContent("use_cases", USE_CASES_DEFAULTS),
+    getCopy("page_heroes"),
+    getCopy("page_ctas"),
+    getCopy("home_sections"),
+  ]);
 
   return (
     <PageShell>
-      <PageHero hero={PAGE_HEROES.useCases}>
+      <PageHero hero={heroes.useCases}>
         <Button href={NAV_ACTIONS.primary.href} size="lg">
           {NAV_ACTIONS.primary.label}
           <ArrowRight className="h-4 w-4" aria-hidden />
@@ -36,9 +41,9 @@ export default async function UseCasesPage() {
 
       <UseCases content={useCasesContent} />
 
-      <AutomationTemplates />
+      <AutomationTemplates templates={await getMarketingList("templates")} copy={homeCopy.templates} />
 
-      <PageCta cta={PAGE_CTAS.useCases} />
+      <PageCta cta={ctas.useCases} />
     </PageShell>
   );
 }

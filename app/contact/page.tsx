@@ -8,8 +8,8 @@ import Button from "../components/ui/Button";
 import Reveal from "../components/Reveal";
 import { getSectionContent } from "../../lib/content";
 import { FAQ_DEFAULTS } from "../../lib/content-defaults";
-import { CONTACT_CARDS, PAGE_HEROES } from "../../lib/marketing/pages";
 import { SITE_ROUTES } from "../../lib/marketing/site";
+import { getCopy } from "../../lib/marketing/cms";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -19,12 +19,17 @@ export const metadata: Metadata = {
 };
 
 export default async function ContactPage() {
-  const faq = await getSectionContent("faq", FAQ_DEFAULTS);
+  const [faq, heroes, pagesCopy] = await Promise.all([
+    getSectionContent("faq", FAQ_DEFAULTS),
+    getCopy("page_heroes"),
+    getCopy("other_pages"),
+  ]);
+  const cards = pagesCopy.contact;
   const email = faq.contact_email || FAQ_DEFAULTS.contact_email;
 
   return (
     <PageShell>
-      <PageHero hero={PAGE_HEROES.contact} />
+      <PageHero hero={heroes.contact} />
 
       <Section tone="canvas">
         <div className="mx-auto grid max-w-4xl gap-5 sm:grid-cols-2">
@@ -36,8 +41,8 @@ export default async function ContactPage() {
               >
                 <Mail className="h-5 w-5" />
               </span>
-              <h2 className="mt-4 font-display text-lg font-semibold text-ink">{CONTACT_CARDS.email.title}</h2>
-              <p className="mt-2 text-[14px] leading-relaxed text-ink-2">{CONTACT_CARDS.email.copy}</p>
+              <h2 className="mt-4 font-display text-lg font-semibold text-ink">{cards.email.title}</h2>
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-2">{cards.email.copy}</p>
               <a
                 href={"mailto:" + email}
                 className="mt-4 inline-flex items-center gap-2 rounded text-sm font-semibold text-brand-2 hover:text-brand"
@@ -56,11 +61,11 @@ export default async function ContactPage() {
               >
                 <MessageCircle className="h-5 w-5 text-white" />
               </span>
-              <h2 className="mt-4 font-display text-lg font-semibold text-ink">{CONTACT_CARDS.demo.title}</h2>
-              <p className="mt-2 text-[14px] leading-relaxed text-ink-2">{CONTACT_CARDS.demo.copy}</p>
+              <h2 className="mt-4 font-display text-lg font-semibold text-ink">{cards.demo.title}</h2>
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-2">{cards.demo.copy}</p>
               <div className="mt-5">
                 <Button href={SITE_ROUTES.start} size="sm">
-                  {CONTACT_CARDS.demo.cta}
+                  {cards.demo.cta}
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </Button>
               </div>

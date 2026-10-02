@@ -3,67 +3,70 @@
  * name so content stays plain data; app/components/ui/Icon.tsx maps
  * each name to its SVG component.
  */
-export type IconName =
-  | "message"
-  | "messages"
-  | "sparkles"
-  | "brain"
-  | "book"
-  | "target"
-  | "branch"
-  | "zap"
-  | "send"
-  | "bag"
-  | "package"
-  | "truck"
-  | "calendar"
-  | "help"
-  | "user-plus"
-  | "refresh"
-  | "headphones"
-  | "store"
-  | "webhook"
-  | "code"
-  | "sheet"
-  | "mail"
-  | "hash"
-  | "users"
-  | "database"
-  | "plug"
-  | "scan"
-  | "workflow"
-  | "route"
-  | "bell"
-  | "clock"
-  | "hand"
-  | "eye"
-  | "shield"
-  | "chart"
-  | "layers"
-  | "user"
-  | "inbox"
-  | "dashboard"
-  | "settings"
-  | "bot"
-  | "history"
-  | "scale"
-  | "list"
-  | "repeat"
-  | "cart"
-  | "globe"
-  | "file"
-  | "wand"
-  | "trending"
-  | "megaphone"
-  | "building"
-  | "house"
-  | "lifebuoy"
-  | "compass"
-  | "heart-hand"
-  | "map"
-  | "key"
-  | "lock"
-  | "user-check";
+export const ICON_NAMES = [
+  "message",
+  "messages",
+  "sparkles",
+  "brain",
+  "book",
+  "target",
+  "branch",
+  "zap",
+  "send",
+  "bag",
+  "package",
+  "truck",
+  "calendar",
+  "help",
+  "user-plus",
+  "refresh",
+  "headphones",
+  "store",
+  "webhook",
+  "code",
+  "sheet",
+  "mail",
+  "hash",
+  "users",
+  "database",
+  "plug",
+  "scan",
+  "workflow",
+  "route",
+  "bell",
+  "clock",
+  "hand",
+  "eye",
+  "shield",
+  "chart",
+  "layers",
+  "user",
+  "inbox",
+  "dashboard",
+  "settings",
+  "bot",
+  "history",
+  "scale",
+  "list",
+  "repeat",
+  "cart",
+  "globe",
+  "file",
+  "wand",
+  "trending",
+  "megaphone",
+  "building",
+  "house",
+  "lifebuoy",
+  "compass",
+  "heart-hand",
+  "map",
+  "key",
+  "lock",
+  "user-check",
+] as const;
+
+export type IconName = (typeof ICON_NAMES)[number];
 
 /** Honest availability of a channel or integration. */
 export type AvailabilityStatus = "live" | "beta" | "soon";

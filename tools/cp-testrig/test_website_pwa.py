@@ -26,7 +26,7 @@ check("faq jsonld built", '"@type": "FAQPage"' in page_src
 check("org jsonld built", '"@type": "Organization"' in page_src
       and 'site_url.replace(/\\/$/, "") + "/icon"' in page_src)
 check("jsonld rendered", 'type="application/ld+json"' in page_src)
-check("jsonld before navbar", page_src.index("application/ld+json") < page_src.index("<Navbar />"))
+check("jsonld before navbar", page_src.index("application/ld+json") < page_src.index("<Navbar items={navItems} />"))
 
 failures = summary("website_pwa")
 sys.exit(1 if failures else 0)

@@ -8,7 +8,7 @@ import Reveal from "../../components/Reveal";
 import Container from "../../components/ui/Container";
 import { formatDate, getPost, listPosts } from "../../../lib/blog";
 import PageCta from "../../components/ui/PageCta";
-import { BLOG_COPY, PAGE_CTAS } from "../../../lib/marketing/pages";
+import { getCopy } from "../../../lib/marketing/cms";
 
 export async function generateMetadata({
   params,
@@ -86,7 +86,8 @@ export default async function ArticlePage({
   const post = await getPost(slug);
   if (!post) notFound();
 
-  const all = await listPosts();
+  const [all, ctas, pagesCopy] = await Promise.all([listPosts(), getCopy("page_ctas"), getCopy("other_pages")]);
+  const blogCopy = pagesCopy.blog;
   const related = all.filter((item) => item.slug !== post.slug).slice(0, 2);
 
   const articleLd = {
@@ -113,7 +114,7 @@ export default async function ArticlePage({
                 className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-brand"
               >
                 <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-                {BLOG_COPY.allArticles}
+                {blogCopy.allArticles}
               </a>
               <div className="mt-5">
                 <Badge tone="brand">{post.category}</Badge>
@@ -151,7 +152,7 @@ export default async function ArticlePage({
         {related.length > 0 ? (
           <Section tone="canvas" containerClassName="!py-14">
             <h2 className="font-display text-xl font-semibold text-ink">
-              {BLOG_COPY.keepReading}
+              {blogCopy.keepReading}
             </h2>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               {related.map((item) => (
@@ -173,7 +174,7 @@ export default async function ArticlePage({
             </div>
           </Section>
         ) : null}
-        <PageCta cta={PAGE_CTAS.article} />
+        <PageCta cta={ctas.article} />
       </article>
     </PageShell>
   );

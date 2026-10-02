@@ -6,18 +6,20 @@ import Card from "./ui/Card";
 import Badge from "./ui/Badge";
 import { AvailabilityBadge } from "./ui/StatusIndicator";
 import { statusForChannel } from "../../lib/marketing/integrations";
-import { MULTI_CHANNEL_DIAGRAM } from "../../lib/marketing/sections";
+import { getCopy, getMarketingList } from "../../lib/marketing/cms";
 
 /**
  * One intelligence layer, every channel. Each channel's status comes
  * from the shared integrations data (lib/marketing/integrations), so it
  * is honest everywhere. Server component.
  */
-export default function MultiChannel({
+export default async function MultiChannel({
   content,
 }: {
   content: MultiChannelContent;
 }) {
+  const [integrations, home] = await Promise.all([getMarketingList("integrations"), getCopy("home_sections")]);
+  const diagram = home.multiChannel;
   const channels = [
     { name: content.c1_name, short: content.c1_short, desc: content.c1_desc },
     { name: content.c2_name, short: content.c2_short, desc: content.c2_desc },
@@ -45,7 +47,7 @@ export default function MultiChannel({
       <div className="mt-14 grid items-center gap-6 lg:grid-cols-[1fr_1.1fr]">
         <div className="grid gap-3 sm:grid-cols-2">
           {channels.map(({ name, short, desc }) => {
-            const status = statusForChannel(name);
+            const status = statusForChannel(name, integrations);
             const live = status === "live";
             return (
               <Reveal key={name} lift>
@@ -100,7 +102,7 @@ export default function MultiChannel({
               <div className="flex items-center gap-3 rounded-xl2 border border-line bg-white shadow-card px-4 py-3">
                 <Inbox className="h-4 w-4 shrink-0 text-brand" aria-hidden />
                 <p className="text-[13px] font-medium text-ink-2">
-                  {MULTI_CHANNEL_DIAGRAM.inbound}
+                  {diagram.inbound}
                 </p>
               </div>
               <div className="flex justify-center">
@@ -109,7 +111,7 @@ export default function MultiChannel({
               <div className="of-gradient rounded-xl2 px-4 py-3.5">
                 <p className="flex items-center gap-2 text-[13px] font-semibold text-white">
                   <Workflow className="h-4 w-4 shrink-0" aria-hidden />
-                  {MULTI_CHANNEL_DIAGRAM.decide}
+                  {diagram.decide}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {actions.map((action) => (
@@ -129,7 +131,7 @@ export default function MultiChannel({
               {content.bottom_note}
             </p>
             <div className="mt-4">
-              <Badge tone="neutral">{MULTI_CHANNEL_DIAGRAM.footer}</Badge>
+              <Badge tone="neutral">{diagram.footer}</Badge>
             </div>
           </Card>
         </Reveal>

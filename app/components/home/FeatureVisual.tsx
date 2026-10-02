@@ -1,12 +1,12 @@
 import { ArrowRight, Check, Clock, GitBranch, Sparkles, UserRound } from "lucide-react";
 import type { FeatureVisual as FeatureVisualKind } from "../../../lib/marketing/sections";
-import { FEATURE_VISUAL_DATA } from "../../../lib/marketing/sections";
-import { INTEGRATIONS } from "../../../lib/marketing/integrations";
+import type { Integration } from "../../../lib/marketing/integrations";
+import { getCopy, getMarketingList } from "../../../lib/marketing/cms";
 import StatusIndicator, { AvailabilityBadge } from "../ui/StatusIndicator";
 import { IntegrationLogo } from "../ui/IntegrationCard";
 
-function Conversation() {
-  const data = FEATURE_VISUAL_DATA.conversation;
+async function Conversation() {
+  const data = (await getCopy("home_mockups")).features.conversation;
   return (
     <div className="space-y-2.5">
       <p className="max-w-[80%] rounded-2xl rounded-tl-sm border border-line bg-white px-3.5 py-2.5 text-[13px] text-ink shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
@@ -25,8 +25,8 @@ function Conversation() {
   );
 }
 
-function Qualification() {
-  const data = FEATURE_VISUAL_DATA.qualification;
+async function Qualification() {
+  const data = (await getCopy("home_mockups")).features.qualification;
   return (
     <div className="rounded-xl2 border border-line bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-center justify-between">
@@ -49,8 +49,8 @@ function Qualification() {
   );
 }
 
-function FollowUp() {
-  const data = FEATURE_VISUAL_DATA.followUp;
+async function FollowUp() {
+  const data = (await getCopy("home_mockups")).features.followUp;
   return (
     <ol className="relative space-y-3 pl-6">
       <span aria-hidden className="absolute bottom-2 left-[9px] top-2 w-px bg-line-2" />
@@ -75,8 +75,8 @@ function FollowUp() {
   );
 }
 
-function Routing() {
-  const data = FEATURE_VISUAL_DATA.routing;
+async function Routing() {
+  const data = (await getCopy("home_mockups")).features.routing;
   return (
     <div className="flex items-center gap-3">
       <div className="rounded-xl border border-line bg-white px-3 py-2.5 text-[12px] font-semibold text-ink">
@@ -104,8 +104,8 @@ function Routing() {
   );
 }
 
-function Workflow() {
-  const data = FEATURE_VISUAL_DATA.workflow;
+async function Workflow() {
+  const data = (await getCopy("home_mockups")).features.workflow;
   return (
     <ol className="flex flex-wrap items-center gap-1.5">
       {data.nodes.map((node, index) => (
@@ -122,11 +122,12 @@ function Workflow() {
   );
 }
 
-function Channels() {
-  const names = FEATURE_VISUAL_DATA.channels.names;
+async function Channels() {
+  const [mockups, integrations] = await Promise.all([getCopy("home_mockups"), getMarketingList("integrations")]);
+  const names = mockups.features.channels.names;
   const items = names
-    .map((name) => INTEGRATIONS.find((item) => item.name === name))
-    .filter((item): item is (typeof INTEGRATIONS)[number] => Boolean(item));
+    .map((name) => integrations.find((item) => item.name === name))
+    .filter((item): item is Integration => Boolean(item));
   return (
     <ul className="grid grid-cols-2 gap-2">
       {items.map((item) => (
@@ -142,8 +143,8 @@ function Channels() {
   );
 }
 
-function Handoff() {
-  const data = FEATURE_VISUAL_DATA.handoff;
+async function Handoff() {
+  const data = (await getCopy("home_mockups")).features.handoff;
   return (
     <div className="space-y-2.5">
       {data.rows.map((row) => (

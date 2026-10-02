@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Check, FileText, GitBranch, MessageCircle, Zap } from "lucide-react";
 import type { StepMockup as StepMockupKind } from "../../../lib/marketing/sections";
-import { STEP_MOCKUP_DATA } from "../../../lib/marketing/sections";
 import { statusForChannel } from "../../../lib/marketing/integrations";
+import { getCopy, getMarketingList } from "../../../lib/marketing/cms";
 import StatusIndicator, { AvailabilityBadge } from "../ui/StatusIndicator";
 
 /** Window chrome shared by the step mockups. */
@@ -20,8 +20,9 @@ function Frame({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Channels() {
-  const data = STEP_MOCKUP_DATA.channels;
+async function Channels() {
+  const data = (await getCopy("home_mockups")).steps.channels;
+  const integrations = await getMarketingList("integrations");
   return (
     <Frame title={data.title}>
       <ul className="space-y-2">
@@ -32,7 +33,7 @@ function Channels() {
               <span className="block text-[12.5px] font-semibold text-ink">{row.name}</span>
               <span className="block truncate text-[11px] text-ink-3">{row.detail}</span>
             </span>
-            <AvailabilityBadge status={statusForChannel(row.name)} size="xs" />
+            <AvailabilityBadge status={statusForChannel(row.name, integrations)} size="xs" />
           </li>
         ))}
       </ul>
@@ -40,8 +41,8 @@ function Channels() {
   );
 }
 
-function Knowledge() {
-  const data = STEP_MOCKUP_DATA.knowledge;
+async function Knowledge() {
+  const data = (await getCopy("home_mockups")).steps.knowledge;
   return (
     <Frame title={data.title}>
       <ul className="space-y-2">
@@ -66,8 +67,8 @@ function Knowledge() {
   );
 }
 
-function Workflow() {
-  const data = STEP_MOCKUP_DATA.workflow;
+async function Workflow() {
+  const data = (await getCopy("home_mockups")).steps.workflow;
   const icons = [Zap, GitBranch, Check];
   return (
     <Frame title={data.title}>
@@ -97,8 +98,8 @@ function Workflow() {
   );
 }
 
-function Run() {
-  const data = STEP_MOCKUP_DATA.run;
+async function Run() {
+  const data = (await getCopy("home_mockups")).steps.run;
   return (
     <Frame title={data.title}>
       <div className="space-y-2">

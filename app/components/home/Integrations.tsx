@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
-import { INTEGRATIONS, STATUS_META, type Integration } from "../../../lib/marketing/integrations";
-import { INTEGRATIONS_SECTION } from "../../../lib/marketing/sections";
+import { STATUS_META, type Integration } from "../../../lib/marketing/integrations";
+import { getCopy, getMarketingList } from "../../../lib/marketing/cms";
 import { SITE_ROUTES } from "../../../lib/marketing/site";
 import Reveal from "../Reveal";
 import Section, { SectionHead } from "../ui/Section";
@@ -41,20 +41,22 @@ function MarqueeRow({ items, reverse = false }: { items: Integration[]; reverse?
  * under reduced motion) plus cards for what is available now. All data
  * from lib/marketing/integrations.ts.
  */
-export default function Integrations() {
-  const half = Math.ceil(INTEGRATIONS.length / 2);
-  const rowA = INTEGRATIONS.slice(0, half);
-  const rowB = INTEGRATIONS.slice(half);
-  const available = INTEGRATIONS.filter((item) => item.status !== "soon").slice(0, 6);
+export default async function Integrations() {
+  const [integrations, home] = await Promise.all([getMarketingList("integrations"), getCopy("home_sections")]);
+  const section = home.integrations;
+  const half = Math.ceil(integrations.length / 2);
+  const rowA = integrations.slice(0, half);
+  const rowB = integrations.slice(half);
+  const available = integrations.filter((item) => item.status !== "soon").slice(0, 6);
 
   return (
-    <Section id={INTEGRATIONS_SECTION.id} tone="white" labelledBy="integrations-title" className="overflow-hidden">
+    <Section id={section.id} tone="white" labelledBy="integrations-title" className="overflow-hidden">
       <Reveal>
         <SectionHead
           id="integrations-title"
-          eyebrow={INTEGRATIONS_SECTION.eyebrow}
-          title={INTEGRATIONS_SECTION.title}
-          copy={INTEGRATIONS_SECTION.copy}
+          eyebrow={section.eyebrow}
+          title={section.title}
+          copy={section.copy}
         />
       </Reveal>
 
@@ -75,7 +77,7 @@ export default function Integrations() {
 
       <div className="mt-10 text-center">
         <Button href={SITE_ROUTES.integrations} variant="secondary">
-          {INTEGRATIONS_SECTION.cta}
+          {section.cta}
           <ArrowRight className="h-4 w-4" aria-hidden />
         </Button>
       </div>

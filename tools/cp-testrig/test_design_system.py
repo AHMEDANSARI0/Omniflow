@@ -72,7 +72,7 @@ NAV = read("app/components/Navbar.tsx")
 NAVCFG = read("lib/marketing/navigation.ts")
 SITE = read("lib/marketing/site.ts")
 CSS = read("app/globals.css")
-for needle in ("useScrolled(NAVBAR_SCROLL_THRESHOLD)", "NAV_ITEMS.map",
+for needle in ("useScrolled(NAVBAR_SCROLL_THRESHOLD)", "{items.map((item) => (",
                "NAV_ACTIONS.primary", "aria-expanded={open}",
                "aria-controls={panelId}", '"Escape"', "inert={!open}"):
     check("navbar " + needle[:28], needle in NAV, "pin")
@@ -98,7 +98,8 @@ check("templates reveal on scroll", '<Reveal as="li" key={template.id}>' in TPL
 print("== footer ==")
 
 FOOT = read("app/components/Footer.tsx")
-check("footer config driven", "FOOTER_COLUMNS.map" in FOOT, "config")
+check("footer config driven", "{columns.map((column) => (" in FOOT
+      and 'groupFooterLinks(await getMarketingList("footer"))' in FOOT, "config")
 for needle in ('href: "/features"', 'href: "/blog"', 'href: "/about"',
                'href: "/privacy"', 'href: "/terms"', 'href: "/contact"',
                'href: "/security"', 'href: "/integrations"'):
@@ -112,7 +113,7 @@ for needle in ("content.status_label", "content.description",
 print("== page shell ==")
 
 SHELL = read("app/components/PageShell.tsx")
-check("shell navbar+footer", "<Navbar />" in SHELL
+check("shell navbar+footer", '<Navbar items={await getMarketingList("nav")} />' in SHELL
       and "<Footer content={footerContent} />" in SHELL, "compose")
 check("shell cms footer", 'getSectionContent("footer", FOOTER_DEFAULTS)'
       in SHELL, "cms")
@@ -124,20 +125,20 @@ print("== homepage (redesign v2) ==")
 PAGE = read("app/page.tsx")
 order = [PAGE.index(marker) for marker in (
     "<Hero content", "<AIIntelligence content", "<ProblemSolution content",
-    "<AutomationTemplates />", "<HowItWorks content", "<Integrations />",
-    "<Features content", "<CustomerMemory content", "<LiveDemo />",
+    "<AutomationTemplates templates={templates}", "<HowItWorks content", "<Integrations />",
+    "<Features content", "<CustomerMemory content", "<LiveDemo scenarios={demoScenarios}",
     "<DashboardShowcase />", "<Trust content", "<FAQ content",
     "<FinalCTA content")]
 check("homepage order", order == sorted(order), order)
 check("jsonld before navbar", PAGE.index("application/ld+json")
-      < PAGE.index("<Navbar />"), "seo")
+      < PAGE.index("<Navbar items={navItems} />"), "seo")
 check("homepage canonical", 'canonical: "/"' in PAGE, "seo")
 check("homepage marketing scope", 'className="of-site' in PAGE, "tokens")
 check("old dark shell gone", 'bg-[#07111f]' not in PAGE, "light")
 
 HERO = read("app/components/Hero.tsx")
 check("hero has no animation lib", "motion/react" not in HERO, "lcp")
-check("hero honest channels", "statusForChannel(name)" in HERO
+check("hero honest channels", "statusForChannel(name, integrations)" in HERO
       and "AvailabilityBadge" in HERO, "honesty")
 check("hero visual slot", "<HeroVisual />" in HERO, "slot")
 check("hero visual asset config", "heroVisualAsset: AIVisualAsset | null" in SITE, "config")
@@ -150,7 +151,7 @@ check("integration statuses honest", 'id: "whatsapp"' in INTEG
 
 SHOW = read("app/components/DashboardShowcase.tsx")
 DASH = read("lib/marketing/dashboard.ts")
-check("showcase product ui", "DASHBOARD_PREVIEW" in SHOW
+check("showcase product ui", 'getCopy("dashboard_preview")' in SHOW
       and '"Live conversations"' in DASH and '"Channel status"' in DASH, "ui")
 check("showcase sample-data caption", "sample data" in DASH, "honesty")
 

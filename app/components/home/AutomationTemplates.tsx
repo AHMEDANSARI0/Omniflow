@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import {
-  AUTOMATION_TEMPLATES,
   TEMPLATE_CATEGORIES,
+  type AutomationTemplate,
   type TemplateCategory,
 } from "../../../lib/marketing/templates";
-import { TEMPLATES_SECTION } from "../../../lib/marketing/sections";
+import type { CopyValue } from "../../../lib/marketing/copy";
 import { SITE_ROUTES } from "../../../lib/marketing/site";
 import Reveal from "../Reveal";
 import Section, { SectionHead } from "../ui/Section";
@@ -15,31 +15,38 @@ import Icon from "../ui/Icon";
 
 /**
  * Automation templates (§216): filterable cards, each with icon, title,
- * description, the workflow steps and a CTA. Data lives in
- * lib/marketing/templates.ts.
+ * description, the workflow steps and a CTA. The list is admin-editable
+ * (server pages pass getMarketingList("templates")); only categories
+ * that have templates get a filter tab.
  */
-export default function AutomationTemplates() {
+export default function AutomationTemplates({
+  templates,
+  copy,
+}: {
+  templates: readonly AutomationTemplate[];
+  copy: CopyValue<"home_sections">["templates"];
+}) {
   const [category, setCategory] = useState<TemplateCategory | "all">("all");
 
   const visible = useMemo(
-    () =>
-      category === "all"
-        ? AUTOMATION_TEMPLATES
-        : AUTOMATION_TEMPLATES.filter((template) => template.category === category),
-    [category]
+    () => (category === "all" ? templates : templates.filter((template) => template.category === category)),
+    [category, templates]
+  );
+  const tabs = TEMPLATE_CATEGORIES.filter(
+    (item) => item.key === "all" || templates.some((template) => template.category === item.key)
   );
 
   const labelFor = (key: TemplateCategory) =>
     TEMPLATE_CATEGORIES.find((item) => item.key === key)?.label ?? key;
 
   return (
-    <Section id={TEMPLATES_SECTION.id} tone="white" labelledBy="templates-title">
+    <Section id={copy.id} tone="white" labelledBy="templates-title">
       <Reveal>
         <SectionHead
           id="templates-title"
-          eyebrow={TEMPLATES_SECTION.eyebrow}
-          title={TEMPLATES_SECTION.title}
-          copy={TEMPLATES_SECTION.copy}
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          copy={copy.copy}
         />
       </Reveal>
 
@@ -48,7 +55,7 @@ export default function AutomationTemplates() {
         aria-label="Filter templates by category"
         className="mx-auto mt-10 flex max-w-full flex-wrap justify-center gap-2"
       >
-        {TEMPLATE_CATEGORIES.map((item) => {
+        {tabs.map((item) => {
           const active = item.key === category;
           return (
             <button
@@ -118,7 +125,7 @@ export default function AutomationTemplates() {
           href={SITE_ROUTES.start}
           className="inline-flex h-11 items-center gap-2 rounded-xl border border-line-2 bg-white px-5 text-sm font-semibold text-ink shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition-colors hover:border-brand/40"
         >
-          {TEMPLATES_SECTION.allLabel}
+          {copy.allLabel}
           <ArrowRight className="h-4 w-4" aria-hidden />
         </a>
       </div>
