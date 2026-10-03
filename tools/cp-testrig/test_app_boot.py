@@ -150,9 +150,19 @@ for name in sorted(os.listdir(CP)):
             third.add(node.module.split(".")[0])
 third = {m for m in third if m not in std and m not in local}
 check("CP imports nothing beyond flask / werkzeug / psycopg2 / control_plane"
-      " / pypdf (lazy, PDF import only) / PIL (lazy, optional OCR fallback)",
-      third <= {"flask", "werkzeug", "psycopg2", "control_plane", "pypdf", "PIL"},
+      " / pypdf (lazy, PDF import only) / PIL (lazy, optional OCR fallback)"
+      " / cryptography (lazy, secrets vault)",
+      third <= {"flask", "werkzeug", "psycopg2", "control_plane", "pypdf", "PIL",
+                "cryptography"},
       sorted(third))
+crypto_users = sorted(
+    name for name in os.listdir(CP) if name.endswith(".py")
+    and re.search(r"^\s*(from|import) cryptography\b",
+                  open(os.path.join(CP, name), encoding="utf8").read(), re.M))
+vault_src = open(os.path.join(CP, "portal_vault.py"), encoding="utf8").read()
+check("cryptography only in portal_vault, never at module level (CP boots without it)",
+      crypto_users == ["portal_vault.py"] and "\nimport cryptography" not in vault_src
+      and "\nfrom cryptography" not in vault_src, crypto_users)
 pil_users = sorted(
     name for name in os.listdir(CP) if name.endswith(".py")
     and re.search(r"\bPIL\b", open(os.path.join(CP, name), encoding="utf8").read()))

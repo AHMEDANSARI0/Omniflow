@@ -16,6 +16,7 @@ from portal_auth import (
     ensure_human_principal,
 )
 import portal_db
+import portal_vault
 
 bp = Blueprint("portal_webhooks", __name__, url_prefix="/api/v1/portal")
 
@@ -204,7 +205,8 @@ def create_webhook():
                     " (client_id, url, secret, events)"
                     " VALUES (%s, %s, %s, %s)"
                     " RETURNING id, url, events, enabled, created_at",
-                    (principal["client_id"], url, secret, events),
+                    (principal["client_id"], url, portal_vault.seal(secret),
+                     events),
                 )
                 rows = portal_db.rows(cur)
                 created = rows[0] if rows else {}
@@ -492,6 +494,7 @@ def retry_webhook_delivery(webhook_id: int, delivery_id: int):
 
 
 def _sign(secret: str, body: str) -> str:
+    secret = portal_vault.unseal(secret)  # §223: stored sealed
     return hmac.new(secret.encode("utf-8"), body.encode("utf-8"),
                     hashlib.sha256).hexdigest()
 

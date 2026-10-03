@@ -601,3 +601,66 @@ def connect_twilio_number_route():
     except Exception:
         pass
     return jsonify({"ok": True, "number": public, "base_url": base}), 200
+
+
+# ---------------------------------------------------------------------------
+# §223 Secrets vault - status + "Encrypt stored secrets" (service key only)
+# ---------------------------------------------------------------------------
+
+@bp.get("/security/vault")
+def vault_status_route():
+    import portal_vault
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                report = portal_vault.scan(cur, migrate=False)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(
+            error, "secrets vault")[0]), 503
+    return jsonify(report), 200
+
+
+@bp.post("/security/vault/migrate")
+def vault_migrate_route():
+    import portal_vault
+    state = portal_vault.status()
+    if not state["configured"]:
+        return jsonify({"error": {
+            "code": "vault_not_configured",
+            "message": {
+                "library_missing": "The Control Plane is missing the"
+                                   " cryptography package - redeploy"
+                                   " with the updated requirements.txt.",
+                "key_too_short": "OF_SECRETS_KEY must be at least "
+                                 + str(state["min_key_chars"])
+                                 + " characters.",
+            }.get(state["problem"], "Set OF_SECRETS_KEY in the Control"
+                                    " Plane environment, redeploy, then"
+                                    " try again."),
+        }, "status": state}), 409
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                report = portal_vault.scan(cur, migrate=True)
+                portal_db.log_action(
+                    cur, 0, "security.vault_migrated", "platform_admin",
+                    None, None,
+                    ("resealed=" + str(report["totals"]["resealed"])
+                     + " remaining=" + str(report["remaining"])
+                     + " unreadable=" + str(report["totals"]["unreadable"])
+                     + " key=" + state["key_id"])[:200])
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(
+            error, "secrets vault")[0]), 503
+    platform_settings.invalidate_cache()
+    return jsonify(report), 200

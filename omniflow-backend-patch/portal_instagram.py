@@ -28,6 +28,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from flask import Blueprint, Response, jsonify, request
 
 import portal_db
+import portal_vault
 from portal_auth import (
     PortalAuthUnavailable,
     authenticate_portal_request,
@@ -45,6 +46,8 @@ connector_bp = Blueprint("instagram_connector", __name__,
 SETTINGS_TABLE = os.environ.get(
     "OF_INSTAGRAM_TABLE", "portal_instagram_accounts"
 )
+# §223: sealed at rest (verify_token stays plain - the webhook looks it up).
+VAULT_FIELDS = ("app_secret", "access_token")
 GRAPH_BASE_URL = os.environ.get(
     "OF_META_GRAPH_BASE_URL", "https://graph.facebook.com"
 ).rstrip("/")
@@ -121,7 +124,7 @@ def _load_settings(cur, client_id: Any) -> Optional[Dict[str, Any]]:
         (client_id,),
     )
     rows = portal_db.rows(cur)
-    return rows[0] if rows else None
+    return portal_vault.unseal_fields(rows[0], VAULT_FIELDS) if rows else None
 
 
 def _load_by_account(cur, account_id: str) -> Optional[Dict[str, Any]]:
@@ -133,7 +136,7 @@ def _load_by_account(cur, account_id: str) -> Optional[Dict[str, Any]]:
         (account_id,),
     )
     rows = portal_db.rows(cur)
-    return rows[0] if rows else None
+    return portal_vault.unseal_fields(rows[0], VAULT_FIELDS) if rows else None
 
 
 def _load_by_verify_token(cur, verify_token: str) -> Optional[Dict[str, Any]]:
@@ -146,7 +149,7 @@ def _load_by_verify_token(cur, verify_token: str) -> Optional[Dict[str, Any]]:
         (verify_token,),
     )
     rows = portal_db.rows(cur)
-    return rows[0] if rows else None
+    return portal_vault.unseal_fields(rows[0], VAULT_FIELDS) if rows else None
 
 
 def _settings_public(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -533,9 +536,9 @@ def save_instagram_settings():
                     " enabled = EXCLUDED.enabled,"
                     " last_error = NULL, updated_at = NOW()",
                     (principal["client_id"], clean["account_id"],
-                     clean["page_id"], clean["app_secret"],
-                     clean["access_token"], clean["verify_token"],
-                     keep_connected),
+                     clean["page_id"], portal_vault.seal(clean["app_secret"]),
+                     portal_vault.seal(clean["access_token"]),
+                     clean["verify_token"], keep_connected),
                 )
                 portal_db.log_action(
                     cur, principal["client_id"], "instagram.settings",
@@ -549,7 +552,8 @@ def save_instagram_settings():
                     " WHERE client_id = %s",
                     (principal["client_id"],),
                 )
-                saved = portal_db.rows(cur)
+                saved = [portal_vault.unseal_fields(r, VAULT_FIELDS)
+                         for r in portal_db.rows(cur)]
             conn.commit()
         finally:
             conn.close()
@@ -795,7 +799,8 @@ def dispatch_instagram_command():
                     " WHERE client_id = %s LIMIT 1",
                     (client_id,),
                 )
-                accounts = portal_db.rows(cur)
+                accounts = [portal_vault.unseal_fields(r, VAULT_FIELDS)
+                            for r in portal_db.rows(cur)]
         finally:
             conn.close()
     except Exception as error:

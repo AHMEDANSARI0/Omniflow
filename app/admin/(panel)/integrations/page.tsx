@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import IntegrationsClient from "./IntegrationsClient";
+import SecretsVaultCard from "./SecretsVaultCard";
 
 export default async function IntegrationsPage() {
   const supabase = await createClient();
@@ -15,14 +16,15 @@ export default async function IntegrationsPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Integrations
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
+        <p className="mt-1.5 text-sm text-ink-3">
           Paste the provider keys once — every feature waiting on a key
           starts working the moment its settings are saved.
         </p>
       </div>
+      <SecretsVaultCard />
       <IntegrationsClient />
     </div>
   );

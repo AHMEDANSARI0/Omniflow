@@ -11,8 +11,9 @@ Design laws:
   the ingest hot path; flask lives in admin_providers, not here).
 - Fail-soft: any read error -> None, and the caller falls back to its
   environment variable (env-config adapters stay the safety net).
-- Secrets are stored as-is in the database and masked by the admin API;
-  the readers here are server-side only.
+- Secrets are sealed at rest by portal_vault (§223, AES-256-GCM with the
+  env-only OF_SECRETS_KEY; plain legacy values keep working) and masked by
+  the admin API; the readers here are server-side only and unseal.
 - A 30-second TTL cache keeps the ingest loop from hammering the
   database; every PUT invalidates it on the instance that wrote.
 """
@@ -23,6 +24,18 @@ try:  # pragma: no cover - always available in the Control Plane image
     import portal_db
 except Exception:  # pragma: no cover - tests may inject a stub
     portal_db = None
+
+try:  # §223 secrets vault (stdlib + lazy cryptography; fail-soft)
+    import portal_vault
+except Exception:  # pragma: no cover
+    portal_vault = None
+
+
+def _open(value) -> str:
+    text = str(value or "")
+    if portal_vault is None:
+        return text
+    return portal_vault.unseal(text)
 
 TABLE = "platform_settings"
 CACHE_TTL_SECONDS = 30.0
@@ -127,9 +140,10 @@ def get_setting(key: str, default=None):
                     "SELECT key, value FROM " + portal_db._q(TABLE)
                 )
                 rows = portal_db.rows(cur)
+            conn.commit()  # keep the lazy DDL (§223 fix: was rolled back)
         finally:
             conn.close()
-        _cache = {str(r["key"]): str(r["value"] or "") for r in rows}
+        _cache = {str(r["key"]): _open(r["value"]) for r in rows}
         _cache_at = time.monotonic()
     except Exception:
         _cache.clear()
@@ -155,12 +169,13 @@ def get_group(group: str) -> dict:
                     (prefix + "%",),
                 )
                 rows = portal_db.rows(cur)
+            conn.commit()  # keep the lazy DDL (§223 fix: was rolled back)
         finally:
             conn.close()
     except Exception:
         return out
     for row in rows:
-        out[str(row["key"])[len(prefix):]] = str(row["value"] or "")
+        out[str(row["key"])[len(prefix):]] = _open(row["value"])
     return out
 
 
@@ -172,6 +187,9 @@ def put_group(cur, group: str, values: dict) -> None:
     """
     prefix = group + "."
     for name, value in values.items():
+        if portal_vault is not None \
+                and portal_vault.is_secret_setting(prefix + name):
+            value = portal_vault.seal(value)
         cur.execute(
             "INSERT INTO " + portal_db._q(TABLE) +
             " (key, value, updated_at) VALUES (%s, %s, NOW())"

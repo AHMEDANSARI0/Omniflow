@@ -581,3 +581,59 @@ export async function connectAdminTwilioNumber(
   );
   return adminTwilioResult(response);
 }
+
+// §223 Secrets vault (stored provider credentials encrypted at rest).
+export interface AdminVaultArea {
+  label: string;
+  table: string;
+  present: boolean;
+  plain: number;
+  sealed: number;
+  old_key: number;
+  unreadable: number;
+  resealed: number;
+  error: string;
+}
+
+export interface AdminVaultReport {
+  status: {
+    library: boolean;
+    configured: boolean;
+    key_id: string;
+    old_key_ids: string[];
+    problem: "" | "key_missing" | "key_too_short" | "library_missing";
+    min_key_chars: number;
+    algorithm: string;
+  };
+  areas: AdminVaultArea[];
+  totals: { plain: number; sealed: number; old_key: number; unreadable: number; resealed: number };
+  migrated: boolean;
+  remaining: number;
+}
+
+function vaultReport(payload: unknown): AdminVaultReport {
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !("status" in payload) ||
+    !("areas" in payload) ||
+    !Array.isArray((payload as { areas: unknown }).areas)
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminVaultReport;
+}
+
+export async function getAdminVault(): Promise<AdminVaultReport> {
+  const response = await adminRequest("api/v1/admin/security/vault", { method: "GET" });
+  return vaultReport(await response.json());
+}
+
+export async function migrateAdminVault(): Promise<AdminVaultReport> {
+  const response = await adminRequest("api/v1/admin/security/vault/migrate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  return vaultReport(await response.json());
+}
