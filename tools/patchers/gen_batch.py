@@ -19,13 +19,23 @@ SPEC.json = {"out": "tools/patchers/add_batch_X.mjs",
              "header": "// comment lines...",
              "base": "/tmp/mainbase"   (optional: origin/main tree; markers
                                         must be ABSENT there),
-             "ops": [["path/relative/to/repo", "unique marker"], ...]}
+             "requires": [["path", "needle", "why"]]  (optional: earlier
+                                        batches this one builds on),
+             "ensure_lines": [["path", "line", "regex already-present"]]
+                                       (optional: append one line to a
+                                        plain-text file, e.g. a CP
+                                        requirements.txt dependency;
+                                        EOL style kept, backup taken),
+             "ops": [["path/relative/to/repo", "unique marker"], ...,
+                     ["path/to/retire.tsx", {"delete": true}]]}
 
 Markers must be present in the NEW content and absent from the base copy
 (so drift triggers a repair, and a second run says "already").
 """
 import json
 import os
+import posixpath
+import re
 import sys
 
 CP_SRC = "omniflow-backend-patch/"
@@ -38,6 +48,10 @@ const BACKUP_TAG = "__BACKUP_TAG__";
 let applied = 0, already = 0, warnings = 0;
 if (!fs.existsSync("OmniFlow-Control-Plane") || !fs.statSync("OmniFlow-Control-Plane").isDirectory()) {
   console.log("X Run this from the website repo root (bot root) - the folder that contains OmniFlow-Control-Plane/. Nothing was written.");
+  process.exit(1);
+}
+if (!fs.existsSync("OmniFlow-Control-Plane/app.py")) {
+  console.log("X OmniFlow-Control-Plane/ is empty or not the Control Plane repo (no app.py). On a fresh machine the website clone leaves this folder empty: delete it, then clone the Control Plane repo into it (git clone <CP repo url> OmniFlow-Control-Plane) and run this again. Nothing was written.");
   process.exit(1);
 }
 function compilePython(pathArg) {
@@ -102,6 +116,49 @@ function writeNewRepair(repoPath, marker, isCp, content) {
     warnings++;
   }
 }
+function removeFile(repoPath) {
+  try {
+    if (!fs.existsSync(repoPath)) {
+      console.log("= " + repoPath + " (already removed)");
+      already++;
+      return;
+    }
+    const backup = repoPath + BACKUP_TAG;
+    if (!fs.existsSync(backup)) fs.copyFileSync(repoPath, backup);
+    fs.unlinkSync(repoPath);
+    console.log("- " + repoPath + " (removed - old copy kept as " + BACKUP_TAG + ")");
+    applied++;
+  } catch (err) {
+    console.log("X " + repoPath + " FAILED to remove: " + err.message);
+    warnings++;
+  }
+}
+'''
+
+ENSURE_LINE = r'''function ensureLine(repoPath, line, presentRe) {
+  try {
+    if (!fs.existsSync(repoPath)) {
+      console.log("! " + repoPath + " not found - add this line yourself: " + line);
+      warnings++;
+      return;
+    }
+    const text = fs.readFileSync(repoPath, "utf8");
+    if (new RegExp(presentRe, "im").test(text)) {
+      console.log("= " + repoPath + " (already lists " + line + ")");
+      already++;
+      return;
+    }
+    const backup = repoPath + BACKUP_TAG;
+    if (!fs.existsSync(backup)) fs.copyFileSync(repoPath, backup);
+    const eol = text.includes("\r\n") ? "\r\n" : "\n";
+    fs.writeFileSync(repoPath, text + (text === "" || text.endsWith("\n") ? "" : eol) + line + eol, "utf8");
+    console.log("+ " + repoPath + " (added " + line + ")");
+    applied++;
+  } catch (err) {
+    console.log("X " + repoPath + " FAILED: " + err.message);
+    warnings++;
+  }
+}
 '''
 
 FOOTER = r'''
@@ -111,18 +168,70 @@ console.log("Next: cd OmniFlow-Control-Plane -> git add -A -> commit -> push (CP
 '''
 
 
+# §213 build-fix law: every relative import in a TS/JS op must resolve to a
+# real file from the op's own path, with EXACT letter case (Vercel builds on
+# case-sensitive Linux). A wrong "../" count once shipped in §205/§207/§209
+# and broke `npm run build` on the laptop; generation now refuses that.
+_IMPORT_RE = re.compile(r"""(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)["'](\.{1,2}/[^"'\n]*)["']""")
+_SUFFIXES = ("", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css", ".scss",
+             "/index.ts", "/index.tsx", "/index.js", "/index.jsx")
+
+
+def _is_file_exact(rel):
+    parts = [x for x in rel.split("/") if x]
+    cur = "."
+    for part in parts:
+        try:
+            if part not in os.listdir(cur):
+                return False
+        except OSError:
+            return False
+        cur = os.path.join(cur, part)
+    return os.path.isfile(cur)
+
+
+def unresolved_imports(rel, content):
+    if not re.search(r"\.(tsx?|jsx?|mjs|cjs)$", rel):
+        return []
+    bad = []
+    for spec in _IMPORT_RE.findall(content):
+        target = posixpath.normpath(posixpath.join(posixpath.dirname(rel), spec))
+        if target.startswith("..") or not any(_is_file_exact(target + s) for s in _SUFFIXES):
+            bad.append(spec)
+    return bad
+
+
 def main(spec_path):
     spec = json.load(open(spec_path, encoding="utf8"))
     base = spec.get("base")
     out = [spec["header"].rstrip("\n") + "\n",
            HELPER.replace("__BACKUP_TAG__", spec["backup_tag"])]
+    # Optional "requires": [[path, needle, why], ...] - earlier batches this
+    # one builds on. Checked before anything is written; abort if missing.
+    for req_path, needle, why in spec.get("requires", []):
+        local = req_path
+        if req_path.startswith(CP_REPO) and not os.path.exists(req_path):
+            local = CP_SRC + req_path[len(CP_REPO):]  # sandbox keeps the CP as its mirror
+        assert needle in open(local, encoding="utf8").read(), "requires: %s lacks %r" % (local, needle)
+        out.append(
+            "if (!fs.existsSync(%s) || !fs.readFileSync(%s, \"utf8\").includes(%s)) {\n"
+            "  console.log(\"X \" + %s + \" Nothing was written.\");\n  process.exit(1);\n}\n" % (
+                json.dumps(req_path), json.dumps(req_path), json.dumps(needle, ensure_ascii=True), json.dumps(why)))
     emitted = 0
     seen = set()
     for rel, marker in spec["ops"]:
         assert rel not in seen, "duplicate op " + rel
         seen.add(rel)
+        if isinstance(marker, dict) and marker.get("delete"):
+            assert not os.path.exists(rel), "delete op but %s still exists in the workspace" % rel
+            assert not rel.startswith(CP_SRC), "delete ops are website-only"
+            out.append("removeFile(%s);\n" % json.dumps(rel, ensure_ascii=True))
+            emitted += 1
+            continue
         content = open(rel, encoding="utf8").read().replace("\r\n", "\n")
         assert marker in content, "marker missing in NEW %s: %r" % (rel, marker)
+        bad = unresolved_imports(rel, content)
+        assert not bad, "unresolved relative import(s) in %s: %r" % (rel, bad)
         if base:
             base_path = os.path.join(base, rel)
             if os.path.exists(base_path):
@@ -138,6 +247,17 @@ def main(spec_path):
                 "true" if is_cp else "false",
                 json.dumps(content, ensure_ascii=True)))
             emitted += 1
+    # Optional "ensure_lines": [[path, line, present_regex], ...] - append a
+    # single line (e.g. a CP dependency) when the regex finds nothing.
+    ensure = spec.get("ensure_lines", [])
+    if ensure:
+        out.append(ENSURE_LINE)
+    for rel, line, present in ensure:
+        assert re.search(present, line, re.I | re.M), "ensure_lines regex must match its own line: %r" % line
+        out.append("ensureLine(%s, %s, %s);\n" % (
+            json.dumps(rel, ensure_ascii=True), json.dumps(line, ensure_ascii=True),
+            json.dumps(present, ensure_ascii=True)))
+        emitted += 1
     out.append(FOOTER)
     text = "".join(out)
     open(spec["out"], "w", encoding="utf8", newline="\n").write(text)

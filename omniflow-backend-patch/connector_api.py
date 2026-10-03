@@ -258,6 +258,15 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_knowledge
+
+                    # §219: scheduled re-fetch of opted-in knowledge web
+                    # pages (background, throttled per tenant; a changed
+                    # page becomes a new version, never auto-published).
+                    portal_knowledge.kick_refresh(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
                     import portal_inbound_media
 
                     # §214: retention sweep for stored customer files

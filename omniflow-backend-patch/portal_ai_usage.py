@@ -54,6 +54,7 @@ FEATURES = (
     ("voice_call", "Phone AI assistant"),
     ("voice_note", "Voice note transcription"),
     ("vision", "Image understanding"),
+    ("kb_ocr", "Knowledge document reading (OCR)"),
     ("other", "Other"),
 )
 FEATURE_LABELS = dict(FEATURES)

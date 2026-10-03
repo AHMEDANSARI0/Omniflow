@@ -58,6 +58,7 @@ export async function POST(request: Request) {
     text?: unknown;
     url?: unknown;
     filename?: unknown;
+    auto_refresh?: unknown;
   } | null;
   const kind =
     payload && typeof payload.kind === "string" && KINDS.includes(payload.kind)
@@ -71,6 +72,8 @@ export async function POST(request: Request) {
     payload && typeof payload.filename === "string"
       ? payload.filename.trim().slice(0, 200)
       : "";
+  // §219: automatic refresh is a web-page option only.
+  const autoRefresh = kind === "url" && payload?.auto_refresh === true;
   if (!kind) {
     return safeJson(
       { error: { code: "bad_request", message: "kind must be text, file or url." } },
@@ -103,6 +106,7 @@ export async function POST(request: Request) {
       text: kind === "url" ? undefined : text,
       url: kind === "url" ? url : undefined,
       filename: kind === "file" ? filename : undefined,
+      auto_refresh: autoRefresh || undefined,
     });
     if (result.kind === "unavailable") {
       return safeJson(

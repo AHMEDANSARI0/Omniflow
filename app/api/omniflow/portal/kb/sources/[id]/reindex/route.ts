@@ -32,14 +32,20 @@ export async function POST(
 
   const payload = (await request.json().catch(() => null)) as {
     text?: unknown;
+    filename?: unknown;
   } | null;
   const text =
     payload && typeof payload.text === "string" && payload.text.trim()
       ? payload.text
       : undefined;
+  // §219: a file source's "new version" upload names the new file.
+  const filename =
+    text && payload && typeof payload.filename === "string"
+      ? payload.filename.trim().slice(0, 200) || undefined
+      : undefined;
 
   try {
-    const result = await reindexKbSource(accessToken, id, text);
+    const result = await reindexKbSource(accessToken, id, text, filename);
     if (result.kind === "unavailable") {
       return safeJson(
         { error: { code: "portal_unavailable", message: "Try again shortly." } },

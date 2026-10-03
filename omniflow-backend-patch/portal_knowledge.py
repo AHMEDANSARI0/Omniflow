@@ -19,8 +19,14 @@ Audit-first (what already existed and stays):
   are kept but silent.
 
 Sources (``portal_kb_sources``) are pasted text, uploaded text files
-(the browser reads .txt/.md/.csv/.json/.html and posts the text) or web
-pages (fetched server-side with an SSRF guard). Every ingest writes a
+(the browser reads .txt/.md/.csv/.json/.html and posts the text), PDF /
+Word files (§219: ``POST /kb/extract`` returns their text via
+``portal_kb_files`` for the owner to review - nothing is stored until
+the owner adds it as a draft) or web pages (fetched server-side with an
+SSRF guard). Web pages can opt in to ``auto_refresh`` (§219): the
+connector tick re-fetches them in the background every
+OF_KB_AUTO_REFRESH_HOURS; a changed page becomes a new version written
+by ``system`` and keeps its publication state (auto-publish lock). Every ingest writes a
 new version snapshot (``portal_kb_source_versions``, raw text kept so a
 version can be rolled back or re-chunked) and replaces the source's
 chunks (``portal_kb_chunks``). Retrieval is a single tenant-scoped SQL
@@ -38,6 +44,8 @@ import math
 import os
 import re
 import socket
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -47,6 +55,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from flask import Blueprint, jsonify, request
 
 import portal_db
+import portal_kb_files
 from portal_auth import (
     PortalAuthUnavailable,
     authenticate_portal_request,
@@ -84,6 +93,9 @@ URL_BYTES_MAX = _env_int("OF_KB_URL_BYTES_MAX", 1500000, 10000, 20000000)
 URL_STALE_DAYS = _env_int("OF_KB_URL_STALE_DAYS", 30, 1, 365)
 RETRIEVE_CANDIDATES = _env_int("OF_KB_RETRIEVE_CANDIDATES", 200, 10, 2000)
 QUERY_TOKENS_MAX = _env_int("OF_KB_QUERY_TOKENS_MAX", 12, 3, 32)
+REFRESH_HOURS = _env_int("OF_KB_AUTO_REFRESH_HOURS", 168, 1, 8760)
+REFRESH_BATCH = _env_int("OF_KB_REFRESH_BATCH", 3, 1, 50)
+REFRESH_TICK_SECONDS = _env_int("OF_KB_REFRESH_TICK_SECONDS", 900, 30, 86400)
 MAX_TITLE_CHARS = 120
 MAX_HEADING_CHARS = 160
 SNIPPET_CHARS = 400
@@ -136,6 +148,12 @@ CREATE TABLE IF NOT EXISTS portal_kb_chunks (
 );
 CREATE INDEX IF NOT EXISTS idx_portal_kb_chunks_source
   ON portal_kb_chunks (client_id, source_id, position);
+ALTER TABLE portal_kb_sources
+  ADD COLUMN IF NOT EXISTS auto_refresh BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE portal_kb_sources
+  ADD COLUMN IF NOT EXISTS checked_at TIMESTAMPTZ;
+ALTER TABLE portal_kb_sources
+  ADD COLUMN IF NOT EXISTS refresh_attempt_at TIMESTAMPTZ;
 """
 
 
@@ -170,6 +188,7 @@ _WORD_RE = re.compile(r"\w+", re.UNICODE)
 _BLANK_RE = re.compile(r"\n\s*\n")
 _SENTENCE_RE = re.compile(r"(?<=[.!?\u06d4])\s+")
 _HEADING_RE = re.compile(r"^(#{1,6}\s+|\d+(\.\d+)*[.)]\s+)")
+_LIST_OR_ROW_RE = re.compile(r"^[-*\u2022]\s")
 
 
 def normalize(text: Any) -> str:
@@ -308,6 +327,8 @@ def _split_heading(block: str) -> Tuple[str, str]:
     first, rest = first.strip(), rest.strip()
     if not first or not rest:
         return "", block
+    if _LIST_OR_ROW_RE.match(first) or " | " in first:
+        return "", block  # a list item or table row (PDF/Word import)
     if _is_heading(first):
         return _heading_text(first), rest
     if (len(first) <= 60 and len(first.split()) <= 8
@@ -406,7 +427,11 @@ def chunk_text(text: str, size: int = 0,
                 current = current + "\n\n" + piece
     flush()
     if len(chunks) > 1:
-        chunks = [c for c in chunks if len(c["content"]) >= MIN_CHUNK_CHARS]
+        # a tiny chunk is noise unless its heading makes it meaningful
+        # ("Charges" + "Call 0300-1234567" stays; "B" + "ok" goes)
+        chunks = [c for c in chunks if len(c["content"]) >= MIN_CHUNK_CHARS
+                  or (c["heading"] and len(c["heading"]) + 1
+                      + len(c["content"]) >= MIN_CHUNK_CHARS)]
         for index, chunk in enumerate(chunks):
             chunk["position"] = index
     return chunks
@@ -584,7 +609,8 @@ def fetch_url(url: str) -> Tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 SOURCE_COLS = ("id, client_id, title, kind, origin, status, version, chunk_count,"
-               " char_count, last_error, ingested_at, created_at, updated_at")
+               " char_count, last_error, ingested_at, created_at, updated_at,"
+               " auto_refresh, checked_at")
 
 
 def _iso(value: Any) -> Optional[str]:
@@ -596,14 +622,19 @@ def _iso(value: Any) -> Optional[str]:
 
 
 def _is_stale(row: Dict[str, Any]) -> bool:
+    """A web page neither indexed nor confirmed unchanged (automatic
+    refresh) within OF_KB_URL_STALE_DAYS."""
     if str(row.get("kind") or "") != "url":
         return False
-    stamp = row.get("ingested_at")
-    if not isinstance(stamp, datetime):
+    stamps = []
+    for key in ("ingested_at", "checked_at"):
+        stamp = row.get(key)
+        if isinstance(stamp, datetime):
+            stamps.append(stamp if stamp.tzinfo else stamp.replace(
+                tzinfo=timezone.utc))
+    if not stamps:
         return False
-    if stamp.tzinfo is None:
-        stamp = stamp.replace(tzinfo=timezone.utc)
-    return stamp < datetime.now(timezone.utc) - timedelta(days=URL_STALE_DAYS)
+    return max(stamps) < datetime.now(timezone.utc) - timedelta(days=URL_STALE_DAYS)
 
 
 def source_public(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -618,6 +649,9 @@ def source_public(row: Dict[str, Any]) -> Dict[str, Any]:
         "char_count": int(row.get("char_count") or 0),
         "last_error": str(row.get("last_error") or ""),
         "stale": _is_stale(row),
+        "auto_refresh": bool(row.get("auto_refresh"))
+        and str(row.get("kind") or "") == "url",
+        "checked_at": _iso(row.get("checked_at")),
         "ingested_at": _iso(row.get("ingested_at")),
         "created_at": _iso(row.get("created_at")),
         "updated_at": _iso(row.get("updated_at")),
@@ -662,13 +696,22 @@ def health(sources: List[Dict[str, Any]]) -> Dict[str, Any]:
     return out
 
 
+def stored_text(text: Any) -> str:
+    """Exactly what ingest stores as a version (the refresh job compares
+    a fresh fetch against it)."""
+    return clean_text(text)[:MAX_SOURCE_CHARS]
+
+
 def ingest(cur, client_id: int, source: Dict[str, Any], text: str,
-           note: str = "", actor_user_id: Optional[int] = None) -> Dict[str, Any]:
+           note: str = "", actor_user_id: Optional[int] = None,
+           origin: Optional[str] = None,
+           actor_kind: str = "customer_user") -> Dict[str, Any]:
     """Chunk ``text`` for ``source``: replace its chunks, snapshot the raw
     text as the next version, prune old versions, refresh the counters and
-    audit. Returns the updated source row. Never publishes."""
+    audit. ``origin`` replaces the stored file name (new upload of a file
+    source). Returns the updated source row. Never publishes."""
     source_id = int(source.get("id") or 0)
-    content = clean_text(text)[:MAX_SOURCE_CHARS]
+    content = stored_text(text)
     chunks = chunk_text(content)
     version = int(source.get("version") or 0) + 1
     cur.execute(
@@ -702,19 +745,23 @@ def ingest(cur, client_id: int, source: Dict[str, Any], text: str,
         " WHERE client_id = %s AND source_id = %s AND version <= %s",
         (client_id, source_id, version - MAX_VERSIONS),
     )
+    params: List[Any] = [version, len(chunks), len(content)]
+    if origin:
+        params.append(str(origin)[:200])
     cur.execute(
         "UPDATE " + portal_db._q(SOURCES_TABLE) +
         " SET version = %s, chunk_count = %s, char_count = %s, last_error = '',"
-        " ingested_at = NOW(), updated_at = NOW()"
+        + (" origin = %s," if origin else "") +
+        " ingested_at = NOW(), checked_at = NOW(), updated_at = NOW()"
         " WHERE id = %s AND client_id = %s RETURNING " + SOURCE_COLS,
-        (version, len(chunks), len(content), source_id, client_id),
+        tuple(params + [source_id, client_id]),
     )
     rows = portal_db.rows(cur)
     updated = rows[0] if rows else dict(source, version=version,
                                         chunk_count=len(chunks),
                                         char_count=len(content), last_error="")
     portal_db.log_action(
-        cur, client_id, "kb.source_ingested", "customer_user", actor_user_id,
+        cur, client_id, "kb.source_ingested", actor_kind, actor_user_id,
         None, "Indexed '" + str(updated.get("title") or "")[:60] + "' v"
         + str(version) + " (" + str(len(chunks)) + " sections, "
         + str(len(content)) + " chars)" + (" - " + note if note else ""),
@@ -864,9 +911,11 @@ def _bad(message: str, code: str = "bad_request", status: int = 400):
 
 
 def _limits() -> Dict[str, Any]:
-    return {"max_sources": MAX_SOURCES, "max_chars": MAX_SOURCE_CHARS,
-            "chunk_chars": CHUNK_CHARS, "max_versions": MAX_VERSIONS,
-            "kinds": list(KINDS)}
+    out = {"max_sources": MAX_SOURCES, "max_chars": MAX_SOURCE_CHARS,
+           "chunk_chars": CHUNK_CHARS, "max_versions": MAX_VERSIONS,
+           "kinds": list(KINDS), "refresh_hours": REFRESH_HOURS}
+    out.update(portal_kb_files.limits())
+    return out
 
 
 def _title_from(text: str, fallback: str) -> str:
@@ -909,6 +958,7 @@ def post_source():
         return _bad("kind must be one of text, file, url.")
     title = str(payload.get("title") or "").strip()[:MAX_TITLE_CHARS]
     origin = ""
+    auto_refresh = kind == "url" and payload.get("auto_refresh") is True
     if kind == "url":
         url = str(payload.get("url") or "").strip()[:2000]
         if not url:
@@ -946,9 +996,9 @@ def post_source():
                             + str(MAX_SOURCES) + " sources.", "limit", 409)
             cur.execute(
                 "INSERT INTO " + portal_db._q(SOURCES_TABLE) +
-                " (client_id, title, kind, origin, status)"
-                " VALUES (%s, %s, %s, %s, 'draft') RETURNING " + SOURCE_COLS,
-                (client_id, title, kind, origin),
+                " (client_id, title, kind, origin, status, auto_refresh)"
+                " VALUES (%s, %s, %s, %s, 'draft', %s) RETURNING " + SOURCE_COLS,
+                (client_id, title, kind, origin, auto_refresh),
             )
             rows = portal_db.rows(cur)
             source = rows[0] if rows else {"id": 0, "title": title,
@@ -963,7 +1013,8 @@ def post_source():
 
 @bp.put("/kb/sources/<int:source_id>")
 def put_source(source_id: int):
-    """Owner review: publish / pause / back to draft, rename."""
+    """Owner review: publish / pause / back to draft, rename, and switch
+    automatic refresh of a web page on or off (audited)."""
     principal, error = _human_or_error()
     if error:
         return error
@@ -973,7 +1024,10 @@ def put_source(source_id: int):
     title = str(payload.get("title") or "").strip()[:MAX_TITLE_CHARS]
     if status and status not in STATUSES:
         return _bad("status must be one of draft, published, paused.")
-    if not status and not title:
+    auto_refresh = payload.get("auto_refresh")
+    if auto_refresh is not None and not isinstance(auto_refresh, bool):
+        return _bad("auto_refresh must be true or false.")
+    if not status and not title and auto_refresh is None:
         return _bad("Nothing to update.")
     conn = portal_db._conn()
     try:
@@ -987,6 +1041,10 @@ def put_source(source_id: int):
                 conn.rollback()
                 return _bad("This source has no indexed text yet. Re-index it"
                             " before publishing.", "empty_source")
+            if auto_refresh and str(source.get("kind") or "") != "url":
+                conn.rollback()
+                return _bad("Automatic refresh is only available for web"
+                            " pages.")
             sets = ["updated_at = NOW()"]
             params: List[Any] = []
             if status:
@@ -995,6 +1053,9 @@ def put_source(source_id: int):
             if title:
                 sets.append("title = %s")
                 params.append(title)
+            if auto_refresh is not None:
+                sets.append("auto_refresh = %s")
+                params.append(auto_refresh)
             params.extend([int(source_id), client_id])
             cur.execute(
                 "UPDATE " + portal_db._q(SOURCES_TABLE) + " SET " +
@@ -1011,6 +1072,16 @@ def put_source(source_id: int):
                     ("Published" if status == "published" else
                      "Paused" if status == "paused" else "Unpublished")
                     + " source '" + str(updated.get("title") or "")[:60] + "'",
+                )
+            if auto_refresh is not None and auto_refresh != bool(
+                    source.get("auto_refresh")):
+                portal_db.log_action(
+                    cur, client_id, "kb.source_auto_refresh_"
+                    + ("on" if auto_refresh else "off"), "customer_user",
+                    principal.get("user_id"), None,
+                    ("Turned on" if auto_refresh else "Turned off")
+                    + " automatic refresh for '"
+                    + str(updated.get("title") or "")[:60] + "'",
                 )
         conn.commit()
     finally:
@@ -1061,13 +1132,16 @@ def delete_source(source_id: int):
 @bp.post("/kb/sources/<int:source_id>/reindex")
 def reindex_source(source_id: int):
     """Re-fetch a web page, or re-chunk pasted/uploaded text (new text in
-    the body, else the latest stored version). Publication state is kept."""
+    the body, else the latest stored version). A file source given new
+    text plus ``filename`` is a new upload (the stored file name follows).
+    Publication state is kept."""
     principal, error = _human_or_error()
     if error:
         return error
     client_id = int(principal.get("client_id") or 0)
     payload = request.get_json(silent=True) or {}
     new_text = clean_text(payload.get("text"))
+    filename = str(payload.get("filename") or "").strip()[:200]
     if new_text and len(new_text) > MAX_SOURCE_CHARS:
         return _bad("That text is too long (limit " + str(MAX_SOURCE_CHARS)
                     + " characters).", "too_long")
@@ -1080,6 +1154,7 @@ def reindex_source(source_id: int):
                 conn.rollback()
                 return _bad("No such source.", "not_found", 404)
             note = "re-indexed"
+            origin = None
             if str(source.get("kind") or "") == "url":
                 try:
                     text, _title = fetch_url(str(source.get("origin") or ""))
@@ -1091,6 +1166,9 @@ def reindex_source(source_id: int):
             elif new_text:
                 text = new_text
                 note = "text replaced"
+                if filename and str(source.get("kind") or "") == "file":
+                    note = "new upload: " + filename
+                    origin = filename
             else:
                 latest = version_content(cur, client_id, source_id)
                 text = str((latest or {}).get("content") or "")
@@ -1105,7 +1183,7 @@ def reindex_source(source_id: int):
                 return _bad("The page returned no readable text.",
                             "fetch_failed")
             source = ingest(cur, client_id, source, text, note,
-                            principal.get("user_id"))
+                            principal.get("user_id"), origin)
         conn.commit()
     finally:
         conn.close()
@@ -1196,10 +1274,224 @@ def search_knowledge():
                     "hits": hits}), 200
 
 
+@bp.post("/kb/extract")
+def extract_file():
+    """§219: text of an uploaded PDF / Word file for the owner to review.
+    §221: images and scanned PDF pages are read with the platform vision
+    AI only when the owner asks (``ocr: true`` + ``pages``, a few pages
+    per call). Human-only; stores nothing (the reviewed text is added
+    through POST /kb/sources as a draft, or as a new version through
+    /reindex)."""
+    principal, error = _human_or_error()
+    if error:
+        return error
+    payload = request.get_json(silent=True) or {}
+    filename = str(payload.get("filename") or "").strip()[:200]
+    if not filename:
+        return _bad("filename is required.")
+    try:
+        data = portal_kb_files.decode_base64(payload.get("file_base64"))
+        if payload.get("ocr") is True:
+            read = portal_kb_files.ocr(filename, data, payload.get("pages"),
+                                       int(principal.get("client_id") or 0))
+            return jsonify({"filename": filename, "type": read["type"],
+                            "pages": read["pages"], "ocr": True,
+                            "results": read["results"]}), 200
+        result = portal_kb_files.extract(filename, data, MAX_SOURCE_CHARS)
+    except portal_kb_files.ExtractError as problem:
+        return _bad(problem.message, problem.code,
+                    413 if problem.code == "too_large" else 400)
+    except Exception as problem:  # fail-soft: never a 500 for a bad file
+        logger.info("kb extract failed: %s", problem)
+        return _bad("That file could not be read.", "extract_failed")
+    body = {"filename": filename, "type": result["type"],
+            "text": result["text"], "title": result["title"],
+            "pages": result["pages"], "truncated": result["truncated"],
+            "chars": len(result["text"]),
+            "ocr_pages": result.get("ocr_pages") or [],
+            "ocr_pages_skipped": int(result.get("ocr_pages_skipped") or 0)}
+    if "page_texts" in result:
+        body["page_texts"] = result["page_texts"]
+    return jsonify(body), 200
+
+
+# ---------------------------------------------------------------------------
+# §219 scheduled re-fetch of web pages (opt-in per source)
+# ---------------------------------------------------------------------------
+
+_DUE_AT = ("GREATEST(COALESCE(checked_at, ingested_at, 'epoch'::timestamptz),"
+           " COALESCE(refresh_attempt_at, 'epoch'::timestamptz))")
+_DUE = _DUE_AT + " < NOW() - make_interval(hours => %s)"
+_REFRESH_LOCK = threading.Lock()
+_REFRESH_RUNNING: set = set()
+_REFRESH_LAST: Dict[int, float] = {}
+
+
+def due_refresh(cur, client_id: int, limit: int = 0) -> List[Dict[str, Any]]:
+    """Opted-in web pages not checked for OF_KB_AUTO_REFRESH_HOURS, oldest
+    first, at most OF_KB_REFRESH_BATCH per run."""
+    cur.execute(
+        "SELECT " + SOURCE_COLS + " FROM " + portal_db._q(SOURCES_TABLE) +
+        " WHERE client_id = %s AND kind = 'url' AND auto_refresh AND " + _DUE +
+        " ORDER BY " + _DUE_AT + " ASC, id ASC LIMIT %s",
+        (client_id, REFRESH_HOURS, int(limit or REFRESH_BATCH)),
+    )
+    return portal_db.rows(cur)
+
+
+def _refresh_problem(cur, client_id: int, source_id: int, message: str) -> str:
+    cur.execute(
+        "UPDATE " + portal_db._q(SOURCES_TABLE) +
+        " SET last_error = %s WHERE id = %s AND client_id = %s",
+        (("Automatic refresh: " + message)[:300], source_id, client_id),
+    )
+    return "error"
+
+
+def refresh_source(client_id: int, source: Dict[str, Any]) -> str:
+    """Re-fetch one opted-in page on its own connection. The row is claimed
+    atomically first (refresh_attempt_at), so two workers never fetch the
+    same page. Unchanged page -> only checked_at moves; changed page -> a
+    new version written by 'system' (publication state untouched).
+    Returns changed | unchanged | skipped | error; never raises."""
+    source_id = int(source.get("id") or 0)
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE " + portal_db._q(SOURCES_TABLE) +
+                " SET refresh_attempt_at = NOW() WHERE id = %s AND client_id = %s"
+                " AND kind = 'url' AND auto_refresh AND " + _DUE +
+                " RETURNING id",
+                (source_id, client_id, REFRESH_HOURS),
+            )
+            claimed = portal_db.rows(cur)
+            conn.commit()
+            if not claimed:
+                return "skipped"
+            try:
+                text, _title = fetch_url(str(source.get("origin") or ""))
+            except ValueError as problem:
+                outcome = _refresh_problem(cur, client_id, source_id, str(problem))
+                conn.commit()
+                return outcome
+            except Exception as problem:
+                logger.info("kb refresh fetch crashed: %s", problem)
+                outcome = _refresh_problem(cur, client_id, source_id,
+                                           "the page could not be fetched.")
+                conn.commit()
+                return outcome
+            content = stored_text(text)
+            if len(content) < MIN_CHUNK_CHARS:
+                outcome = _refresh_problem(cur, client_id, source_id,
+                                           "the page returned no readable text.")
+                conn.commit()
+                return outcome
+            latest = version_content(cur, client_id, source_id)
+            if latest is not None and str(latest.get("content") or "") == content:
+                cur.execute(
+                    "UPDATE " + portal_db._q(SOURCES_TABLE) +
+                    " SET checked_at = NOW(), last_error = ''"
+                    " WHERE id = %s AND client_id = %s",
+                    (source_id, client_id),
+                )
+                conn.commit()
+                return "unchanged"
+            current = get_source(cur, client_id, source_id)
+            if current is None or str(current.get("kind") or "") != "url" \
+                    or not current.get("auto_refresh"):
+                conn.commit()
+                return "skipped"
+            ingest(cur, client_id, current, content,
+                   "automatic refresh: page changed", None, None, "system")
+            conn.commit()
+            return "changed"
+    except Exception as problem:  # fail-soft: the next run retries
+        logger.info("kb refresh failed: %s", problem)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return "error"
+    finally:
+        conn.close()
+
+
+def run_refresh(client_id: int) -> Dict[str, int]:
+    """One bounded refresh run for a tenant. Each page is isolated; a
+    changed page schedules a semantic-index sync."""
+    counts = {"changed": 0, "unchanged": 0, "error": 0, "skipped": 0}
+    conn = portal_db._conn()
+    try:
+        with conn.cursor() as cur:
+            _ensure_ddl(cur)
+            due = due_refresh(cur, client_id)
+        conn.commit()
+    finally:
+        conn.close()
+    for source in due:
+        try:
+            outcome = refresh_source(client_id, source)
+        except Exception as problem:
+            logger.info("kb refresh crashed: %s", problem)
+            outcome = "error"
+        counts[outcome if outcome in counts else "error"] += 1
+    if counts["changed"]:
+        try:
+            import portal_kb_semantic
+
+            portal_kb_semantic.kick(client_id, "edit")
+        except Exception:
+            pass
+    return counts
+
+
+def _refresh_job(client_id: int) -> None:
+    try:
+        run_refresh(client_id)
+    except Exception as problem:
+        logger.info("kb refresh job failed: %s", problem)
+    finally:
+        with _REFRESH_LOCK:
+            _REFRESH_RUNNING.discard(client_id)
+
+
+def kick_refresh(client_id: int) -> bool:
+    """Connector-tick hook: start a background refresh run for the tenant,
+    at most once per OF_KB_REFRESH_TICK_SECONDS and one run at a time.
+    Returns True when a run was started."""
+    try:
+        client_id = int(client_id or 0)
+    except Exception:
+        return False
+    if client_id <= 0:
+        return False
+    now = time.monotonic()
+    with _REFRESH_LOCK:
+        if client_id in _REFRESH_RUNNING:
+            return False
+        if now - _REFRESH_LAST.get(client_id, -1e18) < REFRESH_TICK_SECONDS:
+            return False
+        _REFRESH_RUNNING.add(client_id)
+        _REFRESH_LAST[client_id] = now
+    try:
+        threading.Thread(target=_refresh_job, args=(client_id,),
+                         name="kb-refresh-" + str(client_id),
+                         daemon=True).start()
+    except Exception:
+        with _REFRESH_LOCK:
+            _REFRESH_RUNNING.discard(client_id)
+        return False
+    return True
+
+
 @bp.after_request
 def _kb_semantic_after(response):
-    """D1: a successful owner write schedules a semantic-index sync."""
+    """D1: a successful owner write schedules a semantic-index sync
+    (extract stores nothing, so it schedules nothing)."""
     try:
+        if request.path.endswith("/kb/extract"):
+            return response
         import portal_kb_semantic
 
         return portal_kb_semantic.kick_after_mutation(response)

@@ -12,6 +12,10 @@ Env (from .env, loaded by run_channel.py):
   OMNIFLOW_CLIENT_ID            (optional, default: 1)
   OMNIFLOW_COMMAND_POLL_SECONDS (optional, default: 15)
   OMNIFLOW_PHONE                (optional — shown as the connected WhatsApp number in the portal)
+  OMNIFLOW_CP_MEDIA_TIMEOUT_SECONDS (optional, default: 30 — upload time for one voice note / photo)
+  OMNIFLOW_CP_MEDIA_RETRIES     (optional, default: 2 — failed uploads before the file is dropped
+                                 and only the message text is sent)
+  OMNIFLOW_CP_MEDIA_BACKLOG     (optional, default: 3 — files kept in memory while the CP is offline)
 """
 
 import json
@@ -23,6 +27,13 @@ import urllib.request
 
 
 DEFAULT_BASE_URL = "https://omniflow-control-plane-rho.vercel.app"
+
+
+def _env_float(name, default):
+    try:
+        return float(str(os.getenv(name, default)).strip())
+    except ValueError:
+        return float(default)
 
 
 class ControlPlaneBridge:
@@ -73,6 +84,17 @@ class ControlPlaneBridge:
 
         self.max_batch = 100
 
+        self.media_timeout_seconds = max(
+            self.timeout_seconds,
+            _env_float("OMNIFLOW_CP_MEDIA_TIMEOUT_SECONDS", 30.0),
+        )
+        self.media_retries = max(
+            1, int(_env_float("OMNIFLOW_CP_MEDIA_RETRIES", 2))
+        )
+        self.media_backlog = max(
+            1, int(_env_float("OMNIFLOW_CP_MEDIA_BACKLOG", 3))
+        )
+
         self.account_name = (
             str(account_name).strip()
             if account_name
@@ -93,7 +115,7 @@ class ControlPlaneBridge:
 
     # ---------- low level ----------
 
-    def _request(self, method, path, payload=None):
+    def _request(self, method, path, payload=None, timeout=None):
         data = None
         headers = {
             "X-Omniflow-Key": self.service_key,
@@ -113,7 +135,7 @@ class ControlPlaneBridge:
         try:
             with urllib.request.urlopen(
                 request,
-                timeout=self.timeout_seconds,
+                timeout=timeout or self.timeout_seconds,
             ) as response:
                 body = response.read().decode(
                     "utf-8",
@@ -199,7 +221,18 @@ class ControlPlaneBridge:
         body,
         direction="in",
         display_name=None,
+        media=None,
+        message_id=None,
     ):
+        """Queue one message for the CP and flush.
+
+        ``media`` (optional, inbound only): up to 3 items of
+        {"type": "audio"|"image", "mime", "data_b64", "transcribed"?} - the
+        CP keeps a copy for the inbox and, unless already transcribed here,
+        runs its speech-to-text / vision. ``message_id`` (the WhatsApp
+        message id) makes the CP dedupe exact, so two photos with the same
+        placeholder text are never merged.
+        """
         item = {
             "from": str(external_user_id or "").strip(),
             "body": "" if body is None else str(body),
@@ -217,6 +250,26 @@ class ControlPlaneBridge:
         ):
             item["name"] = str(display_name)
 
+        if message_id and item["direction"] == "in":
+            item["id"] = "waweb:" + str(message_id).strip()[:250]
+
+        if (
+            isinstance(media, list)
+            and media
+            and item["direction"] == "in"
+        ):
+            item["media"] = [
+                entry for entry in media[:3]
+                if isinstance(entry, dict)
+            ]
+
+            if item["media"] and not item["body"].strip():
+                item["body"] = (
+                    "[Voice note]"
+                    if item["media"][0].get("type") == "audio"
+                    else "[Image]"
+                )
+
         with self._lock:
             if len(self._pending) >= self.max_batch:
                 dropped = self._pending.pop(0)
@@ -228,6 +281,9 @@ class ControlPlaneBridge:
 
             self._pending.append(item)
 
+            if item.get("media"):
+                self._trim_media_backlog()
+
         try:
             self.flush()
         except Exception as flush_error:
@@ -236,31 +292,89 @@ class ControlPlaneBridge:
                 f"{flush_error}"
             )
 
+    @staticmethod
+    def _drop_media(item, reason):
+        item.pop("media", None)
+        item.pop("_media_failures", None)
+        print(
+            "CP bridge: media dropped (" + reason + "), "
+            "message text kept: " + str(item.get("from"))
+        )
+
+    def _trim_media_backlog(self):
+        """Caller holds the lock. Bound the files held in memory."""
+        with_media = [
+            item for item in self._pending if item.get("media")
+        ]
+
+        for item in with_media[: max(0, len(with_media) - self.media_backlog)]:
+            self._drop_media(item, "backlog full")
+
+    def _next_group(self):
+        """Caller holds the lock. A message with media travels alone (own
+        timeout, bounded body size); plain messages travel together."""
+        if not self._pending:
+            return []
+
+        if self._pending[0].get("media"):
+            return [self._pending[0]]
+
+        group = []
+
+        for item in self._pending[: self.max_batch]:
+            if item.get("media"):
+                break
+
+            group.append(item)
+
+        return group
+
     def flush(self):
-        with self._lock:
-            batch = list(self._pending[: self.max_batch])
+        for _ in range(10):
+            with self._lock:
+                group = self._next_group()
 
-        if not batch:
-            return True
+            if not group:
+                return True
 
+            if not self._send_group(group):
+                return False
+
+        return True
+
+    def _send_group(self, group):
+        has_media = any(item.get("media") for item in group)
         status, data = self._request(
             "POST",
             "/api/v1/connector/whatsapp/messages",
             {
                 "client_id": self.client_id,
-                "messages": batch,
+                "messages": [
+                    {
+                        key: value
+                        for key, value in item.items()
+                        if not key.startswith("_")
+                    }
+                    for item in group
+                ],
             },
+            timeout=(
+                self.media_timeout_seconds if has_media else None
+            ),
         )
 
         if status == 200:
             inserted = data.get("inserted")
 
             with self._lock:
-                del self._pending[: len(batch)]
+                self._pending = [
+                    item for item in self._pending
+                    if not any(item is sent for sent in group)
+                ]
 
             print(
                 "CP bridge ingest: "
-                f"{inserted if inserted is not None else len(batch)}"
+                f"{inserted if inserted is not None else len(group)}"
                 " message(s) stored"
             )
 
@@ -270,6 +384,23 @@ class ControlPlaneBridge:
             "CP bridge ingest deferred (HTTP "
             f"{status})"
         )
+
+        if has_media:
+            with self._lock:
+                for item in group:
+                    if not item.get("media"):
+                        continue
+
+                    item["_media_failures"] = (
+                        item.get("_media_failures", 0) + 1
+                    )
+
+                    if item["_media_failures"] >= self.media_retries:
+                        self._drop_media(
+                            item,
+                            "upload failed " + str(self.media_retries)
+                            + "x",
+                        )
 
         return False
 

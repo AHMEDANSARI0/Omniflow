@@ -97,11 +97,10 @@ class WhatsAppWebAdapter(ChannelAdapter):
             raw_payload.get("kind", "text")
         ).strip().lower()
 
-        message_type = (
-            "audio"
-            if kind == "voice"
-            else "text"
-        )
+        message_type = {
+            "voice": "audio",
+            "image": "image",
+        }.get(kind, "text")
 
         return ChannelEvent(
             channel_account_id=self.account.id,
@@ -132,6 +131,11 @@ class WhatsAppWebAdapter(ChannelAdapter):
                 "voice_message_id": (
                     raw_payload.get("id")
                     if kind == "voice"
+                    else None
+                ),
+                "image_message_id": (
+                    raw_payload.get("id")
+                    if kind == "image"
                     else None
                 ),
             }
@@ -676,6 +680,36 @@ class WhatsAppWebAdapter(ChannelAdapter):
 
         return self.bot.download_latest_voice_note(
             voice_message_id
+        )
+
+    def capture_image(
+        self,
+        event: ChannelEvent,
+        max_bytes: int
+    ) -> Optional[dict]:
+        """In-memory copy of an inbound photo for the Control Plane."""
+        if event.channel_account_id != self.account.id:
+            return None
+
+        if event.message_type != "image":
+            return None
+
+        download = getattr(
+            self.bot,
+            "download_message_image",
+            None
+        )
+
+        if not callable(download):
+            return None
+
+        image_message_id = event.metadata.get(
+            "image_message_id"
+        ) or event.external_message_id
+
+        return download(
+            image_message_id,
+            max_bytes=max_bytes
         )
 
     # ---------------------------------

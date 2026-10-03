@@ -42,7 +42,8 @@ export function controlPlaneBaseUrl(): URL {
 async function portalRequest(
   accessToken: string,
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  timeoutMs: number = REQUEST_TIMEOUT_MS
 ): Promise<Response> {
   const url = new URL(path.replace(/^\//, ""), controlPlaneBaseUrl());
   const headers = new Headers(init.headers);
@@ -56,7 +57,7 @@ async function portalRequest(
       headers,
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     throw new ControlPlaneRequestError(503, "control_plane_unavailable");
@@ -13246,6 +13247,10 @@ export interface KbSource {
   char_count: number;
   last_error: string;
   stale: boolean;
+  /** §219: web pages only - re-fetched automatically in the background. */
+  auto_refresh?: boolean;
+  /** Last automatic check that found the page unchanged (or last index). */
+  checked_at?: string | null;
   ingested_at: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -13267,6 +13272,19 @@ export interface KbLimits {
   chunk_chars: number;
   max_versions: number;
   kinds: KbSourceKind[];
+  /** §219: automatic refresh interval (OF_KB_AUTO_REFRESH_HOURS). */
+  refresh_hours?: number;
+  /** §219: PDF / Word import limits from the Control Plane. */
+  file_types?: string[];
+  file_bytes_max?: number;
+  pdf_pages_max?: number;
+  pdf_available?: boolean;
+  /** §221: reading scanned pages / images with the platform vision AI. */
+  ocr_available?: boolean;
+  ocr_reason?: string;
+  ocr_pages_max?: number;
+  ocr_pages_per_call?: number;
+  image_types?: string[];
 }
 
 export interface KbSourcesPayload {
@@ -13436,6 +13454,7 @@ export async function createKbSource(
     text?: string;
     url?: string;
     filename?: string;
+    auto_refresh?: boolean;
   }
 ): Promise<KbSourceResult> {
   let response: Response;
@@ -13455,7 +13474,7 @@ export async function createKbSource(
 export async function updateKbSource(
   accessToken: string,
   id: number,
-  patch: { status?: KbSourceStatus; title?: string }
+  patch: { status?: KbSourceStatus; title?: string; auto_refresh?: boolean }
 ): Promise<KbSourceResult> {
   let response: Response;
   try {
@@ -13499,7 +13518,8 @@ export async function deleteKbSource(
 export async function reindexKbSource(
   accessToken: string,
   id: number,
-  text?: string
+  text?: string,
+  filename?: string
 ): Promise<KbSourceResult> {
   let response: Response;
   try {
@@ -13509,7 +13529,9 @@ export async function reindexKbSource(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(text ? { text } : {}),
+        body: JSON.stringify(
+          text ? (filename ? { text, filename } : { text }) : {}
+        ),
       }
     );
   } catch (error) {
@@ -13517,6 +13539,113 @@ export async function reindexKbSource(
     return { kind: "unavailable" };
   }
   return kbSourceResult(response);
+}
+
+export interface KbOcrPageResult {
+  page: number;
+  text: string;
+  code: string;
+  error: string;
+}
+
+export interface KbExtractPayload {
+  filename: string;
+  type: "pdf" | "docx" | "image";
+  text: string;
+  title: string;
+  pages: number;
+  truncated: boolean;
+  chars: number;
+  /** §221: pages without selectable text that can be read with AI. */
+  ocr_pages?: number[];
+  ocr_pages_skipped?: number;
+  /** §221: per-page text (only when ocr_pages is not empty). */
+  page_texts?: string[];
+}
+
+/** §221: the result of reading a few pages with the vision AI. */
+export interface KbOcrPayload {
+  filename: string;
+  type: "pdf" | "image";
+  pages: number;
+  ocr: true;
+  results: KbOcrPageResult[];
+}
+
+export type KbExtractResult =
+  | { kind: "ok"; file: KbExtractPayload | KbOcrPayload }
+  | { kind: "invalid"; code: string; message: string; status: number }
+  | { kind: "unavailable" };
+
+/** PDF parsing and AI page reading outlive the default 8 s timeout; the
+ * website route allows 60 s (maxDuration), so stay just under it. */
+function kbFileTimeoutMs(): number {
+  const value = Number(process.env.OMNIFLOW_KB_FILE_TIMEOUT_MS);
+  return Number.isFinite(value) && value >= 5_000 && value <= 300_000
+    ? value
+    : 55_000;
+}
+
+/** §219: text of a PDF / Word file for review. §221: with `ocr`, reads
+ * the given scanned PDF pages (or the uploaded image) with the platform
+ * vision AI. Stores nothing. */
+export async function extractKbFile(
+  accessToken: string,
+  filename: string,
+  fileBase64: string,
+  ocr?: { pages: number[] }
+): Promise<KbExtractResult> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/kb/extract",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          ocr
+            ? { filename, file_base64: fileBase64, ocr: true, pages: ocr.pages }
+            : { filename, file_base64: fileBase64 }
+        ),
+      },
+      kbFileTimeoutMs()
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 401)
+    throw new ControlPlaneRequestError(401, "unauthorized");
+  const payload = (await response.json().catch(() => null)) as
+    | ((KbExtractPayload | KbOcrPayload) & {
+        error?: { code?: unknown; message?: unknown };
+      })
+    | null;
+  if (
+    response.ok &&
+    payload &&
+    ("ocr" in payload && payload.ocr === true
+      ? Array.isArray(payload.results)
+      : typeof (payload as KbExtractPayload).text === "string")
+  ) {
+    return { kind: "ok", file: payload };
+  }
+  if (response.status >= 400 && response.status < 500) {
+    return {
+      kind: "invalid",
+      status: response.status,
+      code:
+        payload?.error && typeof payload.error.code === "string"
+          ? payload.error.code
+          : "bad_request",
+      message:
+        payload?.error && typeof payload.error.message === "string"
+          ? payload.error.message
+          : "That file could not be read.",
+    };
+  }
+  return { kind: "unavailable" };
 }
 
 export async function listKbSourceVersions(

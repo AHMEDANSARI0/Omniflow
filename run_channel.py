@@ -1,4 +1,5 @@
 import argparse
+import base64
 import os
 import signal
 import sys
@@ -30,6 +31,40 @@ if VOICE_REPLY_MODE not in {
     raise RuntimeError(
         "VOICE_REPLY_MODE must be either 'text' or 'audio'"
     )
+
+# Inbound media capture: customer voice notes / photos also travel to the
+# Control Plane (inbox copy + its speech-to-text / vision). Env-tunable.
+WA_MEDIA_CAPTURE = os.getenv(
+    "OMNIFLOW_WA_MEDIA_CAPTURE",
+    "on"
+).strip().lower() not in {
+    "off",
+    "0",
+    "false",
+    "no",
+}
+
+try:
+    WA_MEDIA_MAX_BYTES = int(
+        os.getenv("OMNIFLOW_WA_MEDIA_MAX_BYTES", "3000000")
+    )
+except ValueError:
+    WA_MEDIA_MAX_BYTES = 3000000
+
+# Base64 adds a third; the ceiling keeps one request under the CP host's
+# request-body limit (about 4.5 MB on Vercel).
+WA_MEDIA_MAX_BYTES = max(64000, min(3200000, WA_MEDIA_MAX_BYTES))
+
+AUDIO_MIME_BY_SUFFIX = {
+    ".ogg": "audio/ogg",
+    ".opus": "audio/ogg",
+    ".mp3": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".mp4": "audio/mp4",
+    ".wav": "audio/wav",
+    ".webm": "audio/webm",
+    ".amr": "audio/amr",
+}
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
@@ -252,41 +287,137 @@ def create_adapter(account):
     return registry.create(account)
 
 
-def transcribe_media_event(
+def read_voice_copy(media_path):
+    """Control Plane copy of a downloaded voice note (before deletion)."""
+    try:
+        size = os.path.getsize(media_path)
+
+        if size <= 0:
+            return []
+
+        if size > WA_MEDIA_MAX_BYTES:
+            print(
+                "Voice note copy skipped: "
+                f"{size} bytes > OMNIFLOW_WA_MEDIA_MAX_BYTES"
+            )
+            return []
+
+        data = Path(media_path).read_bytes()
+
+    except OSError as error:
+        print(f"Voice note copy skipped: {error}")
+        return []
+
+    return [{
+        "type": "audio",
+        "mime": AUDIO_MIME_BY_SUFFIX.get(
+            Path(media_path).suffix.lower(),
+            "audio/ogg"
+        ),
+        "data_b64": base64.b64encode(data).decode("ascii"),
+    }]
+
+
+def prepare_inbound_event(
     adapter,
     manager,
-    event
+    event,
+    capture_media=False
 ):
-    if event.message_type != "audio":
-        return event
+    """
+    Return (event for the local assistant or None, media for the CP).
 
-    media_path = adapter.download_media(event)
+    Voice notes are transcribed locally as before; when capture is on, a
+    copy of the audio also goes to the Control Plane (marked transcribed,
+    so it is stored but not transcribed twice). If local transcription
+    fails, the copy still reaches the CP, whose speech-to-text takes over.
+    """
+    if event.message_type == "audio":
+        media_path = adapter.download_media(event)
 
-    if not media_path:
-        return None
+        if not media_path:
+            return None, []
 
-    try:
-        transcript = manager.ai.transcribe_voice(
-            media_path
-        )
-    finally:
-        manager.ai.delete_temp_file(
-            media_path
-        )
+        media = []
+        transcript = ""
 
-    transcript = str(transcript or "").strip()
+        try:
+            if capture_media:
+                media = read_voice_copy(media_path)
 
-    if not transcript:
-        return None
+            try:
+                transcript = str(
+                    manager.ai.transcribe_voice(media_path) or ""
+                ).strip()
+            except Exception as error:
+                print(f"Voice transcription error: {error}")
 
-    metadata = dict(event.metadata)
-    metadata["transcribed"] = True
+        finally:
+            manager.ai.delete_temp_file(
+                media_path
+            )
 
-    return replace(
-        event,
-        content=transcript,
-        metadata=metadata
+        if not transcript:
+            return None, media
+
+        for entry in media:
+            entry["transcribed"] = True
+
+        metadata = dict(event.metadata)
+        metadata["transcribed"] = True
+
+        return replace(
+            event,
+            content=transcript,
+            metadata=metadata
+        ), media
+
+    if event.message_type == "image":
+        capture = getattr(adapter, "capture_image", None)
+        result = (
+            capture(event, WA_MEDIA_MAX_BYTES)
+            if capture_media and callable(capture)
+            else None
+        ) or {}
+        status = result.get("status")
+
+        if status == "sticker":
+            print("Inbound sticker ignored")
+            return None, []
+
+        if status == "ok":
+            return event, [{
+                "type": "image",
+                "mime": result.get("mime") or "image/jpeg",
+                "data_b64": result.get("data_b64") or "",
+            }]
+
+        if status:
+            print(f"Inbound image not captured: {status}")
+
+        return event, []
+
+    return event, []
+
+
+def cp_inbound_body(event, raw_event, media):
+    """Message text for the Control Plane (placeholders for bare media)."""
+    content = (
+        str(event.content or "").strip()
+        if event is not None
+        else ""
     )
+
+    if content and media and raw_event.message_type == "audio":
+        return "[Voice note] " + content
+
+    if content:
+        return content
+
+    return {
+        "audio": "[Voice note]",
+        "image": "[Image]",
+    }.get(raw_event.message_type, "")
 
 
 def deliver_outbound(
@@ -635,15 +766,52 @@ def run_worker(
                     break
 
                 try:
-                    event = transcribe_media_event(
+                    event, cp_media = prepare_inbound_event(
                         adapter,
                         manager,
-                        raw_event
+                        raw_event,
+                        capture_media=(
+                            bridge is not None
+                            and WA_MEDIA_CAPTURE
+                        )
                     )
+                    is_media = raw_event.message_type in {
+                        "audio",
+                        "image",
+                    }
+
+                    if (
+                        bridge is not None
+                        and (event is not None or cp_media)
+                    ):
+                        bridge.ingest_message(
+                            external_user_id=(
+                                raw_event.external_user_id
+                            ),
+                            body=cp_inbound_body(
+                                event,
+                                raw_event,
+                                cp_media
+                            ),
+                            direction="in",
+                            display_name=raw_event.display_name,
+                            media=cp_media or None,
+                            message_id=(
+                                raw_event.external_message_id
+                                if is_media
+                                else None
+                            ),
+                        )
 
                     if event is None:
                         print(
                             "Inbound media could not be prepared"
+                            + (
+                                " locally; the copy went to the "
+                                "Control Plane"
+                                if cp_media and bridge is not None
+                                else ""
+                            )
                         )
                         continue
 
@@ -654,13 +822,17 @@ def run_worker(
                         f"message={event.external_message_id}"
                     )
 
-                    if bridge is not None:
-                        bridge.ingest_message(
-                            external_user_id=event.external_user_id,
-                            body=event.content,
-                            direction="in",
-                            display_name=event.display_name,
+                    if (
+                        event.message_type == "image"
+                        and not event.content.strip()
+                    ):
+                        # The local assistant cannot see photos; the CP
+                        # (vision + inbox copy) handles caption-less ones.
+                        print(
+                            "Inbound photo without caption: "
+                            "handled by the Control Plane"
                         )
+                        continue
 
                     outbound = manager.process_event(
                         event

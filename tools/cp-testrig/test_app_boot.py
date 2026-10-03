@@ -149,8 +149,17 @@ for name in sorted(os.listdir(CP)):
         elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
             third.add(node.module.split(".")[0])
 third = {m for m in third if m not in std and m not in local}
-check("CP imports nothing beyond flask / werkzeug / psycopg2 / control_plane",
-      third <= {"flask", "werkzeug", "psycopg2", "control_plane"}, sorted(third))
+check("CP imports nothing beyond flask / werkzeug / psycopg2 / control_plane"
+      " / pypdf (lazy, PDF import only) / PIL (lazy, optional OCR fallback)",
+      third <= {"flask", "werkzeug", "psycopg2", "control_plane", "pypdf", "PIL"},
+      sorted(third))
+pil_users = sorted(
+    name for name in os.listdir(CP) if name.endswith(".py")
+    and re.search(r"\bPIL\b", open(os.path.join(CP, name), encoding="utf8").read()))
+kbf = open(os.path.join(CP, "portal_kb_files.py"), encoding="utf8").read()
+check("PIL only in portal_kb_files, never at module level (CP boots without it)",
+      pil_users == ["portal_kb_files.py"] and "\nimport PIL" not in kbf
+      and "\nfrom PIL" not in kbf, pil_users)
 
 src = open(os.path.join(CP, "app.py"), encoding="utf8").read()
 check("app.py: URL-map safety net present",

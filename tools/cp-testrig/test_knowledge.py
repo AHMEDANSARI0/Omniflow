@@ -506,14 +506,14 @@ check("brain ensures the knowledge tables before the first answer",
 check("system prompt knows about document excerpts",
       "kind chunk" in BRAIN and "never go beyond what they say" in BRAIN, "-")
 check("auto-publish lock: sources are created as drafts and ingest never"
-      " publishes", "VALUES (%s, %s, %s, %s, 'draft')" in KSRC
+      " publishes", "VALUES (%s, %s, %s, %s, 'draft', %s)" in KSRC
       and "Never publishes" in KSRC and "status" not in KSRC[
           KSRC.index("def ingest("):KSRC.index("def record_error(")].split(
           "UPDATE")[1], "-")
 check("all writes audited", all(a in KSRC for a in (
     '"kb.source_ingested"', '"kb.source_deleted"', '"kb.source_" + status')), "-")
 check("writes human-only, reads any principal",
-      KSRC.count("= _human_or_error()") == 5
+      KSRC.count("= _human_or_error()") == 6
       and KSRC.count("= _principal_or_error()") == 4,
       (KSRC.count("= _human_or_error()"), KSRC.count("= _principal_or_error()")))
 check("no hardcoded limits", all(e in KSRC for e in (

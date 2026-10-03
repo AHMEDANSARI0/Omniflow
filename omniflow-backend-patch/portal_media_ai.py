@@ -14,7 +14,10 @@ compliance - works on real content without a second pipeline:
 Where the bytes come from (the normalized ``media`` list on a message):
 
   * ``data_b64`` + ``mime`` - bridges that can download the file themselves
-    (Telegram bridge; the WhatsApp laptop bridge accepts the same shape);
+    (Telegram bridge; the WhatsApp laptop bridge sends voice notes and
+    photos in the same shape). A voice note the laptop already transcribed
+    carries ``"transcribed": true`` - its text is the message body, so it
+    is stored (inbox copy) but not sent to speech-to-text a second time;
   * ``url`` - webhooks that deliver a public media link (Instagram). URLs
     go through the knowledge engine's SSRF guard (public hosts only, every
     redirect re-checked) with a hard size cap.
@@ -387,6 +390,11 @@ def enrich(cur, client_id: int, item: Dict[str, Any],
         handled = 0
         for index, (entry, kind) in enumerate(zip(media, kinds)):
             if not kind or handled >= MAX_PER_MESSAGE:
+                continue
+            if kind == "audio" and entry.get("transcribed") is True:
+                # The connector already put the transcript in the body.
+                notes.append({"type": kind, "ok": True,
+                              "source": "connector"})
                 continue
             key = "voice_notes" if kind == "audio" else "images"
             note = {"type": kind, "ok": False}

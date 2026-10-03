@@ -12,6 +12,84 @@ from logger import Logger
 from typing_engine import TypingEngine
 
 
+# Photo bubbles (inbound media capture). One candidate filter serves both
+# detection and download: a large <img> holding a blob:/data:image source,
+# outside quoted replies and link previews; video/GIF bubbles are skipped.
+IMAGE_CANDIDATES_JS = """(root) => {
+    if (root.querySelector(
+        "video, [data-icon*='video' i], [data-icon='media-play'],"
+        + " [data-icon='media-gif'], [data-testid*='video' i]"
+    )) {
+        return [];
+    }
+    const found = [];
+    for (const img of root.querySelectorAll("img")) {
+        const src = img.getAttribute("src") || "";
+        const isBlob = src.startsWith("blob:");
+        if (!isBlob && !src.startsWith("data:image")) {
+            continue;
+        }
+        if (img.closest(
+            "a[href^='http'], [data-testid*='quoted' i],"
+            + " [aria-label*='quoted' i]"
+        )) {
+            continue;
+        }
+        const box = img.getBoundingClientRect();
+        const width = img.naturalWidth || box.width;
+        const height = img.naturalHeight || box.height;
+        if (Math.max(box.width, box.height, width, height) < 80) {
+            continue;
+        }
+        found.push({ img, isBlob, area: width * height });
+    }
+    return found;
+}"""
+
+IMAGE_DETECT_JS = (
+    "(root) => (" + IMAGE_CANDIDATES_JS + ")(root).length > 0"
+)
+
+IMAGE_FETCH_JS = """async (root, maxBytes) => {
+    const found = (""" + IMAGE_CANDIDATES_JS + """)(root);
+    if (!found.length) {
+        return { status: "missing" };
+    }
+    const blobs = found
+        .filter((item) => item.isBlob)
+        .sort((a, b) => b.area - a.area);
+    if (!blobs.length) {
+        return { status: "pending" };
+    }
+    try {
+        const response = await fetch(blobs[0].img.getAttribute("src"));
+        if (!response.ok) {
+            return { status: "failed" };
+        }
+        const blob = await response.blob();
+        if (blob.size > maxBytes) {
+            return { status: "too_large", bytes: blob.size };
+        }
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const chunkSize = 0x8000;
+        let binary = "";
+        for (let index = 0; index < bytes.length; index += chunkSize) {
+            binary += String.fromCharCode(
+                ...bytes.subarray(index, index + chunkSize)
+            );
+        }
+        return {
+            status: "ok",
+            mime: blob.type || "",
+            bytes: blob.size,
+            data_b64: btoa(binary),
+        };
+    } catch (error) {
+        return { status: "failed" };
+    }
+}"""
+
+
 class WhatsAppBot:
     def __init__(self, session_path):
         self.session_path = session_path
@@ -517,7 +595,7 @@ class WhatsAppBot:
     # Read Latest Visible Chat Message
     # ---------------------------------
     @staticmethod
-    def _extract_message_text(container):
+    def _extract_message_text(container, fallback=True):
         text_parts = container.locator(
             "span.selectable-text"
         )
@@ -531,6 +609,11 @@ class WhatsAppBot:
 
             if parts:
                 return "\n".join(parts)
+
+        # Photo bubbles pass fallback=False: their inner text is only the
+        # time/status line, never something the customer wrote.
+        if not fallback:
+            return ""
 
         return container.inner_text().strip()
 
@@ -1315,6 +1398,13 @@ class WhatsAppBot:
 
         return False
 
+    @staticmethod
+    def _is_image_message(container):
+        try:
+            return bool(container.evaluate(IMAGE_DETECT_JS))
+        except Exception:
+            return False
+
     def _get_last_message_container(self):
         messages = self.page.locator(
             "[data-testid='msg-container']"
@@ -1560,9 +1650,16 @@ class WhatsAppBot:
         save_identity_debug=False
     ):
         is_voice = self._is_voice_note(container)
-        message = self._extract_message_text(container)
+        is_image = (
+            not is_voice
+            and self._is_image_message(container)
+        )
+        message = self._extract_message_text(
+            container,
+            fallback=not is_image
+        )
 
-        if not message and not is_voice:
+        if not message and not is_voice and not is_image:
             return None
 
         message_id = self._get_message_id(
@@ -1618,7 +1715,11 @@ class WhatsAppBot:
             "id": message_id,
             "chat_identifier": chat_identifier,
             "text": message,
-            "kind": "voice" if is_voice else "text",
+            "kind": (
+                "voice" if is_voice
+                else "image" if is_image
+                else "text"
+            ),
             "direction": self._get_message_direction(
                 container
             ),
@@ -2073,6 +2174,145 @@ class WhatsAppBot:
             )
 
             return ""
+
+    # ---------------------------------
+    # Inbound Photo Capture
+    # ---------------------------------
+    IMAGE_WAIT_SECONDS = 4.0
+    IMAGE_SCAN_LIMIT = 40
+
+    @staticmethod
+    def _sniff_image_mime(data_b64):
+        try:
+            head = base64.b64decode(str(data_b64 or "")[:24])
+        except Exception:
+            return ""
+
+        if head[:3] == b"\xff\xd8\xff":
+            return "image/jpeg"
+        if head[:8] == b"\x89PNG\r\n\x1a\n":
+            return "image/png"
+        if head[:6] in (b"GIF87a", b"GIF89a"):
+            return "image/gif"
+        if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+            return "image/webp"
+
+        return ""
+
+    def _find_message_container(self, expected_message_id):
+        """Locate a bubble by the same ID _parse_message_container gave it."""
+        containers = self.page.locator(
+            "[data-testid='msg-container']"
+        )
+        total = containers.count()
+        stop = max(-1, total - 1 - self.IMAGE_SCAN_LIMIT)
+
+        for index in range(total - 1, stop, -1):
+            container = containers.nth(index)
+            caption = self._extract_message_text(
+                container,
+                fallback=False
+            )
+
+            if self._get_message_id(
+                container,
+                caption,
+                index + 1
+            ) == expected_message_id:
+                return container
+
+        return None
+
+    @staticmethod
+    def _request_media_download(container):
+        """Photos not yet fetched by WhatsApp Web show a download button."""
+        for selector in (
+            "[data-icon='media-download']",
+            "[data-testid='media-download']",
+        ):
+            button = container.locator(selector)
+
+            if button.count() == 0:
+                continue
+
+            try:
+                button.first.click(force=True)
+                return True
+            except Exception:
+                continue
+
+        return False
+
+    def download_message_image(
+        self,
+        expected_message_id,
+        max_bytes=3000000
+    ):
+        """
+        Copy one inbound photo out of the open chat, in memory (no temp file).
+
+        Returns {"status": "ok", "mime", "data_b64", "bytes"} or a status
+        of missing / pending / too_large / failed / unsupported / sticker.
+        Never raises: the text pipeline must keep running without media.
+        """
+        try:
+            container = self._find_message_container(
+                expected_message_id
+            )
+
+            if container is None:
+                self.logger.log(
+                    "Image capture skipped: message no longer visible"
+                )
+                return {"status": "missing"}
+
+            deadline = time.monotonic() + self.IMAGE_WAIT_SECONDS
+            requested = False
+
+            while True:
+                result = container.evaluate(
+                    IMAGE_FETCH_JS,
+                    int(max_bytes)
+                ) or {}
+
+                if (
+                    result.get("status") != "pending"
+                    or time.monotonic() >= deadline
+                ):
+                    break
+
+                if not requested:
+                    self._request_media_download(container)
+                    requested = True
+
+                self.page.wait_for_timeout(400)
+
+            status = str(result.get("status") or "failed")
+
+            if status != "ok":
+                self.logger.log(f"Image capture skipped: {status}")
+                return {"status": status}
+
+            mime = self._sniff_image_mime(result.get("data_b64"))
+
+            # WhatsApp delivers stickers as WebP; photos arrive as JPEG/PNG.
+            if mime == "image/webp":
+                return {"status": "sticker"}
+
+            if not mime:
+                self.logger.log("Image capture skipped: unsupported")
+                return {"status": "unsupported"}
+
+            return {
+                "status": "ok",
+                "mime": mime,
+                "data_b64": result.get("data_b64") or "",
+                "bytes": int(result.get("bytes") or 0),
+            }
+
+        except Exception as error:
+            self.logger.log(f"Image Capture Error: {error}")
+            return {"status": "failed"}
 
     def _save_voice_dom_debug(self, message_container):
         """

@@ -37,6 +37,7 @@ export async function PUT(
   const payload = (await request.json().catch(() => null)) as {
     status?: unknown;
     title?: unknown;
+    auto_refresh?: unknown;
   } | null;
   const status =
     payload && typeof payload.status === "string" &&
@@ -45,7 +46,11 @@ export async function PUT(
       : undefined;
   const title =
     payload && typeof payload.title === "string" ? payload.title.trim() : "";
-  if (!status && !title) {
+  const autoRefresh =
+    payload && typeof payload.auto_refresh === "boolean"
+      ? payload.auto_refresh
+      : undefined;
+  if (!status && !title && autoRefresh === undefined) {
     return safeJson(
       { error: { code: "bad_request", message: "Nothing to update." } },
       400
@@ -56,6 +61,7 @@ export async function PUT(
     const result = await updateKbSource(accessToken, id, {
       status,
       title: title || undefined,
+      auto_refresh: autoRefresh,
     });
     if (result.kind === "unavailable") {
       return safeJson(
