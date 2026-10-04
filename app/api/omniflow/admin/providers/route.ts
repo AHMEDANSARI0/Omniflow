@@ -24,6 +24,7 @@ const GROUPS: AdminProviderGroup[] = [
   "embeddings",
   "vision",
   "assistant",
+  "router",
 ];
 
 async function requireAdminSession() {
@@ -138,6 +139,9 @@ export async function PUT(request: Request) {
       group as AdminProviderGroup,
       values
     );
+    if ("invalid" in result) {
+      return safeJson({ error: { code: "bad_request", message: result.invalid } }, 400);
+    }
     return safeJson(result, 200);
   } catch (error) {
     if (error instanceof ControlPlaneRequestError && error.status === 400) {

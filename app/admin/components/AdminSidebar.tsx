@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { label: "Customers", href: "/admin/customers", icon: "◉", enabled: true },
   { label: "Integrations", href: "/admin/integrations", icon: "◍", enabled: true },
   { label: "AI Control", href: "/admin/ai-control", icon: "\u2736", enabled: true },
+  { label: "Model Router", href: "/admin/ai-router", icon: "\u21c4", enabled: true },
   { label: "Settings", href: "/admin/settings", icon: "⌘", enabled: true },
 ];
 

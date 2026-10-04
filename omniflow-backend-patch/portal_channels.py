@@ -44,8 +44,10 @@ def channel_for_contact(contact_id: Any) -> str:
     value = str(contact_id or "").strip().lower()
     if value.startswith("tg:"):
         return "telegram"
-    if value.startswith("ig:"):
+    if value.startswith(("ig:", "igc:")):
         return "instagram"
+    if value.startswith(("fb:", "fbc:")):
+        return "messenger"
     return "whatsapp"
 
 

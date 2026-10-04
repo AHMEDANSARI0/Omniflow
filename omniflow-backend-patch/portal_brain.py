@@ -37,6 +37,7 @@ the brain step aside (None) and the B3 keyword path handles the message.
 import json
 import logging
 import os
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Blueprint, jsonify, request
@@ -184,6 +185,10 @@ def effective_autonomy(own: str,
     capped by the platform (kill switch = off; autonomy_cap = ceiling)."""
     controls = controls if isinstance(controls, dict) else platform_controls()
     own = own if own in AUTONOMY_ORDER else "suggest"
+    sandbox = sys.modules.get("portal_sandbox")
+    if sandbox is not None:
+        # §230 "Pretend AI is on Auto": suggest -> auto only; caps still apply
+        own = sandbox.autonomy_override(own)
     if controls.get("kill_switch"):
         return "off"
     cap = str(controls.get("autonomy_cap") or "auto")
@@ -695,6 +700,13 @@ def maybe_answer(client_id, conversation_id, contact_id, contact_name,
             if effective_autonomy(str(settings.get("autonomy") or "")) \
                     != "auto":
                 return None
+            if str(contact_id or "").startswith(("igc:", "fbc:")):
+                # §228: a comment answer is PUBLIC - only when the owner
+                # turned on comment auto-reply (else it waits in the inbox)
+                import portal_instagram
+
+                if not portal_instagram.comment_auto_reply(cur, client_id):
+                    return None
             payload, grounding = _reason(
                 cur, client_id, int(conversation_id or 0),
                 str(contact_id or ""), str(contact_name or ""), text,

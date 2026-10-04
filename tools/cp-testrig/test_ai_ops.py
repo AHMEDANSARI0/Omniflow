@@ -357,7 +357,8 @@ LLM = read(os.path.join(CP, "portal_llm.py"))
 check("chat_json positional signature unchanged (stubs keep working), optional timeout, hook inside",
       "def chat_json(system: str, user: str, max_tokens: int = 120,\n"
       "              timeout: Optional[float] = None)" in LLM
-      and "_record_usage(model, last_usage, True, started)" in LLM, "-")
+      and "_record_routed(model, last_usage, True, started, route)" in LLM
+      and "        _record_usage(model, usage, ok, started)\n" in LLM, "-")
 check("no hardcoded prices anywhere", "0.15" not in read(pu.__file__).replace(
     '"gpt-4o-mini": {"input": 0.15, "output": 0.60}', ""), "-")
 

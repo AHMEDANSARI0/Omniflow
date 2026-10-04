@@ -95,6 +95,8 @@ from portal_actions import bp as portal_actions_bp  # noqa: E402
 from portal_snapshots import bp as portal_snapshots_bp  # noqa: E402
 from portal_site_analyzer import bp as portal_site_analyzer_bp  # noqa: E402
 from portal_assistant import bp as portal_assistant_bp  # noqa: E402
+from portal_sandbox import bp as portal_sandbox_bp  # noqa: E402
+from portal_model_router import bp as admin_model_router_bp  # noqa: E402
 from portal_policy import bp as portal_policy_bp  # noqa: E402
 from portal_obs import install_obs as _install_obs  # noqa: E402
 from portal_restock import bp as portal_restock_bp  # noqa: E402
@@ -184,6 +186,8 @@ aux_app.register_blueprint(portal_actions_bp)
 aux_app.register_blueprint(portal_snapshots_bp)
 aux_app.register_blueprint(portal_site_analyzer_bp)
 aux_app.register_blueprint(portal_assistant_bp)
+aux_app.register_blueprint(portal_sandbox_bp)
+aux_app.register_blueprint(admin_model_router_bp)
 aux_app.register_blueprint(portal_policy_bp)
 aux_app.register_blueprint(admin_providers_bp)
 aux_app.register_blueprint(portal_voice_bp)

@@ -15,6 +15,7 @@ Limits are environment-tunable (per minute):
 """
 
 import os
+import sys
 
 import portal_db
 
@@ -55,6 +56,9 @@ def allow(cur, bucket: str, limit: int, window_seconds: int = 60) -> bool:
     whenever a counter restarts (cheap, keeps the table at active buckets
     only). Fails open on any database error.
     """
+    sandbox = sys.modules.get("portal_sandbox")
+    if sandbox is not None and sandbox.active():
+        return True  # §230: a sandbox run never touches (or locks) counters
     try:
         _ensure_ddl(cur)
         cur.execute(

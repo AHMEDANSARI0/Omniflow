@@ -7263,6 +7263,11 @@ export interface InstagramSettings {
   pageId: string;
   enabled: boolean;
   configured: boolean;
+  messengerEnabled: boolean;
+  commentsEnabled: boolean;
+  commentAutoReply: boolean;
+  pageAccessTokenMasked: string;
+  webhookPath: string;
   accessTokenMasked: string;
   appSecretMasked: string;
   verifyTokenMasked: string;
@@ -7290,6 +7295,12 @@ export async function getInstagramSettings(
     pageId: typeof row.pageId === "string" ? row.pageId : "",
     enabled: row.enabled === true,
     configured: row.configured === true,
+    messengerEnabled: row.messengerEnabled === true,
+    commentsEnabled: row.commentsEnabled === true,
+    commentAutoReply: row.commentAutoReply === true,
+    pageAccessTokenMasked:
+      typeof row.pageAccessTokenMasked === "string" ? row.pageAccessTokenMasked : "",
+    webhookPath: typeof row.webhookPath === "string" ? row.webhookPath : "/api/v1/public/meta/webhook",
     accessTokenMasked: typeof row.accessTokenMasked === "string" ? row.accessTokenMasked : "",
     appSecretMasked: typeof row.appSecretMasked === "string" ? row.appSecretMasked : "",
     verifyTokenMasked: typeof row.verifyTokenMasked === "string" ? row.verifyTokenMasked : "",
@@ -7307,8 +7318,12 @@ export async function saveInstagramSettings(
     accessTokenValue: string;
     appSecret: string;
     verifyToken: string;
+    pageAccessToken: string;
+    messengerEnabled: boolean;
+    commentsEnabled: boolean;
+    commentAutoReply: boolean;
   }
-): Promise<{ ok: true; requiresCheck: boolean } | "bad_request" | null> {
+): Promise<{ ok: true; requiresCheck: boolean } | { invalid: string } | null> {
   let response: Response;
   try {
     response = await portalRequest(accessToken, "api/v1/portal/instagram/settings", {
@@ -7321,13 +7336,24 @@ export async function saveInstagramSettings(
         access_token: input.accessTokenValue,
         app_secret: input.appSecret,
         verify_token: input.verifyToken,
+        page_access_token: input.pageAccessToken,
+        messenger_enabled: input.messengerEnabled,
+        comments_enabled: input.commentsEnabled,
+        comment_auto_reply: input.commentAutoReply,
       }),
     });
   } catch (error) {
     assertNotAuthError(error);
     return null;
   }
-  if (response.status === 400) return "bad_request";
+  if (response.status === 400 || response.status === 409) {
+    // the Control Plane's own sentence ("Messenger needs the Facebook Page ID.")
+    const body: unknown = await response.json().catch(() => null);
+    const error = body && typeof body === "object" ? (body as Record<string, unknown>).error : null;
+    const message =
+      error && typeof error === "object" ? (error as Record<string, unknown>).message : null;
+    return { invalid: typeof message === "string" && message ? message : "Check the Meta settings." };
+  }
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
   const payload: unknown = await response.json().catch(() => null);
@@ -7342,7 +7368,12 @@ export async function saveInstagramSettings(
 
 export async function verifyInstagramSettings(
   accessToken: string
-): Promise<{ ok: true; profile: { id: string; username: string } } | "not_configured" | "provider_error" | null> {
+): Promise<
+  | { ok: true; profile: { id: string; username: string }; page: { id: string; name: string } | null }
+  | "not_configured"
+  | { providerError: string }
+  | null
+> {
   let response: Response;
   try {
     response = await portalRequest(accessToken, "api/v1/portal/instagram/test", {
@@ -7354,11 +7385,23 @@ export async function verifyInstagramSettings(
   }
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (response.status === 409) return "not_configured";
-  if (response.status === 502) return "provider_error";
+  if (response.status === 502) {
+    // Meta's own reason (expired token, missing permission) helps the owner
+    const body: unknown = await response.json().catch(() => null);
+    const error = body && typeof body === "object" ? (body as Record<string, unknown>).error : null;
+    const message =
+      error && typeof error === "object" ? (error as Record<string, unknown>).message : null;
+    return {
+      providerError:
+        typeof message === "string" && message ? message.slice(0, 300) : "Meta rejected the provider check.",
+    };
+  }
   if (!response.ok) return null;
   const payload: unknown = await response.json().catch(() => null);
   if (payload === null || typeof payload !== "object") return null;
   const row = payload as Record<string, unknown>;
+  const pageRow =
+    row.page !== null && typeof row.page === "object" ? (row.page as Record<string, unknown>) : null;
   const profile = row.profile;
   const p = profile !== null && typeof profile === "object"
     ? (profile as Record<string, unknown>)
@@ -7370,6 +7413,12 @@ export async function verifyInstagramSettings(
       id: typeof p.id === "string" ? p.id : "",
       username: typeof p.username === "string" ? p.username : "",
     },
+    page: pageRow
+      ? {
+          id: typeof pageRow.id === "string" ? pageRow.id : "",
+          name: typeof pageRow.name === "string" ? pageRow.name : "",
+        }
+      : null,
   };
 }
 
@@ -15769,4 +15818,202 @@ export function decideAssistantProposal(
       method: "POST",
       body: "{}",
     });
+}
+
+// ---------------------------------------------------------------------------
+// §230 AI Sandbox: one customer message through the real automations inside a
+// transaction that is always rolled back (nothing is sent or saved).
+// ---------------------------------------------------------------------------
+
+export type SandboxChannel =
+  | "whatsapp"
+  | "instagram"
+  | "messenger"
+  | "instagram_comment"
+  | "facebook_comment";
+
+export type SandboxTurn = { role: "customer" | "business"; text: string };
+
+export type SandboxInput = {
+  message: string;
+  channel: SandboxChannel;
+  customer_name?: string;
+  history?: SandboxTurn[];
+  force_auto?: boolean;
+  simulate_workflows?: boolean;
+};
+
+export type SandboxExpectHandler =
+  | ""
+  | "any_reply"
+  | "no_reply"
+  | "brain"
+  | "kb"
+  | "away"
+  | "cod"
+  | "handoff";
+
+export type SandboxScenarioInput = SandboxInput & {
+  name: string;
+  expect_handler: SandboxExpectHandler;
+  expect_contains: string;
+  expect_absent: string;
+};
+
+export type SandboxCheck = { label: string; ok: boolean };
+
+export type SandboxScenario = {
+  id: number;
+  name: string;
+  channel: SandboxChannel;
+  customer_name: string;
+  message: string;
+  history: SandboxTurn[];
+  force_auto: boolean;
+  expect_handler: SandboxExpectHandler;
+  expect_contains: string;
+  expect_absent: string;
+  last_pass: boolean | null;
+  last_result: {
+    handler?: string;
+    replies?: { body: string }[];
+    checks?: SandboxCheck[];
+    error?: string;
+  } | null;
+  last_run_at: string | null;
+};
+
+export type SandboxSettings = {
+  autonomy: string;
+  effective: string;
+  kill_switch: boolean;
+  autonomy_cap: string;
+};
+
+export type SandboxOverview = {
+  settings: SandboxSettings;
+  channels: SandboxChannel[];
+  expect_handlers: SandboxExpectHandler[];
+  limits: { runs_per_hour: number; max_history: number; scenarios_max: number; message_max: number };
+  scenarios: SandboxScenario[];
+};
+
+export type SandboxReply = { body: string; source: string; channel: string; to?: string };
+
+export type SandboxResult = {
+  ok: boolean;
+  error: string;
+  channel: SandboxChannel;
+  message: string;
+  outcome: { handler: string; handler_label: string; replies: SandboxReply[]; notes: string[] };
+  ai: {
+    decision: string;
+    reason: string;
+    reason_text: string;
+    confidence: number | null;
+    tools: string[];
+    citations: unknown[];
+    agent_id: number | null;
+    llm_called: boolean | null;
+  } | null;
+  intelligence: Record<string, string | number | null> | null;
+  routing: Record<string, string | number | boolean | null>;
+  tags: string[];
+  handoffs: { reason: string; severity: string; note: string; source: string }[];
+  approvals: { action: string; summary: string; status: string }[];
+  workflows: {
+    id: number;
+    name: string;
+    status: string;
+    last_error: string | null;
+    resume_at: string | null;
+    steps: { step_no: number; kind: string; outcome: string; detail: string }[];
+  }[];
+  sequences: { id: number; name: string; status: string }[];
+  listen: { id: number; rule_id: number; snippet: string }[];
+  notifications: { kind: string; severity: string; title: string }[];
+  other_messages: (SandboxReply | { action: string; channel: string })[];
+  timeline: { action: string; actor_kind: string; note: string }[];
+  blocked: { kind: string; target: string }[];
+  usage: { calls: number; tokens: number; failed: number };
+  settings: { autonomy: string; effective: string; force_auto: boolean };
+  saved: false;
+  duration_ms: number;
+  verdict?: { pass: boolean; checks: SandboxCheck[] };
+};
+
+const SANDBOX = "api/v1/portal/sandbox";
+/** A run is one real pass of the automations (AI calls included); the run
+ * routes allow 60 s (maxDuration), so stay just under it. */
+const SANDBOX_TIMEOUT_MS = 55_000;
+
+/** portalService, but keeps the sandbox's own 503 reason (the database
+ * refused the temporary safety table) instead of a generic one. */
+async function sandboxService<T>(
+  accessToken: string,
+  path: string,
+  init: RequestInit,
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<ServiceResult<T>> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, path, init, timeoutMs);
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 503) {
+    const payload = (await response.clone().json().catch(() => null)) as {
+      error?: { code?: unknown; message?: unknown };
+    } | null;
+    const code = payload?.error?.code;
+    const message = payload?.error?.message;
+    if (code === "sandbox_unavailable" && typeof message === "string") {
+      return { kind: "invalid", status: 503, code, message };
+    }
+  }
+  return serviceResult<T>(response);
+}
+
+export function getSandbox(accessToken: string) {
+  return sandboxService<SandboxOverview>(accessToken, SANDBOX, { method: "GET" });
+}
+
+export function runSandbox(accessToken: string, input: SandboxInput) {
+  return sandboxService<SandboxResult>(accessToken, SANDBOX + "/run", {
+    method: "POST",
+    body: JSON.stringify(input),
+  }, SANDBOX_TIMEOUT_MS);
+}
+
+export function createSandboxScenario(accessToken: string, input: SandboxScenarioInput) {
+  return sandboxService<{ scenario: SandboxScenario }>(accessToken, SANDBOX + "/scenarios", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateSandboxScenario(
+  accessToken: string,
+  scenarioId: number,
+  input: SandboxScenarioInput
+) {
+  return sandboxService<{ scenario: SandboxScenario }>(
+    accessToken, SANDBOX + "/scenarios/" + scenarioId, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+}
+
+export function deleteSandboxScenario(accessToken: string, scenarioId: number) {
+  return sandboxService<{ ok: boolean }>(
+    accessToken, SANDBOX + "/scenarios/" + scenarioId, { method: "DELETE" });
+}
+
+export function runSandboxScenario(accessToken: string, scenarioId: number) {
+  return sandboxService<SandboxResult>(
+    accessToken, SANDBOX + "/scenarios/" + scenarioId + "/run", {
+      method: "POST",
+      body: "{}",
+    }, SANDBOX_TIMEOUT_MS);
 }

@@ -227,7 +227,7 @@ def list_conversations():
         sql += " AND c.last_intent = %s"
         params.append(intent_filter[:40])
     channel_filter = (request.args.get("channel") or "").strip().lower()
-    if channel_filter in ("whatsapp", "website", "instagram"):
+    if channel_filter in ("whatsapp", "website", "instagram", "messenger"):
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     tag_filter = (request.args.get("tag") or "").strip()[:MAX_TAG_LENGTH]
@@ -970,7 +970,7 @@ def export_conversations():
     if intent_filter and intent_filter != "all":
         sql += " AND c.last_intent = %s"
         params.append(intent_filter[:40])
-    if channel_filter in ("whatsapp", "website", "instagram"):
+    if channel_filter in ("whatsapp", "website", "instagram", "messenger"):
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     if tag_filter:
@@ -1229,7 +1229,7 @@ def list_customers():
         " WHERE c.client_id = %s"
     )
     params = [principal["client_id"]]
-    if channel_filter in ("whatsapp", "website", "instagram"):
+    if channel_filter in ("whatsapp", "website", "instagram", "messenger"):
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     if search:

@@ -52,7 +52,8 @@ export const INTEGRATIONS: Integration[] = [
     accent: "#E1306C",
     category: "channels",
     status: "beta",
-    description: "Direct messages flow into the same inbox, handled by the same AI and workflows.",
+    description:
+      "Direct messages and comments on your posts flow into the same inbox, handled by the same AI and workflows.",
     points: ["Signed Meta webhooks", "Same workflows as WhatsApp", "Media kept with the conversation"],
   },
   {
@@ -80,8 +81,9 @@ export const INTEGRATIONS: Integration[] = [
     mark: "MS",
     accent: "#0084FF",
     category: "channels",
-    status: "soon",
-    description: "Facebook Page messages will join the same intelligence layer.",
+    status: "beta",
+    description:
+      "Facebook Page messages and comments on your posts join the same inbox, AI and workflows.",
   },
   {
     id: "tiktok",
@@ -91,6 +93,33 @@ export const INTEGRATIONS: Integration[] = [
     category: "channels",
     status: "soon",
     description: "Messages from TikTok will become conversations in the same inbox.",
+  },
+  {
+    id: "youtube",
+    name: "YouTube",
+    mark: "YT",
+    accent: "#FF0000",
+    category: "channels",
+    status: "soon",
+    description: "Comments on your videos will arrive in the same inbox.",
+  },
+  {
+    id: "linkedin",
+    name: "LinkedIn",
+    mark: "IN",
+    accent: "#0A66C2",
+    category: "channels",
+    status: "soon",
+    description: "Company page messages and comments will join the same inbox.",
+  },
+  {
+    id: "x",
+    name: "X",
+    mark: "X",
+    accent: "#111827",
+    category: "channels",
+    status: "soon",
+    description: "Mentions and direct messages will become conversations.",
   },
   {
     id: "shopify",

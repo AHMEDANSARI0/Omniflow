@@ -23,15 +23,12 @@ export async function POST(request: Request) {
     const result = await verifyInstagramSettings(accessToken);
     if (result === "not_configured") {
       return safeJson(
-        { error: { code: "not_configured", message: "Save the Instagram settings first." } },
+        { error: { code: "not_configured", message: "Save the Instagram account or Facebook Page first." } },
         409
       );
     }
-    if (result === "provider_error") {
-      return safeJson(
-        { error: { code: "provider_error", message: "Meta rejected the provider check." } },
-        502
-      );
+    if (result !== null && typeof result === "object" && "providerError" in result) {
+      return safeJson({ error: { code: "provider_error", message: result.providerError } }, 502);
     }
     if (result === null) {
       return safeJson(

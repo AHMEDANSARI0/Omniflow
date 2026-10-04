@@ -64,6 +64,9 @@ MAX_LIST_ENTRIES = 200
 
 
 _LANG_DDL_READY = False
+# §230 fix: the flag was declared global but never defined, so the first
+# KB list/create call raised NameError (shown as "unavailable").
+_BRAND_DDL_READY = False
 
 
 def _ensure_lang_column(conn) -> None:

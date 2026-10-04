@@ -875,7 +875,7 @@ capi = open(os.path.join(BACKEND, "connector_api.py")).read()
 i_detach = capi.find("portal_media_ai.detach_blobs(normalized)")
 i_record = capi.find("portal_events.record_inbound(", i_detach)
 i_enrich = capi.find("portal_media_ai.enrich(", i_record)
-i_insert = capi.find('if item["channel"] == "instagram":', i_enrich)
+i_insert = capi.find('identity_kind = {"ig:": "instagram"', i_enrich)
 check("detach before record, enrich after dedupe, before storage",
       0 < i_detach < i_record < i_enrich < i_insert,
       (i_detach, i_record, i_enrich, i_insert))

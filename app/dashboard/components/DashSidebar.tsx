@@ -111,6 +111,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
         enabled: true,
       },
       { label: "Configure AI", href: "/dashboard/bot", icon: "\u2736", enabled: true },
+      { label: "AI Sandbox", href: "/dashboard/sandbox", icon: "\u2442", enabled: true },
       {
         label: "Setup wizard",
         href: "/dashboard/onboarding",

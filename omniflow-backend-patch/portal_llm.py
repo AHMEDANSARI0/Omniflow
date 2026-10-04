@@ -62,21 +62,35 @@ def current_scope():
     return stack[-1] if stack else ("", 0, None, 0)
 
 
-def _record_usage(model: str, usage: Any, ok: bool, started: float) -> None:
-    """Hand the call to the usage ledger (fail-soft, never raises)."""
+def _record_usage(model: str, usage: Any, ok: bool, started: float,
+                  route: str = "") -> None:
+    """Hand the call to the usage ledger (fail-soft, never raises).
+    ``route`` (§229) is only passed when the model router changed the
+    target (fast | smart | failover); plain AI-engine calls look as before."""
     try:
         import portal_ai_usage
 
         feature, client_id, cur, agent_id = current_scope()
         usage = usage if isinstance(usage, dict) else {}
+        extra = {"route": route} if route else {}
         portal_ai_usage.record(
             client_id, feature or "other", model,
             int(usage.get("prompt_tokens") or 0),
             int(usage.get("completion_tokens") or 0),
             int((time.time() - started) * 1000), ok, cur=cur,
-            agent_id=agent_id)
+            agent_id=agent_id, **extra)
     except Exception:
         pass
+
+
+def _record_routed(model: str, usage: Any, ok: bool, started: float,
+                   route: str) -> None:
+    # tests replace _record_usage with a 4-argument stub: keep that shape
+    # for every call the router did not change
+    if route:
+        _record_usage(model, usage, ok, started, route=route)
+    else:
+        _record_usage(model, usage, ok, started)
 
 BASE_URL = os.environ.get(
     "OF_LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -141,52 +155,88 @@ def _runtime() -> Dict[str, Any]:
             "enabled": bool(ENABLED and API_KEY)}
 
 
+def _route_targets(runtime: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Model router (§229): [chosen target] or [chosen, failover]. Falls
+    back to the AI engine alone when the router is missing or broken."""
+    main = {"provider": "primary",
+            "base_url": str(runtime.get("base_url") or BASE_URL).rstrip("/"),
+            "api_key": str(runtime.get("api_key") or ""),
+            "model": str(runtime.get("model") or MODEL), "route": ""}
+    try:
+        import portal_model_router
+
+        return portal_model_router.plan(current_scope()[0], main) or [main]
+    except Exception:
+        return [main]
+
+
+def _note_provider(target: Dict[str, Any], ok: bool) -> None:
+    try:
+        import portal_model_router
+
+        portal_model_router.note(target.get("provider", ""), ok)
+    except Exception:
+        pass
+
+
 def chat_json(system: str, user: str, max_tokens: int = 120,
               timeout: Optional[float] = None) -> Optional[Dict[str, Any]]:
     """One JSON-mode chat call; parsed object or None (never raises).
     ``timeout`` overrides OF_LLM_TIMEOUT_SECONDS for one long answer
-    (e.g. the website analyzer's extraction)."""
+    (e.g. the website analyzer's extraction). The model router picks the
+    model for the current usage scope and fails over to the secondary
+    provider when the chosen one does not answer."""
     runtime = _runtime()
     if not runtime.get("enabled") or not runtime.get("api_key"):
         return None
     if _gated():
         return None
-    payload = {
-        "model": runtime.get("model") or MODEL,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        "temperature": 0,
-        "max_tokens": max_tokens,
-        "response_format": {"type": "json_object"},
-    }
-    headers = {
-        "Authorization": "Bearer " + str(runtime["api_key"]),
-        "Content-Type": "application/json",
-    }
-    base = str(runtime.get("base_url") or BASE_URL).rstrip("/")
-    model = str(payload["model"])
-    started = time.time()
-    last_usage = None
-    for _ in range(ATTEMPTS):
-        if timeout:
-            data = _http_post_json(base + "/chat/completions", headers,
-                                   payload, timeout=timeout)
-        else:
-            data = _http_post_json(base + "/chat/completions", headers, payload)
-        if not data:
-            continue
-        last_usage = data.get("usage") if isinstance(data, dict) else None
-        try:
-            content = data["choices"][0]["message"]["content"]
-            parsed = json.loads(content)
-        except Exception:
-            continue
-        if isinstance(parsed, dict):
-            _record_usage(model, last_usage, True, started)
-            return parsed
-    _record_usage(model, last_usage, False, started)
+    for target in _route_targets(runtime):
+        payload = {
+            "model": target["model"] or MODEL,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": 0,
+            "max_tokens": max_tokens,
+            "response_format": {"type": "json_object"},
+        }
+        headers = {
+            "Authorization": "Bearer " + str(target["api_key"]),
+            "Content-Type": "application/json",
+        }
+        base = str(target["base_url"] or BASE_URL).rstrip("/")
+        model = str(payload["model"])
+        route = str(target.get("route") or "")
+        started = time.time()
+        last_usage = None
+        answered = False
+        for _ in range(ATTEMPTS):
+            if timeout:
+                data = _http_post_json(base + "/chat/completions", headers,
+                                       payload, timeout=timeout)
+            else:
+                data = _http_post_json(base + "/chat/completions", headers,
+                                       payload)
+            if not data:
+                continue
+            answered = True
+            last_usage = data.get("usage") if isinstance(data, dict) else None
+            try:
+                content = data["choices"][0]["message"]["content"]
+                parsed = json.loads(content)
+            except Exception:
+                continue
+            if isinstance(parsed, dict):
+                _note_provider(target, True)
+                _record_routed(model, last_usage, True, started, route)
+                return parsed
+        _note_provider(target, answered)
+        _record_routed(model, last_usage, False, started, route)
+        if answered:
+            # the provider is up; an unusable answer is not failed over
+            return None
     return None
 
 
@@ -490,26 +540,42 @@ def chat_messages_json(messages: List[Dict[str, str]],
     if _gated():
         return None, "blocked"
     model = str(config.get("model") or MODEL)
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": 0.2,
-        "max_tokens": int(max_tokens or 700),
-        "response_format": {"type": "json_object"},
-    }
-    headers = {"Authorization": "Bearer " + str(config["api_key"]),
-               "Content-Type": "application/json"}
-    base = str(config.get("base_url") or BASE_URL).rstrip("/")
-    started = time.time()
-    body, error = _post_detail(base + "/chat/completions", headers, payload,
-                               float(timeout or ASSISTANT_TIMEOUT_SECONDS))
-    usage = body.get("usage") if isinstance(body, dict) else None
+    targets = [{"provider": "", "route": "", "model": model,
+                "api_key": str(config["api_key"]),
+                "base_url": str(config.get("base_url") or BASE_URL).rstrip("/")}]
+    # §229: the router's secondary provider covers an assistant outage
     try:
-        parsed = json.loads(body["choices"][0]["message"]["content"])
+        import portal_model_router
+
+        backup = portal_model_router.failover_for(model)
     except Exception:
-        parsed = None
-    if not isinstance(parsed, dict):
-        _record_usage(model, usage, False, started)
-        return None, error or "unexpected response"
-    _record_usage(model, usage, True, started)
-    return parsed, ""
+        backup = None
+    if backup and backup["api_key"] != targets[0]["api_key"]:
+        targets.append(backup)
+    error = ""
+    for target in targets:
+        payload = {
+            "model": target["model"],
+            "messages": messages,
+            "temperature": 0.2,
+            "max_tokens": int(max_tokens or 700),
+            "response_format": {"type": "json_object"},
+        }
+        headers = {"Authorization": "Bearer " + target["api_key"],
+                   "Content-Type": "application/json"}
+        started = time.time()
+        body, error = _post_detail(target["base_url"] + "/chat/completions",
+                                   headers, payload,
+                                   float(timeout or ASSISTANT_TIMEOUT_SECONDS))
+        usage = body.get("usage") if isinstance(body, dict) else None
+        try:
+            parsed = json.loads(body["choices"][0]["message"]["content"])
+        except Exception:
+            parsed = None
+        if isinstance(parsed, dict):
+            _record_routed(target["model"], usage, True, started, target["route"])
+            return parsed, ""
+        _record_routed(target["model"], usage, False, started, target["route"])
+        if isinstance(body, dict):
+            break  # the provider answered; not an outage
+    return None, error or "unexpected response"

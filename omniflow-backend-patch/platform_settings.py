@@ -101,6 +101,18 @@ GROUP_KEYS = {
     # OF_ASSISTANT_MODE, OF_ASSISTANT_API_KEY, OF_ASSISTANT_BASE_URL,
     # OF_ASSISTANT_MODEL, OF_ASSISTANT_DAILY_LIMIT (default 100).
     "assistant": ["mode", "api_key", "base_url", "model", "daily_limit"],
+    # Model Router (§229, portal_model_router): which model answers which
+    # task. fast/smart tiers (provider primary|secondary + model; blank
+    # model = that provider's default), routes_json {feature: fast|smart|
+    # main}, a secondary OpenAI-compatible provider for failover, and the
+    # circuit breaker. Blank = today's behaviour. Env fallbacks:
+    # OF_ROUTER_* (MODE, FAILOVER, FAST_PROVIDER, FAST_MODEL, SMART_PROVIDER,
+    # SMART_MODEL, ROUTES_JSON, SECONDARY_BASE_URL, SECONDARY_API_KEY,
+    # SECONDARY_MODEL, BREAKER_FAILURES, BREAKER_SECONDS).
+    "router": ["mode", "failover", "fast_provider", "fast_model",
+               "smart_provider", "smart_model", "routes_json",
+               "secondary_base_url", "secondary_api_key", "secondary_model",
+               "breaker_failures", "breaker_seconds"],
 }
 
 AUTONOMY_LEVELS = ("off", "suggest", "auto")

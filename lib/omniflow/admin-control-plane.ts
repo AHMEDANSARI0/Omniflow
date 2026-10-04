@@ -40,7 +40,8 @@ function controlPlaneBaseUrl(): URL {
 
 async function adminRequest(
   path: string,
-  init: RequestInit
+  init: RequestInit,
+  options: { timeoutMs?: number; passStatuses?: number[] } = {}
 ): Promise<Response> {
   const url = new URL(path.replace(/^\//, ""), controlPlaneBaseUrl());
   const headers = new Headers(init.headers);
@@ -54,13 +55,13 @@ async function adminRequest(
       headers,
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(options.timeoutMs ?? REQUEST_TIMEOUT_MS),
     });
   } catch {
     throw new ControlPlaneRequestError(503, "control_plane_unavailable");
   }
 
-  if (!response.ok) {
+  if (!response.ok && !(options.passStatuses ?? []).includes(response.status)) {
     throw new ControlPlaneRequestError(response.status, "admin_request_failed");
   }
   return response;
@@ -78,7 +79,8 @@ export type AdminProviderGroup =
   | "stt"
   | "embeddings"
   | "vision"
-  | "assistant";
+  | "assistant"
+  | "router";
 
 export interface AdminProviderGroups {
   [group: string]: {
@@ -115,13 +117,30 @@ export async function getAdminProviders(): Promise<AdminProvidersPayload> {
 export async function putAdminProviders(
   group: AdminProviderGroup,
   values: Record<string, string>
-): Promise<AdminProviderSaveResult> {
-  const response = await adminRequest("api/v1/admin/providers", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ group, values }),
-  });
-  const payload: unknown = await response.json();
+): Promise<AdminProviderSaveResult | { invalid: string }> {
+  const response = await adminRequest(
+    "api/v1/admin/providers",
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ group, values }),
+    },
+    { passStatuses: [400] }
+  );
+  const payload: unknown = await response.json().catch(() => null);
+  if (response.status === 400) {
+    // the Control Plane's own sentence ("router.fast_model must be ...")
+    const error =
+      payload && typeof payload === "object" ? (payload as { error?: unknown }).error : null;
+    const message =
+      error && typeof error === "object" ? (error as { message?: unknown }).message : null;
+    return {
+      invalid:
+        typeof message === "string" && message
+          ? message.slice(0, 300)
+          : "The Control Plane rejected one of the values.",
+    };
+  }
   if (
     payload === null ||
     typeof payload !== "object" ||
@@ -637,4 +656,140 @@ export async function migrateAdminVault(): Promise<AdminVaultReport> {
     body: "{}",
   });
   return vaultReport(await response.json());
+}
+
+// ---------------------------------------------------------------------------
+// Model Router (§229): which model answers which AI task, with failover.
+// Settings save through putAdminProviders("router", ...).
+// ---------------------------------------------------------------------------
+
+export type RouterTier = "fast" | "smart" | "main";
+export type RouterProvider = "primary" | "secondary";
+export type RouterTestTarget = "primary" | "secondary" | "fast" | "smart";
+
+export interface AdminRouterRoute {
+  feature: string;
+  label: string;
+  tier: RouterTier;
+  default_tier: RouterTier;
+  provider: RouterProvider;
+  model: string;
+  calls: number;
+  failed: number;
+  failovers: number;
+  tokens: number;
+  cost_usd: number | null;
+}
+
+export interface AdminRouterDedicated {
+  feature: string;
+  label: string;
+  model: string;
+  key_source: string;
+  active: boolean;
+  reason: string;
+  failover: boolean;
+}
+
+export interface AdminRouterModelUsage {
+  model: string;
+  calls: number;
+  failed: number;
+  tokens: number;
+  avg_latency_ms: number;
+  cost_usd: number | null;
+}
+
+export interface AdminModelRouter {
+  mode: "on" | "off";
+  failover: "on" | "off";
+  settings: {
+    mode: string;
+    failover: string;
+    fast_provider: string;
+    fast_model: string;
+    smart_provider: string;
+    smart_model: string;
+    routes: Record<string, RouterTier>;
+    secondary_base_url: string;
+    secondary_api_key: string;
+    secondary_model: string;
+    breaker_failures: string;
+    breaker_seconds: string;
+  };
+  primary: { configured: boolean; enabled: boolean; base_url: string; model: string };
+  secondary: { configured: boolean; base_url: string; model: string; from_env: boolean };
+  tiers: Record<RouterTier, { provider: RouterProvider; model: string }>;
+  routes: AdminRouterRoute[];
+  dedicated: AdminRouterDedicated[];
+  breaker: {
+    failures: number;
+    seconds: number;
+    state: Record<RouterProvider, { failures: number; paused: boolean; paused_seconds_left: number }>;
+  };
+  usage: {
+    days: number;
+    calls: number;
+    failed: number;
+    failovers: number;
+    routed: number;
+    tokens: number;
+    cost_usd: number | null;
+    models: AdminRouterModelUsage[];
+    error: string | null;
+  };
+  prices_configured: boolean;
+  warnings: string[];
+}
+
+export async function getAdminModelRouter(days: number): Promise<AdminModelRouter> {
+  const safeDays = Number.isFinite(days) ? Math.max(1, Math.min(90, Math.round(days))) : 7;
+  const response = await adminRequest("api/v1/admin/ai/router?days=" + safeDays, {
+    method: "GET",
+  });
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    !Array.isArray((payload as { routes?: unknown }).routes) ||
+    typeof (payload as { settings?: unknown }).settings !== "object"
+  ) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminModelRouter;
+}
+
+export interface AdminRouterTestResult {
+  ok: boolean;
+  target: RouterTestTarget;
+  provider: RouterProvider;
+  model: string;
+  latency_ms: number;
+  error: string;
+}
+
+export async function testAdminModelRouter(
+  target: RouterTestTarget
+): Promise<AdminRouterTestResult | { invalid: string }> {
+  const response = await adminRequest(
+    "api/v1/admin/ai/router/test",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+    },
+    { timeoutMs: 20_000, passStatuses: [400, 409] }
+  );
+  const payload: unknown = await response.json().catch(() => null);
+  if (response.status === 400 || response.status === 409) {
+    const error =
+      payload && typeof payload === "object" ? (payload as { error?: unknown }).error : null;
+    const message =
+      error && typeof error === "object" ? (error as { message?: unknown }).message : null;
+    return { invalid: typeof message === "string" && message ? message : "Not configured." };
+  }
+  if (payload === null || typeof payload !== "object" || !("ok" in payload)) {
+    throw new ControlPlaneRequestError(502, "invalid_control_plane_response");
+  }
+  return payload as AdminRouterTestResult;
 }

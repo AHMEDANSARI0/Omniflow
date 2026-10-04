@@ -192,7 +192,7 @@ def list_commands():
     channel = (args.get("channel") or "").strip()
     if channel and channel not in ALLOWED_CHANNELS:
         return jsonify({"error": {"code": "bad_request",
-                                  "message": "channel whatsapp|telegram|instagram hon."}}), 400
+                                  "message": "channel " + "|".join(ALLOWED_CHANNELS) + " hon."}}), 400
 
     try:
         portal_db.ensure_tables()
@@ -424,7 +424,7 @@ def connector_bot_config():
 
 MAX_INGEST_MESSAGES = 100
 ALLOWED_DIRECTIONS = ("in", "out")
-ALLOWED_CHANNELS = ("whatsapp", "telegram", "instagram")
+ALLOWED_CHANNELS = ("whatsapp", "telegram", "instagram", "messenger")
 
 
 _AWAY_TABLE_READY = False
@@ -794,24 +794,31 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                                 media_blobs.get(id(item)), media_budget)
                         except Exception:
                             pass
-                    if item["channel"] == "instagram":
+                    # §228: DM senders only (ig: / fb:) - comment authors
+                    # (igc: / fbc:) use a different id and are not linked.
+                    identity_kind = {"ig:": "instagram", "fb:": "facebook"}.get(
+                        item["from"][:3]) if item["channel"] in (
+                        "instagram", "messenger") else None
+                    if identity_kind:
+                        # savepoint: a missing identity table must not abort
+                        # the message itself (fail-soft)
+                        cur.execute("SAVEPOINT of_meta_identity")
                         try:
                             import portal_identity
 
-                            identity_handle = item["from"]
-                            if identity_handle.startswith("ig:"):
-                                identity_handle = identity_handle[3:]
+                            identity_handle = item["from"][3:]
                             portal_identity.resolve(
                                 cur,
                                 tenant["client_id"],
-                                "instagram",
+                                identity_kind,
                                 identity_handle,
                                 item["name"] or "",
                                 create=True,
-                                source="instagram_webhook",
+                                source="meta_webhook",
                             )
+                            cur.execute("RELEASE SAVEPOINT of_meta_identity")
                         except Exception:
-                            pass
+                            cur.execute("ROLLBACK TO SAVEPOINT of_meta_identity")
                     cur.execute(
                         "INSERT INTO " + portal_db._q(portal_db.CONV_TABLE) +
                         " (client_id, channel, contact_id, contact_name,"

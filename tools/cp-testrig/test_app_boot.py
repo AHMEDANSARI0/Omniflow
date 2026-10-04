@@ -106,13 +106,16 @@ check("routes outside the prefix tuple exist and are covered by the URL-map net"
 for expected in ("/api/v1/public/checkout/<token>", "/api/v1/public/store/<slug>",
                  "/api/v1/public/voice/incoming", "/api/v1/admin/providers",
                  "/api/v1/admin/ai/overview",
+                 "/api/v1/admin/ai/router", "/api/v1/admin/ai/router/test",
                  "/api/v1/admin/ai/clients/<int:client_id>/autonomy",
                  "/api/v1/portal/snapshots/<int:snapshot_id>/restore",
                  "/api/v1/portal/approvals/<int:approval_id>/retry",
                  "/api/v1/portal/site-analyzer/<int:scan_id>/step",
                  "/api/v1/portal/site-analyzer/<int:scan_id>/apply",
                  "/api/v1/portal/assistant/ask",
-                 "/api/v1/portal/assistant/proposals/<int:proposal_id>/undo"):
+                 "/api/v1/portal/assistant/proposals/<int:proposal_id>/undo",
+                 "/api/v1/portal/sandbox", "/api/v1/portal/sandbox/run",
+                 "/api/v1/portal/sandbox/scenarios/<int:scenario_id>/run"):
     check("route registered: " + expected,
           any(r.rule == expected for r in rules), expected)
 
@@ -125,6 +128,8 @@ status, body = dispatch("/api/v1/admin/providers")
 check("admin providers reaches aux -> 403 without key", status.startswith("403"), (status, body[:50]))
 status, body = dispatch("/api/v1/admin/ai/overview")
 check("admin AI overview reaches aux -> 403 without key", status.startswith("403"), (status, body[:50]))
+status, body = dispatch("/api/v1/admin/ai/router")
+check("admin model router reaches aux -> 403 without key", status.startswith("403"), (status, body[:50]))
 status, body = dispatch("/api/v1/admin/providers", "DELETE")
 check("wrong method on an aux route stays with aux (405)", status.startswith("405"), status)
 status, body = dispatch("/api/v1/portal/agents")

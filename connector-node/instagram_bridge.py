@@ -1,7 +1,8 @@
-"""Instagram command bridge for OmniFlow's Meta Graph adapter.
+"""Meta command bridge (Instagram + Messenger) for OmniFlow's Graph adapter.
 
 The Control Plane keeps the tenant access token. This small worker polls the
-existing command queue with ``channel=instagram`` and asks the signed service
+existing command queue with ``channel=instagram`` and ``channel=messenger``
+(§228: Facebook Page messages and comment replies) and asks the signed service
 endpoint to dispatch each command through the real Instagram Graph API. It
 never receives or stores provider credentials.
 
@@ -30,16 +31,18 @@ CLIENT_ID = os.environ.get("OMNIFLOW_CLIENT_ID", "")
 POLL_SECONDS = max(1.0, float(os.environ.get("POLL_SECONDS", "5") or 5))
 COMMANDS_PATH = "/api/v1/connector/whatsapp/commands"
 DISPATCH_PATH = "/api/v1/connector/instagram/commands/dispatch"
+CHANNELS = ("instagram", "messenger")
 
 
 def _request_json(path: str, method: str = "GET",
-                  payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+                  payload: Dict[str, Any] | None = None,
+                  channel: str = "instagram") -> Dict[str, Any]:
     query = ""
     if method == "GET":
         query = "?" + urllib.parse.urlencode({
             "client_id": CLIENT_ID,
             "limit": "20",
-            "channel": "instagram",
+            "channel": channel,
         })
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
     req = urllib.request.Request(
@@ -59,7 +62,19 @@ def _request_json(path: str, method: str = "GET",
 
 
 def poll_once() -> int:
-    batch = _request_json(COMMANDS_PATH)
+    delivered = 0
+    for channel in CHANNELS:
+        delivered += _poll_channel(channel)
+    return delivered
+
+
+def _poll_channel(channel: str) -> int:
+    try:
+        batch = _request_json(COMMANDS_PATH, channel=channel)
+    except urllib.error.HTTPError as error:
+        # an older Control Plane rejects channel=messenger - keep Instagram
+        print("Meta bridge:", channel, "not available yet (HTTP", error.code, ")")
+        return 0
     delivered = 0
     for command in batch.get("commands") or []:
         if not isinstance(command, dict):
@@ -67,15 +82,24 @@ def poll_once() -> int:
         command_id = command.get("id")
         if isinstance(command_id, bool) or not isinstance(command_id, int):
             continue
-        result = _request_json(
-            DISPATCH_PATH,
-            method="POST",
-            payload={"client_id": int(CLIENT_ID), "command_id": command_id},
-        )
+        try:
+            result = _request_json(
+                DISPATCH_PATH,
+                method="POST",
+                payload={"client_id": int(CLIENT_ID), "command_id": command_id},
+            )
+        except urllib.error.HTTPError as error:
+            # 409 refused / 502 provider error carry the reason in the body
+            try:
+                result = json.loads(error.read().decode("utf-8") or "{}")
+            except Exception:
+                result = {}
+            if not isinstance(result, dict):
+                result = {}
         if result.get("ok") is True:
             delivered += 1
         else:
-            print("Instagram command deferred:", command_id,
+            print("Meta command not sent:", channel, command_id,
                   result.get("error", {}).get("message", "unknown error"))
     return delivered
 

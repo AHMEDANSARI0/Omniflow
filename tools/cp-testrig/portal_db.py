@@ -15,6 +15,7 @@ deploying this module needs NO manual migration step. The SQL file remains
 available for explicit application in the Neon SQL editor.
 """
 
+import contextvars
 import logging
 import os
 import threading
@@ -178,7 +179,17 @@ def _q(ident: str) -> str:
     return '"' + ident.replace('"', '""') + '"'
 
 
+# §230 AI Sandbox: while a sandbox run is active in THIS request context,
+# _conn() returns a savepoint-scoped view of the sandbox transaction (always
+# rolled back, never committed). Unset - the normal path - everywhere else.
+SANDBOX_CONN: "contextvars.ContextVar" = contextvars.ContextVar(
+    "omniflow_sandbox_conn", default=None)
+
+
 def _conn():
+    factory = SANDBOX_CONN.get()
+    if factory is not None:
+        return factory()
     import psycopg2
 
     return psycopg2.connect(

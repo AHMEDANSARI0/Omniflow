@@ -88,8 +88,8 @@ export default function InboxClient({
   const statusRef = useRef<"all" | "open" | "closed">("all");
   const [intentFilter, setIntentFilter] = useState("all");
   const intentRef = useRef("all");
-  const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram" | "website">("all");
-  const channelRef = useRef<"all" | "whatsapp" | "instagram" | "website">("all");
+  const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram" | "messenger" | "website">("all");
+  const channelRef = useRef<"all" | "whatsapp" | "instagram" | "messenger" | "website">("all");
   const [replyFilter, setReplyFilter] = useState("");
   const replyFilterRef = useRef("");
   const [oldestFirst, setOldestFirst] = useState(false);
@@ -426,7 +426,12 @@ export default function InboxClient({
       setAssignedFilter(assignedParam);
     }
     const channelParam = urlFilters.get("channel");
-    if (channelParam === "whatsapp" || channelParam === "instagram" || channelParam === "website") {
+    if (
+      channelParam === "whatsapp" ||
+      channelParam === "instagram" ||
+      channelParam === "messenger" ||
+      channelParam === "website"
+    ) {
       channelRef.current = channelParam;
       setChannelFilter(channelParam);
     }
@@ -1007,7 +1012,7 @@ export default function InboxClient({
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {(["all", "whatsapp", "instagram", "website"] as const).map((value) => (
+        {(["all", "whatsapp", "instagram", "messenger", "website"] as const).map((value) => (
           <button
             key={"channel-" + value}
             onClick={() => {
@@ -1581,6 +1586,7 @@ export default function InboxClient({
                         }
                       />
                       {item.channel}
+                      {/^(igc|fbc):/.test(item.contactId ?? "") ? " \u00b7 comment" : ""}
                     </p>
                     <p
                       className={`mt-1 text-[10px] ${

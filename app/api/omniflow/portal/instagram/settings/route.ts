@@ -63,12 +63,14 @@ export async function PUT(request: Request) {
       appSecret: typeof input.app_secret === "string" ? input.app_secret.trim() : "",
       verifyToken:
         typeof input.verify_token === "string" ? input.verify_token.trim() : "",
+      pageAccessToken:
+        typeof input.page_access_token === "string" ? input.page_access_token.trim() : "",
+      messengerEnabled: input.messenger_enabled === true,
+      commentsEnabled: input.comments_enabled === true,
+      commentAutoReply: input.comment_auto_reply === true,
     });
-    if (result === "bad_request") {
-      return safeJson(
-        { error: { code: "bad_request", message: "Check the Instagram settings." } },
-        400
-      );
+    if (result !== null && "invalid" in result) {
+      return safeJson({ error: { code: "bad_request", message: result.invalid } }, 400);
     }
     if (result === null) {
       return safeJson(

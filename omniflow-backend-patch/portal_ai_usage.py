@@ -23,6 +23,7 @@ ledger off. Read API is tenant-scoped and open to API keys (read-only).
 import json
 import logging
 import os
+import sys
 from typing import Any, Dict, List, Optional
 
 from flask import Blueprint, jsonify, request
@@ -81,6 +82,8 @@ ALTER TABLE portal_ai_usage
   ADD COLUMN IF NOT EXISTS agent_id BIGINT;
 CREATE INDEX IF NOT EXISTS idx_portal_ai_usage_agent
   ON portal_ai_usage (client_id, agent_id, created_at DESC);
+ALTER TABLE portal_ai_usage
+  ADD COLUMN IF NOT EXISTS route TEXT NOT NULL DEFAULT '';
 """
 
 
@@ -98,8 +101,21 @@ def _ensure_ddl(cur) -> None:
 
 def _insert(cur, client_id: int, feature: str, model: str, prompt_tokens: int,
             completion_tokens: int, latency_ms: int, ok: bool,
-            agent_id: int = 0) -> None:
+            agent_id: int = 0, route: str = "") -> None:
     aid = int(agent_id or 0) or None
+    if route:
+        # §229 model router: fast | smart | failover | test
+        cur.execute(
+            "INSERT INTO " + portal_db._q(TABLE) +
+            " (client_id, feature, model, prompt_tokens, completion_tokens,"
+            " latency_ms, ok, agent_id, route)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (int(client_id or 0), str(feature or "other")[:40],
+             str(model or "")[:80], max(0, int(prompt_tokens or 0)),
+             max(0, int(completion_tokens or 0)), max(0, int(latency_ms or 0)),
+             bool(ok), aid, str(route)[:20]),
+        )
+        return
     cur.execute(
         "INSERT INTO " + portal_db._q(TABLE) +
         " (client_id, feature, model, prompt_tokens, completion_tokens,"
@@ -113,17 +129,24 @@ def _insert(cur, client_id: int, feature: str, model: str, prompt_tokens: int,
 
 def record(client_id: int, feature: str, model: str, prompt_tokens: int,
            completion_tokens: int, latency_ms: int, ok: bool,
-           cur=None, agent_id: int = 0) -> bool:
-    """Append one call to the ledger. Never raises; False when skipped."""
+           cur=None, agent_id: int = 0, route: str = "") -> bool:
+    """Append one call to the ledger. Never raises; False when skipped.
+    ``route`` = what the model router did (blank = the AI engine)."""
     if not ENABLED:
         return False
     feature = feature if feature in FEATURE_LABELS else "other"
+    sandbox = sys.modules.get("portal_sandbox")
+    if sandbox is not None and sandbox.capture_usage(
+            client_id, feature, model, prompt_tokens, completion_tokens,
+            latency_ms, ok, agent_id):
+        return True  # §230: written after the sandbox rollback (route sandbox)
     if cur is not None:
         try:
             cur.execute("SAVEPOINT of_ai_usage")
             _ensure_ddl(cur)
             _insert(cur, client_id, feature, model, prompt_tokens,
-                    completion_tokens, latency_ms, ok, agent_id=agent_id)
+                    completion_tokens, latency_ms, ok, agent_id=agent_id,
+                    **({"route": route} if route else {}))
             cur.execute("RELEASE SAVEPOINT of_ai_usage")
             return True
         except Exception as error:
@@ -139,7 +162,8 @@ def record(client_id: int, feature: str, model: str, prompt_tokens: int,
             with conn.cursor() as own:
                 _ensure_ddl(own)
                 _insert(own, client_id, feature, model, prompt_tokens,
-                        completion_tokens, latency_ms, ok, agent_id=agent_id)
+                        completion_tokens, latency_ms, ok, agent_id=agent_id,
+                        **({"route": route} if route else {}))
             conn.commit()
         finally:
             conn.close()

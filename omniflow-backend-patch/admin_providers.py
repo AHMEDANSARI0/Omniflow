@@ -129,6 +129,8 @@ def _configured(group: str, values: dict) -> bool:
         return any(str(v or "").strip() for v in values.values())
     if group == "stt":
         return bool(values.get("api_key"))
+    if group == "router":
+        return any(str(v or "").strip() for v in values.values())
     return False
 
 
@@ -160,6 +162,12 @@ def _clean_group(group: str, raw: dict):
             continue
         text = "" if value is None else str(value).strip()
         full = group + "." + name
+        if group == "router":
+            import portal_model_router
+
+            text, router_error = portal_model_router.clean_value(name, text)
+            if router_error:
+                return None, router_error
         if full in PROVIDER_WHITELISTS:
             text = text.lower() if group in LOWERCASE_SWITCH_GROUPS \
                 and full != "voice.provider" else text

@@ -16,6 +16,7 @@ const OPEN_EVENT = "omniflow-command-open";
 const PAGES: PaletteItem[] = [
   { group: "Pages", label: "Overview", href: "/dashboard" },
   { group: "Pages", label: "Ask OmniFlow AI", href: "/dashboard/assistant" },
+  { group: "Pages", label: "AI Sandbox", href: "/dashboard/sandbox" },
   { group: "Pages", label: "Conversations", href: "/dashboard/conversations" },
   { group: "Pages", label: "Customers", href: "/dashboard/customers" },
   { group: "Pages", label: "Broadcasts", href: "/dashboard/broadcasts" },
