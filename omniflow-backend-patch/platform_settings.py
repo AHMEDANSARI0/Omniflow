@@ -94,6 +94,13 @@ GROUP_KEYS = {
     # read images). Env fallbacks: OF_VISION_MODE, OF_VISION_API_KEY,
     # OF_VISION_BASE_URL, OF_VISION_MODEL.
     "vision": ["mode", "api_key", "base_url", "model"],
+    # Ask OmniFlow AI (§227): the owner's in-portal assistant. Platform-
+    # billed (AI usage line "assistant", kill switch + daily cap apply).
+    # Blank key/base/model reuse the AI engine above. daily_limit = owner
+    # questions per workspace per day (0 = unlimited). Env fallbacks:
+    # OF_ASSISTANT_MODE, OF_ASSISTANT_API_KEY, OF_ASSISTANT_BASE_URL,
+    # OF_ASSISTANT_MODEL, OF_ASSISTANT_DAILY_LIMIT (default 100).
+    "assistant": ["mode", "api_key", "base_url", "model", "daily_limit"],
 }
 
 AUTONOMY_LEVELS = ("off", "suggest", "auto")
@@ -521,6 +528,52 @@ def vision_config() -> dict:
     return {"mode": mode, "active": reason == "active", "reason": reason,
             "api_key": api_key, "base_url": base_url.rstrip("/"),
             "model": model, "key_source": key_source}
+
+
+ASSISTANT_MODES = ("on", "off")
+
+
+def assistant_config() -> dict:
+    """Effective Ask OmniFlow AI config (§227), same shape and fallbacks as
+    vision_config() plus ``daily_limit``. Fail-soft.
+
+    {mode, active, reason: active|off|no_key|llm_disabled, api_key,
+     base_url, model, key_source: assistant|env|llm|none, daily_limit}
+    """
+    mode = (_cached("assistant.mode") or _env("OF_ASSISTANT_MODE", "on")).lower()
+    if mode not in ASSISTANT_MODES:
+        mode = "on"
+    api_key = _cached("assistant.api_key")
+    key_source = "assistant" if api_key else "none"
+    if not api_key and _env("OF_ASSISTANT_API_KEY", ""):
+        api_key, key_source = _env("OF_ASSISTANT_API_KEY", ""), "env"
+    if not api_key:
+        api_key = _cached("llm.api_key") or _env("OF_LLM_API_KEY", "")
+        key_source = "llm" if api_key else "none"
+    base_url = (_cached("assistant.base_url") or _env("OF_ASSISTANT_BASE_URL", "")
+                or _cached("llm.base_url")
+                or _env("OF_LLM_BASE_URL", "https://api.openai.com/v1"))
+    model = (_cached("assistant.model") or _env("OF_ASSISTANT_MODEL", "")
+             or _cached("llm.model") or _env("OF_LLM_MODEL", "gpt-4o-mini"))
+    try:
+        daily_limit = int(_cached("assistant.daily_limit")
+                          or _env("OF_ASSISTANT_DAILY_LIMIT", "100"))
+    except (TypeError, ValueError):
+        daily_limit = 100
+    llm_enabled = _env("OF_LLM_ENABLED", "1").lower() not in (
+        "0", "false", "no", "off")
+    if mode == "off":
+        reason = "off"
+    elif not api_key:
+        reason = "no_key"
+    elif key_source == "llm" and not llm_enabled:
+        reason = "llm_disabled"
+    else:
+        reason = "active"
+    return {"mode": mode, "active": reason == "active", "reason": reason,
+            "api_key": api_key, "base_url": base_url.rstrip("/"),
+            "model": model, "key_source": key_source,
+            "daily_limit": max(0, min(100000, daily_limit))}
 
 
 def stt_mode() -> str:

@@ -15,6 +15,7 @@ const OPEN_EVENT = "omniflow-command-open";
 
 const PAGES: PaletteItem[] = [
   { group: "Pages", label: "Overview", href: "/dashboard" },
+  { group: "Pages", label: "Ask OmniFlow AI", href: "/dashboard/assistant" },
   { group: "Pages", label: "Conversations", href: "/dashboard/conversations" },
   { group: "Pages", label: "Customers", href: "/dashboard/customers" },
   { group: "Pages", label: "Broadcasts", href: "/dashboard/broadcasts" },
@@ -24,6 +25,7 @@ const PAGES: PaletteItem[] = [
   { group: "Pages", label: "Setup wizard", href: "/dashboard/onboarding" },
   { group: "Pages", label: "Team", href: "/dashboard/team" },
   { group: "Pages", label: "Knowledge base", href: "/dashboard/knowledge-base" },
+  { group: "Pages", label: "Website analyzer", href: "/dashboard/website-analyzer" },
   { group: "Pages", label: "COD confirmations", href: "/dashboard/cod" },
   { group: "Pages", label: "Courier", href: "/dashboard/courier" },
   { group: "Pages", label: "Media", href: "/dashboard/media" },

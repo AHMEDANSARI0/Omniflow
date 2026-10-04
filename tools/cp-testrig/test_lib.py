@@ -124,6 +124,16 @@ class _DbStub:
                            "message": context + " temporarily unavailable."}},)
 
 
+def neutralize_action_ledger(actions_module) -> None:
+    """§225: FakeCur suites script exact SQL slots, so the Action Engine's
+    ledger + savepoint statements are switched off there (they are covered
+    against real Postgres in test_actions_v2)."""
+    actions_module._ledger_claim = lambda *args, **kwargs: None
+    actions_module._ledger_finish = lambda *args, **kwargs: None
+    actions_module._run_guarded = (
+        lambda cur, spec, client_id, args: (spec["run"](cur, client_id, args), 1))
+
+
 def install_db_stub(module, script, client_id=1):
     """Replace module.portal_db with a scripted stub.
 

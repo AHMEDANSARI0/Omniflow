@@ -21,6 +21,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     title: "Inbox",
     items: [
       { label: "Overview", href: "/dashboard", icon: "\u2302", enabled: true },
+      { label: "Ask OmniFlow AI", href: "/dashboard/assistant", icon: "\u25b7", enabled: true },
       {
         label: "Conversations",
         href: "/dashboard/conversations",
@@ -69,6 +70,12 @@ const navGroups: { title: string; items: NavItem[] }[] = [
         label: "Knowledge base",
         href: "/dashboard/knowledge-base",
         icon: "\u25a6",
+        enabled: true,
+      },
+      {
+        label: "Website analyzer",
+        href: "/dashboard/website-analyzer",
+        icon: "\u21c9",
         enabled: true,
       },
       { label: "Quick replies", href: "/dashboard/saved-replies", icon: "/", enabled: true },

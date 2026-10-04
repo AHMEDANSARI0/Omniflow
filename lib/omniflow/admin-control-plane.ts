@@ -77,7 +77,8 @@ export type AdminProviderGroup =
   | "ai"
   | "stt"
   | "embeddings"
-  | "vision";
+  | "vision"
+  | "assistant";
 
 export interface AdminProviderGroups {
   [group: string]: {

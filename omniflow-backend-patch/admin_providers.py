@@ -48,18 +48,21 @@ PROVIDER_WHITELISTS = {
     "embeddings.mode": ("on", "off"),
     # D5 voice + vision switches
     "vision.mode": ("on", "off"),
+    "assistant.mode": ("on", "off"),
     "stt.mode": ("on", "off"),
     "voice.ai_loop": ("on", "off"),
     "voice.signature_check": ("enforce", "log", "off"),
 }
 
 #: Groups whose whitelisted values are case-insensitive switches.
-LOWERCASE_SWITCH_GROUPS = ("ai", "embeddings", "vision", "stt", "voice")
+LOWERCASE_SWITCH_GROUPS = ("ai", "embeddings", "vision", "stt", "voice",
+                           "assistant")
 
 # Numeric settings (blank = unset).
 NUMERIC_KEYS = {"ai.daily_call_cap": (0, 1000000),
                 "embeddings.dimensions": (0, 4096),
-                "embeddings.min_similarity": (0, 100)}
+                "embeddings.min_similarity": (0, 100),
+                "assistant.daily_limit": (0, 100000)}
 
 
 def _authorized() -> bool:
@@ -121,6 +124,8 @@ def _configured(group: str, values: dict) -> bool:
     if group == "embeddings":
         return any(str(v or "").strip() for v in values.values())
     if group == "vision":
+        return any(str(v or "").strip() for v in values.values())
+    if group == "assistant":
         return any(str(v or "").strip() for v in values.values())
     if group == "stt":
         return bool(values.get("api_key"))

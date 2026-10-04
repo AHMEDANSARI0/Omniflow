@@ -1,39 +1,19 @@
-import {
-  listApprovals,
-  requirePortalAccessToken,
-} from "../../../../../lib/omniflow/portal";
+import { listApprovals } from "../../../../../lib/omniflow/portal";
 import { safeJson } from "../../../../../lib/omniflow/request-security";
-import { ControlPlaneRequestError } from "../../../../../lib/omniflow/control-plane";
+import { withPortalToken } from "../../../../../lib/omniflow/voice-vision-bff";
 
 export async function GET(request: Request) {
-  const accessToken = await requirePortalAccessToken();
-  if (!accessToken) {
-    return safeJson(
-      { error: { code: "unauthorized", message: "Sign in required." } },
-      401
-    );
-  }
-  const status =
-    new URL(request.url).searchParams.get("status") || "pending";
-  try {
-    const approvals = await listApprovals(accessToken, status);
-    if (approvals === null) {
+  const params = new URL(request.url).searchParams;
+  const status = params.get("status") || "pending";
+  const kind = params.get("kind") || "";
+  return withPortalToken(async (accessToken) => {
+    const list = await listApprovals(accessToken, status, kind);
+    if (list === null) {
       return safeJson(
         { error: { code: "portal_unavailable", message: "Try again shortly." } },
         503
       );
     }
-    return safeJson({ approvals }, 200);
-  } catch (error) {
-    if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
-      return safeJson(
-        { error: { code: "unauthorized", message: "Session expired." } },
-        401
-      );
-    }
-    return safeJson(
-      { error: { code: "portal_unavailable", message: "Try again shortly." } },
-      503
-    );
-  }
+    return safeJson(list, 200);
+  });
 }

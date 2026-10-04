@@ -462,3 +462,18 @@ def replay_delivery():
             "message": "No replayable delivery found.",
         }}), 404
     return jsonify({"ok": True}), 200
+
+
+# ---------------------------------------------------------------------------
+# Event catalog (§225): the typed list of outbox events (webhook
+# categories + which workflow triggers fire on each)
+# ---------------------------------------------------------------------------
+
+@bp.get("/events/catalog")
+def event_catalog():
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    import portal_event_catalog
+
+    return jsonify(portal_event_catalog.public_catalog()), 200

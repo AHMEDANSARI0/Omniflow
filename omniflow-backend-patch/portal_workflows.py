@@ -1591,10 +1591,16 @@ def _execute_step(cur, client_id: int, workflow_id: int, run: Dict[str, Any],
                     cur, client_id, int(ctx.get("conversation_id") or 0))
             except Exception:
                 agent = None
+        # exactly-once per run step: two overlapping polls advancing the
+        # same run get the stored outcome instead of a second effect
+        key = None
+        if run.get("id") and run.get("_step_seq") is not None:
+            key = "wf:" + str(run.get("id")) + ":" + str(run.get("_step_seq"))
         try:
             result = portal_actions.execute(
                 cur, client_id, "workflow:" + str(workflow_id), name, args,
-                ctx.get("conversation_id"), agent=agent)
+                ctx.get("conversation_id"), agent=agent,
+                idempotency_key=key)
         except ValueError as error:
             out.update({"outcome": "error", "status": RUN_FAILED,
                         "detail": name + ": " + str(error)[:120]})
@@ -1721,6 +1727,9 @@ def advance_run(cur, client_id: int, run: Dict[str, Any],
                 _finish_run(cur, client_id, run_id, RUN_COMPLETED,
                             steps_done, step_no)
                 return RUN_COMPLETED
+            # steps_done is unique per executed step of a run (loops
+            # included): the Action Engine keys the step on it (§225)
+            run["_step_seq"] = steps_done
             result = _execute_step(cur, client_id, workflow_id, run, step,
                                    ctx)
             steps_done += 1

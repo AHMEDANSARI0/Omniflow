@@ -49,6 +49,10 @@ async function portalRequest(
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   headers.set("Authorization", `Bearer ${accessToken}`);
+  // string bodies are JSON here; without the header Flask reads no body
+  if (typeof init.body === "string" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
   let response: Response;
   try {
@@ -4208,6 +4212,7 @@ export interface WebhookRow {
   createdAt: string | null;
   lastDeliveryAt: string | null;
   lastStatusCode: number | null;
+  deadCount: number;
 }
 
 export interface WebhookDelivery {
@@ -4218,6 +4223,7 @@ export interface WebhookDelivery {
   attempts: number;
   createdAt: string | null;
   deliveredAt: string | null;
+  dead: boolean;
 }
 
 export async function listWebhooks(
@@ -4250,6 +4256,7 @@ export async function listWebhooks(
       createdAt: typeof row.created_at === "string" ? row.created_at : null,
       lastDeliveryAt: typeof row.last_delivery_at === "string" ? row.last_delivery_at : null,
       lastStatusCode: typeof row.last_status_code === "number" ? row.last_status_code : null,
+      deadCount: typeof row.dead_count === "number" ? row.dead_count : 0,
     });
   }
   return webhooks;
@@ -4283,7 +4290,12 @@ export async function createWebhook(
   const payload: unknown = await response.json().catch(() => null);
   if (payload === null || typeof payload !== "object") return { kind: "unavailable" };
   const raw = (payload as Record<string, unknown>).webhook;
-  const secret = (payload as Record<string, unknown>).secret;
+  // the Control Plane returns the one-time signing secret inside `webhook`
+  const secret =
+    (payload as Record<string, unknown>).secret ??
+    (raw !== null && typeof raw === "object"
+      ? (raw as Record<string, unknown>).secret
+      : undefined);
   const webhook =
     raw !== null && typeof raw === "object"
       ? ({
@@ -4294,6 +4306,7 @@ export async function createWebhook(
           createdAt: null,
           lastDeliveryAt: null,
           lastStatusCode: null,
+          deadCount: 0,
         } as WebhookRow)
       : undefined;
   return {
@@ -4385,6 +4398,7 @@ export async function listWebhookDeliveries(
       attempts: typeof row.attempts === "number" ? row.attempts : 0,
       createdAt: typeof row.created_at === "string" ? row.created_at : null,
       deliveredAt: typeof row.delivered_at === "string" ? row.delivered_at : null,
+      dead: row.dead === true,
     });
   }
   return deliveries;
@@ -12633,6 +12647,20 @@ export async function requirePortalAccessToken(): Promise<string | null> {
 // portal or over WhatsApp with a plain 1 / 0 reply.
 // ---------------------------------------------------------------------------
 
+export type ApprovalKind =
+  | "action"
+  | "workflow_step"
+  | "customer_request"
+  | "config_change"
+  | "other";
+
+export interface ApprovalImpact {
+  effect: string;
+  onReject: string;
+  money: Record<string, number>;
+  action?: string;
+}
+
 export interface Approval {
   id: number;
   conversationId: number | null;
@@ -12649,6 +12677,41 @@ export interface Approval {
   decidedAt: string | null;
   expiresAt: string | null;
   createdAt: string | null;
+  kind: ApprovalKind;
+  kindLabel: string;
+  risk: string;
+  impact: ApprovalImpact;
+  edits: Record<string, unknown>;
+  decisionNote: string | null;
+  customerReply: string | null;
+  outcome: string | null;
+  outcomeDetail: string | null;
+  canReply: boolean;
+}
+
+export interface ApprovalField {
+  key: string;
+  label: string;
+  type: "text" | "number" | "boolean" | "items";
+  value: unknown;
+  columns?: { key: string; type: "text" | "number" | "boolean" }[];
+}
+
+export interface ApprovalDetail extends Approval {
+  editable: ApprovalField[];
+  evidence: Record<string, unknown>;
+  canDecide: boolean;
+}
+
+export interface ApprovalsList {
+  approvals: Approval[];
+  kinds: { key: string; label: string }[];
+}
+
+export interface ApprovalDecision {
+  status?: string;
+  outcome: string;
+  outcomeDetail: string;
 }
 
 export interface ApprovalsConfig {
@@ -12657,43 +12720,70 @@ export interface ApprovalsConfig {
   selfChatAvailable: boolean;
 }
 
+/** camelCase (Control Plane today) or snake_case (older builds). */
+function pickKey(row: Record<string, unknown>, camel: string, snake: string): unknown {
+  return row[camel] !== undefined ? row[camel] : row[snake];
+}
+
+function textOrNull(value: unknown): string | null {
+  return value === null || value === undefined || value === "" ? null : String(value);
+}
+
 function mapApproval(row: Record<string, unknown>): Approval {
+  const conversationId = pickKey(row, "conversationId", "conversation_id");
+  const impact = asRecord(row.impact);
+  const money: Record<string, number> = {};
+  for (const [key, value] of Object.entries(asRecord(impact.money))) {
+    if (typeof value === "number" && Number.isFinite(value)) money[key] = value;
+  }
   return {
     id: Number(row.id || 0),
-    conversationId: row.conversation_id === null || row.conversation_id === undefined
-      ? null : Number(row.conversation_id),
-    contactId: String(row.contact_id || ""),
-    contactName: row.contact_name === null || row.contact_name === undefined
-      ? null : String(row.contact_name),
+    conversationId:
+      conversationId === null || conversationId === undefined
+        ? null
+        : Number(conversationId),
+    contactId: String(pickKey(row, "contactId", "contact_id") || ""),
+    contactName: textOrNull(pickKey(row, "contactName", "contact_name")),
     action: String(row.action || ""),
     summary: String(row.summary || ""),
-    customerQuery: row.customer_query === null || row.customer_query === undefined
-      ? null : String(row.customer_query),
+    customerQuery: textOrNull(pickKey(row, "customerQuery", "customer_query")),
     status: String(row.status || "pending"),
     source: String(row.source || "ai"),
-    refCode: String(row.ref_code || ""),
-    decidedBy: row.decided_by === null || row.decided_by === undefined
-      ? null : String(row.decided_by),
-    decidedVia: row.decided_via === null || row.decided_via === undefined
-      ? null : String(row.decided_via),
-    decidedAt: row.decided_at === null || row.decided_at === undefined
-      ? null : String(row.decided_at),
-    expiresAt: row.expires_at === null || row.expires_at === undefined
-      ? null : String(row.expires_at),
-    createdAt: row.created_at === null || row.created_at === undefined
-      ? null : String(row.created_at),
+    refCode: String(pickKey(row, "refCode", "ref_code") || ""),
+    decidedBy: textOrNull(pickKey(row, "decidedBy", "decided_by")),
+    decidedVia: textOrNull(pickKey(row, "decidedVia", "decided_via")),
+    decidedAt: textOrNull(pickKey(row, "decidedAt", "decided_at")),
+    expiresAt: textOrNull(pickKey(row, "expiresAt", "expires_at")),
+    createdAt: textOrNull(pickKey(row, "createdAt", "created_at")),
+    kind: String(row.kind || "other") as ApprovalKind,
+    kindLabel: String(pickKey(row, "kindLabel", "kind_label") || "Other"),
+    risk: String(row.risk || ""),
+    impact: {
+      effect: String(impact.effect || ""),
+      onReject: String(pickKey(impact, "onReject", "on_reject") || ""),
+      money,
+      action: impact.action ? String(impact.action) : undefined,
+    },
+    edits: asRecord(row.edits),
+    decisionNote: textOrNull(pickKey(row, "decisionNote", "decision_note")),
+    customerReply: textOrNull(pickKey(row, "customerReply", "customer_reply")),
+    outcome: textOrNull(row.outcome),
+    outcomeDetail: textOrNull(pickKey(row, "outcomeDetail", "outcome_detail")),
+    canReply: pickKey(row, "canReply", "can_reply") !== false,
   };
 }
 
 export async function listApprovals(
   accessToken: string,
-  status: string
-): Promise<Approval[] | null> {
+  status: string,
+  kind = ""
+): Promise<ApprovalsList | null> {
   let response: Response;
   try {
     response = await portalRequest(
       accessToken,
-      "api/v1/portal/approvals?status=" + encodeURIComponent(status),
+      "api/v1/portal/approvals?status=" + encodeURIComponent(status) +
+        (kind ? "&kind=" + encodeURIComponent(kind) : ""),
       { method: "GET" }
     );
   } catch (error) {
@@ -12702,35 +12792,182 @@ export async function listApprovals(
   }
   if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
   if (!response.ok) return null;
-  const payload: unknown = await response.json().catch(() => null);
-  const raw = payload !== null && typeof payload === "object"
-    ? (payload as Record<string, unknown>).approvals
-    : null;
-  if (!Array.isArray(raw)) return null;
-  return raw.map((row: Record<string, unknown>) => mapApproval(row));
+  const payload = asRecord(await response.json().catch(() => null));
+  if (!Array.isArray(payload.approvals)) return null;
+  const kinds: unknown[] = Array.isArray(payload.kinds) ? payload.kinds : [];
+  return {
+    approvals: payload.approvals.map((row: unknown) => mapApproval(asRecord(row))),
+    kinds: kinds
+      .map((item) => asRecord(item))
+      .map((item) => ({ key: String(item.key || ""), label: String(item.label || "") }))
+      .filter((item) => item.key),
+  };
+}
+
+export async function getApproval(
+  accessToken: string,
+  approvalId: number
+): Promise<ServiceResult<ApprovalDetail>> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken, "api/v1/portal/approvals/" + approvalId, { method: "GET" });
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  const result = await serviceResult<{ approval?: unknown }>(response);
+  if (result.kind !== "ok") return result;
+  const row = asRecord(result.data.approval);
+  if (!row.id) return { kind: "unavailable" };
+  return {
+    kind: "ok",
+    data: {
+      ...mapApproval(row),
+      editable: Array.isArray(row.editable) ? (row.editable as ApprovalField[]) : [],
+      evidence: asRecord(row.evidence),
+      canDecide: row.canDecide === true,
+    },
+  };
 }
 
 export async function decideApproval(
   accessToken: string,
   approvalId: number,
-  decision: "approve" | "reject"
-): Promise<"ok" | "not_found" | "conflict" | null> {
+  decision: {
+    decision: "approve" | "reject";
+    note?: string;
+    reply?: string;
+    args?: Record<string, unknown>;
+  }
+): Promise<ServiceResult<ApprovalDecision>> {
   let response: Response;
   try {
     response = await portalRequest(
       accessToken,
       "api/v1/portal/approvals/" + approvalId + "/decide",
-      { method: "POST", body: JSON.stringify({ decision }) }
+      { method: "POST", body: JSON.stringify(decision) }
     );
   } catch (error) {
     assertNotAuthError(error);
-    return null;
+    return { kind: "unavailable" };
   }
-  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
-  if (response.status === 404) return "not_found";
-  if (response.status === 409) return "conflict";
-  if (!response.ok) return null;
-  return "ok";
+  return serviceResult<ApprovalDecision>(response);
+}
+
+export async function retryApproval(
+  accessToken: string,
+  approvalId: number
+): Promise<ServiceResult<ApprovalDecision>> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      "api/v1/portal/approvals/" + approvalId + "/retry",
+      { method: "POST", body: "{}" }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return serviceResult<ApprovalDecision>(response);
+}
+
+// ---------------------------------------------------------------------------
+// Config snapshots (§224): automatic + saved snapshots of the workspace
+// settings, compare with today, restore all or some areas.
+// ---------------------------------------------------------------------------
+
+export interface ConfigSnapshot {
+  id: number;
+  label: string;
+  reason: string;
+  reasonLabel: string;
+  createdBy: string | null;
+  createdAt: string | null;
+  areas: string[];
+}
+
+export interface ConfigSnapshotChange {
+  field: string;
+  current: string;
+  snapshot: string;
+}
+
+export interface ConfigSnapshotArea {
+  key: string;
+  label: string;
+  inSnapshot: boolean;
+  changes: ConfigSnapshotChange[];
+}
+
+export interface ConfigSnapshotList {
+  snapshots: ConfigSnapshot[];
+  areas: { key: string; label: string }[];
+  autoMinutes: number;
+  keep: number;
+  canRestore: boolean;
+}
+
+export interface ConfigRestoreResult {
+  backupId: number;
+  areas: {
+    key: string;
+    label: string;
+    status: string;
+    detail?: string;
+    changed?: number;
+    added?: number;
+    archived?: number;
+  }[];
+}
+
+async function snapshotRequest<T>(
+  accessToken: string,
+  path: string,
+  init: RequestInit
+): Promise<ServiceResult<T>> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken, "api/v1/portal/snapshots" + path, init);
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return serviceResult<T>(response);
+}
+
+export function listConfigSnapshots(accessToken: string) {
+  return snapshotRequest<ConfigSnapshotList>(accessToken, "", { method: "GET" });
+}
+
+export function createConfigSnapshot(accessToken: string, label: string) {
+  return snapshotRequest<{ ok: boolean; snapshot: ConfigSnapshot }>(
+    accessToken, "", { method: "POST", body: JSON.stringify({ label }) });
+}
+
+export function getConfigSnapshot(accessToken: string, snapshotId: number) {
+  return snapshotRequest<{
+    snapshot: ConfigSnapshot & { compare: ConfigSnapshotArea[] };
+  }>(accessToken, "/" + snapshotId, { method: "GET" });
+}
+
+export function restoreConfigSnapshot(
+  accessToken: string,
+  snapshotId: number,
+  areas: string[] | null
+) {
+  return snapshotRequest<ConfigRestoreResult>(
+    accessToken,
+    "/" + snapshotId + "/restore",
+    { method: "POST", body: JSON.stringify(areas === null ? {} : { areas }) }
+  );
+}
+
+export function deleteConfigSnapshot(accessToken: string, snapshotId: number) {
+  return snapshotRequest<{ ok: boolean }>(
+    accessToken, "/" + snapshotId, { method: "DELETE" });
 }
 
 export async function getApprovalsConfig(
@@ -13786,7 +14023,13 @@ async function serviceResult<T>(response: Response): Promise<ServiceResult<T>> {
   if (response.ok) {
     return payload ? { kind: "ok", data: payload } : { kind: "unavailable" };
   }
-  if (response.status === 400 || response.status === 404 || response.status === 409) {
+  if (
+    response.status === 400 ||
+    response.status === 403 ||
+    response.status === 404 ||
+    response.status === 409 ||
+    response.status === 429
+  ) {
     return {
       kind: "invalid",
       status: response.status,
@@ -15082,4 +15325,448 @@ export function saveMediaStoreSettings(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ settings }),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Action Engine v2 + event catalog (§225): the execution ledger, the typed
+// list of outbox events (webhook categories) and webhook dead-letter replay.
+// ---------------------------------------------------------------------------
+
+export interface ActionRun {
+  id: number;
+  action: string;
+  label: string;
+  status: string;
+  risk: string;
+  actor: string;
+  actorKind: "workflow" | "approval" | "ai" | "person";
+  conversationId: number | null;
+  error: string | null;
+  attempts: number;
+  durationMs: number | null;
+  approvalId: number | null;
+  idempotent: boolean;
+  args: Record<string, unknown>;
+  createdAt: string | null;
+  finishedAt: string | null;
+}
+
+export interface ActionRunList {
+  runs: ActionRun[];
+  counts: Record<string, number>;
+  keepDays: number;
+}
+
+export interface EventCatalogEntry {
+  type: string;
+  label: string;
+  description: string;
+  category: string;
+  categoryLabel: string;
+  workflowTriggers: string[];
+}
+
+export interface EventCatalog {
+  events: EventCatalogEntry[];
+  categories: { key: string; label: string; events: number }[];
+}
+
+async function portalService<T>(
+  accessToken: string,
+  path: string,
+  init: RequestInit,
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<ServiceResult<T>> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, path, init, timeoutMs);
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  return serviceResult<T>(response);
+}
+
+export function listActionRuns(accessToken: string, status: string) {
+  const query = status ? "?status=" + encodeURIComponent(status) : "";
+  return portalService<ActionRunList>(
+    accessToken, "api/v1/portal/actions/runs" + query, { method: "GET" });
+}
+
+export function getEventCatalog(accessToken: string) {
+  return portalService<EventCatalog>(
+    accessToken, "api/v1/portal/events/catalog", { method: "GET" });
+}
+
+export function replayDeadWebhookDeliveries(accessToken: string, webhookId: number) {
+  return portalService<{ ok: boolean; replayed: number }>(
+    accessToken,
+    "api/v1/portal/webhooks/" + webhookId + "/deliveries/replay-dead",
+    { method: "POST", body: "{}" }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Website analyzer (§226): crawl the business website in short resumable
+// steps, report what a customer would ask about, apply chosen findings.
+// ---------------------------------------------------------------------------
+
+export interface SiteEvidence {
+  value: string;
+  url: string;
+  snippet: string;
+}
+
+export interface SiteIssue {
+  severity: "high" | "medium" | "low" | "info";
+  code: string;
+  title: string;
+  fix: string;
+}
+
+export interface SiteCatalogItem {
+  name: string;
+  price: number | null;
+  currency: string;
+  priceText: string;
+  url: string;
+  available: boolean | null;
+  image: string;
+  category: string;
+  externalId: string;
+}
+
+export interface SiteFactSuggestion {
+  key: string;
+  kind: string;
+  label: string;
+  content: string;
+  keywords: string;
+  url: string;
+  origin: "site" | "ai";
+}
+
+export interface SitePage {
+  id: number;
+  url: string;
+  kind: string;
+  status: number;
+  title: string;
+  words: number;
+  loadMs: number;
+  error: string;
+}
+
+export interface SiteReport {
+  site: {
+    url: string;
+    host: string;
+    platform: string;
+    title: string;
+    description: string;
+    language: string;
+    https: boolean;
+    robotsBlocked: number;
+  };
+  business: {
+    name: string;
+    about: string;
+    phones: SiteEvidence[];
+    whatsapp: SiteEvidence[];
+    emails: SiteEvidence[];
+    address: SiteEvidence | null;
+    hours: SiteEvidence[];
+    socials: Record<string, string>;
+    priceRange: string;
+  };
+  policies: {
+    shipping: { url: string | null; delivery: SiteEvidence[]; fee: SiteEvidence[]; free: SiteEvidence[] };
+    returns: { url: string | null; window: SiteEvidence[] };
+    payments: { url: string | null; methods: string[]; cod: boolean; evidence: SiteEvidence[] };
+    privacyUrl: string | null;
+    termsUrl: string | null;
+  };
+  catalog: {
+    source: "" | "shopify" | "woocommerce" | "pages";
+    count: number;
+    currency: string;
+    priceMin: number | null;
+    priceMax: number | null;
+    priced: number;
+    store: boolean;
+    items: SiteCatalogItem[];
+  };
+  faqs: { q: string; a: string; url: string }[];
+  pages: SitePage[];
+  score: {
+    total: number;
+    parts: Record<string, number>;
+    max: Record<string, number>;
+    averageLoadMs: number;
+  };
+  issues: SiteIssue[];
+  ai: { status: "off" | "used" | "failed" | "skipped"; summary: string; industry: string };
+  suggestions: {
+    facts: SiteFactSuggestion[];
+    profile: Record<string, string>;
+    kbPages: number[];
+    faqSource: boolean;
+  };
+}
+
+export interface SiteApplied {
+  at: string;
+  by: string;
+  facts: number;
+  profile: string[];
+  knowledge: number;
+  catalog: number;
+}
+
+export interface SiteScan {
+  id: number;
+  url: string;
+  host: string;
+  status: "crawling" | "analyzing" | "done" | "failed" | "cancelled";
+  stage: string;
+  maxPages: number;
+  pagesDone: number;
+  queued: number;
+  error: string;
+  score: number | null;
+  report: SiteReport | null;
+  applied: SiteApplied[];
+  createdAt: string | null;
+  updatedAt: string | null;
+  finishedAt: string | null;
+}
+
+export interface SiteScanSummary {
+  id: number;
+  url: string;
+  host: string;
+  status: SiteScan["status"];
+  stage: string;
+  maxPages: number;
+  pagesDone: number;
+  error: string;
+  score: number | null;
+  createdAt: string | null;
+  finishedAt: string | null;
+}
+
+export interface SiteScanList {
+  scans: SiteScanSummary[];
+  limits: { maxPages: number; defaultPages: number; scansPerDay: number; usedToday: number };
+  suggestedUrl: string;
+  canApply: boolean;
+  aiAvailable: boolean;
+}
+
+export interface SiteScanDetail {
+  scan: SiteScan;
+  pages: SitePage[];
+  canApply: boolean;
+  busy?: boolean;
+}
+
+export interface SiteApplyChoice {
+  facts: string[];
+  profile: string[];
+  kbPages: number[];
+  faqSource: boolean;
+  products: number[];
+}
+
+export interface SiteApplyResult {
+  facts: number;
+  profile: string[];
+  knowledge: number;
+  catalog: number;
+  skipped: { area: string; item: string; reason: string }[];
+}
+
+const SITE_ANALYZER = "api/v1/portal/site-analyzer";
+/** A scan step (and its one AI read) outlives the default 8 s timeout; the
+ * start / step routes allow 60 s (maxDuration), so stay just under it. */
+const SITE_STEP_TIMEOUT_MS = 55_000;
+
+export function listSiteScans(accessToken: string) {
+  return portalService<SiteScanList>(accessToken, SITE_ANALYZER, { method: "GET" });
+}
+
+export function startSiteScan(accessToken: string, url: string, maxPages: number) {
+  return portalService<SiteScanDetail>(accessToken, SITE_ANALYZER, {
+    method: "POST",
+    body: JSON.stringify({ url, maxPages }),
+  }, SITE_STEP_TIMEOUT_MS);
+}
+
+export function getSiteScan(accessToken: string, scanId: number) {
+  return portalService<SiteScanDetail>(
+    accessToken, SITE_ANALYZER + "/" + scanId, { method: "GET" });
+}
+
+export function stepSiteScan(accessToken: string, scanId: number) {
+  return portalService<SiteScanDetail>(
+    accessToken, SITE_ANALYZER + "/" + scanId + "/step", { method: "POST", body: "{}" },
+    SITE_STEP_TIMEOUT_MS);
+}
+
+export function cancelSiteScan(accessToken: string, scanId: number) {
+  return portalService<SiteScanDetail>(
+    accessToken, SITE_ANALYZER + "/" + scanId + "/cancel", { method: "POST", body: "{}" });
+}
+
+export function deleteSiteScan(accessToken: string, scanId: number) {
+  return portalService<{ ok: boolean }>(
+    accessToken, SITE_ANALYZER + "/" + scanId, { method: "DELETE" });
+}
+
+export function applySiteScan(accessToken: string, scanId: number, choice: SiteApplyChoice) {
+  return portalService<{ ok: boolean; result: SiteApplyResult }>(
+    accessToken, SITE_ANALYZER + "/" + scanId + "/apply", {
+      method: "POST",
+      body: JSON.stringify(choice),
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Ask OmniFlow AI (§227) - the team's in-portal assistant
+// ---------------------------------------------------------------------------
+
+export interface AssistantLink {
+  label: string;
+  href: string;
+}
+
+export interface AssistantMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  links: AssistantLink[];
+  tools: { tool: string; ok: boolean }[];
+  createdAt: string | null;
+}
+
+export interface AssistantProposal {
+  id: number;
+  threadId: number;
+  messageId: number | null;
+  kind: "config" | "action";
+  tool: string;
+  risk: "low" | "medium" | "high";
+  status:
+    | "pending"
+    | "applied"
+    | "done"
+    | "approval"
+    | "rejected"
+    | "failed"
+    | "undone"
+    | "expired";
+  summary: string;
+  note: string;
+  diff: { field: string; before: string; after: string }[];
+  result: { message?: string; refCode?: string; approvalId?: number };
+  tainted: boolean;
+  snapshotId: number | null;
+  canUndo: boolean;
+  createdAt: string | null;
+  decidedAt: string | null;
+}
+
+export interface AssistantThreadSummary {
+  id: number;
+  title: string;
+  updatedAt: string | null;
+}
+
+export interface AssistantOverview {
+  available: boolean;
+  reason: string;
+  canChange: boolean;
+  changeRoles: string[];
+  dailyLimit: number;
+  usedToday: number;
+  threads: AssistantThreadSummary[];
+}
+
+export interface AssistantThread {
+  thread: AssistantThreadSummary;
+  messages: AssistantMessage[];
+  proposals: AssistantProposal[];
+}
+
+export interface AssistantAskResult extends AssistantThread {
+  usedToday: number;
+  dailyLimit: number;
+}
+
+export type AssistantDecision = "confirm" | "reject" | "undo";
+
+const ASSISTANT = "api/v1/portal/assistant";
+/** One question may run several model calls + lookups (CP budget 45 s);
+ * the ask route allows 60 s (maxDuration), so stay just under it. */
+const ASSISTANT_TIMEOUT_MS = 55_000;
+
+/** Like portalService, but keeps the assistant's own 503 reasons (not set
+ * up / the AI did not answer / platform limit) instead of a generic one. */
+async function assistantService<T>(
+  accessToken: string,
+  path: string,
+  init: RequestInit,
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<ServiceResult<T>> {
+  let response: Response;
+  try {
+    response = await portalRequest(accessToken, path, init, timeoutMs);
+  } catch (error) {
+    assertNotAuthError(error);
+    return { kind: "unavailable" };
+  }
+  if (response.status === 503) {
+    const payload = (await response.clone().json().catch(() => null)) as {
+      error?: { code?: unknown; message?: unknown };
+    } | null;
+    const code = payload?.error?.code;
+    const message = payload?.error?.message;
+    if (typeof code === "string" && code.startsWith("assistant_") && typeof message === "string") {
+      return { kind: "invalid", status: 503, code, message };
+    }
+  }
+  return serviceResult<T>(response);
+}
+
+export function getAssistant(accessToken: string) {
+  return assistantService<AssistantOverview>(accessToken, ASSISTANT, { method: "GET" });
+}
+
+export function getAssistantThread(accessToken: string, threadId: number) {
+  return assistantService<AssistantThread>(
+    accessToken, ASSISTANT + "/threads/" + threadId, { method: "GET" });
+}
+
+export function askAssistant(accessToken: string, message: string, threadId: number | null) {
+  return assistantService<AssistantAskResult>(accessToken, ASSISTANT + "/ask", {
+    method: "POST",
+    body: JSON.stringify(threadId ? { message, threadId } : { message }),
+  }, ASSISTANT_TIMEOUT_MS);
+}
+
+export function deleteAssistantThread(accessToken: string, threadId: number) {
+  return assistantService<{ ok: boolean }>(
+    accessToken, ASSISTANT + "/threads/" + threadId, { method: "DELETE" });
+}
+
+export function decideAssistantProposal(
+  accessToken: string,
+  proposalId: number,
+  decision: AssistantDecision
+) {
+  return assistantService<{ proposal: AssistantProposal }>(
+    accessToken, ASSISTANT + "/proposals/" + proposalId + "/" + decision, {
+      method: "POST",
+      body: "{}",
+    });
 }

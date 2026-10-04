@@ -28,6 +28,12 @@ export default async function KnowledgeBasePage() {
           Sensitive conversations are never auto-answered, and nothing you
           import is used until you publish it.
         </p>
+        <a
+          href="/dashboard/website-analyzer"
+          className="mt-2 inline-block text-xs text-brand hover:underline"
+        >
+          Import from your website with the Website analyzer
+        </a>
       </div>
 
       {data === null ? (

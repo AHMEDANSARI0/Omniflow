@@ -34,6 +34,17 @@ class PrincipalStub:
         self.module.authenticate_portal_request = self.orig
 
 
+# §224: settings saves take an automatic config snapshot first. Its own
+# queries are covered on real PostgreSQL (test_approvals_v2); here it is
+# neutral so these scripts keep pinning the brain's own SQL.
+import portal_snapshots  # noqa: E402
+
+portal_snapshots.before_change = lambda *args, **kwargs: None
+check("brain saves call the snapshot hook (settings + facts save/archive)",
+      open("portal_brain.py", encoding="utf8").read().count(
+          "portal_snapshots.before_change(") == 3, "hook")
+
+
 def fresh(script, module=portal_brain):
     portal_brain._DDL_READY = True
     db = install_db_stub(module, script)

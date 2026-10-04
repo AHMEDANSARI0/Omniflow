@@ -13,7 +13,8 @@ type GroupKey =
   | "whatsapp_e2e"
   | "stt"
   | "embeddings"
-  | "vision";
+  | "vision"
+  | "assistant";
 
 type Field = {
   key: string;
@@ -134,6 +135,46 @@ const GROUPS: GroupDef[] = [
     ],
     note:
       "Text inside images is treated as customer data, never as instructions. Every call goes through the AI kill switch and daily cap and is billed to the Image understanding line in AI usage.",
+  },
+  {
+    id: "assistant",
+    title: "Ask OmniFlow AI (owner assistant)",
+    description:
+      "The chat assistant inside every workspace dashboard: owners ask about their business and ask for setup changes. Platform-billed. Use any OpenAI-compatible chat model with JSON output. Leave the key, base URL and model blank to reuse the AI engine above.",
+    fields: [
+      {
+        key: "mode",
+        label: "Mode",
+        placeholder: "on",
+        hint: "on or off. Off hides answers for every workspace (the page shows that it is switched off).",
+      },
+      {
+        key: "api_key",
+        label: "API key",
+        secret: true,
+        hint: "Blank = reuse the AI engine key.",
+      },
+      {
+        key: "base_url",
+        label: "Base URL",
+        placeholder: "https://api.openai.com/v1",
+        hint: "Set this together with a separate key. Blank = the AI engine base URL.",
+      },
+      {
+        key: "model",
+        label: "Model",
+        placeholder: "gpt-4o-mini",
+        hint: "Blank = the AI engine model.",
+      },
+      {
+        key: "daily_limit",
+        label: "Questions per workspace per day",
+        placeholder: "100",
+        hint: "Whole number. 0 = unlimited. Blank = 100.",
+      },
+    ],
+    note:
+      "One question can make a few model calls (lookups first, then the answer). Every call goes through the AI kill switch and daily cap and is billed to the Ask OmniFlow AI line in AI usage. Customer and website text is treated as data, never as instructions.",
   },
   {
     id: "embeddings",

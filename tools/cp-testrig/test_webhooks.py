@@ -31,6 +31,10 @@ check("junk rejected", portal_webhooks._valid_webhook_url("not a url") is None)
 check("events default all", portal_webhooks._normalize_events(None) == "all")
 check("events csv ok", portal_webhooks._normalize_events("cod,broadcast") == "cod,broadcast")
 check("events bad rejected", portal_webhooks._normalize_events("weird") is None)
+check("catalog categories accepted",
+      portal_webhooks._normalize_events("payments,approvals") == "payments,approvals")
+check("legacy cod/broadcast kept", "cod" in portal_webhooks.ALLOWED_EVENTS
+      and "broadcast" in portal_webhooks.ALLOWED_EVENTS)
 
 print("== create + list ==")
 
@@ -59,6 +63,7 @@ print("== update + delete + deliveries ==")
 conn = fresh([[{"id": 3}]])
 response = client.put("/api/v1/portal/webhooks/3", json={"enabled": False})
 check("200 update", status(response) == 200, status(response))
+check("update commits (was lost before §225)", conn.committed is True)
 check("update sets enabled", "enabled = %s" in conn.cur.executed[4][0], conn.cur.executed[4][0][-80:])
 
 conn = fresh([[]])
@@ -84,12 +89,27 @@ print("== dispatch: enqueue ==")
 
 LOG = {"id": 41, "action": "cod.confirmed", "conversation_id": 9,
        "note": "COD request 12 replied confirmed.", "created_at": None}
-HOOKS = [{"id": 3, "events": "all"}, {"id": 4, "events": "broadcast"}]
-conn = fresh([[LOG], HOOKS, [None], []])
+# §225: one outbox cursor per endpoint (hooks first, then each hook's own
+# subscribed slice of portal_action_log past its last_log_id)
+HOOKS = [{"id": 3, "events": "all", "last_log_id": 40},
+         {"id": 4, "events": "broadcast", "last_log_id": 40}]
+conn = fresh([HOOKS, [LOG], [], [], [], []])
 portal_webhooks.deliver_pending_webhooks(conn.cur, 1, conn)
 inserts = [e for e in conn.cur.executed if "INSERT INTO" in e[0]]
 check("one insert per matching hook", len(inserts) == 1, len(inserts))
 check("payload carries event", '"cod"' in str(inserts[0][1]), inserts[0][1])
+reads = [e for e in conn.cur.executed if e[0].startswith("SELECT a.id, a.action")]
+check("each hook reads past its own cursor", len(reads) == 2
+      and reads[0][1][2] == 40 and reads[1][1][2] == 40, reads)
+check("broadcast hook only asks for broadcast events",
+      reads[1][1][1] == ["broadcast.sent"], reads[1][1][1])
+check("all hook asks for every catalog event",
+      "payment.gateway_paid" in reads[0][1][1]
+      and "cod.confirmed" in reads[0][1][1], reads[0][1][1])
+cursor = [e for e in conn.cur.executed if "SET last_log_id = %s" in e[0]]
+check("cursor advanced to the newest row", len(cursor) == 1
+      and cursor[0][1] == (41, 3, 1), cursor)
+check("enqueue commits", conn.committed is True)
 
 conn = fresh([[], [], []])
 portal_webhooks.deliver_pending_webhooks(conn.cur, 1, conn)
@@ -126,7 +146,7 @@ conn = fresh([[], PENDING_RETRY, []])
 portal_webhooks._http_post = boom
 result = portal_webhooks.deliver_pending_webhooks(conn.cur, 1, conn)
 check("failure delivered 0", result == 0, result)
-update = [e for e in conn.cur.executed if "UPDATE" in e[0]][0]
+update = [e for e in conn.cur.executed if e[0].startswith("UPDATE")][0]
 check("backoff grows", "make_interval(mins => %s)" in update[0]
       and update[1][2] == 6, update[1])
 check("error recorded", "connection refused" in str(update[1][1]), update[1])

@@ -13,6 +13,9 @@ import portal_llm
 import portal_workflows
 from test_lib import install_db_stub
 from test_lib import check, summary
+from test_lib import neutralize_action_ledger
+
+neutralize_action_ledger(portal_actions)
 
 PRINCIPAL = {
     "session_id": "s", "user_id": 11, "client_id": 1, "role": "owner",
@@ -450,8 +453,13 @@ check("missing required arg -> run failed with detail", status == "failed"
 conn = fresh([[], RuntimeError("boom"), [], []])
 status = portal_workflows.advance_run(conn.cur, 1, dict(RUN), [
     step(1, "action", action="queue_whatsapp_message", args={"body": "x"})])
-check("db error inside a step -> failed, engine log", status == "failed"
-      and conn.cur.executed[2][1][3] == "engine", conn.cur.executed[2][1])
+# §225: the Action Engine runs the executor atomically and returns
+# status=error, so the run fails cleanly with an action log row (the
+# caller's transaction is never poisoned).
+check("db error inside a step -> failed, action error log", status == "failed"
+      and conn.cur.executed[2][1][3] == "action"
+      and conn.cur.executed[2][1][4] == "error"
+      and "action_failed" in conn.cur.executed[2][1][5], conn.cur.executed[2][1])
 
 # persona permission envelope: the assigned agent may not trigger this
 # action -> denied (audited), run fails with a readable detail.

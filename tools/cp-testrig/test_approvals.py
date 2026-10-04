@@ -18,6 +18,10 @@ from test_lib import FakeConn, FakeCur
 from test_lib import install_db_stub
 from test_lib import check, summary
 from test_lib import PrincipalStub
+from test_lib import neutralize_action_ledger
+import portal_actions  # noqa: E402
+
+neutralize_action_ledger(portal_actions)
 
 
 class Principal:
@@ -146,6 +150,8 @@ conn = install_db_stub(portal_approvals, [
     [{"id": 55, "ref_code": "AP-AB12"}],     # one pending
     1,                                       # UPDATE decided
     [{"id": 55, "ref_code": "AP-AB12", "context_json": None}],  # resolve seam
+    [], [],                                  # SAVEPOINT / RELEASE (resolver)
+    [],                                      # outcome UPDATE
     [],                                      # audit
     [],                                      # confirmation send
 ])
@@ -182,6 +188,8 @@ conn = install_db_stub(portal_approvals, [
      {"id": 56, "ref_code": "AP-CD34"}],
     1,                                       # UPDATE decided
     [{"id": 56, "ref_code": "AP-CD34", "context_json": None}],  # seam
+    [], [],                                  # SAVEPOINT / RELEASE (resolver)
+    [],                                      # outcome UPDATE
     [],                                      # audit
     [],                                      # confirmation
 ])
@@ -192,7 +200,7 @@ check("code picks the row",
 update = next((p for sql, p in conn.cur.executed
                if "UPDATE portal_approvals" in sql), None)
 check("coded reject hits id 56", update is not None
-      and update[0] == "rejected" and update[3] == 56, update)
+      and update[0] == "rejected" and update[6] == 56, update)
 
 # already decided / lost race -> claimed with a clear reply
 conn = install_db_stub(portal_approvals, [
@@ -232,14 +240,20 @@ with Principal(portal_approvals, PRINCIPAL):
 
     conn = install_db_stub(portal_approvals, [
         [], [], [],              # DDL
-        [{"id": 55, "ref_code": "AP-AB12"}],
+        [{"id": 55, "ref_code": "AP-AB12", "status": "pending",
+          "source": "ai", "action": "refund", "context_json": "{}"}],
         1,                       # UPDATE decided
+        [{"id": 55, "ref_code": "AP-AB12", "status": "approved",
+          "source": "ai", "action": "refund", "context_json": "{}"}],
+        [], [],                  # SAVEPOINT / RELEASE (resolver)
+        [],                      # outcome UPDATE
         [],                      # audit
     ])
     r = client.post("/api/v1/portal/approvals/55/decide",
                     json={"decision": "approve"})
     check("decide 200", r.status_code == 200
-          and r.get_json()["status"] == "approved", r.get_json())
+          and r.get_json()["status"] == "approved"
+          and r.get_json()["outcome"] == "recorded", r.get_json())
 
     conn = install_db_stub(portal_approvals, [
         [], [], [],
@@ -267,6 +281,9 @@ with Principal(portal_approvals, PRINCIPAL):
 
     conn = install_db_stub(portal_approvals, [
         [], [], [],
+        [], [],                  # snapshot hook: SAVEPOINT + table DDL
+        [{"data_hash": "x", "recent": True}],  # grouped -> no new snapshot
+        [],                      # RELEASE
         [],                      # config upsert
         [],                      # audit
     ])

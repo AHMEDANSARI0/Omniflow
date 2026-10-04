@@ -55,6 +55,8 @@ FEATURES = (
     ("voice_note", "Voice note transcription"),
     ("vision", "Image understanding"),
     ("kb_ocr", "Knowledge document reading (OCR)"),
+    ("site_analyzer", "Website analysis"),
+    ("assistant", "Ask OmniFlow AI (owner assistant)"),
     ("other", "Other"),
 )
 FEATURE_LABELS = dict(FEATURES)

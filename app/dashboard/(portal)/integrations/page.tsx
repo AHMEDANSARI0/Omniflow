@@ -8,6 +8,7 @@ interface Webhook {
   events: string;
   enabled: boolean;
   lastStatusCode: number | null;
+  deadCount: number;
 }
 
 interface Delivery {
@@ -18,21 +19,29 @@ interface Delivery {
   attempts: number;
   createdAt: string | null;
   deliveredAt: string | null;
+  dead: boolean;
 }
 
-const EVENT_OPTIONS = [
-  { value: "cod", label: "COD confirmed / declined" },
-  { value: "broadcast", label: "Broadcast sent" },
-];
+interface EventCategory {
+  key: string;
+  label: string;
+  events: number;
+}
 
-function eventsLabel(events: string): string {
-  return events === "all" ? "All events" : events.split(",").join(" + ");
+function eventsLabel(events: string, categories: EventCategory[]): string {
+  if (events === "all") return "All events";
+  return events
+    .split(",")
+    .map((key) => categories.find((item) => item.key === key)?.label ?? key)
+    .join(" + ");
 }
 
 export default function IntegrationsPage() {
   const [webhooks, setWebhooks] = useState<Webhook[] | null>(null);
   const [url, setUrl] = useState("");
-  const [picked, setPicked] = useState<string[]>(["cod", "broadcast"]);
+  // event categories come from the Control Plane catalog; none picked = all
+  const [categories, setCategories] = useState<EventCategory[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [noteTone, setNoteTone] = useState("neutral");
@@ -60,6 +69,24 @@ export default function IntegrationsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetch("/api/omniflow/portal/events/catalog", {
+          cache: "no-store",
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          categories?: EventCategory[];
+        } | null;
+        if (response.ok && payload && Array.isArray(payload.categories)) {
+          setCategories(payload.categories);
+        }
+      } catch {
+        // Catalog unavailable: endpoints can still be added for all events.
+      }
+    })();
+  }, []);
 
   const toggleEvent = (value: string) => {
     setPicked((current) =>
@@ -206,6 +233,34 @@ export default function IntegrationsPage() {
     [testBusy, openLog, showLog]
   );
 
+  const replayDead = useCallback(
+    async (row: Webhook) => {
+      setBusy(true);
+      try {
+        const response = await fetch(
+          "/api/omniflow/portal/webhooks/" + String(row.id) +
+            "/deliveries/replay-dead",
+          { method: "POST" }
+        );
+        const payload = (await response.json().catch(() => null)) as {
+          replayed?: number;
+        } | null;
+        setTestNote(
+          response.ok && payload && typeof payload.replayed === "number"
+            ? String(payload.replayed) + " failed deliveries queued again."
+            : "Could not queue the failed deliveries."
+        );
+      } catch {
+        setTestNote("Could not queue the failed deliveries.");
+      } finally {
+        setBusy(false);
+      }
+      void load();
+      if (openLog === row.id) void showLog(row.id);
+    },
+    [load, openLog, showLog]
+  );
+
   const retryDelivery = useCallback(
     async (webhookId: number, deliveryId: number) => {
       try {
@@ -245,15 +300,15 @@ export default function IntegrationsPage() {
             className="mt-3 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            {EVENT_OPTIONS.map((option) => (
+            {categories.map((option) => (
               <button
-                key={option.value}
+                key={option.key}
                 type="button"
-                aria-pressed={picked.includes(option.value)}
-                onClick={() => toggleEvent(option.value)}
+                aria-pressed={picked.includes(option.key)}
+                onClick={() => toggleEvent(option.key)}
                 className={
                   "rounded-lg border px-3 py-1.5 text-xs font-medium transition " +
-                  (picked.includes(option.value)
+                  (picked.includes(option.key)
                     ? "border-brand/30 bg-brand-soft text-brand"
                     : "border-line bg-soft text-ink-3 hover:text-ink")
                 }
@@ -262,6 +317,11 @@ export default function IntegrationsPage() {
               </button>
             ))}
           </div>
+          <p className="mt-2 text-[11px] text-ink-3">
+            {picked.length === 0
+              ? "No category picked: the endpoint receives every event."
+              : "Only the picked categories are sent."}
+          </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -300,7 +360,7 @@ export default function IntegrationsPage() {
           <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No endpoints yet.</p>
             <p className="mt-1 text-xs text-ink-3">
-              Add one above and COD or broadcast events will arrive there signed.
+              Add one above and the events you pick will arrive there signed.
             </p>
           </div>
         ) : (
@@ -314,13 +374,28 @@ export default function IntegrationsPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm text-ink">{row.url}</p>
                     <p className="mt-0.5 text-[11px] text-ink-3">
-                      {eventsLabel(row.events)}
+                      {eventsLabel(row.events, categories)}
                       {row.lastStatusCode !== null
                         ? " \u00b7 last status " + String(row.lastStatusCode)
                         : ""}
+                      {row.deadCount > 0 ? (
+                        <span className="text-danger">
+                          {" \u00b7 " + String(row.deadCount) + " failed"}
+                        </span>
+                      ) : null}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {row.deadCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => void replayDead(row)}
+                        disabled={busy}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-danger transition hover:bg-soft disabled:opacity-50"
+                      >
+                        Replay failed
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => void runTest(row)}
@@ -371,12 +446,16 @@ export default function IntegrationsPage() {
                               className={
                                 delivery.deliveredAt
                                   ? "text-ok"
-                                  : "text-amber-600"
+                                  : delivery.dead
+                                    ? "text-danger"
+                                    : "text-amber-600"
                               }
                             >
                               {delivery.deliveredAt
                                 ? "delivered"
-                                : "retry " + String(delivery.attempts)}
+                                : delivery.dead
+                                  ? "failed after " + String(delivery.attempts) + " tries"
+                                  : "retry " + String(delivery.attempts)}
                               {delivery.statusCode
                                 ? " \u00b7 " + String(delivery.statusCode)
                                 : ""}

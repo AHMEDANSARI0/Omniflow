@@ -23,6 +23,7 @@ const GROUPS: AdminProviderGroup[] = [
   "stt",
   "embeddings",
   "vision",
+  "assistant",
 ];
 
 async function requireAdminSession() {

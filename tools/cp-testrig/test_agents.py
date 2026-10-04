@@ -8,6 +8,10 @@ import portal_routing
 import portal_db
 from test_lib import install_db_stub
 from test_lib import check, summary
+from test_lib import neutralize_action_ledger
+import portal_actions  # noqa: E402
+
+neutralize_action_ledger(portal_actions)
 
 PRINCIPAL = {
     "session_id": "s", "user_id": 11, "client_id": 1, "role": "owner",
@@ -309,7 +313,7 @@ check("action engine enforces persona permissions (agent=...)",
 WORKFLOWS_SRC = open("portal_workflows.py", encoding="utf8").read()
 check("workflow action step passes the conversation persona",
       "agent_for_conversation(" in WORKFLOWS_SRC
-      and "agent=agent)" in WORKFLOWS_SRC
+      and "agent=agent" in WORKFLOWS_SRC
       and '"outcome": "denied"' in WORKFLOWS_SRC, "workflows")
 
 

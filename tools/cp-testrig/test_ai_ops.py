@@ -354,8 +354,9 @@ for module, feature in (("portal_brain.py", '"brain", client_id, cur'),
           "portal_llm.usage_scope(" in read(os.path.join(CP, module))
           and feature in read(os.path.join(CP, module)), module)
 LLM = read(os.path.join(CP, "portal_llm.py"))
-check("chat_json signature unchanged (stubs keep working), hook inside",
-      "def chat_json(system: str, user: str,\n              max_tokens: int = 120)" in LLM
+check("chat_json positional signature unchanged (stubs keep working), optional timeout, hook inside",
+      "def chat_json(system: str, user: str, max_tokens: int = 120,\n"
+      "              timeout: Optional[float] = None)" in LLM
       and "_record_usage(model, last_usage, True, started)" in LLM, "-")
 check("no hardcoded prices anywhere", "0.15" not in read(pu.__file__).replace(
     '"gpt-4o-mini": {"input": 0.15, "output": 0.60}', ""), "-")

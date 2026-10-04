@@ -17,6 +17,9 @@ import portal_approvals
 from test_lib import install_db_stub
 from test_lib import check, summary
 from test_lib import PrincipalStub
+from test_lib import neutralize_action_ledger
+
+neutralize_action_ledger(portal_actions)
 
 
 class Principal:
@@ -187,13 +190,14 @@ conn = install_db_stub(portal_approvals, [
     [],                                     # audit
 ])
 portal_actions.portal_db = portal_approvals.portal_db
-portal_actions.resolve_approval(conn.cursor(), 1, {
+_ran = portal_actions.resolve_approval(conn.cursor(), 1, {
     "context_json": json.dumps({
         "action": "request_refund",
         "args": {"conversation_id": 77,
                  "contact_id": "923008887777@c.us"},
     }),
 }, approved=True)
+check("approved -> outcome executed", _ran.get("outcome") == "executed", _ran)
 done = next((p for sql, p in conn.cur.executed
              if "UPDATE portal_action_requests" in sql), None)
 check("approved -> request done", done is not None and done[0] == 701,
@@ -217,6 +221,48 @@ _hold = next((json.loads(x) for x in (send or ())
 check("rejected -> hold message", send is not None
       and "process nahi ho saki" in str(_hold.get("body") or ""),
       _hold.get("body"))
+
+conn = install_db_stub(portal_approvals, [[]])
+portal_actions.portal_db = portal_approvals.portal_db
+_rej = portal_actions.resolve_approval(conn.cursor(), 1, {
+    "context_json": json.dumps({
+        "action": "request_refund",
+        "args": {"contact_id": "923008887777@c.us"},
+    }),
+}, approved=False, customer_reply="Order bhej diya gaya hai.")
+send = next((p for sql, p in conn.cur.executed
+             if "portal_connector_commands" in sql), None)
+_hold = next((json.loads(x) for x in (send or ())
+              if isinstance(x, str) and x.startswith("{")), {})
+check("rejected + owner reply replaces the stock hold",
+      _rej.get("outcome") == "reply_sent"
+      and _hold.get("body") == "Order bhej diya gaya hai.", (_rej, _hold))
+
+
+class _Boom(Exception):
+    pass
+
+
+def _failing_cursor():
+    class Cur:
+        rowcount = 0
+        description = None
+
+        def execute(self, *a, **k):
+            raise _Boom("table missing")
+    return Cur()
+
+
+try:
+    portal_actions.resolve_approval(_failing_cursor(), 1, {
+        "context_json": {"action": "request_refund",
+                         "args": {"conversation_id": 77}}}, approved=True)
+    check("failing action raises (caller keeps the decision)", False)
+except _Boom:
+    check("failing action raises (caller keeps the decision)", True)
+check("unknown action -> recorded, nothing runs",
+      portal_actions.resolve_approval(None, 1, {"context_json": {
+          "action": "nope"}}, approved=True)["outcome"] == "recorded")
 
 print("== portal API ==")
 

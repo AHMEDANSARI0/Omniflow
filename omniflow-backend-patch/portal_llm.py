@@ -89,7 +89,8 @@ ENABLED = os.environ.get(
 
 
 def _http_post_json(url: str, headers: Dict[str, str],
-                    payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+                    payload: Dict[str, Any],
+                    timeout: Optional[float] = None) -> Optional[Dict[str, Any]]:
     """POST JSON, return the decoded body; None on any transport error."""
     try:
         request = urllib.request.Request(
@@ -98,7 +99,8 @@ def _http_post_json(url: str, headers: Dict[str, str],
             headers=headers,
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as resp:
+        with urllib.request.urlopen(
+                request, timeout=timeout or TIMEOUT_SECONDS) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except Exception:
         return None
@@ -139,9 +141,11 @@ def _runtime() -> Dict[str, Any]:
             "enabled": bool(ENABLED and API_KEY)}
 
 
-def chat_json(system: str, user: str,
-              max_tokens: int = 120) -> Optional[Dict[str, Any]]:
-    """One JSON-mode chat call; parsed object or None (never raises)."""
+def chat_json(system: str, user: str, max_tokens: int = 120,
+              timeout: Optional[float] = None) -> Optional[Dict[str, Any]]:
+    """One JSON-mode chat call; parsed object or None (never raises).
+    ``timeout`` overrides OF_LLM_TIMEOUT_SECONDS for one long answer
+    (e.g. the website analyzer's extraction)."""
     runtime = _runtime()
     if not runtime.get("enabled") or not runtime.get("api_key"):
         return None
@@ -166,7 +170,11 @@ def chat_json(system: str, user: str,
     started = time.time()
     last_usage = None
     for _ in range(ATTEMPTS):
-        data = _http_post_json(base + "/chat/completions", headers, payload)
+        if timeout:
+            data = _http_post_json(base + "/chat/completions", headers,
+                                   payload, timeout=timeout)
+        else:
+            data = _http_post_json(base + "/chat/completions", headers, payload)
         if not data:
             continue
         last_usage = data.get("usage") if isinstance(data, dict) else None
@@ -446,5 +454,62 @@ def describe_image(data: bytes, mime: str, system: str, prompt: str,
     if not isinstance(parsed, dict):
         _record_usage(model, usage, False, started)
         return None, "unexpected vision response"
+    _record_usage(model, usage, True, started)
+    return parsed, ""
+
+
+# ---------------------------------------------------------------------------
+# Ask OmniFlow AI (§227) - the owner's assistant: own key group, multi-turn
+# ---------------------------------------------------------------------------
+
+ASSISTANT_TIMEOUT_SECONDS = float(
+    os.environ.get("OF_ASSISTANT_TIMEOUT", "20") or 20)
+
+
+def assistant_runtime() -> Dict[str, Any]:
+    try:
+        import platform_settings
+
+        return platform_settings.assistant_config()
+    except Exception:
+        return {"active": False, "reason": "no_key", "api_key": ""}
+
+
+def chat_messages_json(messages: List[Dict[str, str]],
+                       runtime: Optional[Dict[str, Any]] = None,
+                       max_tokens: int = 700,
+                       timeout: Optional[float] = None
+                       ) -> Tuple[Optional[Dict[str, Any]], str]:
+    """One JSON-mode chat call over a whole message list (system + history
+    + tool results). Returns (parsed object, "") or (None, reason) where
+    reason is not_configured | blocked | a short provider error. Gated by
+    the platform AI controls and recorded in the usage ledger."""
+    config = runtime or assistant_runtime()
+    if not config.get("active") or not config.get("api_key"):
+        return None, "not_configured"
+    if _gated():
+        return None, "blocked"
+    model = str(config.get("model") or MODEL)
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": 0.2,
+        "max_tokens": int(max_tokens or 700),
+        "response_format": {"type": "json_object"},
+    }
+    headers = {"Authorization": "Bearer " + str(config["api_key"]),
+               "Content-Type": "application/json"}
+    base = str(config.get("base_url") or BASE_URL).rstrip("/")
+    started = time.time()
+    body, error = _post_detail(base + "/chat/completions", headers, payload,
+                               float(timeout or ASSISTANT_TIMEOUT_SECONDS))
+    usage = body.get("usage") if isinstance(body, dict) else None
+    try:
+        parsed = json.loads(body["choices"][0]["message"]["content"])
+    except Exception:
+        parsed = None
+    if not isinstance(parsed, dict):
+        _record_usage(model, usage, False, started)
+        return None, error or "unexpected response"
     _record_usage(model, usage, True, started)
     return parsed, ""

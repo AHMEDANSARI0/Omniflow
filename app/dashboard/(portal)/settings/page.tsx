@@ -9,11 +9,13 @@ import WeeklyProblemsCard from "./WeeklyProblemsCard";
 import WidgetSettingsCard from "./WidgetSettingsCard";
 import PaymentsCard from "./PaymentsCard";
 import DataSafetyCard from "./DataSafetyCard";
+import ConfigHistoryCard from "./ConfigHistoryCard";
 import WatiCard from "./WatiCard";
 import InstagramCard from "./InstagramCard";
 import CatalogCard from "./CatalogCard";
 import CouponsCard from "./CouponsCard";
 import DeliveriesCard from "./DeliveriesCard";
+import ActionRunsCard from "./ActionRunsCard";
 import NegotiationCard from "./NegotiationCard";
 import PerfCard from "./PerfCard";
 import PlanCard from "./PlanCard";
@@ -72,6 +74,7 @@ export default async function ClientSettingsPage() {
       </div>
       <PaymentsCard />
       <DataSafetyCard />
+      <ConfigHistoryCard />
       <WatiCard />
       <InstagramCard />
       <div className="mt-6">
@@ -80,6 +83,7 @@ export default async function ClientSettingsPage() {
       <CatalogCard />
       <CouponsCard />
       <DeliveriesCard />
+      <ActionRunsCard />
       <NegotiationCard />
       <PerfCard />
       <PlanCard />

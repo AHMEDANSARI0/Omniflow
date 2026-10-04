@@ -884,6 +884,14 @@ def put_brain_settings():
     try:
         with conn.cursor() as cur:
             _ensure_ddl(cur)
+            try:
+                import portal_snapshots
+
+                portal_snapshots.before_change(
+                    cur, client_id, "brain",
+                    str(principal.get("email") or principal.get("user_id") or ""))
+            except Exception:
+                pass
             cur.execute(
                 "INSERT INTO " + portal_db._q(SETTINGS_TABLE) +
                 " (client_id, autonomy, tone, updated_at)"
@@ -1057,6 +1065,14 @@ def save_brain_fact():
     try:
         with conn.cursor() as cur:
             _ensure_ddl(cur)
+            try:
+                import portal_snapshots
+
+                portal_snapshots.before_change(
+                    cur, client_id, "brain_facts",
+                    str(principal.get("email") or principal.get("user_id") or ""))
+            except Exception:
+                pass
             if fact_id > 0:
                 cur.execute(
                     "UPDATE " + portal_db._q(FACTS_TABLE) +
@@ -1121,6 +1137,14 @@ def delete_brain_fact():
     try:
         with conn.cursor() as cur:
             _ensure_ddl(cur)
+            try:
+                import portal_snapshots
+
+                portal_snapshots.before_change(
+                    cur, client_id, "brain_facts",
+                    str(principal.get("email") or principal.get("user_id") or ""))
+            except Exception:
+                pass
             cur.execute(
                 "UPDATE " + portal_db._q(FACTS_TABLE) +
                 " SET is_active = FALSE, updated_at = NOW()"

@@ -106,7 +106,13 @@ check("routes outside the prefix tuple exist and are covered by the URL-map net"
 for expected in ("/api/v1/public/checkout/<token>", "/api/v1/public/store/<slug>",
                  "/api/v1/public/voice/incoming", "/api/v1/admin/providers",
                  "/api/v1/admin/ai/overview",
-                 "/api/v1/admin/ai/clients/<int:client_id>/autonomy"):
+                 "/api/v1/admin/ai/clients/<int:client_id>/autonomy",
+                 "/api/v1/portal/snapshots/<int:snapshot_id>/restore",
+                 "/api/v1/portal/approvals/<int:approval_id>/retry",
+                 "/api/v1/portal/site-analyzer/<int:scan_id>/step",
+                 "/api/v1/portal/site-analyzer/<int:scan_id>/apply",
+                 "/api/v1/portal/assistant/ask",
+                 "/api/v1/portal/assistant/proposals/<int:proposal_id>/undo"):
     check("route registered: " + expected,
           any(r.rule == expected for r in rules), expected)
 
