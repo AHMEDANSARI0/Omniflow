@@ -15,6 +15,7 @@ from portal_auth import (
     authenticate_portal_request,
 )
 import portal_db
+import portal_retention
 
 bp = Blueprint("portal_value", __name__, url_prefix="/api/v1/portal")
 
@@ -87,13 +88,15 @@ def _item_price(item: Any) -> int:
 
 
 def _load_paid_rows(cur, client_id) -> List[Dict[str, Any]]:
-    """Every paid link's contact, timestamp and items (workspace-wide)."""
+    """Every purchase's contact, timestamp and items (workspace-wide).
+    §238: shipped / delivered orders count too (portal_retention)."""
     if not _table_exists(cur, LINKS_TABLE):
         return []
     cur.execute(
         "SELECT contact_id, items, created_at FROM "
         + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND status = 'paid'"
+        " WHERE client_id = %s AND status IN "
+        + portal_retention.PURCHASED_SQL +
         " ORDER BY id DESC LIMIT " + str(MAX_LINKS),
         (client_id,),
     )

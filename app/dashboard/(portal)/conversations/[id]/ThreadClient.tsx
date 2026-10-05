@@ -20,6 +20,7 @@ const AssistCard = dynamic(() => import("./AssistCard"));
 const RecoCard = dynamic(() => import("./RecoCard"));
 const HandoffBriefCard = dynamic(() => import("./HandoffBriefCard"));
 const SalesCard = dynamic(() => import("./SalesCard"));
+const LoyaltyCard = dynamic(() => import("./LoyaltyCard"));
 const SavedRepliesPicker = dynamic(() => import("./SavedRepliesPicker"));
 import {
   Fragment,
@@ -626,6 +627,7 @@ export default function ThreadClient({
 
       {!expired && !notFound && <HandoffBriefCard conversationId={Number(id)} />}
       {!expired && !notFound && <SalesCard conversationId={Number(id)} />}
+      {!expired && !notFound && <LoyaltyCard contactId={conversation?.contactId ?? null} />}
       {!expired && !notFound && conversation?.channel !== "website" && (
         <CodCard conversationId={Number(id)} />
       )}

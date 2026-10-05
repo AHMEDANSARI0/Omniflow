@@ -16,6 +16,7 @@ import json
 from flask import Blueprint, jsonify, request, Response
 
 import portal_db
+import portal_retention
 from portal_auth import authenticate_portal_request, ensure_human_principal
 
 bp = Blueprint("portal_conversations", __name__, url_prefix="/api/v1/portal")
@@ -111,7 +112,8 @@ VIP_THRESHOLD = 3  # paid orders that turn a contact into a VIP
 
 
 def _paid_order_counts(cur, client_id, contact_ids):
-    """contact_id -> paid order count ({} when the links table is absent)."""
+    """contact_id -> purchase count ({} when the links table is absent).
+    §238: shipped / delivered orders count (portal_retention)."""
     ids = sorted({str(cid).strip() for cid in contact_ids
                   if cid and str(cid).strip()})
     if not ids:
@@ -124,7 +126,8 @@ def _paid_order_counts(cur, client_id, contact_ids):
             return {}
         cur.execute(
             "SELECT contact_id, COUNT(*) AS orders FROM portal_checkout_links"
-            " WHERE client_id = %s AND status = 'paid'"
+            " WHERE client_id = %s AND status IN "
+            + portal_retention.PURCHASED_SQL +
             " AND contact_id = ANY(%s)"
             " GROUP BY contact_id",
             (client_id, ids),

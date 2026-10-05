@@ -58,7 +58,12 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
       if (response.ok) {
         setSent(true);
       } else if (response.status === 409) {
-        setNote("Recently sent or no longer in the queue.");
+        const payload = (await response.json().catch(() => null)) as { error?: { code?: string } } | null;
+        setNote(
+          payload?.error?.code === "opted_out"
+            ? "This customer opted out of messages."
+            : "Recently sent or no longer in the queue."
+        );
       } else if (response.status === 404) {
         setNote("Contact no longer exists.");
       } else {

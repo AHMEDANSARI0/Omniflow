@@ -57,6 +57,17 @@ export async function POST(request: Request) {
         409
       );
     }
+    if (result.kind === "opted_out") {
+      return safeJson(
+        {
+          error: {
+            code: "opted_out",
+            message: "This customer asked not to be messaged.",
+          },
+        },
+        409
+      );
+    }
     if (result.kind === "stale") {
       return safeJson(
         {

@@ -265,6 +265,15 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_retention
+
+                    # §238: opt-in reorder / win-back messages (throttled,
+                    # send window + daily cap; commits its own work).
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_retention.kick(cur, tenant["client_id"], conn)
+                except Exception:
+                    pass
+                try:
                     import portal_kb_semantic
 
                     # D1: throttled background top-up of the knowledge

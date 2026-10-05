@@ -214,12 +214,21 @@ check("missing tables -> empty queues", status(response) == 200
 
 print("== winback send ==")
 
+# §238: the retention results log has its own real-database suite
+# (test_retention.py); here it is recorded, not executed.
+import portal_retention
+
+RESULT_LOG = []
+portal_retention.record_send = lambda cur, cid, contact, kind, mode, command_id, name="", **k: \
+    RESULT_LOG.append((cid, contact, kind, mode, command_id, name))
+
 
 def send_slots(name="Ali Raza", cooldown=(), conv=None, insert=None,
                last=(), open_rows=(), paid_rows=()):
     """Send-endpoint slot order."""
     return [
         [{"name": name}],
+        [],                                   # §238 opt-out check
         _rows(cooldown),
         _rows(last),
         [{"oid": "portal_checkout_links"}], _rows(open_rows),
@@ -253,8 +262,24 @@ check("command payload shape", sent_payload["source"] == "winback"
 check("send audits winback.sent",
       any("portal_action_log" in e[0] and e[1][1] == "winback.sent"
           for e in conn.cur.executed), "audit")
-check("send 10 executes", len(conn.cur.executed) == 10,
+check("send 11 executes", len(conn.cur.executed) == 11,
       len(conn.cur.executed))
+check("send commits (§238: it used to roll back)", conn.committed is True,
+      conn.committed)
+check("send logged for retention results",
+      RESULT_LOG[-1:] == [(1, "9230012345678", "cart", "queue", 99, "Ali Raza")],
+      RESULT_LOG)
+check("opt-out checked before sending",
+      "portal_optouts" in conn.cur.executed[1][0], conn.cur.executed[1][0])
+
+conn = fresh([[{"name": "Ali"}], [{"?column?": 1}]])
+response = client.post("/api/v1/portal/winback/send",
+                       json={"contact_id": "9230012345678", "kind": "cart"})
+check("409 opted out", status(response) == 409
+      and response.get_json()["error"]["code"] == "opted_out",
+      status(response))
+check("opted out never inserts", len(commands_inserts(conn)) == 0
+      and conn.committed is False, "no insert")
 
 conn = fresh(send_slots())
 response = client.post("/api/v1/portal/winback/send",
@@ -264,7 +289,7 @@ check("409 stale kind", status(response) == 409
       and response.get_json()["error"]["code"] == "stale", status(response))
 check("stale never inserts", len(commands_inserts(conn)) == 0, "no insert")
 
-conn = fresh([[{"name": "Ali"}], [{"id": 1}]])
+conn = fresh([[{"name": "Ali"}], [], [{"id": 1}]])
 response = client.post("/api/v1/portal/winback/send",
                        json={"contact_id": "9230012345678", "kind": "cart"})
 check("409 cooldown", status(response) == 409

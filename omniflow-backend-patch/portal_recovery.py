@@ -28,6 +28,11 @@ Three revenue tools in one slim module, all owner-facing:
 All endpoints are human-only (API keys get 403). The scan is lazy: it
 runs when the dashboard asks for the recovery list - no background
 worker, no new poll loop.
+
+§238: follow-ups skip customers who opted out (manual ones answer 409);
+an automatic win-back of a quiet buyer also skips a contact any outreach
+reached within the retention cooldown; "paid buyer" includes shipped /
+delivered orders, valued at the order total when nothing was prepaid.
 """
 
 import json
@@ -38,6 +43,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from flask import Blueprint, jsonify, request
 
 import portal_db
+import portal_retention
+import portal_txn
 from portal_auth import (
     PortalAuthUnavailable,
     authenticate_portal_request,
@@ -255,12 +262,13 @@ def scan_recoveries(cur, client_id: int) -> Tuple[List[Dict[str, Any]],
                       "note": "Customer hinted price is too high"})
 
     cur.execute(
-        "SELECT contact_id, SUM(paid_amount) AS value,"
+        "SELECT contact_id, SUM(" + _ORDER_VALUE + ") AS value,"
         " MAX(updated_at) AS last_order"
         " FROM " + portal_db._q("portal_checkout_links") +
-        " WHERE client_id = %s AND status = 'paid'"
+        " WHERE client_id = %s AND status IN "
+        + portal_retention.PURCHASED_SQL +
         " GROUP BY contact_id"
-        " HAVING SUM(paid_amount) >= %s"
+        " HAVING SUM(" + _ORDER_VALUE + ") >= %s"
         " AND MAX(updated_at) < NOW() - (%s * INTERVAL '1 day')"
         " ORDER BY value DESC LIMIT 20",
         (client_id, settings["min_value"], settings["inactive_days"]),
@@ -290,9 +298,16 @@ def scan_recoveries(cur, client_id: int) -> Tuple[List[Dict[str, Any]],
             new_items.append(item)
 
     if settings["auto_enabled"]:
+        queued = 0
         for item in new_items:
-            _enqueue_followup(cur, client_id, item["kind"],
-                              item["contact_id"], item["conversation_id"])
+            if item["kind"] == "inactive_high_value" and _recently_contacted(
+                    cur, client_id, item["contact_id"]):
+                continue
+            if not _enqueue_followup(cur, client_id, item["kind"],
+                                     item["contact_id"],
+                                     item["conversation_id"]):
+                continue
+            queued += 1
             cur.execute(
                 "UPDATE " + portal_db._q(QUEUE_TABLE) +
                 " SET status = 'contacted', updated_at = NOW()"
@@ -300,10 +315,10 @@ def scan_recoveries(cur, client_id: int) -> Tuple[List[Dict[str, Any]],
                 " AND status = 'open'",
                 (client_id, item["kind"], item["ref_key"]),
             )
-        if new_items:
+        if queued:
             portal_db.log_action(
                 cur, client_id, "recovery.auto", "automation", None, None,
-                ("Auto follow-ups queued: " + str(len(new_items)))[:200],
+                ("Auto follow-ups queued: " + str(queued))[:200],
             )
 
     cur.execute(
@@ -317,12 +332,42 @@ def scan_recoveries(cur, client_id: int) -> Tuple[List[Dict[str, Any]],
     return items, settings
 
 
+#: Order value for "high value": what was paid, else the order total (COD
+#: orders are shipped / delivered with nothing prepaid).
+_ORDER_VALUE = ("GREATEST(COALESCE(paid_amount, 0), COALESCE(total, 0))")
+
+
+def _opted_out(cur, client_id: int, contact_id: str) -> bool:
+    try:
+        import portal_compliance
+
+        with portal_txn.savepoint(cur, None, "of_recovery_optout") as guard:
+            found = portal_compliance.is_opted_out(cur, client_id, contact_id)
+        return found and not guard.failed
+    except Exception as error:
+        logger.info("recovery opt-out check skipped: %s", error)
+        return False
+
+
+def _recently_contacted(cur, client_id: int, contact_id: str) -> bool:
+    try:
+        settings = portal_retention.load_settings(cur, client_id)
+        return portal_retention.recently_contacted(
+            cur, client_id, contact_id, settings["cooldown_days"])
+    except Exception as error:
+        logger.info("recovery cooldown check skipped: %s", error)
+        return False
+
+
 def _enqueue_followup(cur, client_id: int, kind: str, contact_id: str,
                       conversation_id: Optional[int],
                       display_name: str = "") -> bool:
-    """Queue ONE fixed follow-up send_message for a recovery item."""
+    """Queue ONE fixed follow-up send_message for a recovery item (False:
+    nothing queued - no copy, no contact or the customer opted out)."""
     body = FOLLOWUP_COPY.get(kind)
     if not body or not contact_id:
+        return False
+    if _opted_out(cur, client_id, contact_id):
         return False
     payload: Dict[str, Any] = {
         "external_user_id": contact_id,
@@ -566,9 +611,20 @@ def followup_recovery():
                                           "message": "Only open items can"
                                                      " get a follow-up."}}), \
                     409
-            _enqueue_followup(cur, client_id, str(item.get("kind")),
-                              str(item.get("contact_id") or ""),
-                              item.get("conversation_id"))
+            if not str(item.get("contact_id") or "").strip():
+                conn.rollback()
+                return jsonify({"error": {"code": "conflict",
+                                          "message": "This item has no"
+                                                     " contact to message."}}), \
+                    409
+            if not _enqueue_followup(cur, client_id, str(item.get("kind")),
+                                     str(item.get("contact_id") or ""),
+                                     item.get("conversation_id")):
+                conn.rollback()
+                return jsonify({"error": {"code": "opted_out",
+                                          "message": "This customer asked not"
+                                                     " to be messaged."}}), \
+                    409
             cur.execute(
                 "UPDATE " + portal_db._q(QUEUE_TABLE) +
                 " SET status = 'contacted', updated_at = NOW()"

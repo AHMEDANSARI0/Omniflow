@@ -119,6 +119,11 @@ check("empty due no commit", portal_growth.materialize_due_broadcasts(conn.cur, 
 print("== connector poll hook ==")
 
 portal_growth._SCHEDULE_COLUMNS_READY = True
+# §238: the retention tick step has its own real-database suite
+# (test_retention.py); the scripted stub here covers the steps around it.
+import portal_retention  # noqa: E402
+
+portal_retention.kick = lambda *a, **k: 0
 conn = install_db_stub(connector_api, [DUE, [], [], 0, 0, [], [], [], [], 0,
                                  [{"id": 1, "action": "send_message"}]])  # 0 = events requeue rowcount
 connector_api.portal_db.CMD_TABLE = "portal_connector_commands"

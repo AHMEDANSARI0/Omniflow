@@ -74,6 +74,20 @@ def _ensure_compliance_tables(conn) -> None:
     _COMPLIANCE_DDL_READY = True
 
 
+def is_opted_out(cur, client_id, contact) -> bool:
+    """Shared check for every outreach sender (§238: win-back, recovery,
+    retention). Callers run it inside their own savepoint."""
+    contact = str(contact or "").strip()[:100]
+    if not contact:
+        return False
+    cur.execute(
+        "SELECT 1 FROM " + portal_db._q(OPTOUT_TABLE) +
+        " WHERE client_id = %s AND contact_id = %s LIMIT 1",
+        (client_id, contact),
+    )
+    return bool(portal_db.rows(cur))
+
+
 @bp.get("/compliance/optouts")
 def list_optouts():
     principal, error = _principal_or_error()

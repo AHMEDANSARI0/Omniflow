@@ -54,6 +54,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { label: "Courier", href: "/dashboard/courier", icon: "\u25bb", enabled: true },
       { label: "Growth", href: "/dashboard/growth", icon: "\u25b2", enabled: true },
       { label: "Win-back", href: "/dashboard/winback", icon: "\u21bb", enabled: true },
+      { label: "Retention", href: "/dashboard/retention", icon: "\u25d0", enabled: true },
       { label: "Sequences", href: "/dashboard/sequences", icon: "\u2192", enabled: true },
     ],
   },

@@ -539,6 +539,22 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
             "approved_answer": bool((sales.get("objection") or {})
                                     .get("approved_answer")),
         }
+    loyalty = None
+    try:
+        import portal_retention
+        import portal_txn
+
+        # §238: tier / past orders / favourite item (no offers, no codes)
+        with portal_txn.savepoint(cur, None, "of_loyalty_ctx"):
+            loyalty = portal_retention.context_for(cur, client_id, contact_id)
+    except Exception as error:
+        logger.info("brain loyalty context skipped: %s", error)
+        loyalty = None
+    if loyalty:
+        context["loyalty"] = loyalty
+        grounding["tools"].append("loyalty_context")
+        grounding["loyalty"] = {"tier": loyalty.get("tier") or "",
+                                "orders": loyalty.get("orders") or 0}
     grounding["conversation_messages"] = len(context["conversation"])
     grounding["kb_ids"] = [e["id"] for e in kb if e.get("kind", "entry") == "entry"]
     grounding["knowledge_ids"] = [e["id"] for e in kb if e.get("kind") == "chunk"]
@@ -583,6 +599,13 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
             import portal_sales
 
             system_prompt += portal_sales.SALES_RULES
+        except Exception:
+            pass
+    if "loyalty" in context:
+        try:
+            import portal_retention
+
+            system_prompt += portal_retention.LOYALTY_RULES
         except Exception:
             pass
     with portal_llm.usage_scope(usage_feature or "brain", client_id, cur,

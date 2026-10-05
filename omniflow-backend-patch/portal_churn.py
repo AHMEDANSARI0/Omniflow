@@ -14,6 +14,7 @@ from portal_auth import (
     authenticate_portal_request,
 )
 import portal_db
+import portal_retention
 
 bp = Blueprint("portal_churn", __name__, url_prefix="/api/v1/portal")
 
@@ -129,7 +130,9 @@ def _load_paid_links(cur, client_id, contact) -> List[Any]:
         return []
     cur.execute(
         "SELECT created_at FROM " + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND contact_id = %s AND status = 'paid'"
+        " WHERE client_id = %s AND contact_id = %s AND status IN "
+        # §238: shipped / delivered orders are purchases too
+        + portal_retention.PURCHASED_SQL +
         " ORDER BY created_at DESC, id DESC LIMIT " + str(MAX_PAID),
         (client_id, contact),
     )

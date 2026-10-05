@@ -11965,6 +11965,7 @@ export type WinbackSendResult =
   | { kind: "ok"; commandId: number }
   | { kind: "stale" }
   | { kind: "cooldown" }
+  | { kind: "opted_out" }
   | { kind: "not_found" }
   | { kind: "unavailable" };
 
@@ -11995,6 +11996,7 @@ export async function sendWinbackEntry(
       errorRaw !== null && typeof errorRaw === "object"
         ? (errorRaw as Record<string, unknown>).code
         : "";
+    if (errorCode === "opted_out") return { kind: "opted_out" };
     return errorCode === "cooldown"
       ? { kind: "cooldown" }
       : { kind: "stale" };
@@ -17515,6 +17517,301 @@ export async function createSalesQuote(
         })),
         expiresAt: salesText(link.expires_at) || null,
       },
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Retention & loyalty (§238): tiers, tier offers, timed reorder / win-back
+// messages (opt-in) and their results.
+// ---------------------------------------------------------------------------
+
+export type LoyaltyKind = "reorder" | "winback";
+
+export interface LoyaltyTier {
+  key: string;
+  label: string;
+  minOrders: number;
+  minSpend: number;
+  coupon: string;
+}
+
+export interface LoyaltySettings {
+  autoReorder: boolean;
+  autoWinback: boolean;
+  brainContext: boolean;
+  dailyCap: number;
+  cooldownDays: number;
+  windowStart: number;
+  windowEnd: number;
+  tplReorder: string;
+  tplWinback: string;
+  tplOffer: string;
+  tiers: LoyaltyTier[];
+  lastRunAt: string | null;
+}
+
+export interface LoyaltySettingsView {
+  settings: LoyaltySettings;
+  defaults: { reorder: string; winback: string; offer: string };
+  placeholders: string[];
+  coupons: { code: string; kind: string; value: number }[];
+  canEdit: boolean;
+  everyMinutes: number;
+  capMax: number;
+}
+
+export interface LoyaltySkipped {
+  optedOut: number;
+  openCart: number;
+  inSequence: number;
+  cooldown: number;
+  noChat: number;
+}
+
+export interface LoyaltyOverview {
+  days: number;
+  attributionDays: number;
+  customers: number;
+  tiers: { key: string; label: string; customers: number; spend: number }[];
+  due: { reorder: number; winback: number };
+  ready: number;
+  skipped: LoyaltySkipped;
+  sentLastDay: number;
+  dailyCap: number;
+  auto: { reorder: boolean; winback: boolean };
+  lastRunAt: string | null;
+  results: { kind: string; sent: number; returned: number; revenue: number }[];
+  totals: { sent: number; returned: number; revenue: number };
+  recent: {
+    contactId: string;
+    name: string;
+    kind: string;
+    tier: string;
+    coupon: string;
+    mode: string;
+    createdAt: string | null;
+    returned: boolean;
+  }[];
+}
+
+export interface LoyaltyCustomer {
+  contactId: string;
+  orders: number;
+  spend: number;
+  favourite: string;
+  lastOrderDays: number | null;
+  tier: { key: string; label: string } | null;
+  next: { label: string; ordersNeeded: number; spendNeeded: number } | null;
+  optedOut: boolean;
+  due: { kind: string; item: string; message: string; held: string } | null;
+  lastSend: { kind: string; mode: string; createdAt: string | null } | null;
+}
+
+export interface LoyaltyRunResult {
+  dryRun: boolean;
+  sent: number;
+  room: number;
+  due: { reorder: number; winback: number };
+  skipped: LoyaltySkipped;
+  messages: { contactId: string; name: string; kind: string; tier: string; coupon: string; message: string }[];
+}
+
+const RETENTION = "api/v1/portal/retention";
+
+function retText(value: unknown): string {
+  return typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
+}
+
+function retNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function retRows(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.map((item) => asRecord(item)) : [];
+}
+
+function retSkipped(value: unknown): LoyaltySkipped {
+  const row = asRecord(value);
+  return {
+    optedOut: retNumber(row.opted_out),
+    openCart: retNumber(row.open_cart),
+    inSequence: retNumber(row.in_sequence),
+    cooldown: retNumber(row.cooldown),
+    noChat: retNumber(row.no_chat),
+  };
+}
+
+function retDue(value: unknown): { reorder: number; winback: number } {
+  const row = asRecord(value);
+  return { reorder: retNumber(row.reorder), winback: retNumber(row.winback) };
+}
+
+function retSettings(value: unknown): LoyaltySettings {
+  const row = asRecord(value);
+  return {
+    autoReorder: row.auto_reorder === true,
+    autoWinback: row.auto_winback === true,
+    brainContext: row.brain_context !== false,
+    dailyCap: retNumber(row.daily_cap, 20),
+    cooldownDays: retNumber(row.cooldown_days, 7),
+    windowStart: retNumber(row.window_start, 10),
+    windowEnd: retNumber(row.window_end, 20),
+    tplReorder: retText(row.tpl_reorder),
+    tplWinback: retText(row.tpl_winback),
+    tplOffer: retText(row.tpl_offer),
+    tiers: retRows(row.tiers).map((tier) => ({
+      key: retText(tier.key),
+      label: retText(tier.label),
+      minOrders: retNumber(tier.min_orders, 1),
+      minSpend: retNumber(tier.min_spend),
+      coupon: retText(tier.coupon),
+    })),
+    lastRunAt: retText(row.last_run_at) || null,
+  };
+}
+
+export async function getLoyaltySettings(accessToken: string): Promise<ServiceResult<LoyaltySettingsView>> {
+  const result = await portalService<Record<string, unknown>>(accessToken, RETENTION + "/settings", { method: "GET" });
+  if (result.kind !== "ok") return result;
+  const defaults = asRecord(result.data.defaults);
+  return {
+    kind: "ok",
+    data: {
+      settings: retSettings(result.data.settings),
+      defaults: { reorder: retText(defaults.reorder), winback: retText(defaults.winback), offer: retText(defaults.offer) },
+      placeholders: Array.isArray(result.data.placeholders) ? result.data.placeholders.map(retText).filter(Boolean) : [],
+      coupons: retRows(result.data.coupons).map((row) => ({
+        code: retText(row.code), kind: retText(row.kind), value: retNumber(row.value),
+      })),
+      canEdit: result.data.can_edit === true,
+      everyMinutes: retNumber(result.data.every_minutes, 60),
+      capMax: retNumber(result.data.cap_max, 200),
+    },
+  };
+}
+
+export async function saveLoyaltySettings(
+  accessToken: string,
+  input: Partial<Omit<LoyaltySettings, "lastRunAt">>
+): Promise<ServiceResult<{ settings: LoyaltySettings }>> {
+  const body: Record<string, unknown> = {};
+  if (typeof input.autoReorder === "boolean") body.auto_reorder = input.autoReorder;
+  if (typeof input.autoWinback === "boolean") body.auto_winback = input.autoWinback;
+  if (typeof input.brainContext === "boolean") body.brain_context = input.brainContext;
+  if (typeof input.dailyCap === "number") body.daily_cap = input.dailyCap;
+  if (typeof input.cooldownDays === "number") body.cooldown_days = input.cooldownDays;
+  if (typeof input.windowStart === "number") body.window_start = input.windowStart;
+  if (typeof input.windowEnd === "number") body.window_end = input.windowEnd;
+  if (typeof input.tplReorder === "string") body.tpl_reorder = input.tplReorder;
+  if (typeof input.tplWinback === "string") body.tpl_winback = input.tplWinback;
+  if (typeof input.tplOffer === "string") body.tpl_offer = input.tplOffer;
+  if (Array.isArray(input.tiers)) {
+    body.tiers = input.tiers.map((tier) => ({
+      label: tier.label, min_orders: tier.minOrders, min_spend: tier.minSpend, coupon: tier.coupon,
+    }));
+  }
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, RETENTION + "/settings", { method: "PUT", body: JSON.stringify(body) });
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: { settings: retSettings(result.data.settings) } };
+}
+
+export async function getLoyaltyOverview(accessToken: string): Promise<ServiceResult<LoyaltyOverview>> {
+  const result = await portalService<Record<string, unknown>>(accessToken, RETENTION + "/overview", { method: "GET" });
+  if (result.kind !== "ok") return result;
+  const data = result.data;
+  const totals = asRecord(data.totals);
+  const auto = asRecord(data.auto);
+  return {
+    kind: "ok",
+    data: {
+      days: retNumber(data.days, 30),
+      attributionDays: retNumber(data.attribution_days, 14),
+      customers: retNumber(data.customers),
+      tiers: retRows(data.tiers).map((row) => ({
+        key: retText(row.key), label: retText(row.label), customers: retNumber(row.customers), spend: retNumber(row.spend),
+      })),
+      due: retDue(data.due),
+      ready: retNumber(data.ready),
+      skipped: retSkipped(data.skipped),
+      sentLastDay: retNumber(data.sent_last_day),
+      dailyCap: retNumber(data.daily_cap),
+      auto: { reorder: auto.reorder === true, winback: auto.winback === true },
+      lastRunAt: retText(data.last_run_at) || null,
+      results: Object.entries(asRecord(data.results)).map(([kind, value]) => {
+        const row = asRecord(value);
+        return { kind, sent: retNumber(row.sent), returned: retNumber(row.returned), revenue: retNumber(row.revenue) };
+      }),
+      totals: { sent: retNumber(totals.sent), returned: retNumber(totals.returned), revenue: retNumber(totals.revenue) },
+      recent: retRows(data.recent).map((row) => ({
+        contactId: retText(row.contact_id),
+        name: retText(row.name),
+        kind: retText(row.kind),
+        tier: retText(row.tier),
+        coupon: retText(row.coupon),
+        mode: retText(row.mode),
+        createdAt: retText(row.created_at) || null,
+        returned: row.returned === true,
+      })),
+    },
+  };
+}
+
+export async function getLoyaltyCustomer(
+  accessToken: string,
+  contactId: string
+): Promise<ServiceResult<LoyaltyCustomer>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, RETENTION + "/customer?contact_id=" + encodeURIComponent(contactId), { method: "GET" });
+  if (result.kind !== "ok") return result;
+  const data = result.data;
+  const tier = data.tier ? asRecord(data.tier) : null;
+  const next = data.next ? asRecord(data.next) : null;
+  const due = data.due ? asRecord(data.due) : null;
+  const last = data.last_send ? asRecord(data.last_send) : null;
+  return {
+    kind: "ok",
+    data: {
+      contactId: retText(data.contact_id),
+      orders: retNumber(data.orders),
+      spend: retNumber(data.spend),
+      favourite: retText(data.favourite),
+      lastOrderDays: typeof data.last_order_days === "number" ? data.last_order_days : null,
+      tier: tier ? { key: retText(tier.key), label: retText(tier.label) } : null,
+      next: next
+        ? { label: retText(next.label), ordersNeeded: retNumber(next.orders_needed), spendNeeded: retNumber(next.spend_needed) }
+        : null,
+      optedOut: data.opted_out === true,
+      due: due
+        ? { kind: retText(due.kind), item: retText(due.item), message: retText(due.message), held: retText(due.held) }
+        : null,
+      lastSend: last ? { kind: retText(last.kind), mode: retText(last.mode), createdAt: retText(last.created_at) || null } : null,
+    },
+  };
+}
+
+export async function runLoyaltyMessages(accessToken: string, dryRun: boolean): Promise<ServiceResult<LoyaltyRunResult>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, RETENTION + "/run", { method: "POST", body: JSON.stringify({ dry_run: dryRun }) });
+  if (result.kind !== "ok") return result;
+  const data = result.data;
+  return {
+    kind: "ok",
+    data: {
+      dryRun: data.dry_run !== false,
+      sent: retNumber(data.sent),
+      room: retNumber(data.room),
+      due: retDue(data.due),
+      skipped: retSkipped(data.skipped),
+      messages: retRows(data.messages).map((row) => ({
+        contactId: retText(row.contact_id),
+        name: retText(row.name),
+        kind: retText(row.kind),
+        tier: retText(row.tier),
+        coupon: retText(row.coupon),
+        message: retText(row.message),
+      })),
     },
   };
 }

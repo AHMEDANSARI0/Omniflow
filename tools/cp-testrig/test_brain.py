@@ -11,6 +11,10 @@ import portal_sales
 # §237: the scripted FakeCur answers queries in a fixed order; the sales note
 # has its own real-database suite (test_sales.py), so it is off here.
 portal_sales.context_for = lambda *a, **k: None
+import portal_retention
+
+# §238: same for the loyalty note (real-database suite: test_retention.py).
+portal_retention.context_for = lambda *a, **k: None
 import portal_db
 from test_lib import install_db_stub
 from test_lib import check, summary

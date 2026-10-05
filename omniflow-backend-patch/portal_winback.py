@@ -2,7 +2,12 @@
 history into three ready-to-send outreach queues - open carts to recover,
 repeat buyers whose reorder gap has elapsed, and quiet payers to win back.
 Read-only: every entry carries a suggested WhatsApp message and a wa.me deep
-link; nothing is ever sent automatically. No new tables."""
+link; nothing is ever sent automatically. No new tables.
+
+§238: purchases include shipped / delivered orders (portal_retention); a
+queue send now commits (it used to answer "sent" and roll back), refuses
+opted-out contacts and is logged in the retention results (mode 'queue').
+Automatic, scheduled reorder / win-back messages live in portal_retention."""
 
 import json
 import logging
@@ -18,6 +23,8 @@ from portal_auth import (
     ensure_human_principal,
 )
 import portal_db
+import portal_retention
+import portal_txn
 
 bp = Blueprint("portal_winback", __name__, url_prefix="/api/v1/portal")
 
@@ -191,7 +198,8 @@ def _load_paid_links(cur, client_id, contact) -> List[Dict[str, Any]]:
         return []
     cur.execute(
         "SELECT created_at, items FROM " + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND contact_id = %s AND status = 'paid'"
+        " WHERE client_id = %s AND contact_id = %s AND status IN "
+        + portal_retention.PURCHASED_SQL +
         " ORDER BY created_at ASC, id ASC LIMIT " + str(MAX_PAID),
         (client_id, contact),
     )
@@ -359,6 +367,18 @@ def winback_queue():
     }), 200
 
 
+def _opted_out(cur, client_id, contact) -> bool:
+    try:
+        import portal_compliance
+
+        with portal_txn.savepoint(cur, None, "of_winback_optout") as guard:
+            found = portal_compliance.is_opted_out(cur, client_id, contact)
+        return found and not guard.failed
+    except Exception as error:
+        logger.info("winback opt-out check skipped: %s", error)
+        return False
+
+
 SEND_COOLDOWN_HOURS = 24
 WINBACK_KINDS = ("cart", "reorder", "winback")
 
@@ -404,6 +424,11 @@ def winback_send():
                                               "message": "Contact not"
                                                          " found."}}), 404
                 display_name = str(rows[0].get("name") or "")
+                if _opted_out(cur, client_id, contact):
+                    return jsonify({"error": {"code": "opted_out",
+                                              "message": "This customer asked"
+                                                         " not to be"
+                                                         " messaged."}}), 409
                 cur.execute(
                     "SELECT 1 FROM " + portal_db._q(portal_db.CMD_TABLE) +
                     " WHERE client_id = %s AND action = 'send_message'"
@@ -465,6 +490,14 @@ def winback_send():
                     actor_user_id=principal.get("user_id"),
                     note=kind,
                 )
+                try:
+                    with portal_txn.savepoint(cur, conn, "of_winback_log"):
+                        portal_retention.record_send(
+                            cur, client_id, contact, kind, "queue",
+                            command_id, display_name)
+                except Exception as log_error:
+                    logger.info("winback result log skipped: %s", log_error)
+            conn.commit()
         finally:
             conn.close()
     except Exception as error:

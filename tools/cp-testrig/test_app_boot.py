@@ -136,7 +136,11 @@ for expected in ("/api/v1/public/checkout/<token>", "/api/v1/public/store/<slug>
                  "/api/v1/portal/sales/playbook/<kind>",
                  "/api/v1/portal/sales/conversations/<int:conversation_id>",
                  "/api/v1/portal/sales/overview",
-                 "/api/v1/portal/sales/quotes"):
+                 "/api/v1/portal/sales/quotes",
+                 "/api/v1/portal/retention/settings",
+                 "/api/v1/portal/retention/overview",
+                 "/api/v1/portal/retention/customer",
+                 "/api/v1/portal/retention/run"):
     check("route registered: " + expected,
           any(r.rule == expected for r in rules), expected)
 

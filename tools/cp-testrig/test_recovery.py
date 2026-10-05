@@ -135,8 +135,11 @@ check("scan hits cod requests", any("portal_cod_requests" in s
                                     and "status = 'pending'" in s
                                     for s in sqls), "cod")
 check("scan hits price phrases", any("ILIKE" in s for s in sqls), "price")
-check("scan min value filter", any("SUM(paid_amount) >=" in s
-                                   for s in sqls), "value")
+check("scan min value filter", any(
+    "SUM(GREATEST(COALESCE(paid_amount, 0), COALESCE(total, 0))) >=" in s
+    for s in sqls), "value")
+check("§238 quiet buyers include shipped / delivered", any(
+    "status IN ('paid', 'shipped', 'delivered')" in s for s in sqls), "status")
 
 # found checkout -> insert new -> auto OFF: no command
 conn = fresh([
@@ -162,6 +165,7 @@ conn = fresh([
     [{"id": 7, "contact_id": "92300", "total": 1200}],
     [], [], [],
     [{"id": 9}],                           # new insert
+    [],                                    # §238 opt-out check
     [{"id": 1}],                           # auto command insert
     [{"id": 1}],                           # update slot
     [],                                    # auto audit log
@@ -180,6 +184,49 @@ check("auto marked contacted", any("SET status = 'contacted'" in s
 check("auto audit row", any("recovery.auto" in str(p)
                             for s, p in conn.cur.executed), "audit")
 
+# §238: auto ON + the customer opted out -> nothing queued, item stays open
+conn = fresh([
+    [{"auto_enabled": True, "checkout_hours": 24, "cod_hours": 12,
+      "inactive_days": 21, "min_value": 5000}],
+    [{"id": 7, "contact_id": "92300", "total": 1200}],
+    [], [], [],
+    [{"id": 9}],                           # new insert
+    [{"x": 1}],                            # opt-out check: opted out
+    [],                                    # list
+])
+with conn.cur as cur:
+    portal_recovery.scan_recoveries(cur, 1)
+sqls = [s for s, p in conn.cur.executed]
+check("§238 auto skips opted-out", not any(
+    "portal_connector_commands" in s for s in sqls)
+    and not any("SET status = 'contacted'" in s for s in sqls)
+    and not any("recovery.auto" in str(p) for s, p in conn.cur.executed),
+    sqls)
+
+# §238: auto ON + quiet buyer reached by other outreach lately -> skipped
+import portal_retention
+
+_orig_recent = portal_retention.recently_contacted
+_orig_load = portal_retention.load_settings
+portal_retention.load_settings = lambda cur, cid: {"cooldown_days": 7}
+portal_retention.recently_contacted = lambda cur, cid, contact, days: (
+    contact == "92399" and days == 7)
+conn = fresh([
+    [{"auto_enabled": True, "checkout_hours": 24, "cod_hours": 12,
+      "inactive_days": 21, "min_value": 5000}],
+    [], [], [],
+    [{"contact_id": "92399", "value": 9000, "last_order": None}],
+    [{"id": 9}],                           # new insert
+    [],                                    # list
+])
+with conn.cur as cur:
+    portal_recovery.scan_recoveries(cur, 1)
+check("§238 auto quiet buyer cooldown skip", not any(
+    "portal_connector_commands" in s for s, p in conn.cur.executed),
+    [s for s, p in conn.cur.executed])
+portal_retention.recently_contacted = _orig_recent
+portal_retention.load_settings = _orig_load
+
 # ---------- follow-up copy ----------
 
 check("copy exists for all kinds",
@@ -187,8 +234,7 @@ check("copy exists for all kinds",
       {"abandoned_checkout", "unconfirmed_cod", "price_objection",
        "inactive_high_value"}, "kinds")
 conn = fresh([
-    [{"id": 3, "kind": "abandoned_checkout", "contact_id": "92300",
-      "conversation_id": 55, "status": "open"}],
+    [],                                    # §238 opt-out check
     [{"id": 1}],                           # command insert
     [],                                    # update
     [],                                    # log_action
@@ -224,10 +270,23 @@ check("followup 409 not open", r.status_code == 409, r.status_code)
 r = run_api([
     [{"id": 3, "kind": "unconfirmed_cod", "contact_id": "92300",
       "conversation_id": None, "status": "open"}],
-    [{"id": 1}], [], [],
+    [], [{"id": 1}], [], [],
 ], "POST", "/api/v1/portal/recovery/followup", {"id": 3})
 check("followup 200", r.status_code == 200
       and "COD" in r.get_json()["copy"], r.get_json())
+r = run_api([
+    [{"id": 3, "kind": "unconfirmed_cod", "contact_id": "92300",
+      "conversation_id": None, "status": "open"}],
+    [{"x": 1}],
+], "POST", "/api/v1/portal/recovery/followup", {"id": 3})
+check("§238 followup 409 opted out", r.status_code == 409
+      and r.get_json()["error"]["code"] == "opted_out", r.get_json())
+r = run_api([
+    [{"id": 3, "kind": "unconfirmed_cod", "contact_id": "",
+      "conversation_id": None, "status": "open"}],
+], "POST", "/api/v1/portal/recovery/followup", {"id": 3})
+check("§238 followup 409 no contact", r.status_code == 409
+      and r.get_json()["error"]["code"] == "conflict", r.get_json())
 
 r = run_api([
     [{"id": 3, "kind": "price_objection", "contact_id": "92300",
