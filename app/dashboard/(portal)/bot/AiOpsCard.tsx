@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { AiTraceDetailView, AiTracesPanel } from "./AiTraceView";
+
 interface UsageTotals {
   calls: number;
   failed: number;
@@ -50,6 +52,7 @@ interface AuditItem {
   conversation_id: number | null;
   note: string;
   created_at: string | null;
+  trace?: { id: number; agent: { id: number; name: string } | null; model: string | null };
 }
 
 interface Audit {
@@ -104,7 +107,8 @@ export default function AiOpsCard() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [audit, setAudit] = useState<Audit | null>(null);
   const [category, setCategory] = useState("");
-  const [tab, setTab] = useState<"activity" | "usage">("activity");
+  const [tab, setTab] = useState<"activity" | "traces" | "usage">("activity");
+  const [openTrace, setOpenTrace] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
@@ -206,7 +210,7 @@ export default function AiOpsCard() {
           </div>
 
           <div className="mt-4 flex gap-1.5">
-            {(["activity", "usage"] as const).map((option) => (
+            {(["activity", "traces", "usage"] as const).map((option) => (
               <button
                 key={option}
                 type="button"
@@ -217,12 +221,14 @@ export default function AiOpsCard() {
                     : "border-line bg-soft text-ink-3 hover:text-ink"
                 }`}
               >
-                {option === "activity" ? "Activity" : "Usage & cost"}
+                {option === "activity" ? "Activity" : option === "traces" ? "Traces" : "Usage & cost"}
               </button>
             ))}
           </div>
 
-          {tab === "activity" ? (
+          {tab === "traces" ? (
+            <AiTracesPanel days={days} onOpen={setOpenTrace} />
+          ) : tab === "activity" ? (
             <div className="mt-3">
               {overview ? (
                 <div className="flex flex-wrap gap-1.5">
@@ -281,6 +287,20 @@ export default function AiOpsCard() {
                             >
                               open chat
                             </a>
+                          </>
+                        ) : null}
+                        {item.trace ? (
+                          <>
+                            {item.trace.agent ? " \u00b7 " + item.trace.agent.name : ""}
+                            {item.trace.model ? " \u00b7 " + item.trace.model : ""}
+                            {" \u00b7 "}
+                            <button
+                              type="button"
+                              onClick={() => setOpenTrace(item.trace ? item.trace.id : null)}
+                              className="text-brand hover:underline"
+                            >
+                              trace
+                            </button>
                           </>
                         ) : null}
                       </p>
@@ -362,6 +382,9 @@ export default function AiOpsCard() {
               </div>
             </div>
           )}
+          {openTrace !== null ? (
+            <AiTraceDetailView traceId={openTrace} onClose={() => setOpenTrace(null)} />
+          ) : null}
         </>
       )}
     </section>

@@ -122,6 +122,9 @@ check("radar lists shape", isinstance(payload["stock_up"], list)
       and isinstance(payload["slow"], list), "shape")
 check("radar 2 executes", len(conn.cur.executed) == 2,
       len(conn.cur.executed))
+check("sell rate counts purchases (paid, shipped, delivered) (§240)",
+      "status IN ('paid', 'shipped', 'delivered')" in conn.cur.executed[1][0],
+      conn.cur.executed[1][0])
 
 conn = fresh([[{"oid": "portal_checkout_links"}], []])
 response = client.get("/api/v1/portal/restock/radar")

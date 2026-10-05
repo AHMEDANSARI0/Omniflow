@@ -238,7 +238,7 @@ TOPICS: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = (
         "kam kar", "offer", "deal", "cheap", "expensive", "final price")),
     ("availability", "Availability & sizes", (
         "available", "availab", "stock", "mil jayega", "mil jaye ga",
-        "milega", "hai kya", "size", "colour", "color", "variant", "restock",
+        "milega", "milegi", "hai kya", "size", "colour", "color", "variant", "restock",
         "out of stock", "khatam")),
     ("payment", "Payment & COD", (
         "payment", "jazzcash", "easypaisa", "bank", "advance", "cod",

@@ -114,6 +114,11 @@ TRIGGERS: Dict[str, Dict[str, Any]] = {
         "label": "Checkout link created", "source": "log",
         "actions": ["checkout.created"], "options": [],
         "description": "A checkout link was created for a customer."},
+    "repeat_complainer": {
+        "label": "Customer complaining repeatedly", "source": "log",
+        "actions": ["proactive.repeat_complainer"], "options": [],
+        "description": "A proactive alert found one customer complaining on"
+                       " several separate occasions."},
     "manual": {
         "label": "Manual / test run", "source": "manual", "options": [],
         "description": "Only runs when you start it from the portal."},
@@ -1256,7 +1261,7 @@ def _ctx_from_log(cur, client_id: int, row: Dict[str, Any]) -> Optional[dict]:
                         "conversation_id": conv.get("id"),
                         "contact_name": str(conv.get("contact_name") or "")})
             return ctx
-        if action.startswith("cod."):
+        if action.startswith("cod.") or action == "proactive.repeat_complainer":
             conversation_id = row.get("conversation_id")
             if not conversation_id:
                 return None

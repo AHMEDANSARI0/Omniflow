@@ -39,6 +39,7 @@ CATEGORIES: Dict[str, str] = {
     "feedback": "Customer feedback",
     "compliance": "Opt-outs",
     "risk": "Fraud & risk",
+    "alerts": "Business alerts",
 }
 
 #: event name (portal_action_log.action) -> metadata
@@ -106,6 +107,19 @@ EVENTS: Dict[str, Dict[str, str]] = {
     "fraud.flagged": {
         "category": "risk", "label": "Order flagged as risky",
         "description": "The fraud check flagged an order."},
+    # §242 proactive alerts (portal_proactive writes "proactive." + rule)
+    "proactive.demand_unavailable": {
+        "category": "alerts", "label": "Demand for an unavailable product",
+        "description": "Several customers asked for a paused or unlisted product."},
+    "proactive.repeat_complainer": {
+        "category": "alerts", "label": "Customer complaining repeatedly",
+        "description": "One customer complained on several separate occasions."},
+    "proactive.product_complaints": {
+        "category": "alerts", "label": "Complaints about one product",
+        "description": "Several customers complained about the same product."},
+    "proactive.complaint_spike": {
+        "category": "alerts", "label": "Complaint spike",
+        "description": "Complaints in the last 24 hours are well above usual."},
 }
 
 

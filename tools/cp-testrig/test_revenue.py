@@ -59,6 +59,16 @@ check("window orders + aov", stats["orders"] == 2 and stats["aov"] == 1500,
       stats)
 check("window cancelled rate", stats["cancelled"] == 1
       and stats["cancelled_rate"] == 33.3, stats)
+stats = portal_revenue._window_stats([
+    link("a", "paid", ("Kurti", 1000)),
+    link("b", "shipped", ("Kurti", 1500)),
+    link("c", "delivered", ("Cap", 500)),
+    link("d", "returned", ("Cap", 900)),
+    link("e", "cancelled", ("Cap", 300)),
+])
+check("window counts purchases (paid + shipped + delivered, §240)",
+      stats["orders"] == 3 and stats["revenue"] == 3000
+      and stats["cancelled"] == 1 and stats["cancelled_rate"] == 25.0, stats)
 empty = portal_revenue._window_stats([])
 check("empty window", empty["revenue"] == 0 and empty["aov"] is None
       and empty["cancelled_rate"] is None, empty)
@@ -85,8 +95,7 @@ conn = fresh([
      link("92c", "cancelled", ("Cap", 300))],
     [link("92a", "paid", ("Scarf", 800))],
     [{"items": items(("Kurti", "Rs 1,500"))}, {"items": items(("Cap", 300))}],
-    [{"contact_id": "92a", "total": 3}, {"contact_id": "92b", "total": 1},
-     {"contact_id": "92d", "total": 1}],
+    [{"contact_id": "92a"}],
     [{"oid": "portal_action_log"}],
     [{"hits": 2}],
 ])
@@ -99,8 +108,19 @@ check("summary revenue + delta", payload["revenue"] == 3000
       and payload["delta_percent"] == 275, payload)
 check("summary orders + aov", payload["orders"] == 2
       and payload["orders_prior"] == 1 and payload["aov"] == 1500, payload)
-check("summary buyers new vs repeat", payload["new_buyers"] == 0
-      and payload["repeat_buyers"] == 2, payload)
+check("summary buyers new vs repeat (§240: repeat = bought before the window)",
+      payload["new_buyers"] == 1 and payload["repeat_buyers"] == 1, payload)
+returning_sql, returning_args = conn.cur.executed[4]
+check("returning query: window buyers, purchases before the window",
+      "contact_id = ANY(%s)" in returning_sql
+      and "status IN ('paid', 'shipped', 'delivered')" in returning_sql
+      and "created_at <= NOW() - make_interval(days => %s)" in returning_sql
+      and list(returning_args[1]) == ["92a", "92b"] and returning_args[2] == 30,
+      conn.cur.executed[4])
+check("window + prior queries: purchases and cancellations",
+      "status IN ('paid', 'shipped', 'delivered', 'cancelled')" in conn.cur.executed[1][0]
+      and "status IN ('paid', 'shipped', 'delivered', 'cancelled')" in conn.cur.executed[2][0],
+      conn.cur.executed[1][0])
 check("summary cancelled", payload["cancelled"] == 1
       and payload["cancelled_rate"] == 33.3, payload)
 check("summary pipeline", payload["open_carts"] == 2
@@ -115,10 +135,12 @@ response = client.get("/api/v1/portal/revenue/summary?days=999")
 check("400 days out of range", status(response) == 400, status(response))
 conn = fresh([
     [{"oid": "portal_checkout_links"}], [], [],
-    [], [], [], [],
+    [], [{"oid": "portal_action_log"}], [{"hits": 0}],
 ])
 response = client.get("/api/v1/portal/revenue/summary")
 check("200 default days", response.get_json()["days"] == 30, "default")
+check("no buyers -> no returning query (6 executes)", len(conn.cur.executed) == 6
+      and not any("ANY(%s)" in sql for sql, _ in conn.cur.executed), len(conn.cur.executed))
 
 PrincipalStub(portal_revenue, principal=None)
 response = client.get("/api/v1/portal/revenue/summary")
@@ -130,7 +152,7 @@ print("== items endpoint ==")
 conn = fresh([
     [{"oid": "portal_checkout_links"}],
     [link("92a", "paid", ("Kurti", "Rs 1,500"), ("Earrings", 500)),
-     link("92b", "paid", ("Kurti", "Rs 1,500"), ("Kurti", "Rs 1,500")),
+     link("92b", "shipped", ("Kurti", "Rs 1,500"), ("Kurti", "Rs 1,500")),
      link("92c", "cancelled", ("Cap", 300))],
     [link("92a", "paid", ("Kurti", 1000), ("Kurti", 1000),
           ("Kurti", 1000), ("Kurti", 1000))],
@@ -139,7 +161,7 @@ response = client.get("/api/v1/portal/revenue/items?days=30")
 payload = response.get_json()
 top = payload["items"][0]
 check("200 items", status(response) == 200, status(response))
-check("item top by revenue", top["name"] == "Kurti" and top["units"] == 3
+check("item top by revenue (shipped order counted, §240)", top["name"] == "Kurti" and top["units"] == 3
       and top["revenue"] == 4500 and top["buyers"] == 2, payload)
 check("item trend down", top["trend"] == "down"
       and top["units_prior"] == 4, top)

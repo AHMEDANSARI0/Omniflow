@@ -9,7 +9,18 @@ interface NotifySettings {
   email_to: string;
   min_severity: Severity;
   kinds: Record<string, boolean>;
+  bell_per_hour: number;
+  email_per_hour: number;
+  email_per_day: number;
 }
+
+type LimitKey = "bell_per_hour" | "email_per_hour" | "email_per_day";
+
+const LIMITS: { key: LimitKey; label: string }[] = [
+  { key: "bell_per_hour", label: "Bell alerts per kind, per hour" },
+  { key: "email_per_hour", label: "Emails per kind, per hour" },
+  { key: "email_per_day", label: "Emails per day (all kinds)" },
+];
 
 interface NotifyKind {
   key: string;
@@ -28,6 +39,7 @@ interface NotificationItem {
   email_status: string;
   email_error: string;
   created_at: string | null;
+  in_app_status: string;
 }
 
 interface Payload {
@@ -36,6 +48,8 @@ interface Payload {
   kinds: NotifyKind[];
   severities: Severity[];
   email_configured: boolean;
+  limit_max: number;
+  can_edit: boolean;
 }
 
 interface TestResult {
@@ -63,6 +77,7 @@ const EMAIL_STATUS_LABEL: Record<string, string> = {
   failed: "email failed",
   deduped: "already open",
   no_recipient: "no recipient",
+  limited: "email limit reached",
 };
 
 function formatWhen(iso: string | null): string {
@@ -120,12 +135,15 @@ export default function NotificationsCard() {
     if (!form) return;
     setBusy(true);
     setNotice(null);
+    // limits are owner / admin settings - other roles send the rest only
+    const { bell_per_hour, email_per_hour, email_per_day, ...basic } = form;
+    const payload = data?.can_edit ? { ...basic, bell_per_hour, email_per_hour, email_per_day } : basic;
     try {
       const response = await fetch("/api/omniflow/portal/notifications/settings", {
         method: "PUT",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const body = (await response.json().catch(() => null)) as
         | { settings?: NotifySettings; error?: { message?: string } }
@@ -272,6 +290,32 @@ export default function NotificationsCard() {
                 ))}
               </ul>
             </div>
+            <div>
+              <p className="mb-1 text-[11px] text-ink-3">Limits</p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {LIMITS.map((limit) => (
+                  <label key={limit.key} className="text-[11px] text-ink-3">
+                    {limit.label}
+                    <input
+                      type="number"
+                      min={1}
+                      max={data.limit_max}
+                      value={form[limit.key]}
+                      disabled={!data.can_edit || busy}
+                      onChange={(event) =>
+                        setForm({ ...form, [limit.key]: Math.trunc(Number(event.target.value) || 0) })
+                      }
+                      className={inputClass + " mt-1"}
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-[10px] text-ink-3">
+                High-priority notifications skip the hourly limits. Anything held back stays in Recent
+                notifications, and the next email says how many were held.
+                {data.can_edit ? "" : " Only owners and admins can change limits."}
+              </p>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -315,6 +359,7 @@ export default function NotificationsCard() {
                     </div>
                     <p className="mt-0.5 text-[10px] text-ink-3">
                       {item.kind}
+                      {item.in_app_status === "limited" ? " \u00b7 bell limit reached" : ""}
                       {" \u00b7 "}
                       {EMAIL_STATUS_LABEL[item.email_status] ?? item.email_status}
                       {item.email_to ? " (" + item.email_to + ")" : ""}

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { AnalyticsData } from "../../../../lib/omniflow/portal";
+import AiAutomationCard from "./AiAutomationCard";
 
 const statClass =
   "rounded-2xl border border-line bg-white shadow-card px-5 py-4";
@@ -306,6 +307,8 @@ export default function AnalyticsClient({
           </div>
         </>
       )}
+
+      <AiAutomationCard days={data.days} />
     </div>
   );
 }

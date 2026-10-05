@@ -5,7 +5,7 @@ import {
   requirePortalAccessToken,
   type NotifySettings,
 } from "../../../../../../lib/omniflow/portal";
-import { safeJson } from "../../../../../../lib/omniflow/request-security";
+import { safeJson, sameOrigin } from "../../../../../../lib/omniflow/request-security";
 
 const UNAUTH = { error: { code: "unauthorized", message: "Sign in required." } };
 const EXPIRED = { error: { code: "unauthorized", message: "Session expired." } };
@@ -30,6 +30,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  if (!sameOrigin(request)) {
+    return safeJson({ error: { code: "forbidden", message: "Request origin was rejected." } }, 403);
+  }
   const accessToken = await requirePortalAccessToken();
   if (!accessToken) return safeJson(UNAUTH, 401);
   const payload = (await request.json().catch(() => null)) as Partial<NotifySettings> | null;
@@ -51,6 +54,11 @@ export async function PUT(request: Request) {
       if (typeof value === "boolean") kinds[key.slice(0, 40)] = value;
     }
     input.kinds = kinds;
+  }
+  // §239 rate limits: whole numbers only (the Control Plane checks the range)
+  for (const key of ["bell_per_hour", "email_per_hour", "email_per_day"] as const) {
+    const value = payload[key];
+    if (typeof value === "number" && Number.isInteger(value)) input[key] = value;
   }
   if (Object.keys(input).length === 0) {
     return safeJson(

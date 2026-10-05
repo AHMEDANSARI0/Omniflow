@@ -883,7 +883,7 @@ export default function GrowthPage() {
         </div>
         <Section
           title="Revenue & pipeline"
-          hint="Paid revenue, buyers and open-cart value for the selected window."
+          hint="Revenue from paid, shipped and delivered orders, buyers and open-cart value for the selected window."
         >
           <div className="mb-3 flex items-center gap-2">
             {DAYS_OPTIONS.map((option) => (
@@ -1260,7 +1260,7 @@ export default function GrowthPage() {
         >
           {custAnalytics.length === 0 ? (
             <p className="text-xs text-ink-3">
-              Paid orders appear here as customers come back.
+              Orders appear here as customers come back.
             </p>
           ) : (
             <ul className="space-y-1.5">
@@ -1315,11 +1315,11 @@ export default function GrowthPage() {
 
         <Section
           title="Top products"
-          hint="What actually sells, from paid orders only."
+          hint="What actually sells, from paid, shipped and delivered orders."
         >
           {prodAnalytics.length === 0 ? (
             <p className="text-xs text-ink-3">
-              Paid orders appear here.
+              Orders appear here once they are paid or shipped.
             </p>
           ) : (
             <ul className="space-y-1.5">

@@ -106,7 +106,8 @@ connector_api._away_closed_now = lambda config: False
 
 print("== catalog + validation ==")
 triggers = {t["trigger"]: t for t in portal_workflows.trigger_catalog()}
-check("8 triggers", len(triggers) == 8, sorted(triggers))
+check("9 triggers (§242 repeat_complainer)", len(triggers) == 9
+      and "repeat_complainer" in triggers, sorted(triggers))
 check("trigger sources", triggers["message_received"]["source"] == "ingest"
       and triggers["stage_changed"]["source"] == "log"
       and triggers["manual"]["source"] == "manual", triggers)
@@ -684,7 +685,7 @@ check("actor tagging helper", portal_actions._actor_kind(
 print("== owner API ==")
 r = run_api([], "GET", "/api/v1/portal/workflows/catalog")
 body = r.get_json()
-check("catalog 200", r.status_code == 200 and len(body["triggers"]) == 8
+check("catalog 200", r.status_code == 200 and len(body["triggers"]) == 9
       and len(body["actions"]) == 15 and len(body["templates"]) == 21
       and body["limits"]["max_steps"] == 12, r.status_code)
 check("catalog carries verticals + applied_vertical (fail-soft empty)",

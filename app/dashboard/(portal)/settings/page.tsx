@@ -6,6 +6,7 @@ import BrandsCard from "./BrandsCard";
 import BusinessHoursCard from "./BusinessHoursCard";
 import BiThresholdsCard from "./BiThresholdsCard";
 import WeeklyProblemsCard from "./WeeklyProblemsCard";
+import ProactiveAlertsCard from "./ProactiveAlertsCard";
 import WidgetSettingsCard from "./WidgetSettingsCard";
 import PaymentsCard from "./PaymentsCard";
 import DataSafetyCard from "./DataSafetyCard";
@@ -20,6 +21,7 @@ import NegotiationCard from "./NegotiationCard";
 import PerfCard from "./PerfCard";
 import PlanCard from "./PlanCard";
 import NotificationsCard from "./NotificationsCard";
+import NotificationTemplatesCard from "./NotificationTemplatesCard";
 import VoiceVisionCard from "./VoiceVisionCard";
 import {
   getApiKeyInfo,
@@ -69,6 +71,7 @@ export default async function ClientSettingsPage() {
       <BusinessHoursCard />
       <BiThresholdsCard />
       <WeeklyProblemsCard />
+      <ProactiveAlertsCard />
       <div className="mt-6">
         <WidgetSettingsCard />
       </div>
@@ -88,6 +91,7 @@ export default async function ClientSettingsPage() {
       <PerfCard />
       <PlanCard />
       <NotificationsCard />
+      <NotificationTemplatesCard />
       <BrandsCard />
     </div>
   );

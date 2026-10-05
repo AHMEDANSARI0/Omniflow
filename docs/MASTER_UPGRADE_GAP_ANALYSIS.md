@@ -40,16 +40,16 @@
 | 12 | Commerce Ops Agent | COD risk, address normalize, courier, restock, orders | policy-checked autonomous flows ("order cancel karna hai" → policy → permission → action) |
 | 13 | Follow-up Agent | followup agent + sequences | context-aware stops (purchased? opt-out? human took over? duplicate?) — verify |
 | 15 | Retention | winback + churn + sequences + segments | centralized retention system (reorder/loyalty/personalized offers) |
-| 16 | Proactive AI | digest, order updates, restock alerts, winback triggers | formal event-driven proactive engine (business alerts: unavailable product demand, repeated complaints) |
+| 16 | Proactive AI | digest, order updates, restock alerts, winback triggers; ✅ §242 portal_proactive: business alerts raised as they appear (demand for paused / unlisted products, a customer complaining repeatedly, complaints about one product, complaint spikes) from recent inbound messages on the connector tick; each alert = history row + outbox event `proactive.<rule>` (webhooks; workflow trigger "Customer complaining repeatedly") + notification kind "Business alerts"; rules / limits on Settings → Proactive alerts | alerts read message text only (no order / delivery data yet); "unavailable" = paused in the catalog, because stock 0 means "not tracked" across OmniFlow |
 | 19 | Journey Intelligence | journey stages + explanations | funnel/drop-off analytics (Visitor→…→VIP/Churn) with revenue linkage |
-| 21 | Handoff | ✅ §199 portal_escalation: one `escalate()` for brain (needs_human/low_confidence/policy), workflows, knowledge gaps, owner; reason codes + severity, persona escalation target, one open per chat, ledger + audit + owner notify, Handoffs card | ready-made context summary for the human (BI batch), auto-resolve on human reply |
+| 21 | Handoff | ✅ §199 portal_escalation: one `escalate()` for brain (needs_human/low_confidence/policy), workflows, knowledge gaps, owner; reason codes + severity, persona escalation target, one open per chat, ledger + audit + owner notify, Handoffs card | ready-made context summary for the human (BI batch), auto-resolve on human reply ✅ §205 |
 | 22 | Voice Agent | inbound calls, voicemail recordings, outbound, video rooms (Twilio) | **speech conversation loop** (Gather/speech→intent→agent→response), voice actions, same brain/memory |
 | 24 | Omnichannel | WhatsApp LIVE (Baileys→CP), baaki honest "Coming" | **channel adapter interface** (receiveMessage/sendMessage/…8 ops) + message normalizer + identity linking — AI layer channel-agnostic banana |
 | 25 | Notifications | ✅ §199 portal_notify: bell + tenant opt-in email + ledger with delivery status, per-kind prefs + severity threshold, test send; used by escalations/approvals/dead deliveries/failed runs | templates+variables, rate limits (dedupe covers floods today) |
-| 27 | Audit Log | ✅ §199 portal_ai_audit read model over portal_action_log: categories registry, actor kinds, timeline + overview (approvals pending, handoffs open, usage) on Configure AI | per-row agent/model/input linkage (brain traces already carry grounding; join later in Control Center) |
+| 27 | Audit Log | ✅ §199 portal_ai_audit read model over portal_action_log: categories registry, actor kinds, timeline + overview (approvals pending, handoffs open, usage) on Configure AI | ✅ §241 per-row linkage: audit rows written with an AI answer link to its trace (agent, model); the trace shows the customer message and reply read live from their own tables (never copied) |
 | 29 | Evaluation | ✅ §203 deterministic AI behavioral contracts: knowledge ranking/citations, tool/permission envelopes, workflow injection boundary, prompt-injection detector + sanitisation/output guard, channel identity normalization; 150 suites / 5591 PASS after the batch | live provider quality/regression sampling, human-labelled answer sets, agent cost split |
-| 31 | Observability | portal_obs: trace-id + slow-request JSON logs | agent execution traces: conversation→agent→tool→result→decision→response |
-| 64 | Analytics split | analytics/revenue/service/one-reply/CSAT | AI quadrant (agent usage, confidence, cost, tool calls) + automation quadrant (workflow executions) |
+| 31 | Observability | portal_obs: trace-id + slow-request JSON logs; ✅ §241 portal_ai_traces: every AI answer as steps message→guard→agent (version at answer time)→tools (with results)→model (calls, tokens, latency, cost when priced)→decision→reply + linked audit rows (Configure AI → AI operations → Traces) | workflow / action executions are not in this step view yet (they keep their own run ledgers) |
+| 64 | Analytics split | analytics/revenue/service/one-reply/CSAT; ✅ §240 AI + automation quadrant (answers, confidence bands, tools, handoff reasons, per-agent usage and cost, workflow / action / sequence outcomes) | — |
 
 ### 🔴 Missing entirely (naya build)
 | # | Engine | Kya banana hai |
@@ -62,7 +62,7 @@
 | 20 | AI Quality | ✅ §200 ai_quality: resolution rate (answered chats never escalated), handoff share + reasons, avg confidence, grounded/cited share, engine failures + latency, CSAT after AI, unanswered questions list |
 | 23 | Vision/Media | image understanding (damaged product, screenshots) — transcribe seed hai, vision nahi |
 | 28 | AI Cost/Usage | ✅ §199 portal_ai_usage: per-call tokens/latency/ok per workspace/feature/model via portal_llm.usage_scope; estimated cost from admin price table (honest "not configured" otherwise); usage card | per-agent/per-conversation split, billing hooks (plans) |
-| 30 | Agent Versioning | ✅ §201 portal_agent_versions: append-only snapshot per save, list + rollback (restore = new version, history never rewritten) | draft/test states before publish, workflow rollback endpoint |
+| 30 | Agent Versioning | ✅ §201 portal_agent_versions: append-only snapshot per save, list + rollback (restore = new version, history never rewritten) | draft/test states before publish, workflow rollback endpoint ✅ §205 |
 | 50 | Prompt-Injection Defense | customer message = untrusted content layer; system rules override-proof; injection test suite |
 
 ### Admin/UX upgrades (§53–57) — sab 🔴 (backend engines ke baad)
@@ -85,7 +85,7 @@
 | 4 Agents | 🟡 (capabilities hain; "agents" as configs+router nahi) |
 | 5 Actions wiring | 🟡 (sab target APIs already hain — catalog/orders/payments/courier/CRM; Action Engine me wrap karna hai) |
 | 6 Omnichannel | 🔴 (WA live; IG→Messenger→Email→TG→TikTok→SMS order) |
-| 7 Proactive | 🟡 upgrade |
+| 7 Proactive | ✅ §242 (proactive business alerts engine + outbox events + workflow trigger; order-data rules later) |
 | 8 BI | ✅ §200 (portal_bi read model: insights + problems + AI quality + funnel; narrative summaries deferred) |
 | 9 AI Workforce UI | 🟡 (agents editor + permissions + versions + Control Center ✅ §201; per-agent quality/cost split pending) |
 | 10 Voice/Vision | 🟡 / 🔴 |
@@ -106,7 +106,7 @@
 10. **Knowledge Engine** ✅ (§198) — ingestion pipeline + keyword retrieval + versioning (owner-approval law qayam; embeddings D1 deferred)
 11. **Handoff + Notifications + Audit + Cost/Usage + Observability** ✅ (§199 platform services; observability = usage ledger latency/failures + escalation summary; agent execution traces stay in brain traces)
 12. **BI layer** ✅ (§200) — Insights + Problem Detector + AI Quality + Journey funnel
-13. **Omnichannel adapters** (IG pehle) — Workflow/Identity/Action engines ready hone ke BAAD
+13. **Omnichannel adapters** (IG pehle) ✅ (§204 Instagram adapter on shared message engine; Facebook/TikTok later)
 14. **Voice Agent loop + Vision**
 15. **Admin AI Control Center + Agent Config + Permissions UI** ✅ (§201) + ~~Workflow Builder + Templates~~ ✅ (§196)
 16. **Eval expansion** ✅ (§203: prompt-injection defense + deterministic AI behavioral contract suite) + ~~Agent versioning/rollback~~ ✅ (§201)

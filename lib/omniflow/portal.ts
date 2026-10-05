@@ -14055,6 +14055,10 @@ export interface NotifySettings {
   email_to: string;
   min_severity: NotifySeverity;
   kinds: Record<string, boolean>;
+  /** §239 rate limits (per kind per hour / per day). */
+  bell_per_hour: number;
+  email_per_hour: number;
+  email_per_day: number;
 }
 
 export interface NotifyKind {
@@ -14075,6 +14079,7 @@ export interface NotificationItem {
   email_status: string;
   email_error: string;
   created_at: string | null;
+  in_app_status: string;
 }
 
 export interface NotificationsPayload {
@@ -14083,6 +14088,8 @@ export interface NotificationsPayload {
   kinds: NotifyKind[];
   severities: NotifySeverity[];
   email_configured: boolean;
+  limit_max: number;
+  can_edit: boolean;
 }
 
 export interface NotifyTestResult {
@@ -14172,14 +14179,15 @@ export async function putNotificationSettings(
 }
 
 export async function sendTestNotification(
-  accessToken: string
+  accessToken: string,
+  kind = "system"
 ): Promise<NotifyTestResult | null> {
   let response: Response;
   try {
     response = await portalRequest(accessToken, "api/v1/portal/notifications/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: "{}",
+      body: JSON.stringify({ kind }),
     });
   } catch (error) {
     assertNotAuthError(error);
@@ -14333,6 +14341,8 @@ export interface AiAuditItem {
   conversation_id: number | null;
   note: string;
   created_at: string | null;
+  /** §241: set when the row was written with an AI answer */
+  trace?: { id: number; agent: { id: number; name: string } | null; model: string | null };
 }
 
 export interface AiAuditPayload {
@@ -17814,4 +17824,457 @@ export async function runLoyaltyMessages(accessToken: string, dryRun: boolean): 
       })),
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Notification email templates (§239): per-kind subject + body with
+// variables; no saved template = the built-in default (CP: portal_notify).
+// ---------------------------------------------------------------------------
+
+export interface NotifyTemplate {
+  kind: string;
+  label: string;
+  custom: boolean;
+  subject: string;
+  body: string;
+  updatedAt: string | null;
+}
+
+export interface NotifyTemplatesView {
+  templates: NotifyTemplate[];
+  defaults: { subject: string; body: string };
+  variables: { key: string; description: string }[];
+  subjectMax: number;
+  bodyMax: number;
+  canEdit: boolean;
+}
+
+const NOTIFY_TEMPLATES = "api/v1/portal/notifications/templates";
+
+function notifyText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function notifyTemplatesView(raw: Record<string, unknown>): NotifyTemplatesView {
+  const rows = Array.isArray(raw.templates) ? (raw.templates as Record<string, unknown>[]) : [];
+  const defaults = (raw.defaults ?? {}) as Record<string, unknown>;
+  const variables = Array.isArray(raw.variables) ? (raw.variables as Record<string, unknown>[]) : [];
+  return {
+    templates: rows.map((row) => ({
+      kind: notifyText(row.kind),
+      label: notifyText(row.label),
+      custom: row.custom === true,
+      subject: notifyText(row.subject),
+      body: notifyText(row.body),
+      updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
+    })),
+    defaults: { subject: notifyText(defaults.subject), body: notifyText(defaults.body) },
+    variables: variables.map((item) => ({ key: notifyText(item.key), description: notifyText(item.description) })),
+    subjectMax: typeof raw.subject_max === "number" ? raw.subject_max : 200,
+    bodyMax: typeof raw.body_max === "number" ? raw.body_max : 2000,
+    canEdit: raw.can_edit === true,
+  };
+}
+
+async function notifyTemplatesResult(
+  pending: Promise<ServiceResult<Record<string, unknown>>>
+): Promise<ServiceResult<NotifyTemplatesView>> {
+  const result = await pending;
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: notifyTemplatesView(result.data) };
+}
+
+export function getNotifyTemplates(accessToken: string) {
+  return notifyTemplatesResult(
+    portalService<Record<string, unknown>>(accessToken, NOTIFY_TEMPLATES, { method: "GET" }));
+}
+
+export function saveNotifyTemplate(accessToken: string, kind: string, subject: string, body: string) {
+  return notifyTemplatesResult(
+    portalService<Record<string, unknown>>(accessToken, NOTIFY_TEMPLATES + "/" + encodeURIComponent(kind), {
+      method: "PUT",
+      body: JSON.stringify({ subject, body }),
+    }));
+}
+
+export function resetNotifyTemplate(accessToken: string, kind: string) {
+  return notifyTemplatesResult(
+    portalService<Record<string, unknown>>(accessToken, NOTIFY_TEMPLATES + "/" + encodeURIComponent(kind), {
+      method: "DELETE",
+    }));
+}
+
+export function previewNotifyTemplate(accessToken: string, kind: string, subject: string, body: string) {
+  return portalService<{ subject: string; body: string }>(accessToken, NOTIFY_TEMPLATES + "/preview", {
+    method: "POST",
+    body: JSON.stringify({ kind, subject, body }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// §240 AI + automation analytics quadrant (read-only)
+// ---------------------------------------------------------------------------
+
+const AI_AUTOMATION = "api/v1/portal/analytics/ai-automation";
+
+export interface AiAutomationAgent {
+  agentId: number | null;
+  name: string;
+  answers: number;
+  sent: number;
+  handedOff: number;
+  avgConfidence: number | null;
+  calls: number;
+  costUsd: number | null;
+}
+
+export interface AiAutomationView {
+  days: number;
+  generatedAt: string;
+  ai: {
+    answers: {
+      available: boolean;
+      automatic: number;
+      sent: number;
+      handedOff: number;
+      sentShare: number | null;
+      drafts: number;
+      draftsUsable: number;
+      confidence: { average: number | null; scored: number; high: number; ok: number; low: number };
+      tools: { key: string; label: string; count: number; share: number | null }[];
+      noTool: number;
+      reasons: { reason: string; label: string; count: number }[];
+      agents: AiAutomationAgent[];
+    };
+    usage: {
+      available: boolean;
+      calls: number;
+      failed: number;
+      failShare: number | null;
+      tokens: number;
+      avgLatencyMs: number;
+      costUsd: number | null;
+      priced: boolean;
+      features: { feature: string; label: string; calls: number; costUsd: number | null }[];
+    };
+    bands: { highFrom: number; lowBelow: number };
+  };
+  automation: {
+    workflows: {
+      available: boolean;
+      runs: number;
+      completed: number;
+      goalReached: number;
+      stopped: number;
+      failed: number;
+      inProgress: number;
+      waitingApproval: number;
+      steps: number;
+      goalShare: number | null;
+      failureShare: number | null;
+      top: { workflowId: number; name: string; runs: number; goalReached: number; failed: number }[];
+      failures: { runId: number; workflowId: number; name: string; error: string; at: string | null }[];
+    };
+    actions: {
+      available: boolean;
+      total: number;
+      byOutcome: { executed: number; approvalRequired: number; denied: number; error: number; running: number };
+      byActor: { ai: number; workflow: number; approval: number; person: number };
+      keptDays: number;
+    };
+    sequences: {
+      available: boolean;
+      enrolled: number;
+      active: number;
+      completed: number;
+      stopped: number;
+      paused: number;
+      sent: number;
+      skipped: number;
+    };
+  };
+}
+
+/** A number, or null when the Control Plane sent null (nothing to divide / not priced). */
+function qNullable(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function aiAutomationView(raw: Record<string, unknown>): AiAutomationView {
+  const ai = asRecord(raw.ai);
+  const answers = asRecord(ai.answers);
+  const confidence = asRecord(answers.confidence);
+  const usage = asRecord(ai.usage);
+  const bands = asRecord(ai.confidence_bands);
+  const automation = asRecord(raw.automation);
+  const flows = asRecord(automation.workflows);
+  const actions = asRecord(automation.actions);
+  const outcome = asRecord(actions.by_outcome);
+  const actor = asRecord(actions.by_actor);
+  const sequences = asRecord(automation.sequences);
+  return {
+    days: retNumber(raw.days, 30),
+    generatedAt: retText(raw.generated_at),
+    ai: {
+      answers: {
+        available: answers.available === true,
+        automatic: retNumber(answers.automatic),
+        sent: retNumber(answers.sent),
+        handedOff: retNumber(answers.handed_off),
+        sentShare: qNullable(answers.sent_share),
+        drafts: retNumber(answers.drafts),
+        draftsUsable: retNumber(answers.drafts_usable),
+        confidence: {
+          average: qNullable(confidence.average),
+          scored: retNumber(confidence.scored),
+          high: retNumber(confidence.high),
+          ok: retNumber(confidence.ok),
+          low: retNumber(confidence.low),
+        },
+        tools: retRows(answers.tools).map((row) => ({
+          key: retText(row.key),
+          label: retText(row.label) || retText(row.key),
+          count: retNumber(row.count),
+          share: qNullable(row.share),
+        })),
+        noTool: retNumber(answers.no_tool),
+        reasons: retRows(answers.reasons).map((row) => ({
+          reason: retText(row.reason),
+          label: retText(row.label) || retText(row.reason),
+          count: retNumber(row.count),
+        })),
+        agents: retRows(answers.agents).map((row) => ({
+          agentId: qNullable(row.agent_id),
+          name: retText(row.name),
+          answers: retNumber(row.answers),
+          sent: retNumber(row.sent),
+          handedOff: retNumber(row.handed_off),
+          avgConfidence: qNullable(row.avg_confidence),
+          calls: retNumber(row.calls),
+          costUsd: qNullable(row.cost_usd),
+        })),
+      },
+      usage: {
+        available: usage.available === true,
+        calls: retNumber(usage.calls),
+        failed: retNumber(usage.failed),
+        failShare: qNullable(usage.fail_share),
+        tokens: retNumber(usage.tokens),
+        avgLatencyMs: retNumber(usage.avg_latency_ms),
+        costUsd: qNullable(usage.cost_usd),
+        priced: usage.priced === true,
+        features: retRows(usage.features).map((row) => ({
+          feature: retText(row.feature),
+          label: retText(row.label) || retText(row.feature),
+          calls: retNumber(row.calls),
+          costUsd: qNullable(row.cost_usd),
+        })),
+      },
+      bands: { highFrom: retNumber(bands.high_from, 0.8), lowBelow: retNumber(bands.low_below, 0.6) },
+    },
+    automation: {
+      workflows: {
+        available: flows.available === true,
+        runs: retNumber(flows.runs),
+        completed: retNumber(flows.completed),
+        goalReached: retNumber(flows.goal_reached),
+        stopped: retNumber(flows.stopped),
+        failed: retNumber(flows.failed),
+        inProgress: retNumber(flows.in_progress),
+        waitingApproval: retNumber(flows.waiting_approval),
+        steps: retNumber(flows.steps),
+        goalShare: qNullable(flows.goal_share),
+        failureShare: qNullable(flows.failure_share),
+        top: retRows(flows.top).map((row) => ({
+          workflowId: retNumber(row.workflow_id),
+          name: retText(row.name),
+          runs: retNumber(row.runs),
+          goalReached: retNumber(row.goal_reached),
+          failed: retNumber(row.failed),
+        })),
+        failures: retRows(flows.failures).map((row) => ({
+          runId: retNumber(row.run_id),
+          workflowId: retNumber(row.workflow_id),
+          name: retText(row.name),
+          error: retText(row.error),
+          at: typeof row.at === "string" ? row.at : null,
+        })),
+      },
+      actions: {
+        available: actions.available === true,
+        total: retNumber(actions.total),
+        byOutcome: {
+          executed: retNumber(outcome.executed),
+          approvalRequired: retNumber(outcome.approval_required),
+          denied: retNumber(outcome.denied),
+          error: retNumber(outcome.error),
+          running: retNumber(outcome.running),
+        },
+        byActor: {
+          ai: retNumber(actor.ai),
+          workflow: retNumber(actor.workflow),
+          approval: retNumber(actor.approval),
+          person: retNumber(actor.person),
+        },
+        keptDays: retNumber(actions.kept_days, 30),
+      },
+      sequences: {
+        available: sequences.available === true,
+        enrolled: retNumber(sequences.enrolled),
+        active: retNumber(sequences.active),
+        completed: retNumber(sequences.completed),
+        stopped: retNumber(sequences.stopped),
+        paused: retNumber(sequences.paused),
+        sent: retNumber(sequences.sent),
+        skipped: retNumber(sequences.skipped),
+      },
+    },
+  };
+}
+
+export async function getAiAutomation(
+  accessToken: string,
+  days: number
+): Promise<ServiceResult<AiAutomationView>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, AI_AUTOMATION + "?days=" + encodeURIComponent(String(days)), { method: "GET" });
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: aiAutomationView(asRecord(result.data)) };
+}
+
+/** §241 AI execution traces: what each AI answer read, cost and decided. */
+const AI_TRACES = "api/v1/portal/ai/traces";
+
+export interface AiTraceSummary {
+  id: number;
+  created_at: string | null;
+  kind: string;
+  kind_label: string;
+  decision: string;
+  conversation_id: number | null;
+  agent: { id: number; name: string } | null;
+  model: string | null;
+  tokens: number;
+  latency_ms: number | null;
+  cost_usd: number | null;
+  confidence: number | null;
+  reason: { key: string; label: string; detail: string } | null;
+  tools: string[];
+  llm_called: boolean;
+}
+
+export interface AiTraceList {
+  days: number;
+  filters: { kind: string; decision: string; agent_id: number; conversation_id: number };
+  kinds: { key: string; label: string }[];
+  prices_configured: boolean;
+  items: AiTraceSummary[];
+}
+
+export interface AiTraceStep {
+  key: "input" | "guard" | "agent" | "tools" | "model" | "decision" | "response";
+  label: string;
+  status: "ok" | "warn" | "blocked" | "failed" | "skipped" | "unknown";
+  detail: Record<string, unknown>;
+}
+
+export interface AiTraceDetail {
+  id: number;
+  created_at: string | null;
+  kind: string;
+  kind_label: string;
+  decision: string;
+  conversation_id: number | null;
+  channel: string | null;
+  steps: AiTraceStep[];
+  audit: { id: number; action: string; actor_kind: string; note: string }[];
+}
+
+export interface AiTraceQuery {
+  days: number;
+  kind?: string;
+  decision?: string;
+  agentId?: number;
+  conversationId?: number;
+  limit?: number;
+}
+
+export function listAiTraces(accessToken: string, query: AiTraceQuery) {
+  const params = new URLSearchParams({ days: String(query.days) });
+  if (query.kind) params.set("kind", query.kind);
+  if (query.decision) params.set("decision", query.decision);
+  if (query.agentId) params.set("agent_id", String(query.agentId));
+  if (query.conversationId) params.set("conversation_id", String(query.conversationId));
+  if (query.limit) params.set("limit", String(query.limit));
+  return portalService<AiTraceList>(accessToken, AI_TRACES + "?" + params.toString(), { method: "GET" });
+}
+
+export function getAiTrace(accessToken: string, traceId: number) {
+  return portalService<AiTraceDetail>(
+    accessToken, AI_TRACES + "/" + encodeURIComponent(String(traceId)), { method: "GET" });
+}
+
+/** §242 proactive business alerts: demand and complaint patterns, raised as they appear. */
+const PROACTIVE = "api/v1/portal/proactive";
+
+export interface ProactiveParam {
+  key: string;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+}
+
+export interface ProactiveRule {
+  key: string;
+  label: string;
+  description: string;
+  severity: string;
+  enabled: boolean;
+  params: ProactiveParam[];
+}
+
+export interface ProactiveAlert {
+  id: number;
+  rule: string;
+  rule_label: string;
+  severity: string;
+  title: string;
+  detail: string;
+  href: string;
+  conversation_id: number | null;
+  created_at: string | null;
+}
+
+export interface ProactiveState {
+  enabled: boolean;
+  available: boolean;
+  rules: ProactiveRule[];
+  recent: ProactiveAlert[];
+  last_run_at: string | null;
+  every_minutes: number;
+  can_edit: boolean;
+}
+
+export interface ProactiveRun {
+  ok: boolean;
+  checked: number;
+  alerts: ProactiveAlert[];
+}
+
+export interface ProactiveChange {
+  enabled?: boolean;
+  rules?: Record<string, Record<string, boolean | number>>;
+}
+
+export function getProactive(accessToken: string) {
+  return portalService<ProactiveState>(accessToken, PROACTIVE, { method: "GET" });
+}
+
+export function saveProactive(accessToken: string, change: ProactiveChange) {
+  return portalService<ProactiveState>(accessToken, PROACTIVE, { method: "PUT", body: JSON.stringify(change) });
+}
+
+export function runProactiveCheck(accessToken: string) {
+  return portalService<ProactiveRun>(accessToken, PROACTIVE + "/run", { method: "POST" });
 }

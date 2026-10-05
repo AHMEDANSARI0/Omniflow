@@ -251,6 +251,16 @@ def get_audit():
     try:
         with conn.cursor() as cur:
             items = timeline(cur, client_id, days, category, limit)
+            try:
+                # §241: rows written with an AI answer link to its trace
+                # (agent, model); fail-soft - the plain rows always ship
+                import portal_ai_traces
+                import portal_txn
+
+                with portal_txn.savepoint(cur, conn, "of_trace_link"):
+                    items = portal_ai_traces.link_audit(cur, client_id, items)
+            except Exception as error:
+                logger.info("ai audit trace links skipped: %s", error)
         conn.commit()
     finally:
         conn.close()

@@ -79,7 +79,7 @@ check("defaults: email opt-in OFF, every kind on, normal threshold",
       and all(d["kinds"][k] for k in pn.KIND_KEYS), d)
 check("kind registry covers the platform events", pn.KIND_KEYS == (
     "escalation", "approval", "delivery", "workflow", "knowledge", "system",
-    "insights"),
+    "insights", "proactive"),
       pn.KIND_KEYS)
 shaped = pn._shape_settings({"email_enabled": True, "email_to": " a@b.co ",
                              "min_severity": "silly",
@@ -112,9 +112,12 @@ check("mask keeps the domain", pn._mask("ahmed@example.com") == "ah\u2026@exampl
       and pn._mask("") == "", pn._mask("ahmed@example.com"))
 
 # ---------- fan-out ----------
+# (§239: every notify runs one rate-count query after the settings read,
+# and a queued email reads its template just before the ledger insert -
+# the extra [] slots below.)
 
 print("== fan-out ==")
-conn = fresh([[], [], [], [], [{"id": 9}], [{"id": 100}]])
+conn = fresh([[], [], [], [], [], [{"id": 9}], [{"id": 100}]])
 res = pn.notify(1, "escalation", "Chat needs a human", "Conversation #42",
                 severity="normal", dedupe_key="conv:42", conversation_id=42)
 ex = conn.cur.executed
@@ -134,7 +137,7 @@ check("own connection committed + closed (caller's transaction untouched)",
       conn.committed and conn.closed, (conn.committed, conn.closed))
 
 deliveries[:] = []
-conn = fresh([[ON], [], [], [], [{"id": 10}], [{"id": 101}], 1])
+conn = fresh([[ON], [], [], [], [], [{"id": 10}], [], [{"id": 101}], 1])
 res = pn.notify(1, "approval", "Approval AB12: refund", "Customer Ali",
                 severity="high", dedupe_key="approval:7", conversation_id=42,
                 email_sync=True)
@@ -147,54 +150,55 @@ check("email opt-in: sent synchronously to the saved address + ledger updated",
       and conn.cur.executed[-1][1][:2] == ("sent", ""), (res, deliveries))
 
 deliveries[:] = []
-conn = fresh([[ON], [], [], [{"?column?": 1}], [{"id": 102}]])
+conn = fresh([[ON], [], [], [], [{"?column?": 1}], [{"id": 102}]])
 res = pn.notify(1, "escalation", "Chat needs a human", "", dedupe_key="conv:42",
                 email_sync=True)
 check("same unread alert already there -> no second email (deduped)",
       res["in_app"] is None and res["email"] == "deduped" and not deliveries,
       res)
 
-conn = fresh([[dict(ON, min_severity="high")], [], [], [{"id": 11}],
+conn = fresh([[dict(ON, min_severity="high")], [], [], [], [{"id": 11}],
               [{"id": 103}]])
 res = pn.notify(1, "escalation", "Low confidence", severity="normal",
                 email_sync=True)
 check("below the tenant's severity threshold -> bell only", res["in_app"] == 11
       and res["email"] == "off", res)
 
-conn = fresh([[dict(ON, kinds={"workflow": False})], [], [], [], [{"id": 12}],
+conn = fresh([[dict(ON, kinds={"workflow": False})], [], [], [], [], [{"id": 12}],
               [{"id": 104}]])
 res = pn.notify(1, "workflow", "Run failed", email_sync=True)
 check("kind switched off -> bell only", res["email"] == "off", res)
 
-conn = fresh([[dict(ON, email_to="")], [], [], [{"id": 13}],
-              [{"email": "first@example.com"}], [{"id": 105}], 1])
+conn = fresh([[dict(ON, email_to="")], [], [], [], [{"id": 13}],
+              [{"email": "first@example.com"}], [], [{"id": 105}], 1])
 deliveries[:] = []
 res = pn.notify(1, "delivery", "Delivery failed", email_sync=True)
 check("no saved address -> the workspace's first user gets it",
       res["email"] == "sent" and res["email_to"] == "first@example.com"
       and deliveries[0][0] == "first@example.com", res)
 
-conn = fresh([[dict(ON, email_to="")], [], [], [{"id": 14}], [], [{"id": 106}]])
+conn = fresh([[dict(ON, email_to="")], [], [], [], [{"id": 14}], [], [{"id": 106}]])
 res = pn.notify(1, "delivery", "Delivery failed", email_sync=True)
 check("no recipient anywhere -> honest no_recipient", res["email"] == "no_recipient"
       and conn.cur.executed[-1][1][8] == "no_recipient", res)
 
-conn = fresh([[ON], [{"enabled": False}], [{"id": 107}], 1])
+conn = fresh([[ON], [], [{"enabled": False}], [], [{"id": 107}], 1])
 deliveries[:] = []
 res = pn.notify(1, "escalation", "Chat needs a human", email_sync=True)
 check("tenant bell OFF -> no alert but email still honoured",
       res["in_app"] is None and res["email"] == "sent" and deliveries, res)
 
-conn = fresh([[ON], [{"id": 108}], 1])
+conn = fresh([[ON], [], [], [{"id": 108}], 1])
 res = pn.notify(1, "delivery", "Delivery failed", in_app=False, alert_id=77,
                 email_sync=True)
 check("in_app=False reuses an alert raised elsewhere (no second bell row)",
       res["in_app"] == 77 and res["email"] == "sent"
       and not any("portal_alerts" in e[0] for e in conn.cur.executed)
-      and conn.cur.executed[1][1][6] == 77, conn.cur.executed)
+      and [e for e in conn.cur.executed if "INSERT INTO portal_notifications" in e[0]][0][1][6] == 77,
+      conn.cur.executed)
 
 pn._deliver = lambda to, s, b: (False, "SMTP host is not set.")
-conn = fresh([[ON], [], [], [], [{"id": 15}], [{"id": 109}], 1])
+conn = fresh([[ON], [], [], [], [{"id": 15}], [], [{"id": 109}], 1])
 res = pn.notify(1, "system", "Test notification", email_sync=True)
 check("delivery failure is recorded, never raised", res["email"] == "failed"
       and res["error"] == "SMTP host is not set."
@@ -204,7 +208,7 @@ pn._deliver = fake_deliver
 
 marks = []
 pn._mark_email = lambda *a: marks.append(a)
-conn = fresh([[ON], [], [], [{"id": 16}], [{"id": 110}]])
+conn = fresh([[ON], [], [], [], [{"id": 16}], [], [{"id": 110}]])
 res = pn.notify(1, "escalation", "Chat needs a human", "d")
 deadline = time.time() + 3
 while not marks and time.time() < deadline:
@@ -220,14 +224,14 @@ check("database down -> error reported, no exception", res["error"]
 res = pn.notify(1, "not-a-kind", "", severity="loud")
 check("unknown kind/severity normalised (system/normal), blank title filled",
       res["error"] != "" or True, res)  # reached without raising
-conn = fresh([[], [], [], [], [{"id": 17}], [{"id": 111}]])
+conn = fresh([[], [], [], [], [], [{"id": 17}], [{"id": 111}]])
 pn.notify(1, "not-a-kind", "", severity="loud", dedupe_key="k")
 check("normalised values reach the ledger",
       conn.cur.executed[-1][1][1:4] == ("system", "normal", "Notification"),
       conn.cur.executed[-1][1])
 
 pn.EMAIL_ENABLED = False
-conn = fresh([[ON], [], [], [], [{"id": 18}], [{"id": 112}]])
+conn = fresh([[ON], [], [], [], [], [{"id": 18}], [{"id": 112}]])
 res = pn.notify(1, "escalation", "x", email_sync=True)
 check("OF_NOTIFY_EMAIL=0 kill switch -> email off even when the tenant opted in",
       res["email"] == "off", res)

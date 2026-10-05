@@ -38,6 +38,7 @@ import json
 import logging
 import os
 import sys
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Blueprint, jsonify, request
@@ -439,7 +440,11 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
     spoken-reply rules, ``extra_context`` (e.g. the live call transcript)
     rides the same sanitised CONTEXT, ``usage_feature`` tags the ledger.
     """
-    grounding: Dict[str, Any] = {"tools": []}
+    started = time.time()
+    # §241 execution trace: the input's length only (the text stays in the
+    # messages table, so retention and deletes keep covering it)
+    grounding: Dict[str, Any] = {"tools": [],
+                                 "input_chars": len(str(message_text or "").strip())}
     context: Dict[str, Any] = {}
     calls = 0
 
@@ -501,6 +506,7 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
                             str(agent.get("instructions") or "")[:400]}
         grounding["tools"].append("agent_persona")
         grounding["agent_id"] = agent.get("id")
+        grounding["agent_name"] = str(agent.get("name") or "")[:80]
         in_hours = True
         try:
             import portal_agents as _agents_hours
@@ -608,17 +614,29 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
             system_prompt += portal_retention.LOYALTY_RULES
         except Exception:
             pass
+    model_started = time.time()
     with portal_llm.usage_scope(usage_feature or "brain", client_id, cur,
-                                agent_id=_agent_id):
+                                agent_id=_agent_id) as scope:
         payload = portal_llm.chat_json(
             system_prompt,
             json.dumps(context, ensure_ascii=False, default=str),
             max_tokens=300,
         )
     grounding["llm_called"] = payload is not None
+    grounding["timings_ms"] = {
+        "tools": int((model_started - started) * 1000),
+        "model": int((time.time() - model_started) * 1000)}
+    grounding["model_calls"] = _scope_calls(scope)
     if agent and str(agent.get("instructions") or "").strip():
         grounding["_private"] = [str(agent.get("instructions"))[:400]]
     return payload, grounding
+
+
+def _scope_calls(scope: Any) -> List[Dict[str, Any]]:
+    """The LLM calls a usage_scope saw (model, tokens, latency, ok, route)."""
+    calls = getattr(scope, "calls", None)
+    return [dict(call) for call in calls if isinstance(call, dict)] \
+        if isinstance(calls, list) else []
 
 
 def _decide(payload: Optional[Dict[str, Any]],

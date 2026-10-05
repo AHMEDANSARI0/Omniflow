@@ -14,6 +14,8 @@ from portal_auth import (
     authenticate_portal_request,
 )
 import portal_db
+# §240: "bought" = a purchase (paid, shipped or delivered), one shared set
+import portal_retention
 from typing import Any, Dict, List
 
 bp = Blueprint("portal_reco", __name__, url_prefix="/api/v1/portal")
@@ -103,7 +105,8 @@ def _load_paid_items(cur, client_id, contact) -> List[Dict[str, str]]:
         return []
     cur.execute(
         "SELECT items FROM " + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND contact_id = %s AND status = 'paid'"
+        " WHERE client_id = %s AND contact_id = %s"
+        " AND status IN " + portal_retention.PURCHASED_SQL +
         " ORDER BY id DESC LIMIT " + str(MAX_PAID_LINKS),
         (client_id, contact),
     )
@@ -134,7 +137,7 @@ def _load_all_paid_links(cur, client_id) -> List[Dict[str, Any]]:
         return []
     cur.execute(
         "SELECT contact_id, items FROM " + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND status = 'paid'"
+        " WHERE client_id = %s AND status IN " + portal_retention.PURCHASED_SQL +
         " ORDER BY id DESC LIMIT " + str(MAX_ALL_LINKS),
         (client_id,),
     )

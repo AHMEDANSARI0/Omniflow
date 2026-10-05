@@ -140,7 +140,15 @@ for expected in ("/api/v1/public/checkout/<token>", "/api/v1/public/store/<slug>
                  "/api/v1/portal/retention/settings",
                  "/api/v1/portal/retention/overview",
                  "/api/v1/portal/retention/customer",
-                 "/api/v1/portal/retention/run"):
+                 "/api/v1/portal/retention/run",
+                 "/api/v1/portal/analytics/ai-automation",
+                 "/api/v1/portal/ai/traces",
+                 "/api/v1/portal/ai/traces/<trace_id>",
+                 "/api/v1/portal/proactive",
+                 "/api/v1/portal/proactive/run",
+                 "/api/v1/portal/notifications/templates",
+                 "/api/v1/portal/notifications/templates/<kind>",
+                 "/api/v1/portal/notifications/templates/preview"):
     check("route registered: " + expected,
           any(r.rule == expected for r in rules), expected)
 

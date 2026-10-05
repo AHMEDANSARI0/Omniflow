@@ -88,11 +88,14 @@ check("msgs rollup grouped by day+direction",
       any("'msgs_' || direction" in s and "GROUP BY" in s
           and "ON CONFLICT (client_id, day, kind, key)" in s
           for s in sqls), "upsert")
-check("revenue rollup from paid links",
-      any("'revenue'" in s and "SUM(COALESCE(paid_amount, 0))" in s
-          and "status = 'paid'" in s for s in sqls), "revenue")
-check("orders rollup counts paid links",
-      any("'orders'" in s and "COUNT(*)" in s for s in sqls), "orders")
+check("revenue + orders rollups from purchases by order day (§240)",
+      any("('revenue'), ('orders')" in s and "SUM(COALESCE(total, 0))" in s
+          and "status IN ('paid', 'shipped', 'delivered')" in s
+          and "created_at::date" in s and "updated_at::date" not in s
+          and "paid_amount" not in s for s in sqls), sqls)
+check("recent revenue / orders days cleared first (no stale day)",
+      "DELETE FROM" in sqls[1] and "kind IN ('revenue', 'orders')" in sqls[1]
+      and "day >= %s" in sqls[1] and "INSERT INTO" in sqls[2], sqls[1:3])
 
 conn = fresh([[{"day": None, "value": 3}], []])
 with conn.cur as cur:

@@ -35,24 +35,35 @@ class usage_scope:
     (savepoint-guarded); without it the ledger opens its own short
     connection. ``agent_id`` (optional) attributes the call to an AI
     persona for per-agent cost split. Scopes nest (innermost wins) and
-    never raise."""
+    never raise.
+
+    §241: ``scope.calls`` lists what the calls inside the block cost (model,
+    tokens, latency, ok, route) so a caller can keep it on its own trace."""
 
     def __init__(self, feature: str, client_id: int = 0, cur=None,
                  agent_id: int = 0):
         self.entry = (str(feature or "")[:40], int(client_id or 0), cur,
                       int(agent_id or 0))
+        self.calls: List[Dict[str, Any]] = []
 
     def __enter__(self):
         stack = getattr(_SCOPE, "stack", None)
         if stack is None:
             stack = _SCOPE.stack = []
         stack.append(self.entry)
+        collectors = getattr(_SCOPE, "collectors", None)
+        if collectors is None:
+            collectors = _SCOPE.collectors = []
+        collectors.append(self.calls)
         return self
 
     def __exit__(self, *exc):
         stack = getattr(_SCOPE, "stack", None)
         if stack:
             stack.pop()
+        collectors = getattr(_SCOPE, "collectors", None)
+        if collectors:
+            collectors.pop()
         return False
 
 
@@ -60,6 +71,17 @@ def current_scope():
     """(feature, client_id, cur, agent_id) of the innermost usage_scope."""
     stack = getattr(_SCOPE, "stack", None)
     return stack[-1] if stack else ("", 0, None, 0)
+
+
+#: most calls one scope keeps for its caller's trace (§241)
+MAX_SCOPE_CALLS = 5
+
+
+def _collect(call: Dict[str, Any]) -> None:
+    """Keep one call on the innermost usage_scope (§241 execution traces)."""
+    collectors = getattr(_SCOPE, "collectors", None)
+    if collectors and len(collectors[-1]) < MAX_SCOPE_CALLS:
+        collectors[-1].append(call)
 
 
 def _record_usage(model: str, usage: Any, ok: bool, started: float,
@@ -73,11 +95,16 @@ def _record_usage(model: str, usage: Any, ok: bool, started: float,
         feature, client_id, cur, agent_id = current_scope()
         usage = usage if isinstance(usage, dict) else {}
         extra = {"route": route} if route else {}
+        prompt_tokens = int(usage.get("prompt_tokens") or 0)
+        completion_tokens = int(usage.get("completion_tokens") or 0)
+        latency_ms = int((time.time() - started) * 1000)
+        _collect({"model": str(model or "")[:80], "route": route,
+                  "prompt_tokens": prompt_tokens,
+                  "completion_tokens": completion_tokens,
+                  "latency_ms": latency_ms, "ok": bool(ok)})
         portal_ai_usage.record(
-            client_id, feature or "other", model,
-            int(usage.get("prompt_tokens") or 0),
-            int(usage.get("completion_tokens") or 0),
-            int((time.time() - started) * 1000), ok, cur=cur,
+            client_id, feature or "other", model, prompt_tokens,
+            completion_tokens, latency_ms, ok, cur=cur,
             agent_id=agent_id, **extra)
     except Exception:
         pass

@@ -16,6 +16,7 @@ from portal_auth import (
     authenticate_portal_request,
 )
 import portal_db
+import portal_retention
 
 bp = Blueprint("portal_restock", __name__, url_prefix="/api/v1/portal")
 
@@ -106,13 +107,14 @@ def _classify(recent: int, prior: int, weekly_rate: float) -> Tuple[str, str]:
 
 
 def _load_window_links(cur, client_id, days: int) -> List[Dict[str, Any]]:
-    """Paid links inside the window (created_at included for the halves)."""
+    """Purchased links (paid, shipped or delivered - §240) - weekly sell rate
+    inside the window (created_at included for the halves)."""
     if not _table_exists(cur, LINKS_TABLE):
         return []
     cur.execute(
         "SELECT contact_id, items, created_at FROM "
         + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND status = 'paid'"
+        " WHERE client_id = %s AND status IN " + portal_retention.PURCHASED_SQL +
         " AND created_at > NOW() - make_interval(days => %s)"
         " ORDER BY id DESC LIMIT " + str(MAX_LINKS),
         (client_id, days),

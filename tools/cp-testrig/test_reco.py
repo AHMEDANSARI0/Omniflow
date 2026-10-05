@@ -149,6 +149,11 @@ check("200 suggest", status(response) == 200
       and response.get_json()["contact_id"] == "92x"
       and isinstance(response.get_json()["suggestions"], list), status(response))
 check("9 executes", len(conn.cur.executed) == 9, len(conn.cur.executed))
+bought_sqls = [sql for sql, _ in conn.cur.executed
+               if "portal_checkout_links" in sql and "status IN" in sql]
+check("bought = purchases (paid, shipped, delivered) in both history reads (§240)",
+      len(bought_sqls) == 2 and all("status IN ('paid', 'shipped', 'delivered')" in sql
+                                    for sql in bought_sqls), bought_sqls)
 
 response = client.get("/api/v1/portal/reco/suggest")
 check("400 no contact", status(response) == 400, status(response))

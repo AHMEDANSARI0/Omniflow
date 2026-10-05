@@ -1,7 +1,12 @@
 """Revenue & pipeline pulse: deterministic, zero AI. Turns the workspace's
-own checkout links into a money view - paid revenue with a prior-window
+own checkout links into a money view - revenue with a prior-window
 comparison, AOV, new vs repeat buyers, cancelled rate, the open-cart
-pipeline, and per-item revenue with trends. Read-only: no new tables."""
+pipeline, and per-item revenue with trends. Read-only: no new tables.
+
+§240: an order counts once it is a purchase - paid, shipped or delivered
+(the same set as portal_retention). A COD order used to drop out of revenue
+the moment it shipped. "Repeat buyer" = a window buyer who also bought
+before the window (it used to count every window buyer as repeat)."""
 
 import csv
 import io
@@ -31,6 +36,12 @@ MAX_BUYERS = 1000
 MAX_ITEMS = 10
 
 _NUMBER_RE = re.compile(r"\d[\d,]*")
+
+#: purchases (same set as portal_retention.PURCHASED_STATUSES)
+PURCHASED = ("paid", "shipped", "delivered")
+PURCHASED_SQL = "(" + ", ".join("'" + s + "'" for s in PURCHASED) + ")"
+#: purchases plus cancellations (the cancelled rate needs both)
+DECIDED_SQL = "(" + ", ".join("'" + s + "'" for s in PURCHASED + ("cancelled",)) + ")"
 
 _REVENUE_DDL_READY = True  # module owns no tables
 
@@ -81,13 +92,13 @@ def _names_of(items: Any) -> List[str]:
 
 def _load_links(cur, client_id, days: int,
                 has_links: bool = True) -> List[Dict[str, Any]]:
-    """Paid + cancelled links inside the window (newest first)."""
+    """Purchased + cancelled links inside the window (newest first)."""
     if not has_links:
         return []
     cur.execute(
         "SELECT contact_id, status, items FROM "
         + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND status IN ('paid', 'cancelled')"
+        " WHERE client_id = %s AND status IN " + DECIDED_SQL +
         " AND created_at > NOW() - make_interval(days => %s)"
         " ORDER BY id DESC LIMIT " + str(MAX_LINKS),
         (client_id, days),
@@ -105,7 +116,7 @@ def _load_prior_links(cur, client_id, days: int,
     cur.execute(
         "SELECT contact_id, status, items FROM "
         + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND status IN ('paid', 'cancelled')"
+        " WHERE client_id = %s AND status IN " + DECIDED_SQL +
         " AND created_at > NOW() - make_interval(days => %s)"
         " AND created_at <= NOW() - make_interval(days => %s)"
         " ORDER BY id DESC LIMIT " + str(MAX_LINKS),
@@ -130,20 +141,18 @@ def _load_open_links(cur, client_id,
     return [{"items": row.get("items")} for row in portal_db.rows(cur)]
 
 
-def _load_buyer_history(cur, client_id,
-                        has_links: bool = True) -> List[Dict[str, Any]]:
-    if not has_links:
-        return []
+def _load_returning(cur, client_id, contacts: List[str], days: int) -> set:
+    """Window buyers who also bought BEFORE the window (= repeat)."""
+    if not contacts:
+        return set()
     cur.execute(
-        "SELECT contact_id, MIN(created_at) AS first_at, COUNT(*) AS total"
-        " FROM " + portal_db._q(LINKS_TABLE) +
-        " WHERE client_id = %s AND status = 'paid'"
-        " GROUP BY contact_id LIMIT " + str(MAX_BUYERS),
-        (client_id,),
+        "SELECT DISTINCT contact_id FROM " + portal_db._q(LINKS_TABLE) +
+        " WHERE client_id = %s AND contact_id = ANY(%s)"
+        " AND status IN " + PURCHASED_SQL +
+        " AND created_at <= NOW() - make_interval(days => %s)",
+        (client_id, contacts, days),
     )
-    return [{"contact_id": str(row.get("contact_id") or ""),
-             "total": int(row.get("total") or 0)}
-            for row in portal_db.rows(cur)]
+    return {str(row.get("contact_id") or "") for row in portal_db.rows(cur)}
 
 
 def _load_winback_sent(cur, client_id, days: int) -> int:
@@ -164,10 +173,10 @@ def _window_stats(links: List[Dict[str, Any]]) -> Dict[str, Any]:
     orders = 0
     cancelled = 0
     for link in links:
-        if link["status"] == "paid":
+        if link["status"] in PURCHASED:
             orders += 1
             revenue += _item_total(link["items"])
-        else:
+        elif link["status"] == "cancelled":
             cancelled += 1
     decided = orders + cancelled
     return {
@@ -205,7 +214,7 @@ def _item_stats(cur, client_id, days: int) -> List[Dict[str, Any]]:
     for label, links, is_prior in (("current", window, False),
                                    ("prior", prior, True)):
         for link in links:
-            if link["status"] != "paid":
+            if link["status"] not in PURCHASED:
                 continue
             for item in (link["items"]
                          if isinstance(link["items"], list) else []):
@@ -265,7 +274,11 @@ def revenue_summary():
                 window = _load_links(cur, client_id, days, has_links)
                 prior = _load_prior_links(cur, client_id, days, has_links)
                 open_links = _load_open_links(cur, client_id, has_links)
-                buyers = _load_buyer_history(cur, client_id, has_links)
+                window_contact_ids = sorted(
+                    {link["contact_id"] for link in window
+                     if link["status"] in PURCHASED and link["contact_id"]})
+                returning = _load_returning(cur, client_id,
+                                            window_contact_ids[:MAX_BUYERS], days)
                 winback_sent = _load_winback_sent(cur, client_id, days)
         finally:
             conn.close()
@@ -276,10 +289,7 @@ def revenue_summary():
     stats = _window_stats(window)
     prior_stats = _window_stats(prior)
     pipeline_value = sum(_item_total(link["items"]) for link in open_links)
-    window_contact_ids = {link["contact_id"] for link in window
-                          if link["status"] == "paid" and link["contact_id"]}
-    repeat = sum(1 for buyer in buyers
-                 if buyer["contact_id"] in window_contact_ids)
+    repeat = sum(1 for contact in window_contact_ids if contact in returning)
     new = len(window_contact_ids) - repeat
     return jsonify({
         "days": days,

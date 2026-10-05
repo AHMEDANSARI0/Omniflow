@@ -104,6 +104,9 @@ from portal_ai_report import bp as portal_ai_report_bp  # noqa: E402
 from portal_handoff_brief import bp as portal_handoff_brief_bp  # noqa: E402
 from portal_sales import bp as portal_sales_bp  # noqa: E402
 from portal_retention import bp as portal_retention_bp  # noqa: E402
+from portal_ai_automation import bp as portal_ai_automation_bp  # noqa: E402
+from portal_ai_traces import bp as portal_ai_traces_bp  # noqa: E402
+from portal_proactive import bp as portal_proactive_bp  # noqa: E402
 from portal_model_router import bp as admin_model_router_bp  # noqa: E402
 from portal_policy import bp as portal_policy_bp  # noqa: E402
 from portal_obs import install_obs as _install_obs  # noqa: E402
@@ -203,6 +206,9 @@ aux_app.register_blueprint(portal_ai_report_bp)
 aux_app.register_blueprint(portal_handoff_brief_bp)
 aux_app.register_blueprint(portal_sales_bp)
 aux_app.register_blueprint(portal_retention_bp)
+aux_app.register_blueprint(portal_ai_automation_bp)
+aux_app.register_blueprint(portal_ai_traces_bp)
+aux_app.register_blueprint(portal_proactive_bp)
 aux_app.register_blueprint(admin_model_router_bp)
 aux_app.register_blueprint(portal_policy_bp)
 aux_app.register_blueprint(admin_providers_bp)

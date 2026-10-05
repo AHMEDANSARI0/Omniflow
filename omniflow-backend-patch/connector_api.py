@@ -300,6 +300,14 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_proactive
+
+                    # §242: proactive business alerts (background thread,
+                    # own connection, at most every OF_PROACTIVE_EVERY_MINUTES).
+                    portal_proactive.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
                     import portal_inbound_media
 
                     # §214: retention sweep for stored customer files
