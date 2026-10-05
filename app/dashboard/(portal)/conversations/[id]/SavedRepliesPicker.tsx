@@ -173,7 +173,7 @@ export default function SavedRepliesPicker({
                     </span>
                     {(reply.useCount ?? 0) > 0 ? (
                       <span className="ml-1.5 text-[10px] text-ink-3">
-                        used {reply.useCount}\u00d7
+                        used {reply.useCount}{"\u00d7"}
                       </span>
                     ) : null}
                     <p className="mt-1 line-clamp-2 text-xs text-ink-3">

@@ -56,6 +56,15 @@ def _value_from(ctx: Dict[str, Any], field: str):
     return None
 
 
+def _as_text(value: Any) -> str:
+    """Comparable text of a context value. Booleans read "true"/"false"
+    (§236: False used to become "", so `in_hours is "false"` - outside
+    business hours - never matched)."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value or "").lower()
+
+
 def match_condition(condition: Dict[str, Any],
                     ctx: Dict[str, Any]) -> bool:
     """One condition: {field, op, value}. Unknown ops never match
@@ -65,14 +74,10 @@ def match_condition(condition: Dict[str, Any],
     value = condition.get("value")
     if field == "keyword":
         return _keyword_hit(str(ctx.get("text") or ""), op, value)
-    if op == "equals":
-        return str(_value_from(ctx, field) or "").lower() \
-            == str(value or "").lower()
+    if op in ("equals", "is"):
+        return _as_text(_value_from(ctx, field)) == str(value or "").lower()
     if op == "in_hours":
         return bool(_value_from(ctx, field))
-    if op == "is":
-        return str(_value_from(ctx, field) or "").lower() \
-            == str(value or "").lower()
     # contains over any context value (stringified)
     actual = str(_value_from(ctx, field) or "").lower()
     return str(value or "").lower() in actual
@@ -142,6 +147,10 @@ def _count_rows(cur, client_id: int, table: str) -> int:
 def rules_summary(cur, client_id: int) -> List[Dict[str, Any]]:
     """Normalised snapshot of every rule family (fail-soft per family:
     a missing/broken table shows 0 rules, never an error page)."""
+    import portal_txn
+
+    # §236: each family reads in its own savepoint - a missing table used
+    # to abort the caller's transaction (the AI report and the Rules page)
     families: List[Dict[str, Any]] = []
 
     def add(rule_set, label, href, count, extra=""):
@@ -152,109 +161,116 @@ def rules_summary(cur, client_id: int) -> List[Dict[str, Any]]:
 
     # routing: keyword -> team member assignment
     try:
-        count = _count_rows(cur, client_id, "portal_routing_rules")
-        add("routing", "Routing rules", "/dashboard/team", count,
-            "Keyword par conversation team member ko assign hoti hai")
+        with portal_txn.savepoint(cur, None, "of_rules"):
+            count = _count_rows(cur, client_id, "portal_routing_rules")
+            add("routing", "Routing rules", "/dashboard/team", count,
+                "Keyword par conversation team member ko assign hoti hai")
     except Exception:
         add("routing", "Routing rules", "/dashboard/team", 0)
 
     # listening: keyword -> alert/hit
     try:
-        count = _count_rows(cur, client_id, "portal_listen_rules")
-        add("listen", "Listening rules", "/dashboard/automations", count,
-            "Keyword milne par alert/hit record hota hai")
+        with portal_txn.savepoint(cur, None, "of_rules"):
+            count = _count_rows(cur, client_id, "portal_listen_rules")
+            add("listen", "Listening rules", "/dashboard/automations", count,
+                "Keyword milne par alert/hit record hota hai")
     except Exception:
         add("listen", "Listening rules", "/dashboard/automations", 0)
 
     # negotiation bounds: the discount policy
     try:
-        cur.execute(
-            "SELECT enabled, floor_percent, max_percent FROM "
-            + portal_db._q("portal_negotiation_settings") +
-            " WHERE client_id = %s",
-            (client_id,),
-        )
-        rows = portal_db.rows(cur)
-        row = rows[0] if rows else {}
-        enabled = bool(row.get("enabled"))
-        add("negotiation", "Negotiation bounds", "/dashboard/settings",
-            1 if enabled else 0,
-            ("AI discount: " + str(row.get("floor_percent") or 0) + "%"
-             " - " + str(row.get("max_percent") or 0) + "% ke andar")
-            if enabled else "Band hai — Settings me enable karein")
+        with portal_txn.savepoint(cur, None, "of_rules"):
+            cur.execute(
+                "SELECT enabled, floor_percent, max_percent FROM "
+                + portal_db._q("portal_negotiation_settings") +
+                " WHERE client_id = %s",
+                (client_id,),
+            )
+            rows = portal_db.rows(cur)
+            row = rows[0] if rows else {}
+            enabled = bool(row.get("enabled"))
+            add("negotiation", "Negotiation bounds", "/dashboard/settings",
+                1 if enabled else 0,
+                ("AI discount: " + str(row.get("floor_percent") or 0) + "%"
+                 " - " + str(row.get("max_percent") or 0) + "% ke andar")
+                if enabled else "Band hai — Settings me enable karein")
     except Exception:
         add("negotiation", "Negotiation bounds", "/dashboard/settings", 0)
 
     # business hours + handoff + autonomy (three config-backed policies)
     try:
-        cur.execute(
-            "SELECT working_hours_enabled, human_handoff_enabled,"
-            " working_hours_start, working_hours_end FROM "
-            + portal_db._q(portal_db.BOT_TABLE) + " WHERE client_id = %s",
-            (client_id,),
-        )
-        row = (portal_db.rows(cur) or [{}])[0]
-        hours_on = bool(row.get("working_hours_enabled"))
-        add("hours", "Business hours", "/dashboard/automations",
-            1 if hours_on else 0,
-            ("Off-hours auto-reply chalu (" + str(row.get(
-                "working_hours_start") or "") + " - " + str(row.get(
-                    "working_hours_end") or "") + ")")
-            if hours_on else "24/7 mode — off-hours reply band")
-        add("handoff", "Human handoff", "/dashboard/automations",
-            1 if bool(row.get("human_handoff_enabled")) else 0,
-            " Zaroorat par team ko saup do" if bool(
-                row.get("human_handoff_enabled")) else "Band hai")
+        with portal_txn.savepoint(cur, None, "of_rules"):
+            cur.execute(
+                "SELECT working_hours_enabled, human_handoff_enabled,"
+                " working_hours_start, working_hours_end FROM "
+                + portal_db._q(portal_db.BOT_TABLE) + " WHERE client_id = %s",
+                (client_id,),
+            )
+            row = (portal_db.rows(cur) or [{}])[0]
+            hours_on = bool(row.get("working_hours_enabled"))
+            add("hours", "Business hours", "/dashboard/automations",
+                1 if hours_on else 0,
+                ("Off-hours auto-reply chalu (" + str(row.get(
+                    "working_hours_start") or "") + " - " + str(row.get(
+                        "working_hours_end") or "") + ")")
+                if hours_on else "24/7 mode — off-hours reply band")
+            add("handoff", "Human handoff", "/dashboard/automations",
+                1 if bool(row.get("human_handoff_enabled")) else 0,
+                " Zaroorat par team ko saup do" if bool(
+                    row.get("human_handoff_enabled")) else "Band hai")
     except Exception:
         add("hours", "Business hours", "/dashboard/automations", 0)
         add("handoff", "Human handoff", "/dashboard/automations", 0)
     try:
-        cur.execute(
-            "SELECT autonomy FROM " + portal_db._q("portal_brain_settings")
-            + " WHERE client_id = %s",
-            (client_id,),
-        )
-        rows = portal_db.rows(cur)
-        autonomy = str((rows[0] if rows else {}).get("autonomy")
-                       or "suggest")
-        add("autonomy", "AI autonomy", "/dashboard/ai-brain",
-            1 if autonomy == "auto" else 0,
-            ("Auto-reply chalu — AI khud bhejta hai"
-             if autonomy == "auto"
-             else "Assist-first — AI sirf draft karta hai"))
+        with portal_txn.savepoint(cur, None, "of_rules"):
+            cur.execute(
+                "SELECT autonomy FROM " + portal_db._q("portal_brain_settings")
+                + " WHERE client_id = %s",
+                (client_id,),
+            )
+            rows = portal_db.rows(cur)
+            autonomy = str((rows[0] if rows else {}).get("autonomy")
+                           or "suggest")
+            add("autonomy", "AI autonomy", "/dashboard/ai-brain",
+                1 if autonomy == "auto" else 0,
+                ("Auto-reply chalu — AI khud bhejta hai"
+                 if autonomy == "auto"
+                 else "Assist-first — AI sirf draft karta hai"))
     except Exception:
         add("autonomy", "AI autonomy", "/dashboard/ai-brain", 0)
 
     # workflows: trigger -> steps automations (engine 9)
     try:
-        cur.execute(
-            "SELECT COUNT(*) AS n FROM " + portal_db._q("portal_workflows")
-            + " WHERE client_id = %s AND status = 'active'",
-            (client_id,),
-        )
-        rows = portal_db.rows(cur)
-        active = int((rows[0] if rows else {}).get("n") or 0)
-        add("workflows", "Workflows", "/dashboard/workflows", active,
-            (str(active) + " active — trigger, conditions, AI decisions,"
-             " actions and waits") if active
-            else "No active workflows yet")
+        with portal_txn.savepoint(cur, None, "of_rules"):
+            cur.execute(
+                "SELECT COUNT(*) AS n FROM " + portal_db._q("portal_workflows")
+                + " WHERE client_id = %s AND status = 'active'",
+                (client_id,),
+            )
+            rows = portal_db.rows(cur)
+            active = int((rows[0] if rows else {}).get("n") or 0)
+            add("workflows", "Workflows", "/dashboard/workflows", active,
+                (str(active) + " active — trigger, conditions, AI decisions,"
+                 " actions and waits") if active
+                else "No active workflows yet")
     except Exception:
         add("workflows", "Workflows", "/dashboard/workflows", 0)
 
     # approvals: the high-risk gate
     try:
-        cur.execute(
-            "SELECT COUNT(*) AS n FROM " + portal_db._q(
-                "portal_approvals") +
-            " WHERE client_id = %s AND status = 'pending'",
-            (client_id,),
-        )
-        rows = portal_db.rows(cur)
-        pending = int((rows[0] if rows else {}).get("n") or 0)
-        add("approvals", "Approval gate", "/dashboard/approvals", 1,
-            (str(pending) + " pending — WhatsApp par 1/0 se decide karein")
-            if pending else "High-risk actions aapki tasdeeq ke baghair"
-            " nahi chalte")
+        with portal_txn.savepoint(cur, None, "of_rules"):
+            cur.execute(
+                "SELECT COUNT(*) AS n FROM " + portal_db._q(
+                    "portal_approvals") +
+                " WHERE client_id = %s AND status = 'pending'",
+                (client_id,),
+            )
+            rows = portal_db.rows(cur)
+            pending = int((rows[0] if rows else {}).get("n") or 0)
+            add("approvals", "Approval gate", "/dashboard/approvals", 1,
+                (str(pending) + " pending — WhatsApp par 1/0 se decide karein")
+                if pending else "High-risk actions aapki tasdeeq ke baghair"
+                " nahi chalte")
     except Exception:
         add("approvals", "Approval gate", "/dashboard/approvals", 0)
 

@@ -34,6 +34,7 @@ import portal_db
 import portal_cod
 import portal_contacts
 import portal_sequences
+import portal_txn
 
 
 logger = logging.getLogger("omniflow.connector-api")
@@ -199,54 +200,68 @@ def list_commands():
         conn = portal_db._conn()
         try:
             with conn.cursor() as cur:
+                # §236: every tick step runs in its own savepoint - one that
+                # fails (or swallows an SQL error) no longer aborts the
+                # command read below, which used to answer 503 for the poll.
                 try:
                     import portal_growth
 
-                    portal_growth.materialize_due_broadcasts(cur, tenant["client_id"], conn)
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_growth.materialize_due_broadcasts(cur, tenant["client_id"], conn)
+                except Exception:
+                    pass
+                try:
                     import portal_digest
 
-                    portal_digest.materialize_due_digest(
-                        cur, tenant["client_id"], conn
-                    )
-
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_digest.materialize_due_digest(
+                            cur, tenant["client_id"], conn
+                        )
+                except Exception:
+                    pass
+                try:
                     import portal_checkout
 
-                    portal_checkout.materialize_cart_reminders(
-                        cur, tenant["client_id"], conn
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_checkout.materialize_cart_reminders(
+                            cur, tenant["client_id"], conn
+                        )
+                except Exception:
+                    pass
+                try:
+                    import portal_bi
 
-                    try:
-                        import portal_bi
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
                         portal_bi.materialize_weekly_problems(
                             cur, tenant["client_id"], conn
                         )
-                    except Exception:
-                        pass
-
                 except Exception:
                     pass
                 try:
                     import portal_webhooks
 
-                    portal_webhooks.deliver_pending_webhooks(
-                        cur, tenant["client_id"], conn
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_webhooks.deliver_pending_webhooks(
+                            cur, tenant["client_id"], conn
+                        )
                 except Exception:
                     pass
                 try:
                     import portal_sequences
 
-                    portal_sequences.deliver_due_sequence_steps(
-                        cur, tenant["client_id"], conn
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_sequences.deliver_due_sequence_steps(
+                            cur, tenant["client_id"], conn
+                        )
                 except Exception:
                     pass
                 try:
                     import portal_workflows
 
-                    portal_workflows.run_due_workflows(
-                        cur, tenant["client_id"], conn
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_workflows.run_due_workflows(
+                            cur, tenant["client_id"], conn
+                        )
                 except Exception:
                     pass
                 try:
@@ -267,6 +282,15 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_ai_report
+
+                    # §235: automatic AI setup check (background thread,
+                    # own connection, at most every OF_AI_REPORT_EVERY_HOURS;
+                    # notifies the owner only when it got worse).
+                    portal_ai_report.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
                     import portal_inbound_media
 
                     # §214: retention sweep for stored customer files
@@ -277,9 +301,10 @@ def list_commands():
                 try:
                     import portal_events
 
-                    portal_events.requeue_due_commands(
-                        cur, tenant["client_id"]
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_events.requeue_due_commands(
+                            cur, tenant["client_id"]
+                        )
                 except Exception:
                     pass
                 cmd_sql = (
@@ -473,13 +498,16 @@ def _ensure_away_table() -> None:
 
 def _load_business_hours(cur, client_id):
     try:
-        cur.execute(
-            "SELECT settings -> 'business_hours' AS business_hours FROM " +
-            portal_db._q("client_settings") +
-            " WHERE client_id = %s",
-            (client_id,),
-        )
-        rows = portal_db.rows(cur)
+        # §236: a missing settings table must not abort the caller's
+        # transaction (this runs inside ingest and the workflow runner)
+        with portal_txn.savepoint(cur, None, "of_hours"):
+            cur.execute(
+                "SELECT settings -> 'business_hours' AS business_hours FROM " +
+                portal_db._q("client_settings") +
+                " WHERE client_id = %s",
+                (client_id,),
+            )
+            rows = portal_db.rows(cur)
     except Exception:
         return _AWAY_DEFAULTS
     stored = rows[0].get("business_hours") if rows and rows[0] else None
@@ -744,12 +772,16 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                 try:
                     import portal_ratelimit
 
-                    if not portal_ratelimit.allow(
-                        cur,
-                        "ingest:" + str(tenant["client_id"]),
-                        portal_ratelimit.ingest_limit(),
-                        60,
-                    ):
+                    # §236: allow() fails open by swallowing SQL errors - the
+                    # savepoint keeps that from aborting the whole ingest
+                    with portal_txn.savepoint(cur, conn, "of_ingest_rl"):
+                        allowed = portal_ratelimit.allow(
+                            cur,
+                            "ingest:" + str(tenant["client_id"]),
+                            portal_ratelimit.ingest_limit(),
+                            60,
+                        )
+                    if not allowed:
                         conn.commit()
                         raise IngestRateLimited()
                 except IngestRateLimited:
@@ -776,22 +808,24 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                     store_budget = None
                 for item in normalized:
                     try:
-                        import portal_events
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            import portal_events
 
-                        if not portal_events.record_inbound(
-                            cur, tenant["client_id"], item
-                        ):
-                            continue
+                            if not portal_events.record_inbound(
+                                cur, tenant["client_id"], item
+                            ):
+                                continue
                     except Exception:
                         pass
                     if item.get("media") and media_budget is not None:
                         try:
-                            # D5: voice notes / images -> text before the
-                            # one ingest path runs (deduped above, so a
-                            # replayed delivery never spends twice).
-                            portal_media_ai.enrich(
-                                cur, tenant["client_id"], item,
-                                media_blobs.get(id(item)), media_budget)
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                # D5: voice notes / images -> text before the
+                                # one ingest path runs (deduped above, so a
+                                # replayed delivery never spends twice).
+                                portal_media_ai.enrich(
+                                    cur, tenant["client_id"], item,
+                                    media_blobs.get(id(item)), media_budget)
                         except Exception:
                             pass
                     # §228: DM senders only (ig: / fb:) - comment authors
@@ -862,13 +896,14 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                             message_id = None
                     if keep_media:
                         try:
-                            # §214: keep customer images / voice notes so
-                            # the inbox can show them after provider links
-                            # expire (savepoint-guarded, never raises).
-                            portal_inbound_media.capture(
-                                cur, tenant["client_id"], conversation_id,
-                                item, media_blobs.get(id(item)),
-                                store_budget, message_id)
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                # §214: keep customer images / voice notes so
+                                # the inbox can show them after provider links
+                                # expire (savepoint-guarded, never raises).
+                                portal_inbound_media.capture(
+                                    cur, tenant["client_id"], conversation_id,
+                                    item, media_blobs.get(id(item)),
+                                    store_budget, message_id)
                         except Exception:
                             pass
                     item.pop("_media_fetched", None)
@@ -880,153 +915,223 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                     claimed_by = None
                     if claimed_by is None:
                         try:
-                            import portal_approvals
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_approvals
 
-                            if portal_approvals.maybe_decide(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["body"],
-                                item["direction"],
-                                conn,
-                            ):
-                                claimed_by = "approvals"
+                                if portal_approvals.maybe_decide(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["body"],
+                                    item["direction"],
+                                    conn,
+                                ):
+                                    claimed_by = "approvals"
                         except Exception:
                             pass
                     if claimed_by is None:
                         try:
-                            if _maybe_enqueue_away_reply(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["direction"],
-                                conn,
-                            ):
-                                claimed_by = "away"
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                if _maybe_enqueue_away_reply(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["direction"],
+                                    conn,
+                                ):
+                                    claimed_by = "away"
                         except Exception:
                             pass
                     if claimed_by is None:
                         try:
-                            if portal_cod.maybe_cod_flow(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["name"],
-                                item["body"],
-                                item["direction"],
-                                conn,
-                            ):
-                                claimed_by = "cod"
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                if portal_cod.maybe_cod_flow(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["name"],
+                                    item["body"],
+                                    item["direction"],
+                                    conn,
+                                ):
+                                    claimed_by = "cod"
                         except Exception:
                             pass
                     if claimed_by is None:
                         try:
-                            import portal_brain
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_brain
 
-                            if portal_brain.maybe_answer(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["name"],
-                                item["body"],
-                                conn,
-                            ):
-                                claimed_by = "brain"
+                                if portal_brain.maybe_answer(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["name"],
+                                    item["body"],
+                                    conn,
+                                ):
+                                    claimed_by = "brain"
                         except Exception:
                             pass
                     if claimed_by is None:
                         try:
-                            import portal_kb
-                            import portal_intents
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_kb
+                                import portal_intents
 
-                            import portal_llm
+                                import portal_llm
 
-                            with portal_llm.usage_scope(
-                                    "intent", tenant["client_id"]):
-                                intent = portal_intents.classify(item["body"])
-                            if portal_kb.maybe_auto_reply(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["name"],
-                                item["body"],
-                                intent,
-                                conn,
-                            ):
-                                claimed_by = "kb"
+                                with portal_llm.usage_scope(
+                                        "intent", tenant["client_id"]):
+                                    intent = portal_intents.classify(item["body"])
+                                if portal_kb.maybe_auto_reply(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["name"],
+                                    item["body"],
+                                    intent,
+                                    conn,
+                                ):
+                                    claimed_by = "kb"
                         except Exception:
                             pass
                     if claimed_by:
                         try:
-                            import portal_events
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_events
 
-                            portal_events.note_claim(
-                                cur, tenant["client_id"], item, claimed_by
-                            )
+                                portal_events.note_claim(
+                                    cur, tenant["client_id"], item, claimed_by
+                                )
                         except Exception:
                             pass
                     try:
-                        portal_contacts.maybe_detect_language(
-                            tenant["client_id"],
-                            item["from"],
-                            item["body"],
-                            conn,
-                        )
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            portal_contacts.maybe_detect_language(
+                                tenant["client_id"],
+                                item["from"],
+                                item["body"],
+                                conn,
+                            )
                     except Exception:
                         pass
                     if item["direction"] == "in":
                         try:
-                            import portal_compliance
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_compliance
 
-                            portal_compliance.maybe_opt_out(
-                                tenant["client_id"],
-                                item["from"],
-                                item["body"],
-                                conn,
-                            )
+                                portal_compliance.maybe_opt_out(
+                                    tenant["client_id"],
+                                    item["from"],
+                                    item["body"],
+                                    conn,
+                                )
                         except Exception:
                             pass
                         try:
-                            import portal_listen
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_listen
 
-                            portal_listen.maybe_listen(
+                                portal_listen.maybe_listen(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["body"],
+                                    conn,
+                                )
+                        except Exception:
+                            pass
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_routing
+
+                                portal_routing.maybe_route(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["body"],
+                                    conn,
+                                )
+                        except Exception:
+                            pass
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_intelligence
+
+                                portal_intelligence.maybe_analyze(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["body"],
+                                    item["direction"],
+                                    conn,
+                                )
+                        except Exception:
+                            pass
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                # §237: refresh the sales lead (qualifiers,
+                                # concerns, score) after intelligence ran.
+                                import portal_sales
+
+                                portal_sales.on_inbound(
+                                    cur, tenant["client_id"], conversation_id,
+                                    item["from"])
+                        except Exception:
+                            pass
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_approvals
+
+                                portal_approvals.maybe_request(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["name"],
+                                    item["body"],
+                                    item["direction"],
+                                    conn,
+                                )
+                        except Exception:
+                            pass
+                    try:
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            portal_sequences.maybe_enroll_new_contact(
                                 tenant["client_id"],
                                 conversation_id,
                                 item["from"],
-                                item["body"],
+                                item["name"],
                                 conn,
                             )
-                        except Exception:
-                            pass
-                        try:
-                            import portal_routing
-
-                            portal_routing.maybe_route(
+                    except Exception:
+                        pass
+                    try:
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            portal_sequences.maybe_enroll_keyword(
                                 tenant["client_id"],
                                 conversation_id,
                                 item["from"],
+                                item["name"],
                                 item["body"],
                                 conn,
                             )
-                        except Exception:
-                            pass
-                        try:
-                            import portal_intelligence
-
-                            portal_intelligence.maybe_analyze(
+                    except Exception:
+                        pass
+                    try:
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            portal_sequences.maybe_auto_pause_replies(
                                 tenant["client_id"],
                                 conversation_id,
-                                item["from"],
-                                item["body"],
-                                item["direction"],
                                 conn,
                             )
-                        except Exception:
-                            pass
-                        try:
-                            import portal_approvals
+                    except Exception:
+                        pass
+                    try:
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            import portal_workflows
 
-                            portal_approvals.maybe_request(
+                            portal_workflows.maybe_trigger_message(
                                 tenant["client_id"],
                                 conversation_id,
                                 item["from"],
@@ -1035,57 +1140,15 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                                 item["direction"],
                                 conn,
                             )
-                        except Exception:
-                            pass
-                    try:
-                        portal_sequences.maybe_enroll_new_contact(
-                            tenant["client_id"],
-                            conversation_id,
-                            item["from"],
-                            item["name"],
-                            conn,
-                        )
                     except Exception:
                         pass
                     try:
-                        portal_sequences.maybe_enroll_keyword(
-                            tenant["client_id"],
-                            conversation_id,
-                            item["from"],
-                            item["name"],
-                            item["body"],
-                            conn,
-                        )
-                    except Exception:
-                        pass
-                    try:
-                        portal_sequences.maybe_auto_pause_replies(
-                            tenant["client_id"],
-                            conversation_id,
-                            conn,
-                        )
-                    except Exception:
-                        pass
-                    try:
-                        import portal_workflows
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            import portal_events
 
-                        portal_workflows.maybe_trigger_message(
-                            tenant["client_id"],
-                            conversation_id,
-                            item["from"],
-                            item["name"],
-                            item["body"],
-                            item["direction"],
-                            conn,
-                        )
-                    except Exception:
-                        pass
-                    try:
-                        import portal_events
-
-                        portal_events.mark_inbound_done(
-                            cur, tenant["client_id"], item
-                        )
+                            portal_events.mark_inbound_done(
+                                cur, tenant["client_id"], item
+                            )
                     except Exception:
                         pass
                     inserted += 1

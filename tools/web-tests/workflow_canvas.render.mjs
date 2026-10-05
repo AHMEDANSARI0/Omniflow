@@ -26,7 +26,7 @@ const React = require("react");
 const { renderToStaticMarkup } = require("react-dom/server");
 
 const srcDir = path.join(root, "app", "dashboard", "(portal)", "workflows");
-const files = ["workflow-model.ts", "StepInspector.tsx", "WorkflowCanvas.tsx", "WorkflowsClient.tsx"];
+const files = ["workflow-model.ts", "StepInspector.tsx", "WorkflowCanvas.tsx", "WorkflowGenerator.tsx", "WorkflowsClient.tsx"];
 // compiled files live next to node_modules so `require("react")` resolves
 const outDir = fs.mkdtempSync(path.join(root, "node_modules", ".cache-of-render-"));
 
@@ -46,16 +46,17 @@ function compile(name) {
   const code = typeof result === "string" ? result : result.code;
   // components import each other by extension-less relative paths
   const out = path.join(outDir, name.replace(/\.tsx?$/, ".cjs"));
-  fs.writeFileSync(out, code.replace(/require\("\.\/(workflow-model|StepInspector|WorkflowCanvas)"\)/g, 'require("./$1.cjs")'));
+  fs.writeFileSync(out, code.replace(/require\("\.\/(workflow-model|StepInspector|WorkflowCanvas|WorkflowGenerator)"\)/g, 'require("./$1.cjs")'));
   return out;
 }
 
-let model, inspector, Canvas, Client;
+let model, inspector, Canvas, Generator, Client;
 try {
   const compiled = Object.fromEntries(files.map((name) => [name, compile(name)]));
   model = require(compiled["workflow-model.ts"]);
   inspector = require(compiled["StepInspector.tsx"]);
   Canvas = require(compiled["WorkflowCanvas.tsx"]).default;
+  Generator = require(compiled["WorkflowGenerator.tsx"]).default;
   Client = require(compiled["WorkflowsClient.tsx"]).default;
   emit("builder components compile with Next's SWC and load in Node", true);
 } catch (error) {
@@ -217,5 +218,20 @@ emit("workflows page renders the list with builder/activate/pause actions",
   page.includes("Refund triage") && page.includes("Open in builder") && page.includes(">Pause<") && page.includes(">Activate<") && page.includes("Start from template") && page.includes("1 active of 2 workflows"), "-");
 emit("empty list renders the onboarding hint",
   render(React.createElement(Client, { initialWorkflows: [] })).includes("No workflows yet"), "-");
+emit("workflows page offers Describe it (AI generator)", page.includes("Describe it"), "-");
+
+// ------------------------------------------------- 6. AI generator panel
+const noop = () => {};
+const describe = render(React.createElement(Generator, { catalog, current: null, canCreate: true, onOpen: noop, onClose: noop }));
+emit("generator: describe mode renders the prompt box and Build button",
+  describe.includes("Describe a workflow") && describe.includes("What should the workflow do?")
+  && describe.includes("Build workflow") && !describe.includes("not available"), "-");
+const change = render(React.createElement(Generator, {
+  catalog, canCreate: true, onOpen: noop, onClose: noop,
+  current: { payload: { name: "Refund triage", description: "", trigger_type: "manual", trigger_config: {}, stop_on_reply: false, steps: [] }, name: "Refund triage", active: true },
+}));
+emit("generator: change mode names the workflow and asks what should change",
+  change.includes("Refund triage") && change.includes("with AI") && change.includes("What should change?")
+  && change.includes("Apply change"), "-");
 
 fs.rmSync(outDir, { recursive: true, force: true });

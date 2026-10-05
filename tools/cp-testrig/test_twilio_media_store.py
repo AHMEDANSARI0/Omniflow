@@ -627,8 +627,8 @@ check("capture runs after the message row, before reply hooks",
       0 < msgs_at < cap_at < pop_at < reply_at, (msgs_at, cap_at, pop_at,
                                                  reply_at))
 check("capture passes the detached blobs + store budget",
-      "media_blobs.get(id(item)),\n                                store_budget, message_id)"
-      in connector, "args")
+      "media_blobs.get(id(item)), store_budget, message_id)"
+      in " ".join(connector.split()), "args")
 check("store budget created in its own try", "store_budget ="
       " portal_inbound_media.Budget()" in connector, "budget")
 check("tick runs the retention sweep",

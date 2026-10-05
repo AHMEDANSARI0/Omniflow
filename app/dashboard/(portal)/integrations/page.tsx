@@ -355,7 +355,7 @@ export default function IntegrationsPage() {
         </div>
 
         {webhooks === null ? (
-          <p className="text-sm text-ink-3">Loading\u2026</p>
+          <p className="text-sm text-ink-3">Loading{"\u2026"}</p>
         ) : webhooks.length === 0 ? (
           <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No endpoints yet.</p>

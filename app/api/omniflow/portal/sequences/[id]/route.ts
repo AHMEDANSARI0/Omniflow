@@ -7,6 +7,7 @@ import {
 import {
   noStoreHeaders,
   safeJson,
+  sameOrigin,
 } from "../../../../../../lib/omniflow/request-security";
 
 
@@ -14,6 +15,10 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // §236: the PUT can switch smart stops off - same-origin only
+  if (!sameOrigin(request)) {
+    return safeJson({ error: { code: "forbidden", message: "Cross-site request blocked." } }, 403);
+  }
   const accessToken = await requirePortalAccessToken();
   if (!accessToken) {
     return safeJson(
@@ -41,11 +46,20 @@ export async function PUT(
     enabled?: boolean;
     triggerKeyword?: string | null;
     pauseOnReply?: boolean;
+    stopOnPurchase?: boolean;
+    stopOnHuman?: boolean;
   } = {};
   if (typeof input.name === "string") changes.name = input.name;
   if (typeof input.enabled === "boolean") changes.enabled = input.enabled;
   if (typeof input.pauseOnReply === "boolean") {
     changes.pauseOnReply = input.pauseOnReply;
+  }
+  // §236 smart stops
+  if (typeof input.stopOnPurchase === "boolean") {
+    changes.stopOnPurchase = input.stopOnPurchase;
+  }
+  if (typeof input.stopOnHuman === "boolean") {
+    changes.stopOnHuman = input.stopOnHuman;
   }
   if ("triggerKeyword" in input) {
     changes.triggerKeyword =

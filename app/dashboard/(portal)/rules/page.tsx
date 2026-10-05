@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import RuleConflicts from "./RuleConflicts";
 
 interface PolicyFamily {
   ruleSet: string;
@@ -15,7 +16,7 @@ const RULE_SET_ICONS: Record<string, string> = {
   listen: "◉",
   negotiation: "%",
   hours: "◷",
-  handoff: "☝",
+  handoff: "△",
   autonomy: "✦",
   approvals: "✓",
   workflows: "⇉",
@@ -124,6 +125,8 @@ export default function RulesPage() {
           </p>
         ) : null}
       </div>
+
+      <RuleConflicts />
 
       {families === null && !loadError ? (
         <div className="rounded-xl2 border border-line bg-white p-8 text-center text-sm text-ink-3 shadow-card">

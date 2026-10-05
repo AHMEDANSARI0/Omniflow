@@ -96,6 +96,13 @@ from portal_snapshots import bp as portal_snapshots_bp  # noqa: E402
 from portal_site_analyzer import bp as portal_site_analyzer_bp  # noqa: E402
 from portal_assistant import bp as portal_assistant_bp  # noqa: E402
 from portal_sandbox import bp as portal_sandbox_bp  # noqa: E402
+from portal_workflow_gen import bp as portal_workflow_gen_bp  # noqa: E402
+from portal_rule_conflicts import bp as portal_rule_conflicts_bp  # noqa: E402
+from portal_nl_analytics import bp as portal_nl_analytics_bp  # noqa: E402
+from portal_ab_tests import bp as portal_ab_tests_bp  # noqa: E402
+from portal_ai_report import bp as portal_ai_report_bp  # noqa: E402
+from portal_handoff_brief import bp as portal_handoff_brief_bp  # noqa: E402
+from portal_sales import bp as portal_sales_bp  # noqa: E402
 from portal_model_router import bp as admin_model_router_bp  # noqa: E402
 from portal_policy import bp as portal_policy_bp  # noqa: E402
 from portal_obs import install_obs as _install_obs  # noqa: E402
@@ -187,6 +194,13 @@ aux_app.register_blueprint(portal_snapshots_bp)
 aux_app.register_blueprint(portal_site_analyzer_bp)
 aux_app.register_blueprint(portal_assistant_bp)
 aux_app.register_blueprint(portal_sandbox_bp)
+aux_app.register_blueprint(portal_workflow_gen_bp)
+aux_app.register_blueprint(portal_rule_conflicts_bp)
+aux_app.register_blueprint(portal_nl_analytics_bp)
+aux_app.register_blueprint(portal_ab_tests_bp)
+aux_app.register_blueprint(portal_ai_report_bp)
+aux_app.register_blueprint(portal_handoff_brief_bp)
+aux_app.register_blueprint(portal_sales_bp)
 aux_app.register_blueprint(admin_model_router_bp)
 aux_app.register_blueprint(portal_policy_bp)
 aux_app.register_blueprint(admin_providers_bp)

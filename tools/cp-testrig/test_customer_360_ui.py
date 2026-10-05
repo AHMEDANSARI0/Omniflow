@@ -60,7 +60,7 @@ check("fetch endpoint", "/api/omniflow/portal/customers/profile?contact=" in CLI
 check("encode contact", "encodeURIComponent(contact)" in CLIENT, "enc")
 check("missing state", "No customer selected." in CLIENT, "missing")
 import re as _re
-check("back link", r"\\u2190 Customers" in CLIENT, "back")
+check("back link", r'{"\u2190"} Customers' in CLIENT, "back")
 check("back link raw", CLIENT.find("Customers") < CLIENT.find("</Link>") and "Customers" in CLIENT, "backraw")
 check("wa.me action", "https://wa.me/" in CLIENT, "wa")
 check("chats stat", "Total chats" in CLIENT, "chats")

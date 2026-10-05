@@ -325,12 +325,12 @@ export default function SegmentsPage() {
         </div>
 
         {segments === null ? (
-          <p className="text-sm text-ink-3">Loading\u2026</p>
+          <p className="text-sm text-ink-3">Loading{"\u2026"}</p>
         ) : segments.length === 0 ? (
           <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No segments yet.</p>
             <p className="mt-1 text-xs text-ink-3">
-              Save your first group above \u2014 hot leads, quiet customers, tagged VIPs.
+              Save your first group above {"\u2014"} hot leads, quiet customers, tagged VIPs.
             </p>
           </div>
         ) : (
@@ -346,7 +346,7 @@ export default function SegmentsPage() {
                       {row.name}
                     </p>
                     <p className="mt-0.5 text-[11px] text-ink-3">
-                      {describe(row.filters) || "No filters"} \u00b7{" "}
+                      {describe(row.filters) || "No filters"} {"\u00b7"}{" "}
                       <span className="text-brand">{row.memberCount}</span>{" "}
                       member{row.memberCount === 1 ? "" : "s"}
                     </p>

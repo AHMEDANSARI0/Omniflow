@@ -45,6 +45,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   {
     title: "Sell",
     items: [
+      { label: "Sales desk", href: "/dashboard/sales", icon: "\u21c4", enabled: true },
       { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "\u21d2", enabled: true },
       { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
       { label: "Approvals", href: "/dashboard/approvals", icon: "\u2713", enabled: true },
@@ -111,6 +112,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
         enabled: true,
       },
       { label: "Configure AI", href: "/dashboard/bot", icon: "\u2736", enabled: true },
+      { label: "AI setup report", href: "/dashboard/ai-report", icon: "\u25d0", enabled: true },
       { label: "AI Sandbox", href: "/dashboard/sandbox", icon: "\u2442", enabled: true },
       {
         label: "Setup wizard",

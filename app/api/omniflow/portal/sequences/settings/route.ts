@@ -6,6 +6,7 @@ import {
 import {
   noStoreHeaders,
   safeJson,
+  sameOrigin,
 } from "../../../../../../lib/omniflow/request-security";
 import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
 
@@ -37,6 +38,10 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  // §236: the PUT changes the send window and spacing - same-origin only
+  if (!sameOrigin(request)) {
+    return safeJson({ error: { code: "forbidden", message: "Cross-site request blocked." } }, 403);
+  }
   const accessToken = await requirePortalAccessToken();
   if (!accessToken) {
     return safeJson(
@@ -54,6 +59,17 @@ export async function PUT(request: Request) {
   const quietStart = Number(input.quietStart);
   const quietEnd = Number(input.quietEnd);
   const utcOffset = Number(input.utcOffset);
+  // §236: optional gap between follow-ups of different series (hours)
+  let gapHours: number | null | undefined;
+  if ("gapHours" in input) {
+    gapHours = input.gapHours === null ? null : Number(input.gapHours);
+    if (gapHours !== null && (!Number.isInteger(gapHours) || gapHours < 0 || gapHours > 168)) {
+      return safeJson(
+        { error: { code: "bad_request", message: "The gap must be 0 to 168 hours." } },
+        400
+      );
+    }
+  }
   if (
     !Number.isInteger(quietStart) ||
     quietStart < 0 ||
@@ -77,6 +93,7 @@ export async function PUT(request: Request) {
       quietStart,
       quietEnd,
       utcOffset,
+      ...(gapHours !== undefined ? { gapHours } : {}),
     });
     if (result.kind === "ok") {
       return safeJson({ ok: true }, 200);

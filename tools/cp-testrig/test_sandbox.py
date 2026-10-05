@@ -419,7 +419,7 @@ def web():
     check("portal.ts service", all(n in portal for n in (
         'const SANDBOX = "api/v1/portal/sandbox"', "SANDBOX_TIMEOUT_MS = 55_000",
         "export function runSandbox(", "export function runSandboxScenario(",
-        'code === "sandbox_unavailable"')))
+        '"sandbox_unavailable"', 'code === keepCode')))
     shaper = src(os.path.join(ROOT, "lib/omniflow/sandbox-input.ts"))
     check("bff channels = CP channels",
           all('"' + c + '"' in shaper.split("const HANDLERS")[0] for c in sb.CHANNELS))

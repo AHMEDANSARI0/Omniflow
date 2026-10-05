@@ -72,7 +72,7 @@ check("toggle PUTs flag", "pauseOnReply: !row.pauseOnReply" in PAGE, "put")
 check("stats button", '{openStats === row.id ? "Hide stats" : "Stats"}' in PAGE, "button")
 check("stats bars", 'style={{ width: pct + "%" }}' in PAGE
       and "Step delivery" in PAGE, "bars")
-check("stats labels", "sent \\u00b7 " in PAGE and "skipped" in PAGE, "labels")
+check("stats labels", 'sent{" \\u00b7 "}' in PAGE and "skipped" in PAGE, "labels")
 check("stats fetch", '"/stats"' in PAGE.split("const toggleStats")[1][:600], "fetch")
 check("interface pauseOnReply", "pauseOnReply: boolean;" in PAGE, "iface")
 

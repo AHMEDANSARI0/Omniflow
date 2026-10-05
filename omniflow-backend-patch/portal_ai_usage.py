@@ -58,6 +58,11 @@ FEATURES = (
     ("kb_ocr", "Knowledge document reading (OCR)"),
     ("site_analyzer", "Website analysis"),
     ("assistant", "Ask OmniFlow AI (owner assistant)"),
+    ("workflow_gen", "Workflow generator (describe it)"),
+    ("rule_conflicts", "Rule conflict check (answers)"),
+    ("nl_analytics", "Ask your data (analytics questions)"),
+    ("ai_report", "AI setup report summary"),
+    ("handoff_brief", "Handoff brief for teammates"),
     ("other", "Other"),
 )
 FEATURE_LABELS = dict(FEATURES)
@@ -269,6 +274,29 @@ def gate(feature: str, client_id: int, cur=None) -> Optional[str]:
     except Exception:
         pass
     return GATE_DAILY_CAP
+
+
+def ai_block_reason(feature: str, client_id: int) -> Optional[str]:
+    """Why an owner-started AI feature cannot call the model right now, in
+    words for the owner (None = ready): engine not set up, or the platform
+    gate (kill switch / daily cap). Shared by the workflow generator and
+    the rule conflict check."""
+    try:
+        import portal_llm
+
+        runtime = portal_llm._runtime()
+        if not runtime.get("enabled") or not runtime.get("api_key"):
+            return ("The AI engine is not set up yet. The platform admin"
+                    " connects it in Admin > Integrations.")
+    except Exception:
+        return "The AI engine is not available right now."
+    try:
+        reason = gate(feature, client_id)
+    except Exception:
+        return None
+    if reason:
+        return GATE_MESSAGES.get(reason, "AI calls are paused right now.")
+    return None
 
 
 # ---------------------------------------------------------------------------

@@ -179,6 +179,11 @@ def _clean_group(group: str, raw: dict):
             if not text.isdigit() or not low <= int(text) <= high:
                 return None, (full + " must be a whole number between "
                               + str(low) + " and " + str(high) + ".")
+        if name == "base_url" and text:
+            # §236: a wrong base URL silently broke every AI call
+            text, base_error = platform_settings.clean_api_base(text)
+            if base_error:
+                return None, full + ": " + base_error
         if full == "voice.greeting" and len(text) > 200:
             return None, "voice.greeting must be 200 characters or fewer."
         if full == "voice.webhook_base" and text:

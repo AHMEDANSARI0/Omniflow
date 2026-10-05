@@ -43,7 +43,8 @@ response = client.post("/api/v1/portal/sequences", json={
     "name": "W", "steps": [{"delay_hours": 0, "body": "Hi {name}"}],
     "trigger_keyword": "  CATALOG "})
 check("200 create with keyword", status(response) == 200, status(response))
-alter = [e[0] for e in conn.cur.executed if "ALTER TABLE" in e[0]]
+# §236 appended stop/gap columns to existing DDL statements (same slots)
+alter = [e[0] for e in conn.cur.executed if e[0].startswith("ALTER TABLE")]
 check("lazy alter fired", len(alter) == 3, alter)
 check("add column if not exists", bool(alter)
       and "ADD COLUMN IF NOT EXISTS" in alter[0], "idempotent")

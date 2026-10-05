@@ -394,6 +394,24 @@ def _tool_search_knowledge(cur, client_id: int, args: Dict[str, Any]) -> Any:
                      for h in hits]}
 
 
+def _tool_analytics_query(cur, client_id: int, args: Dict[str, Any]) -> Any:
+    import portal_nl_analytics
+
+    return portal_nl_analytics.tool_answer(cur, client_id, args)
+
+
+def _analytics_tool() -> Tuple[str, Dict[str, str], bool, Any]:
+    try:
+        import portal_nl_analytics as nla
+
+        return (nla.tool_description(), dict(nla.TOOL_ARGS), True,
+                _tool_analytics_query)
+    except Exception:
+        return ("Exact numbers for one metric over any period.",
+                {"metric": "a metric key", "period": "e.g. this_week"}, True,
+                _tool_analytics_query)
+
+
 #: name -> (description, args, untrusted output?, function)
 READ_TOOLS: Dict[str, Tuple[str, Dict[str, str], bool, Any]] = {
     "business_report": (
@@ -422,6 +440,7 @@ READ_TOOLS: Dict[str, Tuple[str, Dict[str, str], bool, Any]] = {
     "search_knowledge": (
         "Search the published knowledge base.", {"query": "text"}, True,
         _tool_search_knowledge),
+    "analytics_query": _analytics_tool(),
 }
 
 

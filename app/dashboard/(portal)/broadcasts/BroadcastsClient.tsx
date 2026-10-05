@@ -27,6 +27,9 @@ const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
 
 function audienceLabel(audience: string): string {
+  if (audience.startsWith("ab:")) {
+    return audience.endsWith(":win") ? "A/B winner" : "A/B version " + audience.split(":")[2];
+  }
   if (audience === "open") return "Open chats";
   if (audience === "hot") return "Hot leads";
   return "All customers";

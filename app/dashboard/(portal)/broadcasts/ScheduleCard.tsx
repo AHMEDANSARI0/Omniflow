@@ -279,7 +279,9 @@ export default function ScheduleCard() {
                 <div className="min-w-0">
                   <p className="truncate text-sm text-ink">{row.body}</p>
                   <p className="mt-0.5 text-[11px] text-ink-3">
-                    {formatWhen(row.sendAt)} \u00b7 {row.audience} \u00b7 {row.recipientCount} customers
+                    {formatWhen(row.sendAt)}{" \u00b7 "}
+                    {row.audience.startsWith("ab:") ? "A/B winner (only if clear)" : row.audience}
+                    {" \u00b7 "}{row.recipientCount} customers
                   </p>
                 </div>
                 <button

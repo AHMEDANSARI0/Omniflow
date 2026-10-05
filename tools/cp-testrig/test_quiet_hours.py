@@ -41,6 +41,8 @@ response = client.get("/api/v1/portal/sequences/settings")
 payload = response.get_json()
 check("200 defaults", response.status_code == 200 and payload == {
     "quiet_enabled": False, "quiet_start": 22, "quiet_end": 8, "utc_offset": 5,
+    "gap_hours": portal_sequences.GAP_HOURS_DEFAULT,
+    "gap_hours_default": portal_sequences.GAP_HOURS_DEFAULT,
 }, payload)
 
 conn = fresh([[{"quiet_enabled": True, "quiet_start": 21, "quiet_end": 9,
@@ -98,8 +100,8 @@ check("negative offset kept", conn.cur.executed[10][1][4] == -5, conn.cur.execut
 print("== delivery filter ==")
 
 check("NOT EXISTS in due query", "AND NOT EXISTS (" in
-      SRC.split("def deliver_due_sequence_steps")[1][:1600], "not exists")
-seg = SRC.split("def deliver_due_sequence_steps")[1][:1600]
+      SRC.split("def deliver_due_sequence_steps")[1][:3600], "not exists")
+seg = SRC.split("def deliver_due_sequence_steps")[1][:3600]
 check("settings table joined", "SETTINGS_TABLE" in seg, "table")
 check("guard flag checked", "q.quiet_enabled IS TRUE" in seg, "flag")
 check("normal window branch", "q.quiet_start < q.quiet_end" in seg, "branch1")

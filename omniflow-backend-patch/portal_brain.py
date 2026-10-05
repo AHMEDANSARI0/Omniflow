@@ -517,6 +517,28 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
     if profile.get("language"):
         context["language"] = profile["language"]
         grounding["tools"].append("customer_profile")
+    sales = None
+    try:
+        import portal_sales
+        import portal_txn
+
+        # §237: qualifiers / concern + the owner's approved answer
+        with portal_txn.savepoint(cur, None, "of_sales_ctx"):
+            sales = portal_sales.context_for(cur, client_id, conversation_id,
+                                             contact_id, message_text)
+    except Exception as error:
+        logger.info("brain sales context skipped: %s", error)
+        sales = None
+    if sales:
+        context["sales"] = sales
+        grounding["tools"].append("sales_context")
+        grounding["sales"] = {
+            "stage": sales.get("stage"),
+            "ask_next": sales.get("ask_next") or "",
+            "objection": (sales.get("objection") or {}).get("kind") or "",
+            "approved_answer": bool((sales.get("objection") or {})
+                                    .get("approved_answer")),
+        }
     grounding["conversation_messages"] = len(context["conversation"])
     grounding["kb_ids"] = [e["id"] for e in kb if e.get("kind", "entry") == "entry"]
     grounding["knowledge_ids"] = [e["id"] for e in kb if e.get("kind") == "chunk"]
@@ -556,6 +578,13 @@ def _reason(cur, client_id: int, conversation_id: int, contact_id: str,
     system_prompt = _system_prompt(tone)
     if channel == "voice":
         system_prompt += VOICE_RULES
+    if "sales" in context:
+        try:
+            import portal_sales
+
+            system_prompt += portal_sales.SALES_RULES
+        except Exception:
+            pass
     with portal_llm.usage_scope(usage_feature or "brain", client_id, cur,
                                 agent_id=_agent_id):
         payload = portal_llm.chat_json(

@@ -54,3 +54,4 @@ next-env.d.ts
 *.dir_conflict.bak/
 /patchers
 /hide
+/.connector_node.env

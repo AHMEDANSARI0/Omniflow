@@ -171,13 +171,18 @@ def timezone_offset_hours(cur, client_id: int) -> int:
     """Workspace timezone from business_hours; env OF_BI_TZ_OFFSET_HOURS fallback."""
     name = None
     try:
-        cur.execute(
-            "SELECT settings -> 'business_hours' AS business_hours FROM "
-            + portal_db._q("client_settings") +
-            " WHERE client_id = %s",
-            (client_id,),
-        )
-        rows = portal_db.rows(cur)
+        import portal_txn
+
+        # §236: savepoint - a missing settings table must not abort the
+        # caller's transaction (insights, problems, weekly email)
+        with portal_txn.savepoint(cur, None, "of_bi_tz"):
+            cur.execute(
+                "SELECT settings -> 'business_hours' AS business_hours FROM "
+                + portal_db._q("client_settings") +
+                " WHERE client_id = %s",
+                (client_id,),
+            )
+            rows = portal_db.rows(cur)
         stored = rows[0].get("business_hours") if rows and rows[0] else None
         if isinstance(stored, str):
             import json as _json

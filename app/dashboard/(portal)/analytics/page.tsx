@@ -1,6 +1,7 @@
 import { getAnalytics } from "../../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../../lib/omniflow/session-cookies";
 import AnalyticsClient from "./AnalyticsClient";
+import AskData from "./AskData";
 import CsatSummaryCard from "./CsatSummaryCard";
 
 
@@ -21,6 +22,8 @@ export default async function AnalyticsPage() {
           automation and the questions customers actually ask.
         </p>
       </div>
+
+      <AskData />
 
       {data === null ? (
         <div className="rounded-2xl border border-line bg-white shadow-card p-6">

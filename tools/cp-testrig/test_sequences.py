@@ -102,10 +102,13 @@ check("new-contact guard in sql", "m WHERE m.conversation_id = %s) <= 1" in inse
 check("enroll audit", any(e[1] and e[1][1] == "sequence.enrolled" for e in conn.cur.executed))
 
 print("== delivery ==")
+# §236 smart stops: all signal tables "exist" (no to_regclass probe slot);
+# each delivery pass with due rows reads one signals row-set after the due query
+portal_sequences._SIGNAL_TABLES_SEEN.update(portal_sequences.SIGNAL_TABLES)
 
 DUE = [{"id": 8, "sequence_id": 5, "current_step": 0, "conversation_id": 42,
         "contact_id": "92300@c.us", "contact_name": "Ali Khan"}]
-conn = fresh([DUE, [{"step_no": 1, "delay_hours": 2, "body": "Welcome {name}!", "only_if_idle_hours": None},
+conn = fresh([DUE, [], [{"step_no": 1, "delay_hours": 2, "body": "Welcome {name}!", "only_if_idle_hours": None},
                       {"step_no": 2, "delay_hours": 24, "body": "Bye", "only_if_idle_hours": None}], [], [], []])
 result = portal_sequences.deliver_due_sequence_steps(conn.cur, 1, conn)
 check("sent one", result == 1, result)
@@ -125,14 +128,14 @@ check("committed", conn.committed is True)
 
 LAST = [{"id": 8, "sequence_id": 5, "current_step": 1, "conversation_id": 42,
          "contact_id": "92300@c.us", "contact_name": "Ali"}]
-conn = fresh([LAST, [{"step_no": 2, "delay_hours": 24, "body": "Bye", "only_if_idle_hours": None}], [], [], []])
+conn = fresh([LAST, [], [{"step_no": 2, "delay_hours": 24, "body": "Bye", "only_if_idle_hours": None}], [], [], []])
 result = portal_sequences.deliver_due_sequence_steps(conn.cur, 1, conn)
 check("final step completes", result == 1, result)
 update = [e for e in conn.cur.executed if "UPDATE" in e[0]][0]
 check("status completed", "status = 'completed'" in update[0], update[0])
 
 conn = fresh([[{"id": 8, "sequence_id": 5, "current_step": 5,
-                "contact_id": "92300@c.us", "contact_name": "Ali"}], []])
+                "contact_id": "92300@c.us", "contact_name": "Ali"}], [], []])
 result = portal_sequences.deliver_due_sequence_steps(conn.cur, 1, conn)
 check("no steps -> completed without send", result == 0, result)
 

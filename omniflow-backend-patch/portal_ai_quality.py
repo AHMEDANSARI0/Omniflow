@@ -152,21 +152,25 @@ def sample_quality(cur, client_id: Optional[int], days: int = DEFAULT_DAYS,
         "signals": [],
     }
 
-    # --- traces ---
+    # --- traces --- (§236: each read in its own savepoint, so a missing
+    # table never aborts the caller's transaction)
     try:
-        sql = (
-            "SELECT id, client_id, conversation_id, kind, decision, grounding,"
-            " created_at FROM " + portal_db._q("portal_brain_traces") +
-            " WHERE created_at >= NOW() - (%s || ' days')::interval"
-        )
-        params: List[Any] = [str(days)]
-        if client_id is not None:
-            sql += " AND client_id = %s"
-            params.append(int(client_id))
-        sql += " ORDER BY id DESC LIMIT %s"
-        params.append(limit)
-        cur.execute(sql, tuple(params))
-        rows = portal_db.rows(cur)
+        import portal_txn
+
+        with portal_txn.savepoint(cur, None, "of_quality_traces"):
+            sql = (
+                "SELECT id, client_id, conversation_id, kind, decision, grounding,"
+                " created_at FROM " + portal_db._q("portal_brain_traces") +
+                " WHERE created_at >= NOW() - (%s || ' days')::interval"
+            )
+            params: List[Any] = [str(days)]
+            if client_id is not None:
+                sql += " AND client_id = %s"
+                params.append(int(client_id))
+            sql += " ORDER BY id DESC LIMIT %s"
+            params.append(limit)
+            cur.execute(sql, tuple(params))
+            rows = portal_db.rows(cur)
     except Exception as error:
         logger.warning("ai quality traces failed: %s", error)
         rows = []
@@ -242,28 +246,31 @@ def sample_quality(cur, client_id: Optional[int], days: int = DEFAULT_DAYS,
 
     # --- usage (optional) ---
     try:
-        sql_u = (
-            "SELECT COUNT(*) AS calls,"
-            " COALESCE(SUM(CASE WHEN ok IS FALSE THEN 1 ELSE 0 END), 0) AS failed,"
-            " COALESCE(AVG(latency_ms), 0) AS avg_latency_ms"
-            " FROM " + portal_db._q("portal_ai_usage") +
-            " WHERE created_at >= NOW() - (%s || ' days')::interval"
-        )
-        params_u: List[Any] = [str(days)]
-        if client_id is not None:
-            sql_u += " AND client_id = %s"
-            params_u.append(int(client_id))
-        cur.execute(sql_u, tuple(params_u))
-        urows = portal_db.rows(cur)
-        u = urows[0] if urows else {}
-        calls = int(u.get("calls") or 0)
-        failed = int(u.get("failed") or 0)
-        out["usage"] = {
-            "calls": calls,
-            "failed": failed,
-            "fail_share": round(failed / calls, 3) if calls else None,
-            "avg_latency_ms": int(float(u.get("avg_latency_ms") or 0)),
-        }
+        import portal_txn
+
+        with portal_txn.savepoint(cur, None, "of_quality_usage"):
+            sql_u = (
+                "SELECT COUNT(*) AS calls,"
+                " COALESCE(SUM(CASE WHEN ok IS FALSE THEN 1 ELSE 0 END), 0) AS failed,"
+                " COALESCE(AVG(latency_ms), 0) AS avg_latency_ms"
+                " FROM " + portal_db._q("portal_ai_usage") +
+                " WHERE created_at >= NOW() - (%s || ' days')::interval"
+            )
+            params_u: List[Any] = [str(days)]
+            if client_id is not None:
+                sql_u += " AND client_id = %s"
+                params_u.append(int(client_id))
+            cur.execute(sql_u, tuple(params_u))
+            urows = portal_db.rows(cur)
+            u = urows[0] if urows else {}
+            calls = int(u.get("calls") or 0)
+            failed = int(u.get("failed") or 0)
+            out["usage"] = {
+                "calls": calls,
+                "failed": failed,
+                "fail_share": round(failed / calls, 3) if calls else None,
+                "avg_latency_ms": int(float(u.get("avg_latency_ms") or 0)),
+            }
     except Exception as error:
         logger.warning("ai quality usage failed: %s", error)
         out["usage"] = None

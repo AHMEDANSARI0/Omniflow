@@ -125,7 +125,7 @@ export default function BroadcastCalendarPage() {
             onClick={() => setMonth((current) => shiftMonth(current, -1))}
             className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
-            \\u2190 Prev
+            {"\u2190"} Prev
           </button>
           <p className="text-sm font-medium text-ink">{monthTitle(month)}</p>
           <button
@@ -133,7 +133,7 @@ export default function BroadcastCalendarPage() {
             onClick={() => setMonth((current) => shiftMonth(current, 1))}
             className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
-            Next \\u2192
+            Next {"\u2192"}
           </button>
         </div>
 
@@ -142,7 +142,7 @@ export default function BroadcastCalendarPage() {
             The calendar is unavailable right now.
           </p>
         ) : data === null ? (
-          <p className="mt-6 text-sm text-ink-3">Loading\\u2026</p>
+          <p className="mt-6 text-sm text-ink-3">Loading{"\u2026"}</p>
         ) : (
           <>
             <div className="mt-4 grid grid-cols-7 gap-1 text-center">
@@ -198,7 +198,7 @@ export default function BroadcastCalendarPage() {
                           (item.scheduled ? "text-amber-600" : "text-ok")
                         }
                       >
-                        {item.scheduled ? "queued" : "sent"} \\u00b7 {item.recipients}
+                        {item.scheduled ? "queued" : "sent"} {"\u00b7"} {item.recipients}
                       </span>
                     </li>
                   ))}

@@ -98,7 +98,7 @@ export default function WeeklyPage() {
             The summary is unavailable right now.
           </p>
         ) : summary === null ? (
-          <p className="mt-6 text-sm text-ink-3">Loading\\u2026</p>
+          <p className="mt-6 text-sm text-ink-3">Loading{"\u2026"}</p>
         ) : (
           <>
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -152,7 +152,7 @@ export default function WeeklyPage() {
                       </span>
                     </span>
                     <span className="w-24 shrink-0 text-right text-[11px] text-ink-3">
-                      {day.inbound} in \\u00b7 {day.chats} chats
+                      {day.inbound} in {"\u00b7"} {day.chats} chats
                     </span>
                   </li>
                 ))}

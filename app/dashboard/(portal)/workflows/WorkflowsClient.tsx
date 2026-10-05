@@ -8,8 +8,10 @@ import type {
   WorkflowCatalog,
   WorkflowRun,
   WorkflowStepKind,
+  WorkflowTemplate,
 } from "../../../../lib/omniflow/portal";
 import { StepInspector, TriggerInspector } from "./StepInspector";
+import WorkflowGenerator, { type GeneratorTarget } from "./WorkflowGenerator";
 import WorkflowCanvas, { type Selection } from "./WorkflowCanvas";
 import {
   MAX_STEPS_DEFAULT,
@@ -109,6 +111,8 @@ export default function WorkflowsClient({
   const [testConversation, setTestConversation] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
   const [templateKey, setTemplateKey] = useState("");
+  /** §231 generator panel: null = closed; current = "change with AI". */
+  const [generator, setGenerator] = useState<{ current: GeneratorTarget | null } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -191,6 +195,26 @@ export default function WorkflowsClient({
     const template = catalog?.templates.find((t) => t.key === key);
     if (!template) return;
     openEditor(editorFromTemplate(template));
+  }
+
+  function openGenerated(template: WorkflowTemplate) {
+    // a change to the open workflow keeps its id: saving makes a new version
+    const keepId = generator?.current && editor ? editor.id : null;
+    if (!generator?.current && editor &&
+        !window.confirm("Replace the workflow open in the builder? Unsaved changes there are lost.")) {
+      return;
+    }
+    openEditor({ ...editorFromTemplate(template), id: keepId });
+    setGenerator(null);
+    flash("Opened in the builder. Check every step, then save.");
+  }
+
+  function changeWithAi() {
+    if (!editor) return;
+    const status = workflows?.find((w) => w.id === editor.id)?.status;
+    setGenerator({
+      current: { payload: editorPayload(editor), name: editor.name, active: status === "active" },
+    });
   }
 
   async function openEdit(workflow: PortalWorkflow) {
@@ -507,6 +531,14 @@ export default function WorkflowsClient({
           </select>
           <button
             type="button"
+            className={ghostBtn}
+            onClick={() => setGenerator({ current: null })}
+          >
+            <span aria-hidden className="mr-1 text-brand">{"\u2736"}</span>
+            Describe it
+          </button>
+          <button
+            type="button"
             className={primaryBtn}
             onClick={openNew}
             disabled={(workflows?.length ?? 0) >= maxWorkflows}
@@ -525,6 +557,17 @@ export default function WorkflowsClient({
         <div className="mb-4 rounded-xl2 border border-line bg-white p-6 text-center text-sm text-ink-2 shadow-card">
           Workflows could not be loaded. Refresh to try again.
         </div>
+      ) : null}
+
+      {generator ? (
+        <WorkflowGenerator
+          key={generator.current ? "change" : "new"}
+          catalog={catalog}
+          current={generator.current}
+          canCreate={(workflows?.length ?? 0) < maxWorkflows}
+          onOpen={openGenerated}
+          onClose={() => setGenerator(null)}
+        />
       ) : null}
 
       {/* ---------------------------------------------------------- editor */}
@@ -644,6 +687,10 @@ export default function WorkflowsClient({
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button type="submit" className={primaryBtn} disabled={saving}>
               {saving ? "Saving..." : editor.id ? "Save new version" : "Create draft"}
+            </button>
+            <button type="button" className={ghostBtn} onClick={changeWithAi}>
+              <span aria-hidden className="mr-1 text-brand">{"\u2736"}</span>
+              Change with AI
             </button>
             <button type="button" className={ghostBtn} onClick={() => setEditor(null)}>
               Cancel

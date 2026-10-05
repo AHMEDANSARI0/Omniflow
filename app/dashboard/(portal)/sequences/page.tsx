@@ -18,7 +18,18 @@ interface Sequence {
   completedEnrollments: number;
   triggerKeyword: string | null;
   pauseOnReply: boolean;
+  stopOnPurchase: boolean;
+  stopOnHuman: boolean;
 }
+
+type StopReason = "opted_out" | "purchased" | "human_took_over";
+
+/** §236: why a series stopped by itself, in the owner's words. */
+const STOP_LABELS: Record<StopReason, string> = {
+  opted_out: "stopped \u00b7 opted out",
+  purchased: "stopped \u00b7 bought",
+  human_took_over: "stopped \u00b7 teammate took over",
+};
 
 interface DraftStep {
   delay_hours: number;
@@ -103,7 +114,13 @@ export default function SequencesPage() {
   const [noteTone, setNoteTone] = useState("neutral");
   const [openLog, setOpenLog] = useState<number | null>(null);
   const [enrollments, setEnrollments] = useState<
-    { id: number; contact_name: string | null; current_step: number; status: string }[]
+    {
+      id: number;
+      contact_name: string | null;
+      current_step: number;
+      status: string;
+      stop_reason: StopReason | null;
+    }[]
   >([]);
   const [keyword, setKeyword] = useState("");
   const [triggerOpenFor, setTriggerOpenFor] = useState<number | null>(null);
@@ -119,13 +136,15 @@ export default function SequencesPage() {
   const [editNote, setEditNote] = useState<string | null>(null);
   const [openStats, setOpenStats] = useState<number | null>(null);
   const [stats, setStats] = useState<
-    Record<number, { sent: number; skipped: number }>
+    Record<number, { sent: number; skipped: number; stopped: number }>
   >({});
   const [quiet, setQuiet] = useState<{
     enabled: boolean;
     start: number;
     end: number;
     offset: number;
+    gap: number;
+    gapDefault: number;
   } | null>(null);
   const [quietBusy, setQuietBusy] = useState(false);
   const [quietNote, setQuietNote] = useState<string | null>(null);
@@ -152,28 +171,32 @@ export default function SequencesPage() {
     fetch("/api/omniflow/portal/sequences/settings", { cache: "no-store" })
       .then((response) => response.json().catch(() => null))
       .then((payload) => {
+        // the BFF returns the camelCase SequenceSettings (§236: the old
+        // snake_case read always showed the defaults and saved over them)
         const row =
           payload !== null && typeof payload === "object"
             ? (payload as {
                 settings?: {
-                  quiet_enabled?: boolean;
-                  quiet_start?: number;
-                  quiet_end?: number;
-                  utc_offset?: number;
+                  quietEnabled?: boolean;
+                  quietStart?: number;
+                  quietEnd?: number;
+                  utcOffset?: number;
+                  gapHours?: number | null;
+                  gapHoursDefault?: number;
                 } | null;
               })
             : null;
         if (row && row.settings) {
+          const settings = row.settings;
+          const gapDefault =
+            typeof settings.gapHoursDefault === "number" ? settings.gapHoursDefault : 4;
           setQuiet({
-            enabled: row.settings.quiet_enabled === true,
-            start:
-              typeof row.settings.quiet_start === "number"
-                ? row.settings.quiet_start
-                : 22,
-            end:
-              typeof row.settings.quiet_end === "number" ? row.settings.quiet_end : 8,
-            offset:
-              typeof row.settings.utc_offset === "number" ? row.settings.utc_offset : 5,
+            enabled: settings.quietEnabled === true,
+            start: typeof settings.quietStart === "number" ? settings.quietStart : 22,
+            end: typeof settings.quietEnd === "number" ? settings.quietEnd : 8,
+            offset: typeof settings.utcOffset === "number" ? settings.utcOffset : 5,
+            gap: typeof settings.gapHours === "number" ? settings.gapHours : gapDefault,
+            gapDefault,
           });
         }
       })
@@ -219,12 +242,13 @@ export default function SequencesPage() {
           quietStart: quiet.start,
           quietEnd: quiet.end,
           utcOffset: quiet.offset,
+          gapHours: quiet.gap,
         }),
       });
       setQuietNote(
         response.ok
           ? "Send window saved."
-          : "Could not save. Check the hours and offset."
+          : "Could not save. Check the hours, offset and spacing."
       );
     } catch {
       setQuietNote("Could not save. Try again.");
@@ -306,6 +330,25 @@ export default function SequencesPage() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pauseOnReply: !row.pauseOnReply }),
+        });
+        void load();
+      } catch {
+        void load();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load]
+  );
+
+  const toggleStop = useCallback(
+    async (row: Sequence, key: "stopOnPurchase" | "stopOnHuman") => {
+      setBusy(true);
+      try {
+        await fetch("/api/omniflow/portal/sequences/" + String(row.id), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [key]: !row[key] }),
         });
         void load();
       } catch {
@@ -415,12 +458,17 @@ export default function SequencesPage() {
         const list =
           payload !== null && typeof payload === "object"
             ? (payload as {
-                steps?: { step_no: number; sent: number; skipped: number }[];
+                steps?: { stepNo: number; sent: number; skipped: number; stopped?: number }[];
               }).steps
             : null;
-        const map: Record<number, { sent: number; skipped: number }> = {};
+        // the BFF returns camelCase stepNo (§236: step_no never matched)
+        const map: Record<number, { sent: number; skipped: number; stopped: number }> = {};
         for (const row of Array.isArray(list) ? list : []) {
-          map[row.step_no] = { sent: row.sent, skipped: row.skipped };
+          map[row.stepNo] = {
+            sent: row.sent,
+            skipped: row.skipped,
+            stopped: typeof row.stopped === "number" ? row.stopped : 0,
+          };
         }
         setStats(map);
       } catch {
@@ -809,7 +857,7 @@ export default function SequencesPage() {
                   </option>
                 ))}
               </select>
-              <span className="text-ink-3">\u00b7 your time zone</span>
+              <span className="text-ink-3">{"\u00b7 your time zone"}</span>
               <select
                 value={quiet.offset}
                 onChange={(event) =>
@@ -827,6 +875,26 @@ export default function SequencesPage() {
                   </option>
                 ))}
               </select>
+              <span className="text-ink-3">{"\u00b7 space follow-ups of different series by"}</span>
+              <select
+                value={quiet.gap}
+                onChange={(event) =>
+                  setQuiet((current) =>
+                    current ? { ...current, gap: Number(event.target.value) } : current
+                  )
+                }
+                title="A follow-up waits this long after another series messaged the same chat. A series' first message is never delayed."
+                className="rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink outline-none focus:border-brand/40"
+              >
+                {Array.from(new Set([0, 1, 2, 4, 6, 12, 24, 48, quiet.gap, quiet.gapDefault]))
+                  .sort((a, b) => a - b)
+                  .map((hours) => (
+                    <option key={hours} value={hours} className="bg-soft">
+                      {hours === 0 ? "no spacing" : String(hours) + " h"}
+                      {hours === quiet.gapDefault ? " (default)" : ""}
+                    </option>
+                  ))}
+              </select>
               <button
                 type="button"
                 onClick={() => void saveQuiet()}
@@ -838,12 +906,12 @@ export default function SequencesPage() {
               {quietNote ? <p className="text-xs text-amber-600">{quietNote}</p> : null}
             </div>
           ) : (
-            <p className="mt-3 text-xs text-ink-3">Loading window\u2026</p>
+            <p className="mt-3 text-xs text-ink-3">{"Loading window\u2026"}</p>
           )}
         </div>
 
         {sequences === null ? (
-          <p className="text-sm text-ink-3">Loading\u2026</p>
+          <p className="text-sm text-ink-3">{"Loading\u2026"}</p>
         ) : sequences.length === 0 ? (
           <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No series yet.</p>
@@ -880,9 +948,35 @@ export default function SequencesPage() {
                       >
                         {row.pauseOnReply ? "pauses on reply" : "ignores replies"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => void toggleStop(row, "stopOnPurchase")}
+                        title="Stop this series for a customer who pays, pays an advance or confirms a cash-on-delivery order"
+                        className={
+                          "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] transition " +
+                          (row.stopOnPurchase
+                            ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                            : "border-line bg-soft text-ink-3")
+                        }
+                      >
+                        {row.stopOnPurchase ? "stops on purchase" : "ignores purchases"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void toggleStop(row, "stopOnHuman")}
+                        title="Stop this series when a teammate replies from the inbox or the chat is handed off"
+                        className={
+                          "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] transition " +
+                          (row.stopOnHuman
+                            ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                            : "border-line bg-soft text-ink-3")
+                        }
+                      >
+                        {row.stopOnHuman ? "stops on takeover" : "ignores takeover"}
+                      </button>
                     </span>
                     <p className="mt-0.5 text-[11px] text-ink-3">
-                      {row.steps.length} step{row.steps.length === 1 ? "" : "s"} \u00b7{" "}
+                      {row.steps.length} step{row.steps.length === 1 ? "" : "s"}{" \u00b7 "}
                       {row.activeEnrollments} active
                       {" \u00b7 "}
                       {row.completedEnrollments} done
@@ -951,6 +1045,7 @@ export default function SequencesPage() {
                         const stat = stats[step.step_no] ?? {
                           sent: 0,
                           skipped: 0,
+                          stopped: 0,
                         };
                         const total = stat.sent + stat.skipped;
                         const pct =
@@ -962,8 +1057,9 @@ export default function SequencesPage() {
                             <div className="flex items-center justify-between text-[11px] text-ink-3">
                               <span>Step {step.step_no}</span>
                               <span>
-                                {stat.sent} sent \u00b7 {stat.skipped} skipped
-                                \u00b7 {pct}%
+                                {stat.sent} sent{" \u00b7 "}{stat.skipped} skipped
+                                {stat.stopped > 0 ? " \u00b7 " + String(stat.stopped) + " stopped" : ""}
+                                {" \u00b7 "}{pct}%
                               </span>
                             </div>
                             <div className="mt-1 h-2 overflow-hidden rounded-full bg-soft">
@@ -1035,7 +1131,11 @@ export default function SequencesPage() {
                                 ? "completed"
                                 : enrollment.status === "paused"
                                   ? "paused"
-                                  : "step " + String(enrollment.current_step + 1) + " pending"}
+                                  : enrollment.status === "stopped"
+                                    ? enrollment.stop_reason
+                                      ? STOP_LABELS[enrollment.stop_reason]
+                                      : "stopped"
+                                    : "step " + String(enrollment.current_step + 1) + " pending"}
                             </span>
                             <span className="flex shrink-0 items-center gap-2">
                               {enrollment.status === "active" ? (
@@ -1049,7 +1149,9 @@ export default function SequencesPage() {
                                   Pause
                                 </button>
                               ) : null}
-                              {enrollment.status === "paused" ? (
+                              {enrollment.status === "paused" ||
+                              (enrollment.status === "stopped" &&
+                                enrollment.stop_reason !== "opted_out") ? (
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -1114,7 +1216,7 @@ export default function SequencesPage() {
                 {editOpenFor === row.id ? (
                   <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
                     <p className="text-[11px] uppercase tracking-wider text-ink-3">
-                      Edit steps \u2014 {row.name}
+                      {"Edit steps \u2014 "}{row.name}
                     </p>
                     <div className="mt-2 space-y-2">
                       {editDraft.map((step, index) => (

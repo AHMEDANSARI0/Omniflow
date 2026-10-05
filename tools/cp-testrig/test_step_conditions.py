@@ -59,41 +59,44 @@ response = client.post("/api/v1/portal/sequences", json={
 check("400 idle junk", response.status_code == 400, response.status_code)
 
 print("== delivery: idle skip ==")
+# §236 smart stops: all signal tables "exist" (no to_regclass probe slot);
+# each delivery pass with due rows reads one signals row-set after the due query
+portal_sequences._SIGNAL_TABLES_SEEN.update(portal_sequences.SIGNAL_TABLES)
 
 DUE = [{"id": 8, "sequence_id": 5, "current_step": 0, "conversation_id": 42,
         "contact_id": "92300@c.us", "contact_name": "Ali"}]
 portal_sequences._SEQ_DDL_READY = True
-conn = install_db_stub(portal_sequences, [DUE,
+conn = install_db_stub(portal_sequences, [DUE, [],
     [{"step_no": 1, "delay_hours": 2, "body": "Welcome!", "only_if_idle_hours": 24},
      {"step_no": 2, "delay_hours": 24, "body": "Bye", "only_if_idle_hours": None}],
     [{"id": 1}], [], []])
 portal_sequences.portal_db.CMD_TABLE = "portal_connector_commands"
 result = portal_sequences.deliver_due_sequence_steps(conn.cur, 1, conn)
 check("skip does not count as sent", result == 0, result)
-check("idle check ran", "portal_messages" in conn.cur.executed[2][0]
-      and "direction = 'in'" in conn.cur.executed[2][0],
-      conn.cur.executed[2][0][:70])
-check("idle window param", conn.cur.executed[2][1][2] == 24, conn.cur.executed[2][1])
-check("conversation param", conn.cur.executed[2][1][1] == 42, conn.cur.executed[2][1])
-cmds = [e for e in conn.cur.executed if "portal_connector_commands" in e[0]]
+check("idle check ran", "portal_messages" in conn.cur.executed[3][0]
+      and "direction = 'in'" in conn.cur.executed[3][0],
+      conn.cur.executed[3][0][:70])
+check("idle window param", conn.cur.executed[3][1][2] == 24, conn.cur.executed[3][1])
+check("conversation param", conn.cur.executed[3][1][1] == 42, conn.cur.executed[3][1])
+cmds = [e for e in conn.cur.executed if e[0].startswith("INSERT INTO") and "portal_connector_commands" in e[0]]
 check("no command queued", len(cmds) == 0, len(cmds))
-logs = [e for e in conn.cur.executed if "portal_sequence_step_log" in e[0]]
+logs = [e for e in conn.cur.executed if e[0].startswith("INSERT INTO") and "portal_sequence_step_log" in e[0]]
 check("skip logged", len(logs) == 1 and logs[0][1][4] == "skipped", logs)
 check("step advanced anyway", any("UPDATE" in e[0] for e in conn.cur.executed), "adv")
 check("commit on skip", conn.committed, "commit")
 
 print("== delivery: normal send logs 'sent' ==")
 
-conn = install_db_stub(portal_sequences, [DUE,
+conn = install_db_stub(portal_sequences, [DUE, [],
     [{"step_no": 1, "delay_hours": 2, "body": "Welcome!", "only_if_idle_hours": None},
      {"step_no": 2, "delay_hours": 24, "body": "Bye", "only_if_idle_hours": None}],
     [], [], []])
 portal_sequences.portal_db.CMD_TABLE = "portal_connector_commands"
 result = portal_sequences.deliver_due_sequence_steps(conn.cur, 1, conn)
 check("sent one", result == 1, result)
-cmds = [e for e in conn.cur.executed if "portal_connector_commands" in e[0]]
+cmds = [e for e in conn.cur.executed if e[0].startswith("INSERT INTO") and "portal_connector_commands" in e[0]]
 check("command queued", len(cmds) == 1, len(cmds))
-logs = [e for e in conn.cur.executed if "portal_sequence_step_log" in e[0]]
+logs = [e for e in conn.cur.executed if e[0].startswith("INSERT INTO") and "portal_sequence_step_log" in e[0]]
 check("sent logged", len(logs) == 1 and logs[0][1][4] == "sent", logs)
 check("log params", logs[0][1][:4] == (1, 5, 8, 1), logs[0][1])
 check("no idle query", not any("portal_messages" in e[0] for e in conn.cur.executed),
@@ -111,7 +114,7 @@ conn = fresh([[{"id": 5}],
 response = client.get("/api/v1/portal/sequences/5/stats")
 payload = response.get_json()
 check("200 stats", response.status_code == 200, response.status_code)
-check("funnel shape", payload["steps"][0] == {"step_no": 1, "sent": 9, "skipped": 3},
+check("funnel shape", payload["steps"][0] == {"step_no": 1, "sent": 9, "skipped": 3, "stopped": 0},
       payload)
 check("filter counts sql", "COUNT(*) FILTER (WHERE action = 'sent')" in SRC
       and "COUNT(*) FILTER (WHERE action = 'skipped')" in SRC, "filter")

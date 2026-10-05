@@ -4420,6 +4420,9 @@ export interface SequenceRow {
   completedEnrollments: number;
   triggerKeyword: string | null;
   pauseOnReply: boolean;
+  /** §236 smart stops: stop when the customer buys / a person takes over. */
+  stopOnPurchase: boolean;
+  stopOnHuman: boolean;
 }
 
 export async function listSequences(
@@ -4465,6 +4468,8 @@ export async function listSequences(
         typeof row.completed_enrollments === "number" ? row.completed_enrollments : 0,
       pauseOnReply: row.pause_on_reply !== false,
       triggerKeyword: typeof row.trigger_keyword === "string" ? row.trigger_keyword : null,
+      stopOnPurchase: row.stop_on_purchase !== false,
+      stopOnHuman: row.stop_on_human !== false,
     });
   }
   return sequences;
@@ -4513,6 +4518,8 @@ export async function updateSequence(
     enabled?: boolean;
     triggerKeyword?: string | null;
     pauseOnReply?: boolean;
+    stopOnPurchase?: boolean;
+    stopOnHuman?: boolean;
   }
 ): Promise<SequenceMutation> {
   let response: Response;
@@ -4532,6 +4539,12 @@ export async function updateSequence(
           }
           if ("pauseOnReply" in changes) {
             wire.pause_on_reply = changes.pauseOnReply === true;
+          }
+          if ("stopOnPurchase" in changes) {
+            wire.stop_on_purchase = changes.stopOnPurchase === true;
+          }
+          if ("stopOnHuman" in changes) {
+            wire.stop_on_human = changes.stopOnHuman === true;
           }
           return wire;
         })()),
@@ -4584,6 +4597,10 @@ export interface SequenceSettings {
   quietStart: number;
   quietEnd: number;
   utcOffset: number;
+  /** §236: hours between follow-ups of different series in one chat
+   * (sent only when set; null = back to the platform default). */
+  gapHours?: number | null;
+  gapHoursDefault?: number;
 }
 
 export async function getSequenceSettings(
@@ -4607,6 +4624,8 @@ export async function getSequenceSettings(
     quietStart: typeof row.quiet_start === "number" ? row.quiet_start : 22,
     quietEnd: typeof row.quiet_end === "number" ? row.quiet_end : 8,
     utcOffset: typeof row.utc_offset === "number" ? row.utc_offset : 5,
+    gapHours: typeof row.gap_hours === "number" ? row.gap_hours : null,
+    gapHoursDefault: typeof row.gap_hours_default === "number" ? row.gap_hours_default : 4,
   };
 }
 
@@ -4624,6 +4643,7 @@ export async function saveSequenceSettings(
         quiet_start: settings.quietStart,
         quiet_end: settings.quietEnd,
         utc_offset: settings.utcOffset,
+        ...(settings.gapHours !== undefined ? { gap_hours: settings.gapHours } : {}),
       }),
     });
   } catch (error) {
@@ -4640,6 +4660,8 @@ export interface SequenceStepStat {
   stepNo: number;
   sent: number;
   skipped: number;
+  /** §236: enrollments that stopped by themselves before this step. */
+  stopped: number;
 }
 
 export async function getSequenceStats(
@@ -4673,6 +4695,7 @@ export async function getSequenceStats(
         stepNo: typeof row.step_no === "number" ? row.step_no : 0,
         sent: typeof row.sent === "number" ? row.sent : 0,
         skipped: typeof row.skipped === "number" ? row.skipped : 0,
+        stopped: typeof row.stopped === "number" ? row.stopped : 0,
       };
     })
     .filter((row) => row.stepNo > 0);
@@ -11037,6 +11060,37 @@ function workflowBody(input: WorkflowUpsert): string {
   });
 }
 
+/** A starter template - or a generated draft (§231), which has the same shape. */
+function normalizeWorkflowTemplate(item: unknown): WorkflowTemplate {
+  const row = asRecord(item);
+  return {
+    key: typeof row.key === "string" ? row.key : "",
+    name: typeof row.name === "string" ? row.name : "",
+    description:
+      typeof row.description === "string" ? row.description : "",
+    vertical:
+      typeof row.vertical === "string" && row.vertical
+        ? row.vertical
+        : "general",
+    triggerType:
+      typeof row.trigger_type === "string" ? row.trigger_type : "manual",
+    triggerConfig: asRecord(row.trigger_config),
+    stopOnReply: row.stop_on_reply === true,
+    steps: Array.isArray(row.steps)
+      ? row.steps.map((step) => {
+          const s = asRecord(step);
+          return {
+            kind: (typeof s.kind === "string"
+              ? s.kind
+              : "stop") as WorkflowStepKind,
+            label: typeof s.label === "string" ? s.label : "",
+            config: asRecord(s.config),
+          };
+        })
+      : [],
+  };
+}
+
 export async function getWorkflowCatalog(
   accessToken: string
 ): Promise<WorkflowCatalog | null> {
@@ -11089,35 +11143,7 @@ export async function getWorkflowCatalog(
           (k): k is string => typeof k === "string"
         ) as WorkflowStepKind[])
       : [],
-    templates: templates.map((item) => {
-      const row = asRecord(item);
-      return {
-        key: typeof row.key === "string" ? row.key : "",
-        name: typeof row.name === "string" ? row.name : "",
-        description:
-          typeof row.description === "string" ? row.description : "",
-        vertical:
-          typeof row.vertical === "string" && row.vertical
-            ? row.vertical
-            : "general",
-        triggerType:
-          typeof row.trigger_type === "string" ? row.trigger_type : "manual",
-        triggerConfig: asRecord(row.trigger_config),
-        stopOnReply: row.stop_on_reply === true,
-        steps: Array.isArray(row.steps)
-          ? row.steps.map((step) => {
-              const s = asRecord(step);
-              return {
-                kind: (typeof s.kind === "string"
-                  ? s.kind
-                  : "stop") as WorkflowStepKind,
-                label: typeof s.label === "string" ? s.label : "",
-                config: asRecord(s.config),
-              };
-            })
-          : [],
-      };
-    }),
+    templates: templates.map(normalizeWorkflowTemplate),
     verticals: (Array.isArray(payload.verticals) ? payload.verticals : [])
       .map((item) => {
         const row = asRecord(item);
@@ -12311,7 +12337,11 @@ export interface SequenceEnrollmentRow {
   status: string;
   next_at: string | null;
   enrolled_at: string | null;
+  /** §236: why a "stopped" enrollment stopped. */
+  stop_reason: SequenceStopReason | null;
 }
+
+export type SequenceStopReason = "opted_out" | "purchased" | "human_took_over";
 
 export async function listSequenceEnrollments(
   accessToken: string,
@@ -12347,6 +12377,12 @@ export async function listSequenceEnrollments(
       status: typeof row.status === "string" ? row.status : "active",
       next_at: typeof row.next_at === "string" ? row.next_at : null,
       enrolled_at: typeof row.enrolled_at === "string" ? row.enrolled_at : null,
+      stop_reason:
+        row.stop_reason === "opted_out" ||
+        row.stop_reason === "purchased" ||
+        row.stop_reason === "human_took_over"
+          ? row.stop_reason
+          : null,
     });
   }
   return enrollments;
@@ -15947,13 +15983,15 @@ const SANDBOX = "api/v1/portal/sandbox";
  * routes allow 60 s (maxDuration), so stay just under it. */
 const SANDBOX_TIMEOUT_MS = 55_000;
 
-/** portalService, but keeps the sandbox's own 503 reason (the database
- * refused the temporary safety table) instead of a generic one. */
-async function sandboxService<T>(
+/** portalService, but keeps the Control Plane's own 503 reason when it
+ * carries ``keepCode`` (e.g. the database refused the sandbox's temporary
+ * safety table, or the AI engine did not answer) instead of a generic one. */
+async function reasonService<T>(
   accessToken: string,
   path: string,
   init: RequestInit,
-  timeoutMs: number = REQUEST_TIMEOUT_MS
+  timeoutMs: number,
+  keepCode: string
 ): Promise<ServiceResult<T>> {
   let response: Response;
   try {
@@ -15968,11 +16006,20 @@ async function sandboxService<T>(
     } | null;
     const code = payload?.error?.code;
     const message = payload?.error?.message;
-    if (code === "sandbox_unavailable" && typeof message === "string") {
+    if (code === keepCode && typeof message === "string") {
       return { kind: "invalid", status: 503, code, message };
     }
   }
   return serviceResult<T>(response);
+}
+
+function sandboxService<T>(
+  accessToken: string,
+  path: string,
+  init: RequestInit,
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<ServiceResult<T>> {
+  return reasonService<T>(accessToken, path, init, timeoutMs, "sandbox_unavailable");
 }
 
 export function getSandbox(accessToken: string) {
@@ -16016,4 +16063,1458 @@ export function runSandboxScenario(accessToken: string, scenarioId: number) {
       method: "POST",
       body: "{}",
     }, SANDBOX_TIMEOUT_MS);
+}
+
+// ---------------------------------------------------------------------------
+// §231 NL Workflow Generator: describe an automation in plain words and get
+// a draft for the builder. The Control Plane saves nothing; the owner opens
+// the draft in the builder, creates it as a draft and activates it there.
+// ---------------------------------------------------------------------------
+
+export interface WorkflowGenReviewItem {
+  level: "info" | "warn" | "high";
+  text: string;
+}
+
+export interface WorkflowGenStatus {
+  enabled: boolean;
+  ready: boolean;
+  reason: string;
+  limits: { maxDescription: number; maxInstruction: number; perHour: number; maxSteps: number };
+}
+
+export interface WorkflowGenInput {
+  description: string;
+  instruction: string;
+  current: WorkflowUpsert | null;
+}
+
+export interface WorkflowGenResult {
+  workflow: WorkflowTemplate;
+  review: WorkflowGenReviewItem[];
+  assumptions: string[];
+  questions: string[];
+  unsupported: string[];
+  attempts: number;
+}
+
+const WORKFLOW_GEN = "api/v1/portal/workflows/generate";
+/** One or two model calls; the route allows 60 s (maxDuration). */
+const WORKFLOW_GEN_TIMEOUT_MS = 55_000;
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "")
+    : [];
+}
+
+function numberOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+export async function getWorkflowGenerator(
+  accessToken: string
+): Promise<ServiceResult<WorkflowGenStatus>> {
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, WORKFLOW_GEN, { method: "GET" }, REQUEST_TIMEOUT_MS, "ai_unavailable");
+  if (result.kind !== "ok") return result;
+  const row = result.data;
+  const limits = asRecord(row.limits);
+  return {
+    kind: "ok",
+    data: {
+      enabled: row.enabled === true,
+      ready: row.ready === true,
+      reason: typeof row.reason === "string" ? row.reason : "",
+      limits: {
+        maxDescription: numberOr(limits.max_description, 1000),
+        maxInstruction: numberOr(limits.max_instruction, 500),
+        perHour: numberOr(limits.per_hour, 20),
+        maxSteps: numberOr(limits.max_steps, 12),
+      },
+    },
+  };
+}
+
+export async function generateWorkflow(
+  accessToken: string,
+  input: WorkflowGenInput
+): Promise<ServiceResult<WorkflowGenResult>> {
+  const body: Record<string, unknown> = {
+    description: input.description,
+    instruction: input.instruction,
+  };
+  if (input.current) body.current = JSON.parse(workflowBody(input.current));
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, WORKFLOW_GEN, { method: "POST", body: JSON.stringify(body) },
+    WORKFLOW_GEN_TIMEOUT_MS, "ai_unavailable");
+  if (result.kind !== "ok") return result;
+  const row = result.data;
+  const review = (Array.isArray(row.review) ? row.review : [])
+    .map((item) => {
+      const r = asRecord(item);
+      const level = r.level === "warn" || r.level === "high" ? r.level : "info";
+      return { level, text: typeof r.text === "string" ? r.text : "" } as WorkflowGenReviewItem;
+    })
+    .filter((item) => item.text !== "");
+  return {
+    kind: "ok",
+    data: {
+      workflow: { ...normalizeWorkflowTemplate(row.workflow), key: "generated" },
+      review,
+      assumptions: stringList(row.assumptions),
+      questions: stringList(row.questions),
+      unsupported: stringList(row.unsupported),
+      attempts: numberOr(row.attempts, 1),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// §232 Rule Conflict Detector
+// ---------------------------------------------------------------------------
+
+export type RuleConflictSeverity = "high" | "warn" | "info";
+
+export interface RuleConflictRef {
+  type: string;
+  id: string;
+  label: string;
+  href: string;
+}
+
+export interface RuleConflict {
+  id: string;
+  code: string;
+  severity: RuleConflictSeverity;
+  title: string;
+  detail: string;
+  fix: string;
+  rules: RuleConflictRef[];
+  ignored: boolean;
+}
+
+export interface RuleConflictReport {
+  findings: RuleConflict[];
+  counts: { high: number; warn: number; info: number; ignored: number };
+  checked: { routing: number; workflows: number; sequences: number; kb: number; facts: number };
+  ai: {
+    ready: boolean;
+    reason: string;
+    candidates: number;
+    pairsPerCheck: number;
+    checkedAt: string;
+    checkedPairs: number;
+  };
+}
+
+export interface RuleConflictAiResult {
+  checkedPairs: number;
+  remainingPairs: number;
+  findings: RuleConflict[];
+}
+
+const RULE_CONFLICTS = "api/v1/portal/policy/conflicts";
+/** One model call; the route allows 60 s (maxDuration). */
+const RULE_CONFLICTS_AI_TIMEOUT_MS = 50_000;
+
+function ruleConflict(value: unknown): RuleConflict {
+  const row = asRecord(value);
+  const severity = row.severity === "high" || row.severity === "warn" ? row.severity : "info";
+  return {
+    id: typeof row.id === "string" ? row.id : "",
+    code: typeof row.code === "string" ? row.code : "",
+    severity,
+    title: typeof row.title === "string" ? row.title : "",
+    detail: typeof row.detail === "string" ? row.detail : "",
+    fix: typeof row.fix === "string" ? row.fix : "",
+    ignored: row.ignored === true,
+    rules: (Array.isArray(row.rules) ? row.rules : []).map((item) => {
+      const ref = asRecord(item);
+      const href = typeof ref.href === "string" && ref.href.startsWith("/dashboard/")
+        ? ref.href : "/dashboard/rules";
+      return {
+        type: typeof ref.type === "string" ? ref.type : "",
+        id: String(ref.id ?? ""),
+        label: typeof ref.label === "string" ? ref.label : "",
+        href,
+      };
+    }),
+  };
+}
+
+export async function getRuleConflicts(
+  accessToken: string
+): Promise<ServiceResult<RuleConflictReport>> {
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, RULE_CONFLICTS, { method: "GET" }, REQUEST_TIMEOUT_MS, "ai_unavailable");
+  if (result.kind !== "ok") return result;
+  const row = result.data;
+  const counts = asRecord(row.counts);
+  const checked = asRecord(row.checked);
+  const ai = asRecord(row.ai);
+  return {
+    kind: "ok",
+    data: {
+      findings: (Array.isArray(row.findings) ? row.findings : []).map(ruleConflict)
+        .filter((item) => item.id !== ""),
+      counts: {
+        high: numberOr(counts.high, 0), warn: numberOr(counts.warn, 0),
+        info: numberOr(counts.info, 0), ignored: numberOr(counts.ignored, 0),
+      },
+      checked: {
+        routing: numberOr(checked.routing, 0), workflows: numberOr(checked.workflows, 0),
+        sequences: numberOr(checked.sequences, 0), kb: numberOr(checked.kb, 0),
+        facts: numberOr(checked.facts, 0),
+      },
+      ai: {
+        ready: ai.ready === true,
+        reason: typeof ai.reason === "string" ? ai.reason : "",
+        candidates: numberOr(ai.candidates, 0),
+        pairsPerCheck: numberOr(ai.pairs_per_check, 8),
+        checkedAt: typeof ai.checked_at === "string" ? ai.checked_at : "",
+        checkedPairs: numberOr(ai.checked_pairs, 0),
+      },
+    },
+  };
+}
+
+export async function setRuleConflictIgnored(
+  accessToken: string,
+  id: string,
+  ignored: boolean
+): Promise<ServiceResult<{ id: string; ignored: boolean }>> {
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, RULE_CONFLICTS + "/ignore",
+    { method: "POST", body: JSON.stringify({ id, ignored }) },
+    REQUEST_TIMEOUT_MS, "portal_unavailable");
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: { id: String(result.data.id ?? id), ignored: result.data.ignored === true } };
+}
+
+export async function checkRuleConflictsWithAi(
+  accessToken: string
+): Promise<ServiceResult<RuleConflictAiResult>> {
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, RULE_CONFLICTS + "/ai-check", { method: "POST", body: "{}" },
+    RULE_CONFLICTS_AI_TIMEOUT_MS, "ai_unavailable");
+  if (result.kind !== "ok") return result;
+  const row = result.data;
+  return {
+    kind: "ok",
+    data: {
+      checkedPairs: numberOr(row.checked_pairs, 0),
+      remainingPairs: numberOr(row.remaining_pairs, 0),
+      findings: (Array.isArray(row.findings) ? row.findings : []).map(ruleConflict),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// §233 Ask your data (NL analytics)
+// ---------------------------------------------------------------------------
+
+export type NlUnit = "count" | "money" | "percent" | "score";
+
+export interface NlPlan {
+  metric: string;
+  period: string;
+  compare: "previous" | "none";
+  groupBy: string;
+  filters: Record<string, string>;
+  limit: number;
+}
+
+export interface NlMetric {
+  key: string;
+  label: string;
+  category: string;
+  unit: NlUnit;
+  dims: { key: string; label: string }[];
+}
+
+export interface NlCatalog {
+  metrics: NlMetric[];
+  periods: { key: string; label: string }[];
+  suggestions: string[];
+  currency: string;
+  ai: { ready: boolean; reason: string };
+  canPin: boolean;
+  maxPins: number;
+}
+
+export interface NlPoint {
+  key: string;
+  label: string;
+  value: number | null;
+  previous: number | null;
+}
+
+export interface NlAnswer {
+  metric: string;
+  label: string;
+  unit: NlUnit;
+  currency: string;
+  goodDirection: "up" | "down";
+  periodLabel: string;
+  periodRange: string;
+  previousLabel: string;
+  previousRange: string;
+  value: number | null;
+  previous: number | null;
+  changePct: number | null;
+  changePoints: number | null;
+  groupBy: string;
+  groupLabel: string;
+  chart: "time" | "rank" | "none";
+  series: NlPoint[];
+  others: number | null;
+  headline: string;
+  how: string[];
+  plan: NlPlan;
+  empty: boolean;
+}
+
+export interface NlAskResult {
+  answer: NlAnswer | null;
+  source: string;
+  message: string;
+  suggestions: string[];
+}
+
+export interface NlPin {
+  id: number;
+  question: string;
+  answer: NlAnswer | null;
+  error: string;
+}
+
+const NL_ANALYTICS = "api/v1/portal/analytics";
+/** One small model call to read the question; the route allows 30 s. */
+const NL_ANALYTICS_ASK_TIMEOUT_MS = 25_000;
+
+function nlNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function nlText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function nlUnit(value: unknown): NlUnit {
+  return value === "money" || value === "percent" || value === "score" ? value : "count";
+}
+
+function nlPlan(value: unknown): NlPlan {
+  const row = asRecord(value);
+  const filters: Record<string, string> = {};
+  for (const [key, item] of Object.entries(asRecord(row.filters))) {
+    if (typeof item === "string") filters[key] = item;
+  }
+  return {
+    metric: nlText(row.metric),
+    period: nlText(row.period) || "last_30_days",
+    compare: row.compare === "previous" ? "previous" : "none",
+    groupBy: nlText(row.group_by) || "none",
+    filters,
+    limit: numberOr(row.limit, 10),
+  };
+}
+
+/** Wire shape the Control Plane validates (snake_case keys). */
+export function nlPlanToWire(plan: NlPlan): Record<string, unknown> {
+  return {
+    metric: plan.metric,
+    period: plan.period,
+    compare: plan.compare,
+    group_by: plan.groupBy,
+    filters: plan.filters,
+    limit: plan.limit,
+  };
+}
+
+function nlRange(value: unknown): string {
+  const row = asRecord(value);
+  const start = nlText(row.start);
+  const end = nlText(row.end);
+  return start && end ? (start === end ? start : start + " – " + end) : "";
+}
+
+function nlAnswer(value: unknown): NlAnswer | null {
+  const row = asRecord(value);
+  if (!row.metric || typeof row.headline !== "string") return null;
+  const period = asRecord(row.period);
+  const previous = asRecord(row.previous_period);
+  const chart = row.chart === "time" || row.chart === "rank" ? row.chart : "none";
+  return {
+    metric: nlText(row.metric),
+    label: nlText(row.label),
+    unit: nlUnit(row.unit),
+    currency: nlText(row.currency),
+    goodDirection: row.good_direction === "down" ? "down" : "up",
+    periodLabel: nlText(period.label),
+    periodRange: nlRange(period),
+    previousLabel: nlText(previous.label),
+    previousRange: nlRange(previous),
+    value: nlNumber(row.value),
+    previous: nlNumber(row.previous),
+    changePct: nlNumber(row.change_pct),
+    changePoints: nlNumber(row.change_points),
+    groupBy: nlText(row.group_by) || "none",
+    groupLabel: nlText(row.group_label),
+    chart,
+    series: (Array.isArray(row.series) ? row.series : []).map((item) => {
+      const point = asRecord(item);
+      return {
+        key: String(point.key ?? ""),
+        label: nlText(point.label),
+        value: nlNumber(point.value),
+        previous: nlNumber(point.previous),
+      };
+    }),
+    others: nlNumber(row.others),
+    headline: row.headline,
+    how: (Array.isArray(row.how) ? row.how : []).filter(
+      (item): item is string => typeof item === "string"
+    ),
+    plan: nlPlan(row.plan),
+    empty: row.empty === true,
+  };
+}
+
+export async function getAnalyticsCatalog(
+  accessToken: string
+): Promise<ServiceResult<NlCatalog>> {
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, NL_ANALYTICS + "/ask", { method: "GET" }, REQUEST_TIMEOUT_MS,
+    "portal_unavailable");
+  if (result.kind !== "ok") return result;
+  const row = result.data;
+  const ai = asRecord(row.ai);
+  return {
+    kind: "ok",
+    data: {
+      metrics: (Array.isArray(row.metrics) ? row.metrics : []).map((item) => {
+        const metric = asRecord(item);
+        return {
+          key: nlText(metric.key),
+          label: nlText(metric.label),
+          category: nlText(metric.category),
+          unit: nlUnit(metric.unit),
+          dims: (Array.isArray(metric.dims) ? metric.dims : []).map((dim) => {
+            const entry = asRecord(dim);
+            return { key: nlText(entry.key), label: nlText(entry.label) };
+          }),
+        };
+      }).filter((metric) => metric.key !== ""),
+      periods: (Array.isArray(row.periods) ? row.periods : []).map((item) => {
+        const entry = asRecord(item);
+        return { key: nlText(entry.key), label: nlText(entry.label) };
+      }),
+      suggestions: (Array.isArray(row.suggestions) ? row.suggestions : []).filter(
+        (item): item is string => typeof item === "string"
+      ),
+      currency: nlText(row.currency),
+      ai: { ready: ai.ready === true, reason: nlText(ai.reason) },
+      canPin: row.can_pin === true,
+      maxPins: numberOr(row.max_pins, 12),
+    },
+  };
+}
+
+export async function askAnalytics(
+  accessToken: string,
+  input: { question?: string; plan?: NlPlan }
+): Promise<ServiceResult<NlAskResult>> {
+  const body: Record<string, unknown> = {};
+  if (input.question) body.question = input.question;
+  if (input.plan) body.plan = nlPlanToWire(input.plan);
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, NL_ANALYTICS + "/ask",
+    { method: "POST", body: JSON.stringify(body) },
+    NL_ANALYTICS_ASK_TIMEOUT_MS, "portal_unavailable");
+  if (result.kind !== "ok") return result;
+  const row = result.data;
+  return {
+    kind: "ok",
+    data: {
+      answer: nlAnswer(row.answer),
+      source: nlText(row.source),
+      message: nlText(row.message),
+      suggestions: (Array.isArray(row.suggestions) ? row.suggestions : []).filter(
+        (item): item is string => typeof item === "string"
+      ),
+    },
+  };
+}
+
+export async function getAnalyticsPins(
+  accessToken: string
+): Promise<ServiceResult<{ pins: NlPin[]; maxPins: number; canPin: boolean }>> {
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, NL_ANALYTICS + "/pins", { method: "GET" }, REQUEST_TIMEOUT_MS,
+    "portal_unavailable");
+  if (result.kind !== "ok") return result;
+  const row = result.data;
+  return {
+    kind: "ok",
+    data: {
+      pins: (Array.isArray(row.pins) ? row.pins : []).map((item) => {
+        const pin = asRecord(item);
+        return {
+          id: numberOr(pin.id, 0),
+          question: nlText(pin.question),
+          answer: nlAnswer(pin.answer),
+          error: nlText(pin.error),
+        };
+      }).filter((pin) => pin.id > 0),
+      maxPins: numberOr(row.max_pins, 12),
+      canPin: row.can_pin === true,
+    },
+  };
+}
+
+export async function pinAnalyticsQuestion(
+  accessToken: string,
+  question: string,
+  plan: NlPlan
+): Promise<ServiceResult<{ id: number; duplicate: boolean }>> {
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, NL_ANALYTICS + "/pins",
+    { method: "POST", body: JSON.stringify({ question, plan: nlPlanToWire(plan) }) },
+    REQUEST_TIMEOUT_MS, "portal_unavailable");
+  if (result.kind !== "ok") return result;
+  return {
+    kind: "ok",
+    data: {
+      id: numberOr(asRecord(result.data.pin).id, 0),
+      duplicate: result.data.duplicate === true,
+    },
+  };
+}
+
+export async function unpinAnalyticsQuestion(
+  accessToken: string,
+  id: number
+): Promise<ServiceResult<{ deleted: boolean }>> {
+  const result = await reasonService<Record<string, unknown>>(
+    accessToken, NL_ANALYTICS + "/pins/" + String(id), { method: "DELETE" },
+    REQUEST_TIMEOUT_MS, "portal_unavailable");
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: { deleted: result.data.deleted === true } };
+}
+
+// ---------------------------------------------------------------------------
+// §234 Broadcast A/B tests
+// ---------------------------------------------------------------------------
+
+export type AbMetric = "reply" | "order";
+
+export interface AbInput {
+  name: string;
+  audience: string;
+  variants: string[];
+  testPercent: number;
+  decideHours: number;
+  metric: AbMetric;
+  autoWinner: boolean;
+}
+
+export interface AbVariant {
+  label: string;
+  body: string;
+  sent: number;
+  delivered: number;
+  failed: number;
+  replied: number;
+  ordered: number;
+  sales: number;
+  replyRate: number | null;
+  orderRate: number | null;
+}
+
+export interface AbDecision {
+  winner: string | null;
+  leader: string | null;
+  confidence: number | null;
+  clear: boolean;
+  reason: string;
+}
+
+export interface AbTest {
+  id: number;
+  name: string;
+  audience: string;
+  metric: AbMetric;
+  testPercent: number;
+  decideHours: number;
+  autoWinner: boolean;
+  autoPending: boolean;
+  autoNote: string;
+  status: "running" | "completed" | "cancelled";
+  windowOver: boolean;
+  audienceSize: number;
+  testSize: number;
+  restSize: number;
+  restSent: number;
+  winner: string | null;
+  winnerReason: string | null;
+  createdAt: string | null;
+  decideAt: string | null;
+  variants: AbVariant[];
+  decision: AbDecision;
+}
+
+export interface AbConfig {
+  currency: string;
+  maxVariants: number;
+  minPerVariant: number;
+  confidence: number;
+  defaultPercent: number;
+  defaultHours: number;
+  maxRecipients: number;
+  maxBody: number;
+  metrics: { key: AbMetric; label: string }[];
+  audiences: { key: string; label: string }[];
+}
+
+export interface AbPlan {
+  audienceSize: number;
+  testSize: number;
+  perVariant: number;
+  restSize: number;
+  autoWinner: boolean;
+  warnings: string[];
+}
+
+const AB_TESTS = "api/v1/portal/ab-tests";
+/** Starting a test / sending the winner queues up to 200 sends; routes allow 30 s. */
+const AB_SEND_TIMEOUT_MS = 25_000;
+
+function abText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function abRate(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function abMetric(value: unknown): AbMetric {
+  return value === "order" ? "order" : "reply";
+}
+
+function abVariant(value: unknown): AbVariant {
+  const row = asRecord(value);
+  return {
+    label: abText(row.label),
+    body: abText(row.body),
+    sent: numberOr(row.sent, 0),
+    delivered: numberOr(row.delivered, 0),
+    failed: numberOr(row.failed, 0),
+    replied: numberOr(row.replied, 0),
+    ordered: numberOr(row.ordered, 0),
+    sales: numberOr(row.sales, 0),
+    replyRate: abRate(row.reply_rate),
+    orderRate: abRate(row.order_rate),
+  };
+}
+
+function abTest(value: unknown): AbTest {
+  const row = asRecord(value);
+  const decision = asRecord(row.decision);
+  const status = row.status === "completed" || row.status === "cancelled" ? row.status : "running";
+  return {
+    id: numberOr(row.id, 0),
+    name: abText(row.name),
+    audience: abText(row.audience),
+    metric: abMetric(row.metric),
+    testPercent: numberOr(row.test_percent, 0),
+    decideHours: numberOr(row.decide_hours, 0),
+    autoWinner: row.auto_winner === true,
+    autoPending: row.auto_pending === true,
+    autoNote: abText(row.auto_note),
+    status,
+    windowOver: row.window_over === true,
+    audienceSize: numberOr(row.audience_size, 0),
+    testSize: numberOr(row.test_size, 0),
+    restSize: numberOr(row.rest_size, 0),
+    restSent: numberOr(row.rest_sent, 0),
+    winner: abText(row.winner) || null,
+    winnerReason: abText(row.winner_reason) || null,
+    createdAt: abText(row.created_at) || null,
+    decideAt: abText(row.decide_at) || null,
+    variants: (Array.isArray(row.variants) ? row.variants : []).map(abVariant),
+    decision: {
+      winner: abText(decision.winner) || null,
+      leader: abText(decision.leader) || null,
+      confidence: abRate(decision.confidence),
+      clear: decision.clear === true,
+      reason: abText(decision.reason),
+    },
+  };
+}
+
+function abConfig(value: unknown): AbConfig {
+  const row = asRecord(value);
+  const pairs = (list: unknown) =>
+    (Array.isArray(list) ? list : []).map((item) => {
+      const entry = asRecord(item);
+      return { key: abText(entry.key), label: abText(entry.label) };
+    }).filter((entry) => entry.key);
+  return {
+    currency: abText(row.currency) || "Rs",
+    maxVariants: numberOr(row.max_variants, 3),
+    minPerVariant: numberOr(row.min_per_variant, 20),
+    confidence: numberOr(row.confidence, 95),
+    defaultPercent: numberOr(row.default_percent, 30),
+    defaultHours: numberOr(row.default_hours, 24),
+    maxRecipients: numberOr(row.max_recipients, 200),
+    maxBody: numberOr(row.max_body, 1000),
+    metrics: pairs(row.metrics).map((m) => ({ key: abMetric(m.key), label: m.label })),
+    audiences: pairs(row.audiences),
+  };
+}
+
+export async function listAbTests(
+  accessToken: string
+): Promise<ServiceResult<{ tests: AbTest[]; config: AbConfig }>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, AB_TESTS, { method: "GET" });
+  if (result.kind !== "ok") return result;
+  return {
+    kind: "ok",
+    data: {
+      tests: (Array.isArray(result.data.tests) ? result.data.tests : [])
+        .map(abTest).filter((test) => test.id > 0),
+      config: abConfig(result.data.config),
+    },
+  };
+}
+
+/** Start a test; ``dryRun`` only returns the split plan (nothing is sent). */
+export async function startAbTest(
+  accessToken: string,
+  input: AbInput,
+  dryRun: boolean
+): Promise<ServiceResult<{ id: number; plan: AbPlan }>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, AB_TESTS, {
+      method: "POST",
+      body: JSON.stringify({
+        name: input.name,
+        audience: input.audience,
+        variants: input.variants,
+        test_percent: input.testPercent,
+        decide_hours: input.decideHours,
+        metric: input.metric,
+        auto_winner: input.autoWinner,
+        dry_run: dryRun,
+      }),
+    }, AB_SEND_TIMEOUT_MS);
+  if (result.kind !== "ok") return result;
+  const plan = asRecord(result.data.plan);
+  return {
+    kind: "ok",
+    data: {
+      id: numberOr(result.data.id, 0),
+      plan: {
+        audienceSize: numberOr(plan.audience_size, 0),
+        testSize: numberOr(plan.test_size, 0),
+        perVariant: numberOr(plan.per_variant, 0),
+        restSize: numberOr(plan.rest_size, 0),
+        autoWinner: plan.auto_winner === true,
+        warnings: (Array.isArray(plan.warnings) ? plan.warnings : [])
+          .filter((w): w is string => typeof w === "string"),
+      },
+    },
+  };
+}
+
+export async function chooseAbWinner(
+  accessToken: string,
+  id: number,
+  variant: string
+): Promise<ServiceResult<{ winner: string; sent: number }>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, AB_TESTS + "/" + String(id) + "/winner",
+    { method: "POST", body: JSON.stringify({ variant }) }, AB_SEND_TIMEOUT_MS);
+  if (result.kind !== "ok") return result;
+  return {
+    kind: "ok",
+    data: { winner: abText(result.data.winner), sent: numberOr(result.data.sent, 0) },
+  };
+}
+
+export async function cancelAbTest(
+  accessToken: string,
+  id: number
+): Promise<ServiceResult<{ ok: boolean }>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, AB_TESTS + "/" + String(id) + "/cancel", { method: "POST" });
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: { ok: result.data.ok === true } };
+}
+
+// ---------------------------------------------------------------------------
+// §235 AI setup report: score, problems with fixes, what changed since the
+// last check, an optional AI summary and the readable setup document.
+// ---------------------------------------------------------------------------
+
+export type AiReportSeverity = "critical" | "warning" | "info";
+
+export interface AiReportFinding {
+  key: string;
+  area: string;
+  severity: AiReportSeverity;
+  title: string;
+  detail: string;
+  fixLabel: string;
+  fixHref: string;
+}
+
+export interface AiReportItem {
+  key: string;
+  area: string;
+  title: string;
+}
+
+export interface AiReport {
+  id: number;
+  score: number;
+  counts: Record<AiReportSeverity, number>;
+  findings: AiReportFinding[];
+  passes: AiReportItem[];
+  skipped: AiReportItem[];
+  priorities: string[];
+  summary: string;
+  summarySource: "ai" | "rules";
+  origin: "owner" | "auto" | "summary";
+  createdAt: string | null;
+}
+
+export interface AiReportChanges {
+  scoreBefore: number;
+  scoreChange: number;
+  added: { key: string; title: string; severity: AiReportSeverity }[];
+  resolved: { key: string; title: string }[];
+  since: string | null;
+}
+
+export interface AiReportView {
+  report: AiReport;
+  changes: AiReportChanges | null;
+  config: {
+    canSummarize: boolean;
+    aiReady: boolean;
+    aiReason: string;
+    everyHours: number;
+    freshMinutes: number;
+    areas: { key: string; label: string }[];
+  };
+  note: string;
+}
+
+export interface AiSetupSection {
+  key: string;
+  title: string;
+  href: string;
+  rows: { label: string; value: string }[];
+  items: { title: string; tag: string; body: string; meta: string }[];
+}
+
+export interface AiSetupDocument {
+  sections: AiSetupSection[];
+  generatedAt: string | null;
+}
+
+const AI_REPORT = "api/v1/portal/ai-report";
+/** A check reads ~30 small queries; the summary adds one model call (20 s cap). */
+const AI_REPORT_TIMEOUT_MS = 25_000;
+
+function airText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function airSeverity(value: unknown): AiReportSeverity {
+  return value === "critical" || value === "warning" ? value : "info";
+}
+
+function airItem(value: unknown): AiReportItem {
+  const row = asRecord(value);
+  return { key: airText(row.key), area: airText(row.area), title: airText(row.title) };
+}
+
+function airView(value: Record<string, unknown>): AiReportView {
+  const report = asRecord(value.report);
+  const counts = asRecord(report.counts);
+  const config = asRecord(value.config);
+  const changes = value.changes ? asRecord(value.changes) : null;
+  const list = (raw: unknown) => (Array.isArray(raw) ? raw : []);
+  return {
+    report: {
+      id: numberOr(report.id, 0),
+      score: numberOr(report.score, 0),
+      counts: {
+        critical: numberOr(counts.critical, 0),
+        warning: numberOr(counts.warning, 0),
+        info: numberOr(counts.info, 0),
+      },
+      findings: list(report.findings).map((raw) => {
+        const row = asRecord(raw);
+        return {
+          ...airItem(row),
+          severity: airSeverity(row.severity),
+          detail: airText(row.detail),
+          fixLabel: airText(row.fix_label),
+          fixHref: airText(row.fix_href).startsWith("/dashboard/") ? airText(row.fix_href) : "",
+        };
+      }),
+      passes: list(report.passes).map(airItem),
+      skipped: list(report.skipped).map(airItem),
+      priorities: list(report.priorities).filter((k): k is string => typeof k === "string"),
+      summary: airText(report.summary),
+      summarySource: report.summary_source === "ai" ? "ai" : "rules",
+      origin: report.origin === "auto" || report.origin === "summary" ? report.origin : "owner",
+      createdAt: airText(report.created_at) || null,
+    },
+    changes: changes
+      ? {
+          scoreBefore: numberOr(changes.score_before, 0),
+          scoreChange: numberOr(changes.score_change, 0),
+          added: list(changes.new).map((raw) => {
+            const row = asRecord(raw);
+            return { key: airText(row.key), title: airText(row.title), severity: airSeverity(row.severity) };
+          }),
+          resolved: list(changes.resolved).map((raw) => {
+            const row = asRecord(raw);
+            return { key: airText(row.key), title: airText(row.title) };
+          }),
+          since: airText(changes.since) || null,
+        }
+      : null,
+    config: {
+      canSummarize: config.can_summarize === true,
+      aiReady: config.ai_ready === true,
+      aiReason: airText(config.ai_reason),
+      everyHours: numberOr(config.every_hours, 24),
+      freshMinutes: numberOr(config.fresh_minutes, 10),
+      areas: list(config.areas).map((raw) => {
+        const row = asRecord(raw);
+        return { key: airText(row.key), label: airText(row.label) };
+      }),
+    },
+    note: airText(value.note),
+  };
+}
+
+/** The latest report; ``fresh`` re-checks now (limited per hour). */
+export async function getAiReport(
+  accessToken: string,
+  fresh = false
+): Promise<ServiceResult<AiReportView>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, AI_REPORT + (fresh ? "?fresh=1" : ""), { method: "GET" }, AI_REPORT_TIMEOUT_MS);
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: airView(result.data) };
+}
+
+/** Fresh check + AI summary (owner / admin; daily limit). */
+export async function summarizeAiReport(
+  accessToken: string
+): Promise<ServiceResult<AiReportView>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, AI_REPORT + "/summary", { method: "POST" }, AI_REPORT_TIMEOUT_MS);
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: airView(result.data) };
+}
+
+export async function getAiSetupDocument(
+  accessToken: string
+): Promise<ServiceResult<AiSetupDocument>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, AI_REPORT + "/document", { method: "GET" }, AI_REPORT_TIMEOUT_MS);
+  if (result.kind !== "ok") return result;
+  const list = (raw: unknown) => (Array.isArray(raw) ? raw : []);
+  return {
+    kind: "ok",
+    data: {
+      sections: list(result.data.sections).map((raw) => {
+        const row = asRecord(raw);
+        return {
+          key: airText(row.key),
+          title: airText(row.title),
+          href: airText(row.href).startsWith("/dashboard/") ? airText(row.href) : "",
+          rows: list(row.rows).map((item) => {
+            const r = asRecord(item);
+            return { label: airText(r.label), value: airText(r.value) };
+          }),
+          items: list(row.items).map((item) => {
+            const r = asRecord(item);
+            return { title: airText(r.title), tag: airText(r.tag), body: airText(r.body), meta: airText(r.meta) };
+          }),
+        };
+      }),
+      generatedAt: airText(result.data.generated_at) || null,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Handoff brief (§236): what a teammate needs before taking over a chat.
+// ---------------------------------------------------------------------------
+
+export interface HandoffBrief {
+  conversationId: number;
+  customer: { name: string; channel: string };
+  headline: string;
+  handoff: {
+    id: number;
+    reasonLabel: string;
+    severity: string;
+    note: string;
+    status: string;
+    hits: number;
+    createdAt: string | null;
+  } | null;
+  asked: { text: string; at: string | null }[];
+  lastReply: { text: string; by: string; at: string | null } | null;
+  waitingMinutes: number | null;
+  aiReason: { decision: string; reason: string; confidence: number | null } | null;
+  signals: Record<"intent" | "sentiment" | "language" | "purchase_intent" | "urgency", string> | null;
+  facts: { kind: string; text: string }[];
+  orders: { id: number; title: string; total: number | null; paid: number | null; status: string }[];
+  cod: { id: number; status: string }[];
+  series: { id: number; name: string; status: string; nextAt: string | null }[];
+  nextSteps: string[];
+  ai: { summary: string; nextStep: string; createdAt: string | null; stale: boolean } | null;
+}
+
+export interface HandoffBriefView {
+  brief: HandoffBrief;
+  aiReady: boolean;
+  aiReason: string;
+  note: string;
+  cached: boolean;
+}
+
+const BRIEF_TIMEOUT_MS = 25_000;
+
+function briefText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function briefNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function briefList(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.map((item) => asRecord(item)) : [];
+}
+
+function briefView(value: Record<string, unknown>): HandoffBriefView {
+  const raw = asRecord(value.brief);
+  const handoff = raw.handoff ? asRecord(raw.handoff) : null;
+  const reply = raw.last_reply ? asRecord(raw.last_reply) : null;
+  const trace = raw.ai_reason ? asRecord(raw.ai_reason) : null;
+  const signals = raw.signals ? asRecord(raw.signals) : null;
+  const ai = raw.ai ? asRecord(raw.ai) : null;
+  const customer = asRecord(raw.customer);
+  return {
+    brief: {
+      conversationId: briefNumber(raw.conversation_id) ?? 0,
+      customer: { name: briefText(customer.name), channel: briefText(customer.channel) },
+      headline: briefText(raw.headline),
+      handoff: handoff
+        ? {
+            id: briefNumber(handoff.id) ?? 0,
+            reasonLabel: briefText(handoff.reason_label),
+            severity: briefText(handoff.severity),
+            note: briefText(handoff.note),
+            status: briefText(handoff.status),
+            hits: briefNumber(handoff.hits) ?? 1,
+            createdAt: briefText(handoff.created_at) || null,
+          }
+        : null,
+      asked: briefList(raw.asked).map((row) => ({
+        text: briefText(row.text),
+        at: briefText(row.at) || null,
+      })),
+      lastReply: reply
+        ? { text: briefText(reply.text), by: briefText(reply.by), at: briefText(reply.at) || null }
+        : null,
+      waitingMinutes: briefNumber(raw.waiting_minutes),
+      aiReason: trace
+        ? {
+            decision: briefText(trace.decision),
+            reason: briefText(trace.reason),
+            confidence: briefNumber(trace.confidence),
+          }
+        : null,
+      signals: signals
+        ? {
+            intent: briefText(signals.intent),
+            sentiment: briefText(signals.sentiment),
+            language: briefText(signals.language),
+            purchase_intent: briefText(signals.purchase_intent),
+            urgency: briefText(signals.urgency),
+          }
+        : null,
+      facts: briefList(raw.facts).map((row) => ({ kind: briefText(row.kind), text: briefText(row.text) })),
+      orders: briefList(raw.orders).map((row) => ({
+        id: briefNumber(row.id) ?? 0,
+        title: briefText(row.title),
+        total: briefNumber(row.total),
+        paid: briefNumber(row.paid),
+        status: briefText(row.status),
+      })),
+      cod: briefList(raw.cod).map((row) => ({ id: briefNumber(row.id) ?? 0, status: briefText(row.status) })),
+      series: briefList(raw.series).map((row) => ({
+        id: briefNumber(row.id) ?? 0,
+        name: briefText(row.name),
+        status: briefText(row.status),
+        nextAt: briefText(row.next_at) || null,
+      })),
+      nextSteps: (Array.isArray(raw.next_steps) ? raw.next_steps : []).filter(
+        (item): item is string => typeof item === "string"
+      ),
+      ai: ai
+        ? {
+            summary: briefText(ai.summary),
+            nextStep: briefText(ai.next_step),
+            createdAt: briefText(ai.created_at) || null,
+            stale: ai.stale === true,
+          }
+        : null,
+    },
+    aiReady: value.ai_ready === true,
+    aiReason: briefText(value.ai_reason),
+    note: briefText(value.note),
+    cached: value.cached === true,
+  };
+}
+
+async function briefCall(
+  accessToken: string,
+  path: string,
+  method: "GET" | "POST"
+): Promise<ServiceResult<HandoffBriefView>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, path, method === "POST" ? { method, body: "{}" } : { method }, BRIEF_TIMEOUT_MS);
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: briefView(result.data) };
+}
+
+export function getHandoffBrief(accessToken: string, conversationId: number) {
+  return briefCall(
+    accessToken, "api/v1/portal/conversations/" + conversationId + "/handoff-brief", "GET");
+}
+
+export function getEscalationBrief(accessToken: string, escalationId: number) {
+  return briefCall(accessToken, "api/v1/portal/escalations/" + escalationId + "/brief", "GET");
+}
+
+/** Optional AI-written brief (cached per last message; daily cap per workspace). */
+export function requestAiHandoffBrief(accessToken: string, conversationId: number) {
+  return briefCall(
+    accessToken, "api/v1/portal/conversations/" + conversationId + "/handoff-brief/ai", "POST");
+}
+
+// ---------------------------------------------------------------------------
+// Sales agent (§237): qualify, concerns + approved answers, catalog quotes.
+// ---------------------------------------------------------------------------
+
+export type SalesQualifier = "product" | "quantity" | "city" | "budget" | "timeline" | "payment";
+
+export interface SalesSettings {
+  autoStage: boolean;
+  brainContext: boolean;
+  qualifiers: SalesQualifier[];
+}
+
+export interface SalesPlaybookEntry {
+  kind: string;
+  label: string;
+  reply: string;
+  enabled: boolean;
+  suggestion: string;
+}
+
+export interface SalesSettingsView {
+  settings: SalesSettings;
+  playbook: SalesPlaybookEntry[];
+  qualifiers: { key: SalesQualifier; label: string }[];
+  canEdit: boolean;
+}
+
+export interface SalesLead {
+  conversationId: number;
+  contactName: string;
+  score: number;
+  label: "hot" | "warm" | "cold";
+  stageHint: string;
+  purchaseIntent: string;
+  known: { key: string; label: string; value: string }[];
+  missing: { key: string; label: string }[];
+  askNext: string;
+  concerns: {
+    kind: string;
+    label: string;
+    count: number;
+    current: boolean;
+    approvedAnswer: string;
+    suggestion: string;
+  }[];
+  products: { id: number; name: string; price: number | null; stock: number }[];
+  quotes: { id: number; title: string; total: number; status: string; token: string }[];
+  bought: boolean;
+}
+
+export interface SalesLeadView {
+  lead: SalesLead;
+  catalog: { id: number; name: string; price: number; stock: number }[];
+  maxDiscountPercent: number;
+  canDiscount: boolean;
+  quoteDays: number;
+}
+
+export interface SalesOverview {
+  days: number;
+  leads: {
+    conversationId: number;
+    contactName: string;
+    score: number;
+    label: "hot" | "warm" | "cold";
+    stageHint: string;
+    product: string;
+    concerns: string[];
+    bought: boolean;
+    updatedAt: string | null;
+  }[];
+  concerns: { kind: string; label: string; chats: number; bought: number; rate: number; hasAnswer: boolean }[];
+  totals: Record<"hot" | "warm" | "cold", { chats: number; bought: number }>;
+}
+
+export interface SalesQuoteInput {
+  conversationId: number;
+  items: { catalogId: number; qty: number }[];
+  discountPercent: number;
+  /** null -> the workspace default (OF_SALES_QUOTE_DAYS) */
+  expiresInDays: number | null;
+  title: string;
+}
+
+export interface SalesQuote {
+  id: number;
+  token: string;
+  title: string;
+  total: number;
+  discount: number;
+  items: { name: string; qty: number; price: number }[];
+  expiresAt: string | null;
+}
+
+const SALES = "api/v1/portal/sales";
+const SALES_QUALIFIERS: SalesQualifier[] = ["product", "quantity", "city", "budget", "timeline", "payment"];
+
+function salesText(value: unknown): string {
+  return typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
+}
+
+function salesNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function salesRows(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.map((item) => asRecord(item)) : [];
+}
+
+function salesLabel(value: unknown): "hot" | "warm" | "cold" {
+  return value === "hot" || value === "warm" ? value : "cold";
+}
+
+function salesQualifiers(value: unknown): SalesQualifier[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is SalesQualifier => SALES_QUALIFIERS.includes(item as SalesQualifier))
+    : [];
+}
+
+function salesSettingsView(value: Record<string, unknown>): SalesSettingsView {
+  const settings = asRecord(value.settings);
+  return {
+    settings: {
+      autoStage: settings.auto_stage === true,
+      brainContext: settings.brain_context !== false,
+      qualifiers: salesQualifiers(settings.qualifiers),
+    },
+    playbook: salesRows(value.playbook).map((row) => ({
+      kind: salesText(row.kind),
+      label: salesText(row.label),
+      reply: salesText(row.reply),
+      enabled: row.enabled === true,
+      suggestion: salesText(row.suggestion),
+    })),
+    qualifiers: salesRows(value.qualifiers)
+      .filter((row) => SALES_QUALIFIERS.includes(row.key as SalesQualifier))
+      .map((row) => ({ key: row.key as SalesQualifier, label: salesText(row.label) })),
+    canEdit: value.can_edit === true,
+  };
+}
+
+export async function getSalesSettings(accessToken: string): Promise<ServiceResult<SalesSettingsView>> {
+  const result = await portalService<Record<string, unknown>>(accessToken, SALES + "/settings", { method: "GET" });
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: salesSettingsView(result.data) };
+}
+
+export async function saveSalesSettings(
+  accessToken: string,
+  input: Partial<SalesSettings>
+): Promise<ServiceResult<{ settings: SalesSettings }>> {
+  const body: Record<string, unknown> = {};
+  if (typeof input.autoStage === "boolean") body.auto_stage = input.autoStage;
+  if (typeof input.brainContext === "boolean") body.brain_context = input.brainContext;
+  if (Array.isArray(input.qualifiers)) body.qualifiers = input.qualifiers;
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, SALES + "/settings", { method: "PUT", body: JSON.stringify(body) });
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: { settings: salesSettingsView({ settings: result.data.settings }).settings } };
+}
+
+export async function saveSalesPlaybook(
+  accessToken: string,
+  kind: string,
+  reply: string,
+  enabled: boolean
+): Promise<ServiceResult<{ playbook: SalesPlaybookEntry[] }>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, SALES + "/playbook/" + encodeURIComponent(kind),
+    { method: "PUT", body: JSON.stringify({ reply, enabled }) });
+  if (result.kind !== "ok") return result;
+  return { kind: "ok", data: { playbook: salesSettingsView({ playbook: result.data.playbook }).playbook } };
+}
+
+export async function getSalesLead(
+  accessToken: string,
+  conversationId: number
+): Promise<ServiceResult<SalesLeadView>> {
+  const result = await portalService<Record<string, unknown>>(
+    accessToken, SALES + "/conversations/" + conversationId, { method: "GET" });
+  if (result.kind !== "ok") return result;
+  const raw = asRecord(result.data.lead);
+  return {
+    kind: "ok",
+    data: {
+      lead: {
+        conversationId: salesNumber(raw.conversation_id),
+        contactName: salesText(raw.contact_name),
+        score: salesNumber(raw.score),
+        label: salesLabel(raw.label),
+        stageHint: salesText(raw.stage_hint),
+        purchaseIntent: salesText(raw.purchase_intent),
+        known: salesRows(raw.known).map((row) => ({
+          key: salesText(row.key), label: salesText(row.label), value: salesText(row.value),
+        })),
+        missing: salesRows(raw.missing).map((row) => ({ key: salesText(row.key), label: salesText(row.label) })),
+        askNext: salesText(raw.ask_next),
+        concerns: salesRows(raw.concerns).map((row) => ({
+          kind: salesText(row.kind),
+          label: salesText(row.label),
+          count: salesNumber(row.count),
+          current: row.current === true,
+          approvedAnswer: salesText(row.approved_answer),
+          suggestion: salesText(row.suggestion),
+        })),
+        products: salesRows(raw.products).map((row) => ({
+          id: salesNumber(row.id),
+          name: salesText(row.name),
+          price: typeof row.price === "number" ? row.price : null,
+          stock: salesNumber(row.stock),
+        })),
+        quotes: salesRows(raw.quotes).map((row) => ({
+          id: salesNumber(row.id),
+          title: salesText(row.title),
+          total: salesNumber(row.total),
+          status: salesText(row.status),
+          token: salesText(row.token),
+        })),
+        bought: raw.bought === true,
+      },
+      catalog: salesRows(result.data.catalog).map((row) => ({
+        id: salesNumber(row.id), name: salesText(row.name), price: salesNumber(row.price), stock: salesNumber(row.stock),
+      })),
+      maxDiscountPercent: salesNumber(result.data.max_discount_percent),
+      canDiscount: result.data.can_discount === true,
+      quoteDays: salesNumber(result.data.quote_days),
+    },
+  };
+}
+
+export async function getSalesOverview(accessToken: string): Promise<ServiceResult<SalesOverview>> {
+  const result = await portalService<Record<string, unknown>>(accessToken, SALES + "/overview", { method: "GET" });
+  if (result.kind !== "ok") return result;
+  const totals = asRecord(result.data.totals);
+  const total = (key: string) => {
+    const row = asRecord(totals[key]);
+    return { chats: salesNumber(row.chats), bought: salesNumber(row.bought) };
+  };
+  return {
+    kind: "ok",
+    data: {
+      days: salesNumber(result.data.days, 30),
+      leads: salesRows(result.data.leads).map((row) => ({
+        conversationId: salesNumber(row.conversation_id),
+        contactName: salesText(row.contact_name),
+        score: salesNumber(row.score),
+        label: salesLabel(row.label),
+        stageHint: salesText(row.stage_hint),
+        product: salesText(row.product),
+        concerns: Array.isArray(row.concerns) ? row.concerns.map(salesText).filter(Boolean) : [],
+        bought: row.bought === true,
+        updatedAt: salesText(row.updated_at) || null,
+      })),
+      concerns: salesRows(result.data.concerns).map((row) => ({
+        kind: salesText(row.kind),
+        label: salesText(row.label),
+        chats: salesNumber(row.chats),
+        bought: salesNumber(row.bought),
+        rate: salesNumber(row.rate),
+        hasAnswer: row.has_answer === true,
+      })),
+      totals: { hot: total("hot"), warm: total("warm"), cold: total("cold") },
+    },
+  };
+}
+
+export async function createSalesQuote(
+  accessToken: string,
+  input: SalesQuoteInput
+): Promise<ServiceResult<{ link: SalesQuote }>> {
+  const result = await portalService<Record<string, unknown>>(accessToken, SALES + "/quotes", {
+    method: "POST",
+    body: JSON.stringify({
+      conversation_id: input.conversationId,
+      items: input.items.map((item) => ({ catalog_id: item.catalogId, qty: item.qty })),
+      discount_percent: input.discountPercent,
+      ...(input.expiresInDays === null ? {} : { expires_in_days: input.expiresInDays }),
+      title: input.title,
+    }),
+  });
+  if (result.kind !== "ok") return result;
+  const link = asRecord(result.data.link);
+  return {
+    kind: "ok",
+    data: {
+      link: {
+        id: salesNumber(link.id),
+        token: salesText(link.token),
+        title: salesText(link.title),
+        total: salesNumber(link.total),
+        discount: salesNumber(link.discount),
+        items: salesRows(link.items).map((row) => ({
+          name: salesText(row.name), qty: salesNumber(row.qty, 1), price: salesNumber(row.price),
+        })),
+        expiresAt: salesText(link.expires_at) || null,
+      },
+    },
+  };
 }

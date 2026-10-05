@@ -323,7 +323,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
           href="/dashboard/customers"
           className="text-xs text-ink-3 transition hover:text-ink"
         >
-          \\u2190 Customers
+          {"\u2190"} Customers
         </Link>
         <div className="mt-3 rounded-2xl border border-line bg-white shadow-card p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -549,7 +549,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                         className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-soft"
                       >
                         <span className="text-ink-2">
-                          #{conversation.id} \\u00b7 {conversation.channel}
+                          #{conversation.id} {"\u00b7"} {conversation.channel}
                         </span>
                         <span
                           className={
@@ -558,7 +558,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                               : "text-ink-3"
                           }
                         >
-                          {conversation.status} \\u00b7{" "}
+                          {conversation.status} {"\u00b7"}{" "}
                           {when(conversation.lastMessageAt)}
                         </span>
                       </Link>
@@ -581,7 +581,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                     >
                       <span className="text-ink-2">Order #{order.id}</span>
                       <span className={COD_STYLES[order.status] ?? "text-ink-3"}>
-                        {order.status} \\u00b7 {when(order.createdAt)}
+                        {order.status} {"\u00b7"} {when(order.createdAt)}
                       </span>
                     </li>
                   ))}
@@ -604,7 +604,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                     >
                       <span className="truncate text-ink-2">{series.name}</span>
                       <span className="shrink-0 text-ink-3">
-                        {series.status} \\u00b7 step {series.currentStep + 1} \\u00b7{" "}
+                        {series.status} {"\u00b7"} step {series.currentStep + 1} {"\u00b7"}{" "}
                         {when(series.enrolledAt)}
                       </span>
                     </li>
@@ -639,7 +639,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                               : "shrink-0 text-amber-600"
                         }
                       >
-                        {action.status} \u00b7 {when(action.createdAt)}
+                        {action.status} {"\u00b7"} {when(action.createdAt)}
                       </span>
                     </li>
                   ))}
@@ -660,7 +660,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                     >
                       <p className="text-xs text-ink-2">{note.body}</p>
                       <p className="mt-1 text-[10px] text-ink-3">
-                        {note.authorEmail} \\u00b7 {when(note.createdAt)}
+                        {note.authorEmail} {"\u00b7"} {when(note.createdAt)}
                       </p>
                     </li>
                   ))}
@@ -669,7 +669,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
             </section>
           </>
         ) : (
-          <p className="mt-4 text-sm text-ink-3">Loading\\u2026</p>
+          <p className="mt-4 text-sm text-ink-3">Loading{"\u2026"}</p>
         )}
       </div>
     </main>

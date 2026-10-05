@@ -153,8 +153,13 @@ def _segment_recipients(cur, client_id, segment_id) -> List[Dict[str, Any]]:
     """
     try:
         import portal_segments
+        import portal_txn
 
-        return portal_segments.segment_member_rows(cur, client_id, segment_id)
+        # §236: savepoint - a broken segment resolves to no recipients
+        # without aborting the broadcast transaction around it
+        with portal_txn.savepoint(cur, None, "of_segment") as guard:
+            members = portal_segments.segment_member_rows(cur, client_id, segment_id)
+        return [] if guard.failed else members
     except Exception:
         return []
 
@@ -178,17 +183,22 @@ def _send_command(cur, client_id, external_user_id, display_name, body,
     import portal_channels
 
     channel = portal_channels.channel_for_contact(contact)
+    import portal_txn
+
     try:
-        cur.execute(
-            "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
-            " (client_id, channel, action, payload, status, requested_by,"
-            " created_at, updated_at) "
-            "SELECT %s, %s, 'send_message', CAST(%s AS JSONB),"
-            " 'pending', NULL, NOW(), NOW()"
-            " WHERE NOT EXISTS (SELECT 1 FROM " + portal_db._q("portal_optouts") +
-            " WHERE client_id = %s AND contact_id = %s)",
-            (client_id, channel, json.dumps(payload), client_id, contact),
-        )
+        # §236: savepoint - without it the fallback below could never run
+        # (the failed INSERT had already aborted the transaction)
+        with portal_txn.savepoint(cur, None, "of_send_cmd"):
+            cur.execute(
+                "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
+                " (client_id, channel, action, payload, status, requested_by,"
+                " created_at, updated_at) "
+                "SELECT %s, %s, 'send_message', CAST(%s AS JSONB),"
+                " 'pending', NULL, NOW(), NOW()"
+                " WHERE NOT EXISTS (SELECT 1 FROM " + portal_db._q("portal_optouts") +
+                " WHERE client_id = %s AND contact_id = %s)",
+                (client_id, channel, json.dumps(payload), client_id, contact),
+            )
     except Exception:
         # Deployments without the opt-out table (compliance never used) still send.
         cur.execute(
@@ -452,6 +462,27 @@ def cancel_scheduled_broadcast(broadcast_id: int):
     return jsonify({"ok": True}), 200
 
 
+def _materialize_ab_winner(cur, client_id, row) -> None:
+    """§234: an A/B test's automatic-winner slot came due - the A/B engine
+    sends the clear winner or skips (and tells the owner). Its own
+    savepoint: a failure closes the slot without touching other sends."""
+    cur.execute("SAVEPOINT of_ab_win")
+    try:
+        import portal_ab_tests
+
+        portal_ab_tests.materialize_winner(cur, client_id, row)
+        cur.execute("RELEASE SAVEPOINT of_ab_win")
+    except Exception as error:
+        cur.execute("ROLLBACK TO SAVEPOINT of_ab_win")
+        logger.warning("ab test winner slot %s failed: %s", row.get("id"), error)
+        cur.execute(
+            "UPDATE " + portal_db._q(BROADCASTS_TABLE) +
+            " SET recipient_count = 0, materialized_at = NOW()"
+            " WHERE id = %s AND client_id = %s",
+            (int(row.get("id") or 0), client_id),
+        )
+
+
 def materialize_due_broadcasts(cur, client_id, conn) -> int:
     """Fan out due scheduled broadcasts as send_message commands (max 5)."""
     cur.execute(
@@ -470,6 +501,10 @@ def materialize_due_broadcasts(cur, client_id, conn) -> int:
         row_client = int(row.get("client_id") or client_id)
         audience = str(row.get("audience") or "all")
         body = str(row.get("body") or "")
+        if audience.startswith("ab:") and audience.endswith(":win"):
+            _materialize_ab_winner(cur, row_client, row)
+            delivered += 1
+            continue
         recipients = row.get("recipients_json")
         if not isinstance(recipients, list) or not recipients:
             recipients = _resolve_recipients(cur, row_client, audience)

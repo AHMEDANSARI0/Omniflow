@@ -60,7 +60,8 @@ response = client.post("/api/v1/portal/sequences/5/enrollments/9/resume")
 check("200 resume", response.status_code == 200, response.status_code)
 upd = conn.cur.executed[10]
 check("resume sql", "SET status = 'active'" in upd[0]
-      and "AND status = 'paused'" in upd[0], "resume guard")
+      and "status = 'paused'" in upd[0]
+      and "<> 'opted_out'" in upd[0] and "watch_from = NOW()" in upd[0], "resume guard")
 check("resume audit", conn.cur.executed[11][1][1] == "sequence.enrollment_resumed",
       conn.cur.executed[11][1])
 
@@ -94,7 +95,7 @@ check("200 resumed", response.get_json() == {"ok": True, "resumed": 1},
 check("resume-all filter", "AND status = 'paused'" in conn.cur.executed[10][0], "filter")
 
 check("delivery skips paused", "e.status = 'active'" in
-      SRC.split("def deliver_due_sequence_steps")[1][:900], "delivery")
+      SRC.split("def deliver_due_sequence_steps")[1][:3600], "delivery")
 
 print("== portal clients ==")
 

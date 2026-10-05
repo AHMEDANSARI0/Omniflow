@@ -1,6 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
+
+const HandoffBriefCard = dynamic(() => import("../conversations/[id]/HandoffBriefCard"));
 
 interface Escalation {
   id: number;
@@ -72,6 +75,7 @@ export default function EscalationsCard() {
   const [loaded, setLoaded] = useState(false);
   const [busyId, setBusyId] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [briefId, setBriefId] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -207,6 +211,13 @@ export default function EscalationsCard() {
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-ink-3">{formatWhen(item.created_at)}</span>
+                  <button
+                    type="button"
+                    onClick={() => setBriefId((current) => (current === item.id ? 0 : item.id))}
+                    className={ghostBtn}
+                  >
+                    {briefId === item.id ? "Hide brief" : "Brief"}
+                  </button>
                   {item.status === "open" ? (
                     <button
                       type="button"
@@ -226,6 +237,7 @@ export default function EscalationsCard() {
                 {item.note ? " \u00b7 " + item.note : ""}
                 {item.status === "resolved" && item.resolved_note ? " \u00b7 " + item.resolved_note : ""}
               </p>
+              {briefId === item.id ? <HandoffBriefCard escalationId={item.id} compact /> : null}
             </li>
           ))}
         </ul>

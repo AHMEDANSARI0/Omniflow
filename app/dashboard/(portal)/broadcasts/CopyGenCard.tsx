@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AB_PREFILL_EVENT } from "./ABTests";
 
 const LANGS: { value: "ur" | "roman" | "en"; label: string }[] = [
   { value: "roman", label: "Roman Urdu" },
@@ -111,6 +112,16 @@ export default function CopyGenCard() {
             </li>
           ))}
         </ul>
+      ) : null}
+      {variants.length >= 2 ? (
+        <button
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent(AB_PREFILL_EVENT, { detail: variants }))
+          }
+          className="mt-2 text-[11px] text-brand hover:underline"
+        >
+          A/B test these versions
+        </button>
       ) : null}
       {source ? (
         <p className="mt-1.5 text-[10px] text-ink-3">

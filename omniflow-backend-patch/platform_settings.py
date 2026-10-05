@@ -609,6 +609,51 @@ def voice_platform() -> dict:
             "webhook_base": clean_webhook_base(_cached("voice.webhook_base"))}
 
 
+#: Endpoint paths owners often paste by mistake; the client adds them itself.
+API_PATH_SUFFIXES = ("/chat/completions", "/completions", "/embeddings",
+                     "/audio/transcriptions", "/models")
+LOCAL_HTTP_HOSTS = ("localhost", "127.0.0.1", "::1")
+
+
+def clean_api_base(value: str):
+    """(base, None) or ("", error) for an OpenAI-compatible API base URL.
+
+    §236: https only - plain http just for this server's own machine
+    (localhost) or hosts listed in OF_PROVIDER_HTTP_HOSTS; never
+    credentials, a query or a fragment; a pasted endpoint path such as
+    /chat/completions is removed (the client appends it)."""
+    import urllib.parse
+
+    text = str(value or "").strip().rstrip("/")
+    if not text:
+        return "", None
+    lowered = text.lower()
+    for suffix in API_PATH_SUFFIXES:
+        if lowered.endswith(suffix):
+            text = text[:-len(suffix)].rstrip("/")
+            break
+    hint = (" Use the provider's API base, e.g. https://api.openai.com/v1"
+            " (no key or query in the address).")
+    if len(text) > 300 or any(ch.isspace() for ch in text):
+        return "", "The base URL looks wrong." + hint
+    try:
+        parts = urllib.parse.urlsplit(text)
+        host = (parts.hostname or "").lower()
+    except ValueError:
+        return "", "The base URL looks wrong." + hint
+    if parts.scheme not in ("https", "http") or not host:
+        return "", "The base URL must start with https://." + hint
+    if parts.query or parts.fragment or parts.username or parts.password:
+        return "", "The base URL must not contain a key, user or query." + hint
+    allowed_http = set(LOCAL_HTTP_HOSTS) | {
+        item.strip().lower()
+        for item in _env("OF_PROVIDER_HTTP_HOSTS", "").split(",") if item.strip()}
+    if parts.scheme == "http" and host not in allowed_http:
+        return "", ("Plain http is only allowed for a model on this server"
+                    " (localhost)." + hint)
+    return text, None
+
+
 def clean_webhook_base(value: str) -> str:
     """https origin (optionally with a path prefix) or "" - never a query,
     fragment, credentials or plain http (Twilio signs the exact URL)."""

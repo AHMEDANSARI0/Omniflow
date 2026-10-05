@@ -436,7 +436,7 @@ finally:
     c.close()
 check("legacy create -> customer_request kind",
       made and made["kind"] == "customer_request", made)
-sql("INSERT INTO portal_optouts VALUES (1, '923008889999@c.us')", fetch=False)
+sql("INSERT INTO portal_optouts (client_id, contact_id) VALUES (1, '923008889999@c.us')", fetch=False)
 r = client.post(URL + "/" + str(made["id"]) + "/decide", headers=J,
                 data=json.dumps({"decision": "approve",
                                  "reply": "Theek hai"}))
