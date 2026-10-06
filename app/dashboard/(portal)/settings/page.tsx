@@ -13,6 +13,8 @@ import DataSafetyCard from "./DataSafetyCard";
 import ConfigHistoryCard from "./ConfigHistoryCard";
 import WatiCard from "./WatiCard";
 import InstagramCard from "./InstagramCard";
+import EmailChannelCard from "./EmailChannelCard";
+import SmsChannelCard from "./SmsChannelCard";
 import CatalogCard from "./CatalogCard";
 import CouponsCard from "./CouponsCard";
 import DeliveriesCard from "./DeliveriesCard";
@@ -80,6 +82,8 @@ export default async function ClientSettingsPage() {
       <ConfigHistoryCard />
       <WatiCard />
       <InstagramCard />
+      <EmailChannelCard />
+      <SmsChannelCard />
       <div className="mt-6">
         <VoiceVisionCard />
       </div>

@@ -1,6 +1,6 @@
 import { createClient } from "../../../../../lib/supabase/server";
-import { ControlPlaneRequestError } from "../../../../../lib/omniflow/control-plane";
 import { listAdminUsers } from "../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../lib/omniflow/admin-bridge-error";
 import {
   noStoreHeaders,
   safeJson,
@@ -37,31 +37,8 @@ export async function GET(request: Request) {
     const users = await listAdminUsers();
     return safeJson({ users });
   } catch (error) {
-    if (error instanceof ControlPlaneRequestError) {
-      if (error.code === "service_not_configured") {
-        return safeJson(
-          {
-            error: {
-              code: "service_not_configured",
-              message:
-                "Admin bridge not configured — set OMNIFLOW_SERVICE_KEY on the website project.",
-            },
-          },
-          503
-        );
-      }
-      if (error.status === 403) {
-        return safeJson(
-          {
-            error: {
-              code: "forbidden",
-              message: "Service key rejected by the Control Plane.",
-            },
-          },
-          503
-        );
-      }
-    }
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     return safeJson(
       {
         error: {

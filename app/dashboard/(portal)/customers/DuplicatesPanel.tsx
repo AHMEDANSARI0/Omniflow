@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import PortalIcon from "../../components/PortalIcon";
 
 interface IdentitySuggestion {
   contact_a: string;
@@ -143,7 +144,7 @@ export default function DuplicatesPanel({ onLinked }: { onLinked?: () => void })
               ? "Loading\u2026"
               : "Review"}
           {" "}
-          <span aria-hidden="true">{open ? "\u25bd" : "\u25b7"}</span>
+          <PortalIcon name="chevronDown" className={"inline-block h-3.5 w-3.5 align-[-2px] transition-transform " + (open ? "" : "-rotate-90")} />
         </span>
       </button>
 

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 
 /** §214: the Twilio account's numbers, whether each one reaches this
  * Control Plane, and a confirmed one-click Connect (sets the number's
- * Voice URL + status callback in Twilio - no console step). */
+ * Voice URL + status callback in Twilio - no console step). §244: the
+ * same for SMS ("Connect SMS" sets only the number's SMS webhook). */
 interface TwilioNumber {
   sid: string;
   phone_number: string;
@@ -12,6 +13,9 @@ interface TwilioNumber {
   state: string;
   voice_host: string;
   voice_capable: boolean;
+  sms_state: string;
+  sms_host: string;
+  sms_capable: boolean;
   assigned_client_id: number | null;
 }
 
@@ -20,6 +24,7 @@ interface TwilioPayload {
   base_source: string;
   voice_url: string;
   status_url: string;
+  sms_url: string;
   numbers: TwilioNumber[];
   truncated: boolean;
 }
@@ -31,6 +36,13 @@ const STATE_LABELS: Record<string, { label: string; ok: boolean }> = {
   not_set: { label: "Not set up", ok: false },
   app: { label: "Uses a TwiML app", ok: false },
   trunk: { label: "Uses a SIP trunk", ok: false },
+};
+
+const SMS_LABELS: Record<string, { label: string; ok: boolean }> = {
+  connected: { label: "SMS connected", ok: true },
+  elsewhere: { label: "SMS points elsewhere", ok: false },
+  not_set: { label: "SMS not set up", ok: false },
+  app: { label: "SMS uses a TwiML app", ok: false },
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -79,38 +91,51 @@ export default function TwilioNumbersSection({
     void load();
   }, [load]);
 
-  async function connect(row: TwilioNumber) {
+  async function connect(row: TwilioNumber, what: "voice" | "sms" = "voice") {
     if (busy || !data) return;
+    const host = what === "sms" ? row.sms_host : row.voice_host;
+    const elsewhere = (what === "sms" ? row.sms_state : row.state) === "elsewhere";
     const current =
-      row.state === "elsewhere" && row.voice_host
-        ? " It currently sends calls to " + row.voice_host + "."
+      elsewhere && host
+        ? " It currently sends " + (what === "sms" ? "texts" : "calls") + " to " + host + "."
         : "";
     const ok = window.confirm(
-      "Point " +
-        row.phone_number +
-        " at OmniFlow?" +
-        current +
-        "\n\nTwilio will send its calls to " +
-        data.voice_url +
-        " and call status updates to " +
-        data.status_url +
-        "."
+      what === "sms"
+        ? "Send SMS for " +
+            row.phone_number +
+            " to OmniFlow?" +
+            current +
+            "\n\nTwilio will post incoming texts to " +
+            data.sms_url +
+            ". Call routing is not changed. If the number belongs to a Messaging Service, set the service's incoming webhook to the same address."
+        : "Point " +
+            row.phone_number +
+            " at OmniFlow?" +
+            current +
+            "\n\nTwilio will send its calls to " +
+            data.voice_url +
+            " and call status updates to " +
+            data.status_url +
+            "."
     );
     if (!ok) return;
-    setBusy(row.sid);
+    setBusy(row.sid + what);
     setNotice(null);
     try {
       const response = await fetch("/api/omniflow/admin/voice/twilio/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sid: row.sid }),
+        body: JSON.stringify({ sid: row.sid, what }),
       });
       const payload = (await response.json().catch(() => null)) as {
         ok?: boolean;
         error?: { message?: string };
       } | null;
       if (response.ok && payload?.ok) {
-        setNotice({ text: row.phone_number + " now reaches OmniFlow.", ok: true });
+        setNotice({
+          text: row.phone_number + (what === "sms" ? " now sends its texts to OmniFlow." : " now reaches OmniFlow."),
+          ok: true,
+        });
         await load();
       } else {
         setNotice({
@@ -155,6 +180,7 @@ export default function TwilioNumbersSection({
         <ul className="mt-3 space-y-2">
           {data.numbers.map((row) => {
             const state = STATE_LABELS[row.state] ?? { label: row.state, ok: false };
+            const sms = SMS_LABELS[row.sms_state] ?? { label: row.sms_state, ok: false };
             const blocked = row.state === "app" || row.state === "trunk";
             return (
               <li
@@ -188,7 +214,28 @@ export default function TwilioNumbersSection({
                         disabled={busy !== "" || !data.base_url}
                         className="rounded-lg border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11px] font-medium text-brand disabled:opacity-50"
                       >
-                        {busy === row.sid ? "Connecting…" : "Connect"}
+                        {busy === row.sid + "voice" ? "Connecting…" : "Connect"}
+                      </button>
+                    ) : null}
+                    {row.sms_capable ? (
+                      <span
+                        className={
+                          "rounded-md border px-2 py-0.5 text-[10px] " +
+                          (sms.ok
+                            ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                            : "border-line bg-soft text-ink-3")
+                        }
+                      >
+                        {sms.label}
+                      </span>
+                    ) : null}
+                    {row.sms_capable && row.sms_state !== "connected" && row.sms_state !== "app" ? (
+                      <button
+                        onClick={() => void connect(row, "sms")}
+                        disabled={busy !== "" || !data.base_url}
+                        className="rounded-lg border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11px] font-medium text-brand disabled:opacity-50"
+                      >
+                        {busy === row.sid + "sms" ? "Connecting…" : "Connect SMS"}
                       </button>
                     ) : null}
                     {!row.assigned_client_id ? (
@@ -210,6 +257,12 @@ export default function TwilioNumbersSection({
                 ) : null}
                 {!row.voice_capable ? (
                   <p className="mt-1 text-[10px] text-ink-3">This number cannot take calls.</p>
+                ) : null}
+                {row.sms_state === "app" ? (
+                  <p className="mt-1 text-[10px] text-ink-3">
+                    Twilio ignores the SMS webhook while a TwiML app handles this number&apos;s texts. Remove it in the
+                    Twilio console, then refresh.
+                  </p>
                 ) : null}
               </li>
             );

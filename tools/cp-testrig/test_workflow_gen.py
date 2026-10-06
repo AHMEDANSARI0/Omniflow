@@ -524,7 +524,7 @@ def web():
           re.findall(r'fetch\("([^"]+)"', panel) == ["/api/omniflow/portal/workflows/generate"] * 2,
           re.findall(r'fetch\("([^"]+)"', panel))
     banned = "\u25b6\u261d\u2714\u26a1\u2699\u2709\u260e\u2733\u263a\u25fc\u27a1"
-    check("icon law", not any(ch in panel + client for ch in banned) and "\\u2736" in panel)
+    check("icon law", not any(ch in panel + client for ch in banned) and '<PortalIcon name="sparkles"' in panel)
 
 
 web()

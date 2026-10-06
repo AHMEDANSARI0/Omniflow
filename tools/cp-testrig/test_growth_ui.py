@@ -15,6 +15,7 @@ def read(rel):
 
 PORTAL = read("lib/omniflow/portal.ts")
 SIDEBAR = read("app/dashboard/components/DashSidebar.tsx")
+SIDEBAR += "\n" + read("app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
 OVERVIEW = read("app/dashboard/(portal)/page.tsx")
 GROWTH = read("app/dashboard/(portal)/growth/page.tsx")
 PUBLIC = read("app/c/[token]/page.tsx")
@@ -114,29 +115,30 @@ EMOJI_CAPABLE = ("\\u260e", "\\u2733", "\\u2709", "\\u263a", "\\u26a1",
                  "\\u2696", "\\u26a")
 for code in EMOJI_CAPABLE:
     check("sidebar no emoji " + code, code not in SIDEBAR, code)
-# D7 grouped sidebar: the pencil/star glyphs were retired with the regroup.
-for code in ("\\u2302", "\\u25a6", "\\u2706", "\\u2736",
-             "\\u2301", "\\u25c9", "\\u25ad", "\\u26e8",
-             "\\u25b2"):
-    check("sidebar has " + code, code in SIDEBAR, code)
+# §246: the text glyphs gave way to the inline SVG set (PortalIcon).
+for name in ("dashboard", "knowledgeBase", "whatsapp", "configureAi",
+             "automation", "customers", "profile", "compliance", "growth"):
+    check("sidebar icon " + name, 'icon: "' + name + '"' in SIDEBAR, name)
 check("growth nav", '{ label: "Growth", href: "/dashboard/growth",'
-      ' icon: "\\u25b2", enabled: true }' in SIDEBAR, "nav")
+      ' icon: "growth" }' in SIDEBAR, "nav")
 check("overview no emoji lightning", '"⚡"' not in OVERVIEW
       and "\\u26a1" not in OVERVIEW, "icon")
 check("overview no emoji smiley", '"☻"' not in OVERVIEW, "icon")
-check("overview 24 quick links", OVERVIEW.count("{ icon:") == 24,
-      OVERVIEW.count("{ icon:"))
+# §246: the dashboard shortcuts are built from the sidebar config, so every
+# nav page (24 of them before the regroup) is one click away.
+check("dashboard shortcuts from nav config", "NAV_GROUPS.map((group)" in OVERVIEW
+      and "group.items.map((item)" in OVERVIEW, "shortcuts")
 check("overview no ai-brain duplicate", "ai-brain" not in OVERVIEW,
       "dedupe")
-check("overview links compliance", '"Compliance"' in OVERVIEW, "link")
-check("overview links growth-missing-none", '"COD confirmations"' in OVERVIEW
-      and '"Sequences"' in OVERVIEW and '"Integrations"' in OVERVIEW
-      and '"Segments"' in OVERVIEW and '"Pipeline"' in OVERVIEW
-      and '"Quick replies"' in OVERVIEW and '"Activity"' in OVERVIEW
-      and '"Weekly"' in OVERVIEW and '"Configure AI"' in OVERVIEW
-      and '"WhatsApp setup"' in OVERVIEW and '"Settings"' in OVERVIEW,
+check("overview links compliance", '"Compliance"' in SIDEBAR, "link")
+check("overview links growth-missing-none", '"COD confirmations"' in SIDEBAR
+      and '"Sequences"' in SIDEBAR and '"Integrations"' in SIDEBAR
+      and '"Segments"' in SIDEBAR and '"Pipeline"' in SIDEBAR
+      and '"Quick replies"' in SIDEBAR and '"Activity"' in SIDEBAR
+      and '"Weekly"' in SIDEBAR and '"Configure AI"' in SIDEBAR
+      and '"WhatsApp setup"' in SIDEBAR and '"Settings"' in SIDEBAR,
       "links")
-check("overview links growth", '"/dashboard/growth"' in OVERVIEW, "growth")
+check("overview links growth", '"/dashboard/growth"' in SIDEBAR, "growth")
 
 print("== client boundary (Vercel build fix) ==")
 
@@ -215,6 +217,7 @@ print("== winback kit (411-430) ==")
 WBPAGE = read("app/dashboard/(portal)/winback/page.tsx")
 WBROUTE = read("app/api/omniflow/portal/winback/queue/route.ts")
 SIDEBAR = read("app/dashboard/components/DashSidebar.tsx")
+SIDEBAR += "\n" + read("app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
 OVERVIEW = read("app/dashboard/(portal)/page.tsx")
 
 check("winback client in portal.ts",
@@ -240,8 +243,8 @@ check("winback sections", "Carts to recover" in WBPAGE
       and "Reorder due" in WBPAGE and "Win-back" in WBPAGE, "sections")
 check("sidebar winback nav", 'label: "Win-back"' in SIDEBAR
       and "/dashboard/winback" in SIDEBAR, "nav")
-check("overview winback card", 'title: "Win-back"' in OVERVIEW
-      and "/dashboard/winback" in OVERVIEW, "card")
+check("overview winback card", 'label: "Win-back"' in SIDEBAR
+      and "NAV_GROUPS" in OVERVIEW, "card")
 
 print("== revenue pulse (451-470) ==")
 

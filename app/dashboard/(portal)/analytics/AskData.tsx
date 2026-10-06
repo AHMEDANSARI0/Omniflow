@@ -8,6 +8,7 @@ import type {
   NlPlan,
   NlUnit,
 } from "../../../../lib/omniflow/portal";
+import PortalIcon from "../../components/PortalIcon";
 
 const ASK = "/api/omniflow/portal/analytics/ask";
 const PINS = "/api/omniflow/portal/analytics/pins";
@@ -257,7 +258,7 @@ export default function AskData() {
       <div className={card + " p-6"}>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-ink">
-            <span className="mr-1.5 text-brand">{"\u2736"}</span>Ask your data
+            <PortalIcon name="sparkles" className="mr-1.5 inline-block h-4 w-4 align-[-3px] text-brand" />Ask your data
           </h2>
           {!catalog.ai.ready ? (
             <span className="text-[10px] text-ink-3" title={catalog.ai.reason}>
@@ -380,7 +381,7 @@ export default function AskData() {
                 onClick={() => void pin()}
                 className="ml-auto rounded-xl border border-line px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:border-brand/25 hover:text-brand"
               >
-                {"\u2691"} Pin
+                <PortalIcon name="pin" className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]" /> Pin
               </button>
             ) : null}
           </div>

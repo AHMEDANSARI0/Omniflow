@@ -492,12 +492,14 @@ check("Insights page + client: problems, topics, AI quality, journey, 7/30 toggl
                                     "Customers said", "No AI calls were used")), "-")
 check("loading skeleton", "animate-pulse" in read(RIG13 + "app/dashboard/(portal)/insights/loading.tsx"), "-")
 SIDEBAR = read(RIG13 + "app/dashboard/components/DashSidebar.tsx")
+SIDEBAR += "\n" + read(RIG13 + "app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
 PALETTE = read(RIG13 + "app/dashboard/components/CommandPalette.tsx")
+PALETTE += "\n" + read(RIG13 + "app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
 check("sidebar + command palette entries", '"/dashboard/insights"' in SIDEBAR and "Business insights" in SIDEBAR
       and '"/dashboard/insights"' in PALETTE, "-")
 check("UI copy English + text-presentation glyphs only",
       "karein" not in CLIENT and "\\u25b6" not in CLIENT and "\\u2714" not in CLIENT
-      and "\\u26a1" not in CLIENT and '"\\u2059"' in SIDEBAR, "-")
+      and "\\u26a1" not in CLIENT and 'icon: "businessInsights"' in SIDEBAR, "-")
 
 
 # ---- owner thresholds + tenant timezone (ops polish) ----

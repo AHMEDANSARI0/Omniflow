@@ -226,7 +226,12 @@ check("bell fetches alerts",
 check("bell settings toggle", "alerts/settings" in BELL, "toggle")
 SIDEBAR = open("/tmp/p13/Omniflow/app/dashboard/components/DashSidebar.tsx",
                encoding="utf8").read()
-check("sidebar mounts bell", '<AlertsBell />' in SIDEBAR, "mount")
+SIDEBAR += "\n" + open("/tmp/p13/Omniflow/app/dashboard/components/portalNav.ts",
+               encoding="utf8").read()  # §246 nav entries live in portalNav.ts
+# §246: the bell sits in the top bar next to search (one bell for all sizes).
+TOPBAR = open("/tmp/p13/Omniflow/app/dashboard/components/DashTopbar.tsx",
+              encoding="utf8").read()
+check("top bar mounts bell", '<AlertsBell />' in TOPBAR and '<AlertsBell />' not in SIDEBAR, "mount")
 BRIEF = open("/tmp/p13/Omniflow/app/dashboard/(portal)/DailyBrief.tsx",
              encoding="utf8").read()
 check("brief needs-attention block", "Needs attention" in BRIEF, "block")

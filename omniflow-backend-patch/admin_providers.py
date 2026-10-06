@@ -16,9 +16,7 @@ a blank value on PUT keeps the stored secret (the catalog-sync rule).
 
 import json
 import logging
-import os
 import re
-import secrets as _secrets
 import smtplib
 from email.message import EmailMessage
 
@@ -27,6 +25,7 @@ import urllib.request
 from flask import Blueprint, jsonify, request
 
 import platform_settings
+import portal_auth
 import portal_db
 
 logger = logging.getLogger("omniflow.admin-providers")
@@ -66,14 +65,7 @@ NUMERIC_KEYS = {"ai.daily_call_cap": (0, 1000000),
 
 
 def _authorized() -> bool:
-    key = request.headers.get("X-Omniflow-Key", "")
-    if not key:
-        return False
-    accepted = [
-        os.environ.get("OMNIFLOW_SERVICE_KEY"),
-        os.environ.get("OMNIFLOW_ADMIN_API_KEY"),
-    ]
-    return any(k for k in accepted if k and _secrets.compare_digest(key, k))
+    return portal_auth.service_key_ok()
 
 
 @bp.before_request
@@ -538,6 +530,7 @@ def _assigned_by_digits() -> dict:
 
 @bp.get("/voice/twilio")
 def list_twilio_numbers_route():
+    import portal_sms
     import portal_voice
 
     keys, error = _twilio_keys_or_error()
@@ -561,6 +554,7 @@ def list_twilio_numbers_route():
         "base_url": base, "base_source": source,
         "voice_url": (base + portal_voice.INCOMING_PATH) if base else "",
         "status_url": (base + portal_voice.STATUS_PATH) if base else "",
+        "sms_url": (base + portal_sms.INCOMING_PATH) if base else "",
         "numbers": numbers, "truncated": truncated,
     }), 200
 
@@ -575,6 +569,11 @@ def connect_twilio_number_route():
         return jsonify({"error": {"code": "bad_request",
                                   "message": "Pick a number from the"
                                              " Twilio list."}}), 400
+    # §244: "sms" points only the number's SMS webhook at portal_sms
+    what = str(payload.get("what") or "voice").strip().lower()
+    if what not in ("voice", "sms"):
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "what must be voice or sms."}}), 400
     keys, error = _twilio_keys_or_error()
     if error:
         return error
@@ -587,15 +586,29 @@ def connect_twilio_number_route():
     try:
         current = portal_voice.get_twilio_number(keys, sid)
         state = portal_voice.twilio_number_state(current, base)
-        if state["state"] in ("app", "trunk"):
-            what = "a TwiML app" if state["state"] == "app" else "a SIP trunk"
+        if what == "sms" and not state["sms_capable"]:
+            return jsonify({"error": {
+                "code": "not_sms_capable",
+                "message": "This number cannot send or receive SMS."}}), 409
+        if what == "sms" and state["sms_state"] == "app":
             return jsonify({"error": {
                 "code": "number_in_use",
-                "message": "This number is handled by " + what + " in"
+                "message": "SMS on this number is handled by a TwiML app"
+                           " in Twilio, so Twilio ignores the SMS webhook."
+                           " Remove it from the number in the Twilio"
+                           " console, then connect again."}}), 409
+        if what == "sms":
+            updated = portal_voice.connect_twilio_sms(keys, sid, base)
+        elif state["state"] in ("app", "trunk"):
+            holder = "a TwiML app" if state["state"] == "app" else "a SIP trunk"
+            return jsonify({"error": {
+                "code": "number_in_use",
+                "message": "This number is handled by " + holder + " in"
                            " Twilio, so Twilio ignores webhook URLs. Remove"
                            " it from the number in the Twilio console, then"
                            " connect again."}}), 409
-        updated = portal_voice.connect_twilio_number(keys, sid, base)
+        else:
+            updated = portal_voice.connect_twilio_number(keys, sid, base)
     except portal_voice.TwilioApiError as failure:
         status = 404 if failure.status == 404 else 502
         return jsonify({"error": {"code": "twilio_error",
@@ -608,7 +621,8 @@ def connect_twilio_number_route():
         try:
             with conn.cursor() as cur:
                 portal_db.log_action(
-                    cur, 0, "voice.twilio_connected", "platform_admin",
+                    cur, 0, "voice.twilio_sms_connected" if what == "sms"
+                    else "voice.twilio_connected", "platform_admin",
                     None, None,
                     ("Twilio number ..." + public["phone_number"][-4:]
                      + " -> " + (portal_voice._host_of(base) or "?")

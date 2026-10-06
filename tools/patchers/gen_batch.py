@@ -26,6 +26,15 @@ SPEC.json = {"out": "tools/patchers/add_batch_X.mjs",
                                         plain-text file, e.g. a CP
                                         requirements.txt dependency;
                                         EOL style kept, backup taken),
+             "swap_if_sha": {"files": [["package.json", "BASE-relative
+                                        path"], ...], "fallback": "msg"}
+                                       (optional, §245: whole-file swap for
+                                        files that cannot carry a marker,
+                                        e.g. package-lock.json. All files
+                                        must still equal the BASE copy
+                                        (sha256, CRLF-normalised) or already
+                                        equal the new one; otherwise NOTHING
+                                        is written and fallback is printed),
              "ops": [["path/relative/to/repo", "unique marker"], ...,
                      ["path/to/retire.tsx", {"delete": true}]]}
 
@@ -161,6 +170,45 @@ ENSURE_LINE = r'''function ensureLine(repoPath, line, presentRe) {
 }
 '''
 
+SWAP_IF_SHA = r'''function swapIfSha(files, fallback) {
+  // §245: all-or-nothing swap of marker-less files (package.json + lock stay a pair).
+  try {
+    const crypto = require("crypto");
+    const plan = [];
+    for (const [repoPath, baseSha, content] of files) {
+      if (!fs.existsSync(repoPath)) {
+        console.log("! " + repoPath + " not found - nothing swapped. " + fallback);
+        warnings++;
+        return;
+      }
+      const text = fs.readFileSync(repoPath, "utf8").replace(/\r\n/g, "\n");
+      if (text === content) continue;
+      if (crypto.createHash("sha256").update(text, "utf8").digest("hex") !== baseSha) {
+        console.log("! " + repoPath + " differs from the copy this batch was built on - nothing swapped. " + fallback);
+        warnings++;
+        return;
+      }
+      plan.push([repoPath, content]);
+    }
+    if (!plan.length) {
+      console.log("= " + files.map((f) => f[0]).join(" + ") + " (already correct)");
+      already++;
+      return;
+    }
+    for (const [repoPath, content] of plan) {
+      const backup = repoPath + BACKUP_TAG;
+      if (!fs.existsSync(backup)) fs.copyFileSync(repoPath, backup);
+      fs.writeFileSync(repoPath, content, "utf8");
+      console.log("+ " + repoPath + " (updated - old copy kept as " + BACKUP_TAG + ")");
+      applied++;
+    }
+  } catch (err) {
+    console.log("X swap FAILED: " + err.message + " " + fallback);
+    warnings++;
+  }
+}
+'''
+
 FOOTER = r'''
 console.log("");
 console.log("applied: " + applied + "  already: " + already + "  warnings: " + warnings);
@@ -195,6 +243,8 @@ def unresolved_imports(rel, content):
         return []
     bad = []
     for spec in _IMPORT_RE.findall(content):
+        if "$" in spec:  # a regex replacement ("./$1.cjs"), not a module path
+            continue
         target = posixpath.normpath(posixpath.join(posixpath.dirname(rel), spec))
         if target.startswith("..") or not any(_is_file_exact(target + s) for s in _SUFFIXES):
             bad.append(spec)
@@ -258,6 +308,20 @@ def main(spec_path):
             json.dumps(rel, ensure_ascii=True), json.dumps(line, ensure_ascii=True),
             json.dumps(present, ensure_ascii=True)))
         emitted += 1
+    swap = spec.get("swap_if_sha")
+    if swap:
+        import hashlib
+        assert base, "swap_if_sha needs a base tree"
+        rows = []
+        for rel, base_rel in swap["files"]:
+            content = open(rel, encoding="utf8").read().replace("\r\n", "\n")
+            base_text = open(os.path.join(base, base_rel), encoding="utf8").read().replace("\r\n", "\n")
+            assert content != base_text, "swap_if_sha: %s equals its base copy" % rel
+            rows.append("[%s, %s,\n    %s]" % (json.dumps(rel), json.dumps(hashlib.sha256(base_text.encode("utf8")).hexdigest()),
+                                            json.dumps(content, ensure_ascii=True)))
+        out.append(SWAP_IF_SHA)
+        out.append("swapIfSha([%s], %s);\n" % (",\n  ".join(rows), json.dumps(swap["fallback"], ensure_ascii=True)))
+        emitted += len(rows)
     out.append(FOOTER)
     text = "".join(out)
     open(spec["out"], "w", encoding="utf8", newline="\n").write(text)

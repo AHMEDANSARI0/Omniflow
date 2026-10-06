@@ -22,7 +22,6 @@ Endpoints:
 
 import logging
 import os
-import secrets
 import threading
 import time
 from datetime import datetime, timezone
@@ -30,6 +29,7 @@ from typing import Any, Dict, Optional
 
 from flask import Blueprint, jsonify, request
 
+import portal_auth
 import portal_db
 import portal_cod
 import portal_contacts
@@ -48,14 +48,7 @@ _tenant_cache: Dict[str, Any] = {"email": None, "value": None, "at": 0.0}
 
 
 def _authorized() -> bool:
-    key = request.headers.get("X-Omniflow-Key", "")
-    if not key:
-        return False
-    accepted = [
-        os.environ.get("OMNIFLOW_SERVICE_KEY"),
-        os.environ.get("OMNIFLOW_ADMIN_API_KEY"),
-    ]
-    return any(k for k in accepted if k and secrets.compare_digest(key, k))
+    return portal_auth.service_key_ok()
 
 
 @bp.before_request
@@ -191,9 +184,10 @@ def list_commands():
         return error
     limit = _query_int("limit", 20, 1, 50)
     channel = (args.get("channel") or "").strip()
-    if channel and channel not in ALLOWED_CHANNELS:
+    if channel and (channel not in ALLOWED_CHANNELS or channel in CP_DISPATCHED_CHANNELS):
+        bridge_channels = [c for c in ALLOWED_CHANNELS if c not in CP_DISPATCHED_CHANNELS]
         return jsonify({"error": {"code": "bad_request",
-                                  "message": "channel " + "|".join(ALLOWED_CHANNELS) + " hon."}}), 400
+                                  "message": "channel " + "|".join(bridge_channels) + " hon."}}), 400
 
     try:
         portal_db.ensure_tables()
@@ -308,6 +302,25 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_email_channel
+
+                    # §243: email channel - send queued replies over SMTP and
+                    # import new mail (background thread, own connection, at
+                    # most every OF_EMAIL_POLL_SECONDS).
+                    portal_email_channel.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_sms
+
+                    # §244: SMS channel - send queued SMS replies through
+                    # Twilio (background thread, at most every
+                    # OF_SMS_POLL_SECONDS; inbound SMS and teammate replies
+                    # are sent right away without waiting for this).
+                    portal_sms.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
                     import portal_inbound_media
 
                     # §214: retention sweep for stored customer files
@@ -334,6 +347,9 @@ def list_commands():
                 if channel:
                     cmd_sql += " AND channel = %s"
                     cmd_params.append(channel)
+                else:
+                    cmd_sql += " AND channel <> ALL(%s)"
+                    cmd_params.append(list(CP_DISPATCHED_CHANNELS))
                 cmd_sql += " ORDER BY id ASC LIMIT %s"
                 cmd_params.append(limit)
                 cur.execute(cmd_sql, tuple(cmd_params))
@@ -466,7 +482,11 @@ def connector_bot_config():
 
 MAX_INGEST_MESSAGES = 100
 ALLOWED_DIRECTIONS = ("in", "out")
-ALLOWED_CHANNELS = ("whatsapp", "telegram", "instagram", "messenger")
+ALLOWED_CHANNELS = ("whatsapp", "telegram", "instagram", "messenger", "email", "sms")
+# §243 / §244: channels the Control Plane delivers itself (portal_email_channel,
+# portal_sms via portal_cp_outbox) - laptop bridges never receive their
+# commands or away replies.
+CP_DISPATCHED_CHANNELS = ("email", "sms")
 
 
 _AWAY_TABLE_READY = False
@@ -506,6 +526,12 @@ def _ensure_away_table() -> None:
                 "CREATE INDEX IF NOT EXISTS portal_away_pending_idx ON " +
                 portal_db._q("portal_away_replies") +
                 " (client_id, status, id)"
+            )
+            # §243: the away-reply poll filters on next_attempt_at, which the
+            # original table never had (the poll answered 503 on a real DB)
+            cur.execute(
+                "ALTER TABLE " + portal_db._q("portal_away_replies") +
+                " ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ"
             )
         conn.commit()
     finally:
@@ -622,6 +648,8 @@ def list_due_away_replies():
                     portal_db._q("portal_away_replies") +
                     " WHERE client_id = %s AND status = 'pending'"
                     " AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())"
+                    " AND contact_id NOT LIKE 'em:%%'"
+                    " AND contact_id NOT LIKE 'sms:%%'"
                     " ORDER BY id ASC LIMIT %s",
                     (tenant["client_id"], limit),
                 )
@@ -847,9 +875,14 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                             pass
                     # §228: DM senders only (ig: / fb:) - comment authors
                     # (igc: / fbc:) use a different id and are not linked.
-                    identity_kind = {"ig:": "instagram", "fb:": "facebook"}.get(
-                        item["from"][:3]) if item["channel"] in (
-                        "instagram", "messenger") else None
+                    # §243: email senders (em:) link as email handles.
+                    # §244: SMS senders (sms:+<e164>) link as phone handles -
+                    # the same number on WhatsApp is the same person.
+                    identity_prefix, _, identity_handle = item["from"].partition(":")
+                    identity_kind = {"ig:": "instagram", "fb:": "facebook",
+                                     "em:": "email", "sms:": "phone"}.get(
+                        identity_prefix.lower() + ":") if item["channel"] in (
+                        "instagram", "messenger", "email", "sms") else None
                     if identity_kind:
                         # savepoint: a missing identity table must not abort
                         # the message itself (fail-soft)
@@ -857,7 +890,6 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                         try:
                             import portal_identity
 
-                            identity_handle = item["from"][3:]
                             portal_identity.resolve(
                                 cur,
                                 tenant["client_id"],
@@ -974,7 +1006,10 @@ def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
                                     claimed_by = "cod"
                         except Exception:
                             pass
-                    if claimed_by is None:
+                    # §243: the brain answers customers only - never the
+                    # business's own sent messages that adapters record
+                    # as direction "out" (that would answer itself).
+                    if claimed_by is None and item["direction"] == "in":
                         try:
                             with portal_txn.savepoint(cur, conn, "of_hook"):
                                 import portal_brain

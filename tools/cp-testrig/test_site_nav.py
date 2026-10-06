@@ -29,6 +29,7 @@ check("mapper conversation_id", 'raw.conversation_id === "number"' in lib_src, "
 print("== command palette ==")
 
 palette_src = open(COMPONENTS + "/CommandPalette.tsx").read()
+palette_src += "\n" + open(COMPONENTS + "/portalNav.ts").read()  # §246 nav entries live in portalNav.ts
 check("palette client", '"use client"' in palette_src, "client")
 check("ctrl+k handler", "event.metaKey || event.ctrlKey" in palette_src
       and '"k"' in palette_src, "hotkey")
@@ -54,11 +55,14 @@ check("shell renders palette", "<CommandPalette />" in shell_src, "render")
 check("shell imports palette", 'import CommandPalette from "./CommandPalette";' in shell_src, "import")
 
 sidebar_src = open(COMPONENTS + "/DashSidebar.tsx").read()
-check("activity nav item", '{ label: "Activity", href: "/dashboard/activity", icon: "\\u2261", enabled: true }' in sidebar_src, "nav")
+sidebar_src += "\n" + open(COMPONENTS + "/portalNav.ts").read()  # §246 nav entries live in portalNav.ts
+check("activity nav item", '{ label: "Activity", href: "/dashboard/activity", icon: "activity" }' in sidebar_src, "nav")
 check("nav after sequences", sidebar_src.index('"/dashboard/sequences"') < sidebar_src.index('"/dashboard/activity"'), "order")
-check("search trigger", "openCommandPalette()" in sidebar_src, "trigger")
-check("ctrl k hint", "Ctrl K" in sidebar_src, "hint")
-check("palette import", 'import { openCommandPalette } from "./CommandPalette";' in sidebar_src, "import")
+# §246: search moved from the sidebar to the top bar (top right).
+topbar_src = open(COMPONENTS + "/DashTopbar.tsx").read()
+check("search trigger", "openCommandPalette()" in topbar_src and "openCommandPalette" not in sidebar_src, "trigger")
+check("ctrl k hint", "Ctrl K" in topbar_src, "hint")
+check("palette import", 'import { openCommandPalette } from "./CommandPalette";' in topbar_src, "import")
 
 print("== customers ?q= seed ==")
 

@@ -779,6 +779,7 @@ check("page: no emoji-capable glyphs",
       not re.search("[\u2600-\u27bf\U0001F300-\U0001FAFF]", client.replace("\u2713", "")
                     .replace("\u25c9", "").replace("\u2756", "")))
 side = read("app/dashboard/components/DashSidebar.tsx")
+side += "\n" + read("app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
 check("sidebar: AI setup report link after Configure AI",
       '"/dashboard/ai-report"' in side and side.find('"/dashboard/bot"') < side.find('"/dashboard/ai-report"'))
 

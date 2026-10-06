@@ -38,6 +38,12 @@ function controlPlaneBaseUrl(): URL {
   return url;
 }
 
+// The admin endpoints answer 401/403 only when X-Omniflow-Key is wrong, so
+// name that case: routes show an actionable message (adminBridgeError).
+function failureCode(status: number): string {
+  return status === 401 || status === 403 ? "service_key_rejected" : "admin_request_failed";
+}
+
 async function adminRequest(
   path: string,
   init: RequestInit,
@@ -62,7 +68,7 @@ async function adminRequest(
   }
 
   if (!response.ok && !(options.passStatuses ?? []).includes(response.status)) {
-    throw new ControlPlaneRequestError(response.status, "admin_request_failed");
+    throw new ControlPlaneRequestError(response.status, failureCode(response.status));
   }
   return response;
 }
@@ -480,8 +486,9 @@ async function adminVoiceFetch(
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   headers.set("X-Omniflow-Key", serviceKey());
+  let response: Response;
   try {
-    return await fetch(url, {
+    response = await fetch(url, {
       ...init,
       headers,
       cache: "no-store",
@@ -491,6 +498,10 @@ async function adminVoiceFetch(
   } catch {
     throw new ControlPlaneRequestError(503, "control_plane_unavailable");
   }
+  if (response.status === 401 || response.status === 403) {
+    throw new ControlPlaneRequestError(response.status, failureCode(response.status));
+  }
+  return response;
 }
 
 export async function listAdminVoiceNumbers(): Promise<AdminVoiceNumber[] | null> {
@@ -548,6 +559,10 @@ export interface AdminTwilioNumber {
   state: string;
   voice_host: string;
   voice_capable: boolean;
+  /** §244 SMS webhook: connected | elsewhere | app | not_set */
+  sms_state: string;
+  sms_host: string;
+  sms_capable: boolean;
   assigned_client_id: number | null;
 }
 
@@ -557,6 +572,7 @@ export interface AdminTwilioNumbersPayload {
   base_source: string;
   voice_url: string;
   status_url: string;
+  sms_url: string;
   numbers: AdminTwilioNumber[];
   truncated: boolean;
 }
@@ -588,14 +604,16 @@ export async function listAdminTwilioNumbers(): Promise<
   return adminTwilioResult<AdminTwilioNumbersPayload>(response);
 }
 
+/** what: "voice" (Voice URL + status callback) or "sms" (§244: SMS webhook only). */
 export async function connectAdminTwilioNumber(
-  sid: string
+  sid: string,
+  what: "voice" | "sms" = "voice"
 ): Promise<AdminTwilioResult<{ ok: boolean; number: AdminTwilioNumber; base_url: string }>> {
   const response = await adminVoiceFetch(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sid }),
+      body: JSON.stringify({ sid, what }),
     },
     "api/v1/admin/voice/twilio/connect"
   );

@@ -1,12 +1,14 @@
 import { createClient } from "../../../../../../../lib/supabase/server";
 import { connectAdminTwilioNumber } from "../../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../../lib/omniflow/admin-bridge-error";
 import {
   safeJson,
   sameOrigin,
 } from "../../../../../../../lib/omniflow/request-security";
 
 /** Admin (§214): point one Twilio number's Voice URL + status callback at
- * this Control Plane (explicit, confirmed in the panel). */
+ * this Control Plane (explicit, confirmed in the panel). §244: what "sms"
+ * points only the number's SMS webhook. */
 async function requireAdminSession() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
@@ -38,8 +40,13 @@ export async function POST(request: Request) {
       400
     );
   }
+  const rawWhat =
+    payload !== null && typeof payload === "object" ? (payload as Record<string, unknown>).what : undefined;
+  if (rawWhat !== undefined && rawWhat !== "voice" && rawWhat !== "sms") {
+    return safeJson({ error: { code: "bad_request", message: "what must be voice or sms." } }, 400);
+  }
   try {
-    const result = await connectAdminTwilioNumber(sid);
+    const result = await connectAdminTwilioNumber(sid, rawWhat === "sms" ? "sms" : "voice");
     if (result.kind === "ok") return safeJson(result.data, 200);
     if (result.kind === "invalid") {
       return safeJson(
@@ -47,7 +54,9 @@ export async function POST(request: Request) {
         result.status
       );
     }
-  } catch {
+  } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     // fall through
   }
   return safeJson(

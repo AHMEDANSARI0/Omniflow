@@ -33,6 +33,7 @@ SMOKE_MAP = {
     "perf_card.tsx": D + "settings/PerfCard.tsx",
     "settings_page.tsx": D + "settings/page.tsx",
     "sidebar.tsx": "app/dashboard/components/DashSidebar.tsx",
+    "nav.ts": "app/dashboard/components/portalNav.ts",
     "recovery_card.tsx": "app/dashboard/components/RecoveryCard.tsx",
     "address_card.tsx": D + "cod/AddressCard.tsx",
     "negotiation_card.tsx": D + "settings/NegotiationCard.tsx",

@@ -5,6 +5,7 @@ import {
   putAdminProviders,
   type AdminProviderGroup,
 } from "../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../lib/omniflow/admin-bridge-error";
 import {
   safeJson,
   sameOrigin,
@@ -54,23 +55,8 @@ export async function GET(request: Request) {
     const payload = await getAdminProviders();
     return safeJson(payload, 200);
   } catch (error) {
-    if (error instanceof ControlPlaneRequestError) {
-      if (
-        error.code === "service_not_configured" ||
-        error.code === "control_plane_not_configured"
-      ) {
-        return safeJson(
-          {
-            error: {
-              code: "service_not_configured",
-              message:
-                "Admin bridge not configured — set OMNIFLOW_SERVICE_KEY on the website project.",
-            },
-          },
-          503
-        );
-      }
-    }
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     return safeJson(
       {
         error: {
@@ -144,6 +130,8 @@ export async function PUT(request: Request) {
     }
     return safeJson(result, 200);
   } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     if (error instanceof ControlPlaneRequestError && error.status === 400) {
       return safeJson(
         {

@@ -19,19 +19,19 @@ import {
   stepSummary,
   type EditorStep,
 } from "./workflow-model";
+import PortalIcon, { type IconName } from "../../components/PortalIcon";
 
-/** Text-presentation glyphs only - none of these code points are
- *  emoji-capable, so Windows never renders them as colourful emoji. */
-const KIND_GLYPH: Record<WorkflowStepKind, string> = {
-  condition: "\u25c8",
-  branch: "\u2442",
-  ai_decision: "\u2736",
-  action: "\u25b7",
-  wait: "\u25f7",
-  approval: "\u2713",
-  handoff: "\u21c4",
-  goal: "\u2691",
-  stop: "\u25a0",
+/** §246: inline SVG icons (never emoji) for each step kind. */
+const KIND_ICON: Record<WorkflowStepKind, IconName> = {
+  condition: "condition",
+  branch: "split",
+  ai_decision: "sparkles",
+  action: "play",
+  wait: "clock",
+  approval: "approvals",
+  handoff: "handoff",
+  goal: "flag",
+  stop: "stop",
 };
 
 const KIND_TONE: Record<WorkflowStepKind, string> = {
@@ -224,7 +224,7 @@ export default function WorkflowCanvas({
             }}
           >
             <span className="mr-1" aria-hidden="true">
-              {KIND_GLYPH[kind]}
+              <PortalIcon name={KIND_ICON[kind]} />
             </span>
             {STEP_LABELS[kind]}
           </button>
@@ -346,7 +346,7 @@ export default function WorkflowCanvas({
               onClick={() => onSelect("trigger")}
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-brand/30 bg-white text-sm text-brand" aria-hidden="true">
-                {"\u25c9"}
+                <PortalIcon name="automation" />
               </span>
               <span className="min-w-0">
                 <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-brand/80">Trigger</span>
@@ -388,9 +388,7 @@ export default function WorkflowCanvas({
                       setDropSlot(null);
                     }}
                   >
-                    <span aria-hidden="true" className="text-xs leading-none tracking-tighter">
-                      {"\u2059"}
-                    </span>
+                    <PortalIcon name="grip" className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
@@ -401,7 +399,7 @@ export default function WorkflowCanvas({
                       className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm " + KIND_TONE[step.kind]}
                       aria-hidden="true"
                     >
-                      {KIND_GLYPH[step.kind]}
+                      <PortalIcon name={KIND_ICON[step.kind]} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
@@ -470,7 +468,7 @@ export default function WorkflowCanvas({
                             }}
                           >
                             <span className="w-4 text-center" aria-hidden="true">
-                              {KIND_GLYPH[kind]}
+                              <PortalIcon name={KIND_ICON[kind]} />
                             </span>
                             {STEP_LABELS[kind]}
                           </button>

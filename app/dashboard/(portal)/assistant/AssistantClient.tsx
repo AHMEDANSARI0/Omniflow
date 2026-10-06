@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PortalIcon from "../../components/PortalIcon";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AssistantAskResult,
@@ -201,7 +202,10 @@ function ProposalCard({
   );
 }
 
-export default function AssistantClient() {
+// §246: "page" is the full /dashboard/assistant screen; "panel" is the Ask
+// Omni bubble, where the chat list collapses into a picker above the chat.
+export default function AssistantClient({ variant = "page" }: { variant?: "page" | "panel" }) {
+  const panel = variant === "panel";
   const [overview, setOverview] = useState<AssistantOverview | null>(null);
   const [thread, setThread] = useState<AssistantThread | null>(null);
   const [draft, setDraft] = useState("");
@@ -305,7 +309,7 @@ export default function AssistantClient() {
 
   if (!overview) {
     return (
-      <div className="rounded-2xl border border-line bg-white p-5 text-sm text-ink-2 shadow-card">
+      <div className={panel ? "p-5 text-sm text-ink-2" : "rounded-2xl border border-line bg-white p-5 text-sm text-ink-2 shadow-card"}>
         {note || "Loading..."}
       </div>
     );
@@ -315,55 +319,20 @@ export default function AssistantClient() {
   const byMessage = (id: number) => (thread?.proposals ?? []).filter((p) => p.messageId === id);
   const limitReached = overview.dailyLimit > 0 && overview.usedToday >= overview.dailyLimit;
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-      <aside className="rounded-2xl border border-line bg-white p-4 shadow-card lg:self-start">
-        <button
-          type="button"
-          onClick={() => {
-            setThread(null);
-            setNote(null);
-          }}
-          className="w-full rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white transition-opacity duration-300 hover:opacity-90"
-        >
-          New chat
-        </button>
-        <ul className="mt-3 space-y-1">
-          {overview.threads.map((t) => (
-            <li key={t.id} className="group flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => void openThread(t.id)}
-                className={
-                  "min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-left text-sm " +
-                  (thread?.thread.id === t.id ? "bg-brand-soft text-brand" : "text-ink hover:bg-soft")
-                }
-              >
-                {t.title}
-              </button>
-              <button
-                type="button"
-                aria-label={"Delete chat " + t.title}
-                onClick={() => void removeThread(t.id)}
-                className="rounded px-1.5 text-xs text-ink-3 opacity-0 hover:text-danger group-hover:opacity-100"
-              >
-                &times;
-              </button>
-            </li>
-          ))}
-          {overview.threads.length === 0 && (
-            <li className="px-2 py-1.5 text-xs text-ink-3">Your chats appear here.</li>
-          )}
-        </ul>
-        {overview.dailyLimit > 0 && (
-          <p className="mt-3 text-[11px] text-ink-3">
-            {overview.usedToday} of {overview.dailyLimit} questions used today (whole workspace).
-          </p>
-        )}
-      </aside>
+  const startNewChat = () => {
+    setThread(null);
+    setNote(null);
+  };
 
-      <section className="flex min-h-[60vh] flex-col rounded-2xl border border-line bg-white shadow-card">
-        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+  const chat = (
+      <section
+        className={
+          panel
+            ? "flex min-h-0 flex-1 flex-col"
+            : "flex min-h-[60vh] flex-col rounded-2xl border border-line bg-white shadow-card"
+        }
+      >
+        <div className={"flex-1 space-y-4 overflow-y-auto " + (panel ? "p-4" : "p-5")}>
           {!overview.available && (
             <div className="rounded-xl bg-warn-soft px-4 py-3 text-sm text-warn">{overview.reason}</div>
           )}
@@ -481,6 +450,92 @@ export default function AssistantClient() {
           </p>
         </form>
       </section>
+  );
+
+  if (panel) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex items-center gap-2 border-b border-line px-4 py-2">
+          <label className="sr-only" htmlFor="ask-omni-thread">
+            Chat
+          </label>
+          <select
+            id="ask-omni-thread"
+            value={thread ? String(thread.thread.id) : ""}
+            onChange={(event) => {
+              const id = Number(event.target.value);
+              if (id > 0) void openThread(id);
+              else startNewChat();
+            }}
+            className="min-w-0 flex-1 truncate rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink outline-none focus:border-brand/40"
+          >
+            <option value="">New chat</option>
+            {overview.threads.map((t) => (
+              <option key={t.id} value={String(t.id)}>
+                {t.title}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={startNewChat}
+            title="New chat"
+            aria-label="New chat"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-2 hover:bg-soft"
+          >
+            <PortalIcon name="plus" />
+          </button>
+        </div>
+        {chat}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
+      <aside className="rounded-2xl border border-line bg-white p-4 shadow-card lg:self-start">
+        <button
+          type="button"
+          onClick={startNewChat}
+          className="w-full rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white transition-opacity duration-300 hover:opacity-90"
+        >
+          New chat
+        </button>
+        <ul className="mt-3 space-y-1">
+          {overview.threads.map((t) => (
+            <li key={t.id} className="group flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => void openThread(t.id)}
+                className={
+                  "min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-left text-sm " +
+                  (thread?.thread.id === t.id ? "bg-brand-soft text-brand" : "text-ink hover:bg-soft")
+                }
+              >
+                {t.title}
+              </button>
+              <button
+                type="button"
+                aria-label={"Delete chat " + t.title}
+                onClick={() => void removeThread(t.id)}
+                className="rounded px-1.5 text-xs text-ink-3 opacity-0 hover:text-danger group-hover:opacity-100"
+              >
+                &times;
+              </button>
+            </li>
+          ))}
+          {overview.threads.length === 0 && (
+            <li className="px-2 py-1.5 text-xs text-ink-3">Your chats appear here.</li>
+          )}
+        </ul>
+        {overview.dailyLimit > 0 && (
+          <p className="mt-3 text-[11px] text-ink-3">
+            {overview.usedToday} of {overview.dailyLimit} questions used today (whole workspace).
+          </p>
+        )}
+      </aside>
+
+      {chat}
     </div>
   );
 }

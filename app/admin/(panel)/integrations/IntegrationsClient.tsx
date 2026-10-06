@@ -333,6 +333,7 @@ export default function IntegrationsClient() {
   const [values, setValues] = useState<Values>({});
   const [configured, setConfigured] = useState<Configured>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [busyGroup, setBusyGroup] = useState<string>("");
   const [notice, setNotice] = useState<{ group: string; text: string; ok: boolean } | null>(
     null
@@ -340,11 +341,18 @@ export default function IntegrationsClient() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const response = await fetch("/api/omniflow/admin/providers", {
         cache: "no-store",
       });
       const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || !payload.groups) {
+        // §245: say why (e.g. a rejected service key) instead of showing empty forms.
+        setLoadError(
+          payload?.error?.message || "Could not load the saved integration settings."
+        );
+      }
       if (response.ok && payload && payload.groups) {
         const next: Values = {};
         const nextConfigured: Configured = {};
@@ -361,7 +369,7 @@ export default function IntegrationsClient() {
         setConfigured(nextConfigured);
       }
     } catch {
-      // keep whatever is on screen
+      setLoadError("Could not reach the server - check your connection and retry.");
     } finally {
       setLoading(false);
     }
@@ -457,6 +465,21 @@ export default function IntegrationsClient() {
       {loading ? (
         <div className="rounded-2xl border border-line bg-white shadow-card p-6 text-sm text-ink-3">
           Loading integration settings…
+        </div>
+      ) : null}
+      {loadError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-400/20 bg-red-400/[0.06] p-4 text-sm text-danger"
+        >
+          <span>{loadError} Saved values are not shown, so saving now may fail.</span>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-soft"
+          >
+            Retry
+          </button>
         </div>
       ) : null}
       {GROUPS.map((def) => {

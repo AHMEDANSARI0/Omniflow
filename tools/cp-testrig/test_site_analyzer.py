@@ -335,8 +335,9 @@ def web():
     check("AI findings are labelled", "AI extracted" in report)
     check("drafts note (KB lock)", "draft" in report.lower() and "publish" in report.lower())
     sidebar = read("app/dashboard/components/DashSidebar.tsx")
+    sidebar += "\n" + read("app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
     check("sidebar entry", '"/dashboard/website-analyzer"' in sidebar)
-    check("command palette entry", '"/dashboard/website-analyzer"' in read("app/dashboard/components/CommandPalette.tsx"))
+    check("command palette entry", '"/dashboard/website-analyzer"' in (read("app/dashboard/components/CommandPalette.tsx") + read("app/dashboard/components/portalNav.ts")))
     check("knowledge base links to the analyzer",
           "/dashboard/website-analyzer" in read("app/dashboard/(portal)/knowledge-base/page.tsx"))
     emoji = re.compile("[\u2600-\u27bf\U0001f000-\U0001faff]")

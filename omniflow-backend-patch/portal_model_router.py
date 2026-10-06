@@ -34,12 +34,13 @@ import json
 import logging
 import os
 import re
-import secrets as _secrets
 import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Blueprint, jsonify, request
+
+import portal_auth
 
 logger = logging.getLogger("omniflow.model-router")
 
@@ -350,12 +351,7 @@ bp = Blueprint("admin_model_router", __name__, url_prefix="/api/v1/admin/ai")
 
 
 def _authorized() -> bool:
-    key = request.headers.get("X-Omniflow-Key", "")
-    if not key:
-        return False
-    accepted = [os.environ.get("OMNIFLOW_SERVICE_KEY"),
-                os.environ.get("OMNIFLOW_ADMIN_API_KEY")]
-    return any(k for k in accepted if k and _secrets.compare_digest(key, k))
+    return portal_auth.service_key_ok()
 
 
 @bp.before_request

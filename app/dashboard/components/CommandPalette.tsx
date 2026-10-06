@@ -3,40 +3,27 @@
 // b17: the AI Brain page entry moved into Configure AI (/dashboard/bot).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import PortalIcon, { type IconName } from "./PortalIcon";
+import { ASSISTANT_LINK, DASHBOARD_LINK, NAV_GROUPS, SETTINGS_LINK } from "./portalNav";
 
 interface PaletteItem {
   group: string;
   label: string;
   href: string;
+  icon: IconName;
   sub?: string;
 }
 
 const OPEN_EVENT = "omniflow-command-open";
 
+// §246: every portal page is searchable - built from the sidebar config.
 const PAGES: PaletteItem[] = [
-  { group: "Pages", label: "Overview", href: "/dashboard" },
-  { group: "Pages", label: "Ask OmniFlow AI", href: "/dashboard/assistant" },
-  { group: "Pages", label: "AI Sandbox", href: "/dashboard/sandbox" },
-  { group: "Pages", label: "Conversations", href: "/dashboard/conversations" },
-  { group: "Pages", label: "Customers", href: "/dashboard/customers" },
-  { group: "Pages", label: "Broadcasts", href: "/dashboard/broadcasts" },
-  { group: "Pages", label: "Automations", href: "/dashboard/automations" },
-  { group: "Pages", label: "Analytics", href: "/dashboard/analytics" },
-  { group: "Pages", label: "Business insights", href: "/dashboard/insights" },
-  { group: "Pages", label: "Setup wizard", href: "/dashboard/onboarding" },
-  { group: "Pages", label: "Team", href: "/dashboard/team" },
-  { group: "Pages", label: "Knowledge base", href: "/dashboard/knowledge-base" },
-  { group: "Pages", label: "Website analyzer", href: "/dashboard/website-analyzer" },
-  { group: "Pages", label: "COD confirmations", href: "/dashboard/cod" },
-  { group: "Pages", label: "Courier", href: "/dashboard/courier" },
-  { group: "Pages", label: "Media", href: "/dashboard/media" },
-  { group: "Pages", label: "Integrations", href: "/dashboard/integrations" },
-  { group: "Pages", label: "Sequences", href: "/dashboard/sequences" },
-  { group: "Pages", label: "Sales desk", href: "/dashboard/sales" },
-  { group: "Pages", label: "Retention", href: "/dashboard/retention" },
-  { group: "Pages", label: "Workflows", href: "/dashboard/workflows" },
-  { group: "Pages", label: "Activity", href: "/dashboard/activity" },
-  { group: "Pages", label: "Business profile", href: "/dashboard/profile" },
+  { ...DASHBOARD_LINK, group: "Pages" },
+  { ...ASSISTANT_LINK, group: "Pages" },
+  ...NAV_GROUPS.flatMap((navGroup) =>
+    navGroup.items.map((item) => ({ ...item, group: "Pages", sub: navGroup.title }))
+  ),
+  { ...SETTINGS_LINK, group: "Pages" },
 ];
 
 export function openCommandPalette() {
@@ -108,7 +95,8 @@ export default function CommandPalette() {
       (page) =>
         !needle ||
         page.label.toLowerCase().includes(needle) ||
-        page.href.includes(needle)
+        page.href.includes(needle) ||
+        (page.sub ?? "").toLowerCase().includes(needle)
     );
     setActiveIndex(0);
 
@@ -148,6 +136,7 @@ export default function CommandPalette() {
           .slice(0, 5)
           .map((hit) => ({
             group: "Conversations",
+            icon: "conversations" as const,
             label: hit.contactName || hit.contactId || "Conversation " + hit.id,
             href: "/dashboard/conversations/" + String(hit.id),
             sub: hit.lastMessagePreview || undefined,
@@ -160,6 +149,7 @@ export default function CommandPalette() {
           .slice(0, 5)
           .map((hit) => ({
             group: "Customers",
+            icon: "customers" as const,
             label: hit.name || hit.contactId,
             href:
               "/dashboard/customers?q=" + encodeURIComponent(hit.name || hit.contactId),
@@ -251,7 +241,13 @@ export default function CommandPalette() {
                         : "text-ink-2")
                     }
                   >
-                    <span className="truncate">{item.label}</span>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <PortalIcon
+                        name={item.icon}
+                        className={"h-4 w-4 " + (index === activeIndex ? "text-brand" : "text-ink-3")}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </span>
                     {item.sub ? (
                       <span className="hidden max-w-[45%] truncate text-[11px] text-ink-3 sm:block">
                         {item.sub}

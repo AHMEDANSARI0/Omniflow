@@ -124,7 +124,8 @@ def web():
           and 'status: "beta",\n    description:\n      "Facebook Page messages' in integ)
     inbox = read("app/dashboard/(portal)/conversations/InboxClient.tsx")
     check("inbox: messenger filter + comment marker",
-          '"all", "whatsapp", "instagram", "messenger", "website"' in inbox
+          'INBOX_CHANNELS = ["whatsapp", "instagram", "messenger", "telegram", "email", "sms", "website"]' in inbox
+          and '(["all", ...INBOX_CHANNELS] as const)' in inbox
           and "(igc|fbc):" in inbox)
     portal = read("lib/omniflow/portal.ts")
     check("portal.ts: settings fields + real CP messages",

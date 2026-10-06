@@ -1,5 +1,6 @@
 import { createClient } from "../../../../../../lib/supabase/server";
 import { listAdminTwilioNumbers } from "../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../lib/omniflow/admin-bridge-error";
 import {
   safeJson,
   sameOrigin,
@@ -36,7 +37,9 @@ export async function GET(request: Request) {
         result.status
       );
     }
-  } catch {
+  } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     // fall through
   }
   return safeJson(

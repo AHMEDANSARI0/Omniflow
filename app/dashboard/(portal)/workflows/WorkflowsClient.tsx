@@ -29,6 +29,7 @@ import {
   type EditorState,
   type EditorStep,
 } from "./workflow-model";
+import PortalIcon from "../../components/PortalIcon";
 
 const inputClass =
   "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
@@ -534,7 +535,7 @@ export default function WorkflowsClient({
             className={ghostBtn}
             onClick={() => setGenerator({ current: null })}
           >
-            <span aria-hidden className="mr-1 text-brand">{"\u2736"}</span>
+            <PortalIcon name="sparkles" className="mr-1 inline-block h-3.5 w-3.5 align-[-2px] text-brand" />
             Describe it
           </button>
           <button
@@ -689,7 +690,7 @@ export default function WorkflowsClient({
               {saving ? "Saving..." : editor.id ? "Save new version" : "Create draft"}
             </button>
             <button type="button" className={ghostBtn} onClick={changeWithAi}>
-              <span aria-hidden className="mr-1 text-brand">{"\u2736"}</span>
+              <PortalIcon name="sparkles" className="mr-1 inline-block h-3.5 w-3.5 align-[-2px] text-brand" />
               Change with AI
             </button>
             <button type="button" className={ghostBtn} onClick={() => setEditor(null)}>

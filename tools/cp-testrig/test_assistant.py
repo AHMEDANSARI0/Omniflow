@@ -140,9 +140,9 @@ def web():
         check("client copy: " + copy, copy in client)
     check("links rendered only for /dashboard paths", 'startsWith("/dashboard")' in client)
     check("no raw HTML injection", "dangerouslySetInnerHTML" not in client)
-    check("sidebar entry", '"/dashboard/assistant"' in read("app/dashboard/components/DashSidebar.tsx"))
+    check("sidebar entry", '"/dashboard/assistant"' in (read("app/dashboard/components/DashSidebar.tsx") + read("app/dashboard/components/portalNav.ts")))
     check("command palette entry",
-          '"/dashboard/assistant"' in read("app/dashboard/components/CommandPalette.tsx"))
+          '"/dashboard/assistant"' in (read("app/dashboard/components/CommandPalette.tsx") + read("app/dashboard/components/portalNav.ts")))
     integ = read("app/admin/(panel)/integrations/IntegrationsClient.tsx")
     check("admin panel: assistant key group", 'id: "assistant"' in integ and '| "assistant"' in integ
           and 'key: "daily_limit"' in integ)

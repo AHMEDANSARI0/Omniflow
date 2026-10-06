@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import PortalIcon from "./PortalIcon";
 
 interface PortalAlert {
   id: number;
@@ -99,7 +100,7 @@ export default function AlertsBell() {
         aria-label="Alerts"
         className="relative flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink"
       >
-        <span aria-hidden>(&#8977;)</span>
+        <PortalIcon name="bell" className="h-[18px] w-[18px]" />
         {unread > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold text-ink">
             {unread > 99 ? "99+" : unread}
@@ -107,7 +108,7 @@ export default function AlertsBell() {
         ) : null}
       </button>
       {open ? (
-        <div className="absolute bottom-10 right-0 z-50 w-80 rounded-2xl border border-line bg-white p-3 shadow-2xl">
+        <div className="absolute right-0 top-11 z-50 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-line bg-white p-3 shadow-2xl">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-ink">Alerts</p>
             <div className="flex gap-2 text-[10px]">

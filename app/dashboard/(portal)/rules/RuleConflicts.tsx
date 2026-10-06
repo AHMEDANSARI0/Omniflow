@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { RuleConflict, RuleConflictReport } from "../../../../lib/omniflow/portal";
+import PortalIcon from "../../components/PortalIcon";
 
 const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 disabled:opacity-50";
@@ -260,7 +261,7 @@ export default function RuleConflicts() {
               disabled={aiBusy || !report.ai.ready || report.ai.candidates === 0}
               onClick={() => void checkWithAi()}
             >
-              <span className="mr-1.5">✶</span>
+              <PortalIcon name="sparkles" className="mr-1.5 inline-block h-3.5 w-3.5 align-[-2px]" />
               {aiBusy ? "Checking..." : "Check answers with AI"}
             </button>
           </div>

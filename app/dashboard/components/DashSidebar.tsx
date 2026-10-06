@@ -4,148 +4,26 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { openCommandPalette } from "./CommandPalette";
 import SignOutButton from "./SignOutButton";
-import AlertsBell from "./AlertsBell";
+import PortalIcon from "./PortalIcon";
+import {
+  DASHBOARD_LINK,
+  NAV_GROUPS,
+  SETTINGS_LINK,
+  findNav,
+  isNavActive,
+  type NavGroup,
+  type NavItem,
+} from "./portalNav";
 import { useUnreadCount } from "./useUnreadCount";
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: string;
-  enabled: boolean;
-}
+// §246: groups are dropdowns (the group holding the current page opens by
+// itself); Dashboard and Settings stay top-level; search and alerts live in
+// the top bar (DashTopbar), which also opens the phone drawer below.
 
-const navGroups: { title: string; items: NavItem[] }[] = [
-  {
-    title: "Inbox",
-    items: [
-      { label: "Overview", href: "/dashboard", icon: "\u2302", enabled: true },
-      { label: "Ask OmniFlow AI", href: "/dashboard/assistant", icon: "\u25b7", enabled: true },
-      {
-        label: "Conversations",
-        href: "/dashboard/conversations",
-        icon: "\u25a3",
-        enabled: true,
-      },
-      {
-        label: "Customers",
-        href: "/dashboard/customers",
-        icon: "\u25c9",
-        enabled: true,
-      },
-      {
-        label: "Automations",
-        href: "/dashboard/automations",
-        icon: "\u2301",
-        enabled: true,
-      },
-    ],
-  },
-  {
-    title: "Sell",
-    items: [
-      { label: "Sales desk", href: "/dashboard/sales", icon: "\u21c4", enabled: true },
-      { label: "Broadcasts", href: "/dashboard/broadcasts", icon: "\u21d2", enabled: true },
-      { label: "COD confirmations", href: "/dashboard/cod", icon: "\u25a4", enabled: true },
-      { label: "Approvals", href: "/dashboard/approvals", icon: "\u2713", enabled: true },
-      { label: "Rules", href: "/dashboard/rules", icon: "\u25c8", enabled: true },
-      { label: "Workflows", href: "/dashboard/workflows", icon: "\u21c9", enabled: true },
-      { label: "Courier", href: "/dashboard/courier", icon: "\u25bb", enabled: true },
-      { label: "Growth", href: "/dashboard/growth", icon: "\u25b2", enabled: true },
-      { label: "Win-back", href: "/dashboard/winback", icon: "\u21bb", enabled: true },
-      { label: "Retention", href: "/dashboard/retention", icon: "\u25d0", enabled: true },
-      { label: "Sequences", href: "/dashboard/sequences", icon: "\u2192", enabled: true },
-    ],
-  },
-  {
-    title: "Audience",
-    items: [
-      { label: "Segments", href: "/dashboard/segments", icon: "\u25ce", enabled: true },
-      { label: "Pipeline", href: "/dashboard/pipeline", icon: "\u25c8", enabled: true },
-    ],
-  },
-  {
-    title: "Content",
-    items: [
-      {
-        label: "Knowledge base",
-        href: "/dashboard/knowledge-base",
-        icon: "\u25a6",
-        enabled: true,
-      },
-      {
-        label: "Website analyzer",
-        href: "/dashboard/website-analyzer",
-        icon: "\u21c9",
-        enabled: true,
-      },
-      { label: "Quick replies", href: "/dashboard/saved-replies", icon: "/", enabled: true },
-      { label: "Media", href: "/dashboard/media", icon: "\u25a6", enabled: true },
-    ],
-  },
-  {
-    title: "Insights",
-    items: [
-      {
-        label: "Business insights",
-        href: "/dashboard/insights",
-        icon: "\u2059",
-        enabled: true,
-      },
-      {
-        label: "Analytics",
-        href: "/dashboard/analytics",
-        icon: "\u25c9",
-        enabled: true,
-      },
-      { label: "Weekly", href: "/dashboard/weekly", icon: "\u2248", enabled: true },
-      { label: "Activity", href: "/dashboard/activity", icon: "\u2261", enabled: true },
-    ],
-  },
-  {
-    title: "Workspace",
-    items: [
-      {
-        label: "WhatsApp setup",
-        href: "/dashboard/channels/whatsapp",
-        icon: "\u2706",
-        enabled: true,
-      },
-      { label: "Configure AI", href: "/dashboard/bot", icon: "\u2736", enabled: true },
-      { label: "AI setup report", href: "/dashboard/ai-report", icon: "\u25d0", enabled: true },
-      { label: "AI Sandbox", href: "/dashboard/sandbox", icon: "\u2442", enabled: true },
-      {
-        label: "Setup wizard",
-        href: "/dashboard/onboarding",
-        icon: "\u2726",
-        enabled: true,
-      },
-      {
-        label: "Business profile",
-        href: "/dashboard/profile",
-        icon: "\u25ad",
-        enabled: true,
-      },
-      {
-        label: "Integrations",
-        href: "/dashboard/integrations",
-        icon: "\u21c4",
-        enabled: true,
-      },
-      { label: "Compliance", href: "/dashboard/compliance", icon: "\u26e8", enabled: true },
-      { label: "Team", href: "/dashboard/team", icon: "\u2691", enabled: true },
-      {
-        label: "Settings",
-        href: "/dashboard/settings",
-        icon: "\u25c8",
-        enabled: true,
-      },
-    ],
-  },
-];
+const INBOX_HREF = "/dashboard/conversations";
 
-function BrandMark({ compact = false }: { compact?: boolean }) {
+export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       href="/dashboard"
@@ -160,7 +38,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
           <span className="whitespace-nowrap text-base font-semibold tracking-[-0.03em] text-ink">
             Omni<span className="text-brand">Flow</span>
           </span>
-          <span className="ml-1 rounded-md border border-line bg-white px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-2">
+          <span className="ml-1 hidden rounded-md border border-line bg-white px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-2 min-[360px]:inline-block">
             Portal
           </span>
         </>
@@ -169,90 +47,146 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
   );
 }
 
+function UnreadBadge({ count, compact }: { count: number; compact: boolean }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={
+        compact
+          ? "absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-400 px-1 text-[9px] font-bold text-[#07111f]"
+          : "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-400 px-1.5 text-[10px] font-bold text-[#07111f]"
+      }
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
 function NavLinks({
   collapsed = false,
   onNavigate,
+  onExpand,
 }: {
   collapsed?: boolean;
   onNavigate?: () => void;
+  onExpand?: () => void;
 }) {
   const pathname = usePathname();
   const unreadCount = useUnreadCount();
+  const activeGroup = findNav(pathname).group?.id ?? null;
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  const renderItem = (item: NavItem) => {
-    const isActive =
-      item.href === "/dashboard"
-        ? pathname === "/dashboard"
-        : pathname.startsWith(item.href);
+  const isOpen = (group: NavGroup) => openGroups[group.id] ?? group.id === activeGroup;
 
-    if (!item.enabled) {
-      return (
-        <div
-          key={item.href}
-          title={`${item.label} — coming soon`}
-          className={`flex cursor-not-allowed items-center rounded-xl py-2.5 opacity-50 ${
-            collapsed ? "justify-center px-0" : "justify-between px-3"
-          }`}
-        >
-          <span className="flex items-center gap-3 text-sm text-ink-3">
-            <span className="text-xs">{item.icon}</span>
-            {!collapsed && item.label}
-          </span>
-          {!collapsed && (
-            <span className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-ink-3">
-              Soon
-            </span>
-          )}
-        </div>
-      );
-    }
-
+  const renderLink = (item: NavItem, nested: boolean) => {
+    const active = isNavActive(pathname, item.href);
     return (
       <Link
         key={item.href}
         href={item.href}
         onClick={onNavigate}
         title={item.label}
-        className={`relative flex items-center gap-3 rounded-xl border py-2.5 text-sm transition-colors duration-200 ${
-          collapsed ? "justify-center px-0" : "px-3"
+        aria-current={active ? "page" : undefined}
+        className={`relative flex items-center gap-3 rounded-xl border text-sm transition-colors duration-200 ${
+          collapsed ? "justify-center px-0 py-2.5" : nested ? "py-2 pl-3 pr-3" : "px-3 py-2.5"
         } ${
-          isActive
+          active
             ? "border-brand/20 bg-brand-soft text-ink"
             : "border-transparent text-ink-3 hover:bg-soft hover:text-ink"
         }`}
       >
-        <span className={`text-xs ${isActive ? "text-brand" : ""}`}>
-          {item.icon}
-        </span>
-        {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
-        {item.href === "/dashboard/conversations" &&
-          unreadCount > 0 &&
-          (collapsed ? (
-            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-400 px-1 text-[9px] font-bold text-[#07111f]">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          ) : (
-            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-400 px-1.5 text-[10px] font-bold text-[#07111f]">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          ))}
+        <PortalIcon name={item.icon} className={`h-4 w-4 ${active ? "text-brand" : ""}`} />
+        {!collapsed && <span className="truncate">{item.label}</span>}
+        {item.href === INBOX_HREF && <UnreadBadge count={unreadCount} compact={collapsed} />}
       </Link>
     );
   };
 
-  return (
-    <nav className="space-y-4">
-      {navGroups.map((group) => (
-        <div key={group.title} className="space-y-1">
-          {!collapsed && (
-            <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-2">
-              {group.title}
-            </p>
+  const renderGroup = (group: NavGroup) => {
+    const open = isOpen(group);
+    const holdsActive = group.id === activeGroup;
+    const groupUnread = group.items.some((item) => item.href === INBOX_HREF) ? unreadCount : 0;
+    const panelId = "nav-group-" + group.id;
+
+    if (collapsed) {
+      return (
+        <button
+          key={group.id}
+          type="button"
+          title={group.title}
+          aria-label={"Open " + group.title + " menu"}
+          onClick={() => {
+            setOpenGroups((current) => ({ ...current, [group.id]: true }));
+            onExpand?.();
+          }}
+          className={`relative flex w-full items-center justify-center rounded-xl border py-2.5 transition-colors duration-200 ${
+            holdsActive
+              ? "border-brand/20 bg-brand-soft text-brand"
+              : "border-transparent text-ink-3 hover:bg-soft hover:text-ink"
+          }`}
+        >
+          <PortalIcon name={group.icon} />
+          <UnreadBadge count={groupUnread} compact />
+        </button>
+      );
+    }
+
+    return (
+      <div key={group.id}>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpenGroups((current) => ({ ...current, [group.id]: !open }))}
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-200 hover:bg-soft ${
+            holdsActive ? "font-medium text-ink" : "text-ink-2 hover:text-ink"
+          }`}
+        >
+          <PortalIcon name={group.icon} className={`h-4 w-4 ${holdsActive ? "text-brand" : ""}`} />
+          <span className="truncate">{group.title}</span>
+          {!open && <UnreadBadge count={groupUnread} compact={false} />}
+          <PortalIcon
+            name="chevronDown"
+            className={`h-3.5 w-3.5 text-ink-3 transition-transform duration-200 ${
+              open ? "rotate-180" : ""
+            } ${!open && groupUnread > 0 ? "" : "ml-auto"}`}
+          />
+        </button>
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              id={panelId}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="ml-5 space-y-0.5 border-l border-line py-1 pl-2">
+                {group.items.map((item) => renderLink(item, true))}
+              </div>
+            </motion.div>
           )}
-          {collapsed && <div className="mx-3 border-t border-line" />}
-          {group.items.map(renderItem)}
-        </div>
-      ))}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  return (
+    // Groups scroll; Settings stays pinned below them so it is always in view.
+    <nav aria-label="Portal" className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden pb-2">
+        {renderLink(DASHBOARD_LINK, false)}
+        {collapsed ? (
+          <div className="mx-3 my-2 border-t border-line" />
+        ) : (
+          <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-2">
+            Menu
+          </p>
+        )}
+        {NAV_GROUPS.map(renderGroup)}
+      </div>
+      <div className="mb-2 border-t border-line pt-2">{renderLink(SETTINGS_LINK, false)}</div>
     </nav>
   );
 }
@@ -276,9 +210,10 @@ function SidebarFooter({
           target="_blank"
           rel="noopener noreferrer"
           title="Visit website"
+          aria-label="Visit website"
           className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink-2"
         >
-          ↗
+          <PortalIcon name="externalLink" />
         </a>
         <SignOutButton compact />
       </div>
@@ -293,19 +228,7 @@ function SidebarFooter({
         rel="noopener noreferrer"
         className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink-2"
       >
-      <button
-        type="button"
-        onClick={() => openCommandPalette()}
-        className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink-2"
-      >
-        <span className="flex items-center gap-2">
-          <span>⌕</span> Search
-        </span>
-        <span className="rounded-md border border-line px-1.5 py-0.5 text-[10px] text-ink-3">
-          Ctrl K
-        </span>
-      </button>
-        <span>↗</span> Visit website
+        <PortalIcon name="externalLink" className="h-3.5 w-3.5" /> Visit website
       </a>
       <div className="px-3">
         <p className="truncate text-[11px] text-ink-3" title={userEmail}>
@@ -315,8 +238,7 @@ function SidebarFooter({
           Workspace {clientId} · {role}
         </p>
       </div>
-      <div className="flex items-center justify-between px-3 pb-1">
-        <AlertsBell />
+      <div className="px-3 pb-1">
         <SignOutButton />
       </div>
     </div>
@@ -329,14 +251,17 @@ export default function DashSidebar({
   role,
   collapsed,
   onToggle,
+  mobileOpen,
+  onMobileClose,
 }: {
   userEmail: string;
   clientId: number;
   role: string;
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
@@ -360,15 +285,13 @@ export default function DashSidebar({
             onClick={onToggle}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand" : "Collapse"}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-soft text-xs text-ink-3 transition-colors duration-200 hover:border-white/[0.16] hover:text-ink"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-soft text-ink-3 transition-colors duration-200 hover:border-line-2 hover:text-ink"
           >
-            {collapsed ? "»" : "«"}
+            <PortalIcon name={collapsed ? "sidebarOpen" : "sidebarClose"} />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4">
-          <NavLinks collapsed={collapsed} />
-        </div>
+        <NavLinks collapsed={collapsed} onExpand={collapsed ? onToggle : undefined} />
 
         <SidebarFooter
           userEmail={userEmail}
@@ -377,20 +300,6 @@ export default function DashSidebar({
           collapsed={collapsed}
         />
       </motion.aside>
-
-      {/* Mobile top bar */}
-      <div className="fixed inset-x-0 top-0 z-40 flex items-center justify-between border-b border-line bg-white/90 px-4 py-3 backdrop-blur-md lg:hidden">
-        <BrandMark />
-        <button
-          type="button"
-          onClick={() => setMobileOpen((v) => !v)}
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
-          aria-expanded={mobileOpen}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white shadow-card text-ink-2"
-        >
-          {mobileOpen ? "✕" : "☰"}
-        </button>
-      </div>
 
       {/* Mobile drawer */}
       <AnimatePresence>
@@ -401,30 +310,28 @@ export default function DashSidebar({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 z-40 bg-soft lg:hidden"
+              onClick={onMobileClose}
+              className="fixed inset-0 z-40 bg-ink/20 lg:hidden"
             />
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-line bg-white px-4 py-6 lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-line bg-white px-4 py-6 lg:hidden"
             >
-              <div className="mb-8 flex items-center justify-between px-2">
+              <div className="mb-6 flex items-center justify-between px-2">
                 <BrandMark />
                 <button
                   type="button"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={onMobileClose}
                   aria-label="Close menu"
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-3"
                 >
-                  ✕
+                  <PortalIcon name="close" />
                 </button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4">
-                <NavLinks onNavigate={() => setMobileOpen(false)} />
-              </div>
+              <NavLinks onNavigate={onMobileClose} />
               <SidebarFooter
                 userEmail={userEmail}
                 clientId={clientId}

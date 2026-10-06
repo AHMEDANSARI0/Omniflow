@@ -86,6 +86,30 @@ export const INTEGRATIONS: Integration[] = [
       "Facebook Page messages and comments on your posts join the same inbox, AI and workflows.",
   },
   {
+    id: "email",
+    name: "Email",
+    mark: "EM",
+    accent: "#0F766E",
+    icon: "mail",
+    category: "channels",
+    status: "beta",
+    description:
+      "Connect your support mailbox: customer emails join the same inbox, AI and workflows, and replies go back in the same thread.",
+    points: ["Any IMAP / SMTP mailbox", "Replies keep the email thread", "Newsletters and auto-replies skipped"],
+  },
+  {
+    id: "sms",
+    name: "SMS",
+    mark: "SM",
+    accent: "#B45309",
+    icon: "messages",
+    category: "channels",
+    status: "beta",
+    description:
+      "Two-way SMS on your OmniFlow phone number: texts join the same inbox, AI and workflows, replies go back by SMS.",
+    points: ["Your OmniFlow number (Twilio)", "Two-way where Twilio supports it (not Pakistan)", "STOP opt-outs respected"],
+  },
+  {
     id: "tiktok",
     name: "TikTok",
     mark: "TT",
@@ -159,7 +183,7 @@ export const INTEGRATIONS: Integration[] = [
     icon: "mail",
     category: "productivity",
     status: "soon",
-    description: "Bring email conversations into the same automation layer.",
+    description: "One-click Google sign-in for Gmail inboxes (Gmail already works through the Email channel with an app password).",
   },
   {
     id: "slack",

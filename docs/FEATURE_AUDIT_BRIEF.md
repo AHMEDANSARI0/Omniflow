@@ -118,3 +118,5 @@ Login: email + password + **Workspace ID** (CP-issued, OTP password-reset). Auth
 - [ ] Admin: content change → website turant; blog publish → /blog
 - [ ] Rig: `tools/cp-testrig` 132 suites / 4366+ checks PASS (repo me `python3 tools/run_sweep.py`)
 - [ ] Patcher law: koi bhi naya batch whole-file marker-guarded patcher + E2E mimic ke saath; LAYOUT LAW (§202): patcher website repo root (bot root) par chalta he, CP files `OmniFlow-Control-Plane/` (nested CP repo = Vercel deploy) + `omniflow-backend-patch/` (mirror) dono par - `tools/patchers/gen_batch.py` / `gen_cp_sync.mjs`
+
+6g. Instagram-first omnichannel adapter ✅ (§204: shared `normalize_messages`/`ingest_messages_for_tenant` core; `portal_instagram` settings + signed Meta webhook + Graph dispatch; `ig:` contacts; channel-aware outbound queue; Settings card + Inbox filter; secrets DB-backed with masked GET). Facebook/TikTok adapters remain deferred.

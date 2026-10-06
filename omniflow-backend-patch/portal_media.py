@@ -38,6 +38,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Blueprint, jsonify, request, send_file
 
+import portal_auth
 import portal_db
 from portal_auth import (
     PortalAuthUnavailable,
@@ -118,11 +119,7 @@ def _principal_or_error():
 
 def _authorized() -> bool:
     """Connector-facing guard (same contract as connector_api)."""
-    key = request.headers.get("X-Omniflow-Key", "")
-    return bool(key) and key in (
-        os.environ.get("OMNIFLOW_SERVICE_KEY", ""),
-        os.environ.get("OMNIFLOW_ADMIN_API_KEY", ""),
-    )
+    return portal_auth.service_key_ok()
 
 
 def kind_for_mime(mime: str) -> Optional[str]:

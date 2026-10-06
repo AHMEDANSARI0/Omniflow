@@ -18278,3 +18278,123 @@ export function saveProactive(accessToken: string, change: ProactiveChange) {
 export function runProactiveCheck(accessToken: string) {
   return portalService<ProactiveRun>(accessToken, PROACTIVE + "/run", { method: "POST" });
 }
+
+// §243 Email channel: a workspace mailbox (IMAP in, SMTP out) in the same inbox.
+const EMAIL_CHANNEL = "api/v1/portal/channels/email";
+/** Test / Check now sign in to the mail servers (8 s cap each on the Control Plane). */
+const EMAIL_CHANNEL_TIMEOUT_MS = 25_000;
+
+export interface EmailChannelState {
+  address: string;
+  display_name: string;
+  username: string;
+  password_set: boolean;
+  imap_host: string;
+  imap_port: number;
+  smtp_host: string;
+  smtp_port: number;
+  enabled: boolean;
+  verified: boolean;
+  verified_at: string | null;
+  last_poll_at: string | null;
+  last_ok_at: string | null;
+  last_error: string;
+  imported_count: number;
+  sent_count: number;
+  available: boolean;
+  can_edit: boolean;
+  poll_seconds: number;
+}
+
+export interface EmailChannelInput {
+  address: string;
+  display_name: string;
+  username: string;
+  password: string;
+  imap_host: string;
+  imap_port: number;
+  smtp_host: string;
+  smtp_port: number;
+  enabled: boolean;
+}
+
+export interface EmailChannelRun {
+  ran: boolean;
+  sent: number;
+  failed: number;
+  refused: number;
+  imported: number;
+  skipped: number;
+  error: string;
+}
+
+export function getEmailChannel(accessToken: string) {
+  return portalService<EmailChannelState>(accessToken, EMAIL_CHANNEL, { method: "GET" });
+}
+
+export function saveEmailChannel(accessToken: string, input: EmailChannelInput) {
+  return portalService<EmailChannelState>(accessToken, EMAIL_CHANNEL, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export function testEmailChannel(accessToken: string) {
+  return portalService<EmailChannelState & { ok: boolean }>(
+    accessToken, EMAIL_CHANNEL + "/test", { method: "POST" }, EMAIL_CHANNEL_TIMEOUT_MS);
+}
+
+export function syncEmailChannel(accessToken: string) {
+  return portalService<EmailChannelRun>(
+    accessToken, EMAIL_CHANNEL + "/sync", { method: "POST" }, EMAIL_CHANNEL_TIMEOUT_MS);
+}
+
+// §244 SMS channel: two-way SMS on the workspace's OmniFlow number (platform Twilio).
+const SMS_CHANNEL = "api/v1/portal/channels/sms";
+// the test message waits for one Twilio call (15 s timeout on the Control Plane)
+const SMS_CHANNEL_TIMEOUT_MS = 20_000;
+
+export interface SmsChannelRecent {
+  direction: string;
+  /** last 4 digits only, e.g. "...4567" */
+  contact: string;
+  status: string;
+  error_code: string;
+  segments: number;
+  source: string;
+  created_at: string | null;
+}
+
+export interface SmsChannelState {
+  available: boolean;
+  can_edit: boolean;
+  enabled: boolean;
+  daily_limit: number;
+  daily_max: number;
+  sent_today: number;
+  number: string;
+  twilio_ready: boolean;
+  max_segments: number;
+  last_error: string;
+  last_sent_at: string | null;
+  last_in_at: string | null;
+  recent: SmsChannelRecent[];
+}
+
+export interface SmsChannelInput {
+  enabled?: boolean;
+  daily_limit?: number;
+}
+
+export function getSmsChannel(accessToken: string) {
+  return portalService<SmsChannelState>(accessToken, SMS_CHANNEL, { method: "GET" });
+}
+
+export function saveSmsChannel(accessToken: string, input: SmsChannelInput) {
+  return portalService<SmsChannelState & { ok: boolean }>(accessToken, SMS_CHANNEL, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function testSmsChannel(accessToken: string, to: string) {
+  return portalService<{ ok: boolean; status: string }>(
+    accessToken, SMS_CHANNEL + "/test", { method: "POST", body: JSON.stringify({ to }) }, SMS_CHANNEL_TIMEOUT_MS);
+}

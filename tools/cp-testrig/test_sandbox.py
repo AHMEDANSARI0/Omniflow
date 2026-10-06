@@ -426,9 +426,10 @@ def web():
     check("bff expectations = CP expectations",
           all('"' + h + '"' in shaper.split("const HANDLERS")[1] for h in sb.EXPECT_HANDLERS))
     side = src(os.path.join(ROOT, "app/dashboard/components/DashSidebar.tsx"))
-    check("sidebar entry after Configure AI", side.index('"AI Sandbox", href: "/dashboard/sandbox", icon: "\\u2442"')
+    side += "\n" + src(os.path.join(ROOT, "app/dashboard/components/portalNav.ts"))  # §246 nav entries live in portalNav.ts
+    check("sidebar entry after Configure AI", side.index('"AI Sandbox", href: "/dashboard/sandbox", icon: "sandbox"')
           > side.index('"Configure AI"'))
-    check("palette entry", '"AI Sandbox", href: "/dashboard/sandbox"' in src(
+    check("palette entry", "NAV_GROUPS.flatMap(" in src(
         os.path.join(ROOT, "app/dashboard/components/CommandPalette.tsx")))
 
 

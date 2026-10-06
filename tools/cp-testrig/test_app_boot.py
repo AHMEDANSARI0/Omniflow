@@ -146,6 +146,13 @@ for expected in ("/api/v1/public/checkout/<token>", "/api/v1/public/store/<slug>
                  "/api/v1/portal/ai/traces/<trace_id>",
                  "/api/v1/portal/proactive",
                  "/api/v1/portal/proactive/run",
+                 "/api/v1/portal/channels/email",
+                 "/api/v1/portal/channels/email/test",
+                 "/api/v1/portal/channels/email/sync",
+                 "/api/v1/portal/channels/sms",
+                 "/api/v1/portal/channels/sms/test",
+                 "/api/v1/public/sms/incoming",
+                 "/api/v1/public/sms/status",
                  "/api/v1/portal/notifications/templates",
                  "/api/v1/portal/notifications/templates/<kind>",
                  "/api/v1/portal/notifications/templates/preview"):

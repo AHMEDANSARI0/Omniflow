@@ -1,6 +1,7 @@
 import { createClient } from "../../../../../../lib/supabase/server";
 import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
 import { getAdminModelRouter } from "../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../lib/omniflow/admin-bridge-error";
 import { safeJson, sameOrigin } from "../../../../../../lib/omniflow/request-security";
 
 // Model Router (§229) overview: routes, providers, breaker, usage.
@@ -22,21 +23,8 @@ export async function GET(request: Request) {
   try {
     return safeJson(await getAdminModelRouter(Number.isFinite(days) ? days : 7), 200);
   } catch (error) {
-    if (
-      error instanceof ControlPlaneRequestError &&
-      (error.code === "service_not_configured" || error.code === "control_plane_not_configured")
-    ) {
-      return safeJson(
-        {
-          error: {
-            code: "service_not_configured",
-            message:
-              "Admin bridge not configured - set OMNIFLOW_SERVICE_KEY and OMNIFLOW_CONTROL_PLANE_URL on the website project.",
-          },
-        },
-        503
-      );
-    }
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     if (error instanceof ControlPlaneRequestError && error.status === 404) {
       return safeJson(
         {

@@ -207,8 +207,6 @@ BRIDGE = open("/home/user/Omniflow/connector-bridge/control_plane_bridge.py",
 check("bridge provider plumbing", "provider_message_id=None," in BRIDGE
       and '**({"provider_message_id": provider_message_id}' in BRIDGE, "bridge")
 
-check("patchers archived", __import__("os").path.isfile(
-    "/home/user/Omniflow/tools/patchers/add_batch_991_1010_cloud_lang.mjs"),
-    "tools/patchers")
+# Old patchers are no longer kept in git (222 repo cleanup); nothing to assert here.
 
 summary("events")

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import PortalIcon, { type IconName } from "./PortalIcon";
 import { useUnreadCount } from "./useUnreadCount";
 
-const TABS = [
-  { href: "/dashboard", label: "Home", icon: "\u2302", exact: true },
-  { href: "/dashboard/conversations", label: "Inbox", icon: "\u25a1", exact: false },
-  { href: "/dashboard/customers", label: "Customers", icon: "\u25a4", exact: false },
-  { href: "/dashboard/broadcasts", label: "Broadcasts", icon: "\u21bb", exact: false },
+const TABS: { href: string; label: string; icon: IconName; exact: boolean }[] = [
+  { href: "/dashboard", label: "Dashboard", icon: "dashboard", exact: true },
+  { href: "/dashboard/conversations", label: "Inbox", icon: "conversations", exact: false },
+  { href: "/dashboard/customers", label: "Customers", icon: "customers", exact: false },
+  { href: "/dashboard/broadcasts", label: "Broadcasts", icon: "marketing", exact: false },
 ];
 
 export default function MobileTabBar() {
@@ -38,8 +39,8 @@ export default function MobileTabBar() {
                 (active ? "text-brand" : "text-ink-2 active:text-ink")
               }
             >
-              <span className="relative text-base leading-none">
-                {tab.icon}
+              <span className="relative leading-none">
+                <PortalIcon name={tab.icon} className="h-5 w-5" />
                 {tab.label === "Inbox" && unreadCount > 0 ? (
                   <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-rose-500 px-1 text-center text-[9px] font-semibold leading-4 text-white">
                     {unreadCount > 99 ? "99+" : String(unreadCount)}

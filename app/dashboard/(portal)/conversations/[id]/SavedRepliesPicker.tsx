@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import PortalIcon from "../../../components/PortalIcon";
 
 interface SavedReply {
   id: number;
@@ -148,7 +149,7 @@ export default function SavedRepliesPicker({
         }}
         className="inline-flex items-center gap-2 rounded-xl border border-line bg-white shadow-card px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
       >
-        <span aria-hidden>✦</span>
+        <PortalIcon name="quickReplies" className="h-3.5 w-3.5" />
         Saved replies
         <span className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-3">
           {replies.length}

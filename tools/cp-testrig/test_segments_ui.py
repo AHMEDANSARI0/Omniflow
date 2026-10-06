@@ -12,6 +12,9 @@ PAGE = open(
 SIDEBAR = open(
     "/tmp/p13/Omniflow/app/dashboard/components/DashSidebar.tsx", encoding="utf8"
 ).read()
+SIDEBAR += "\n" + open(
+    "/tmp/p13/Omniflow/app/dashboard/components/portalNav.ts", encoding="utf8"
+).read()  # §246 nav entries live in portalNav.ts
 BFF = open("/tmp/p13/Omniflow/app/api/omniflow/portal/segments/route.ts",
            encoding="utf8").read()
 BFF_ID = open("/tmp/p13/Omniflow/app/api/omniflow/portal/segments/[id]/route.ts",

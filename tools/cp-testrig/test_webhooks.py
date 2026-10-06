@@ -173,6 +173,7 @@ page_src = open("/tmp/p13/Omniflow/app/dashboard/(portal)/integrations/page.tsx"
 check("page secret once", "shown once" in page_src)
 check("page delivery log", "Deliveries" in page_src)
 nav_src = open("/tmp/p13/Omniflow/app/dashboard/components/DashSidebar.tsx").read()
+nav_src += "\n" + open("/tmp/p13/Omniflow/app/dashboard/components/portalNav.ts").read()  # §246 nav entries live in portalNav.ts
 check("nav item", 'href: "/dashboard/integrations"' in nav_src)
 
 failures = summary("webhooks")

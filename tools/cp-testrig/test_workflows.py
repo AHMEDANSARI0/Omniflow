@@ -1003,7 +1003,7 @@ check("Builder canvas: no emoji-capable glyphs (text-presentation law)",
       all(code not in canvas_src for code in (
           "\\u25b6", "\\u261d", "\\u2714", "\\u26a1", "\\u2699", "\\u2709",
           "\\u260e", "\\u2733", "\\u263a", "\\u25fc", "\\u27a1"))
-      and "\\u25c9" in canvas_src, "-")
+      and 'const KIND_ICON: Record<WorkflowStepKind, IconName>' in canvas_src, "-")
 check("Workflows UI: no heavy libs (D6 law)", all(
     lib not in builder_srcs for lib in ("reactflow", "@xyflow", "dnd-kit",
                                         "react-beautiful-dnd", "konva")), "-")
@@ -1013,8 +1013,12 @@ check("package.json: no canvas/drag-drop dependency added", all(
                                "react-beautiful-dnd", "konva", "d3")), "-")
 SIDEBAR = open(RIG13 + "app/dashboard/components/DashSidebar.tsx",
                encoding="utf8").read()
+SIDEBAR += "\n" + open(RIG13 + "app/dashboard/components/portalNav.ts",
+               encoding="utf8").read()  # §246 nav entries live in portalNav.ts
 PALETTE = open(RIG13 + "app/dashboard/components/CommandPalette.tsx",
                encoding="utf8").read()
+PALETTE += "\n" + open(RIG13 + "app/dashboard/components/portalNav.ts",
+               encoding="utf8").read()  # §246 nav entries live in portalNav.ts
 check("sidebar + palette link", '"/dashboard/workflows"' in SIDEBAR
       and '"/dashboard/workflows"' in PALETTE, "-")
 RULES = open(RIG13 + "app/dashboard/(portal)/rules/page.tsx",

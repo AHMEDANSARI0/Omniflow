@@ -1026,6 +1026,19 @@ def twilio_number_state(number: Dict[str, Any], base: str) -> Dict[str, Any]:
     else:
         state = "not_set"
     caps = number.get("capabilities")
+    # §244: SMS routing of the same number (portal_sms webhook)
+    import portal_sms
+
+    sms_url = str(number.get("sms_url") or "").strip()
+    want_sms = (base + portal_sms.INCOMING_PATH) if base else ""
+    if number.get("sms_application_sid"):
+        sms_state = "app"
+    elif want_sms and sms_url.rstrip("/") == want_sms:
+        sms_state = "connected"
+    elif sms_url:
+        sms_state = "elsewhere"
+    else:
+        sms_state = "not_set"
     return {
         "sid": str(number.get("sid") or ""),
         "phone_number": str(number.get("phone_number") or ""),
@@ -1034,6 +1047,10 @@ def twilio_number_state(number: Dict[str, Any], base: str) -> Dict[str, Any]:
         "voice_host": _host_of(voice_url),
         "voice_capable": bool(caps.get("voice", True))
         if isinstance(caps, dict) else True,
+        "sms_state": sms_state,
+        "sms_host": _host_of(sms_url),
+        "sms_capable": bool(caps.get("sms", False))
+        if isinstance(caps, dict) else False,
     }
 
 
@@ -1063,6 +1080,18 @@ def connect_twilio_number(keys: Dict[str, str], sid: str, base: str
                            "VoiceMethod": "POST",
                            "StatusCallback": base + STATUS_PATH,
                            "StatusCallbackMethod": "POST",
+                       })
+
+
+def connect_twilio_sms(keys: Dict[str, str], sid: str, base: str) -> Dict[str, Any]:
+    """§244: point one number's SMS webhook at this Control Plane (portal_sms).
+    Only the two SMS routing fields are sent - voice routing is untouched."""
+    import portal_sms
+
+    return _twilio_api(keys, "POST", "/IncomingPhoneNumbers/"
+                       + urllib.parse.quote(sid, safe="") + ".json", {
+                           "SmsUrl": base + portal_sms.INCOMING_PATH,
+                           "SmsMethod": "POST",
                        })
 
 

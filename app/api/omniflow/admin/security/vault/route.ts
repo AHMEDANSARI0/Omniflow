@@ -1,6 +1,6 @@
 import { createClient } from "../../../../../../lib/supabase/server";
-import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
 import { getAdminVault } from "../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../lib/omniflow/admin-bridge-error";
 import {
   noStoreHeaders,
   safeJson,
@@ -19,26 +19,8 @@ export async function GET(request: Request) {
   try {
     return safeJson(await getAdminVault(), 200);
   } catch (failure) {
-    if (failure instanceof ControlPlaneRequestError) {
-      if (failure.code === "service_not_configured" || failure.code === "control_plane_not_configured") {
-        return safeJson(
-          {
-            error: {
-              code: "service_not_configured",
-              message:
-                "Admin bridge not configured — set OMNIFLOW_SERVICE_KEY and OMNIFLOW_CONTROL_PLANE_URL on the website project.",
-            },
-          },
-          503
-        );
-      }
-      if (failure.status === 403) {
-        return safeJson(
-          { error: { code: "forbidden", message: "Service key rejected by the Control Plane." } },
-          503
-        );
-      }
-    }
+    const bridge = adminBridgeError(failure);
+    if (bridge) return bridge;
     return safeJson(
       { error: { code: "vault_unavailable", message: "Could not read the encryption status. Please try again." } },
       503

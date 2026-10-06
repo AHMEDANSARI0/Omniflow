@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import RuleConflicts from "./RuleConflicts";
+import PortalIcon, { type IconName } from "../../components/PortalIcon";
 
 interface PolicyFamily {
   ruleSet: string;
@@ -11,15 +12,15 @@ interface PolicyFamily {
   summary: string;
 }
 
-const RULE_SET_ICONS: Record<string, string> = {
-  routing: "◈",
-  listen: "◉",
-  negotiation: "%",
-  hours: "◷",
-  handoff: "△",
-  autonomy: "✦",
-  approvals: "✓",
-  workflows: "⇉",
+const RULE_SET_ICONS: Record<string, IconName> = {
+  routing: "split",
+  listen: "listen",
+  negotiation: "percent",
+  hours: "clock",
+  handoff: "handoff",
+  autonomy: "sparkles",
+  approvals: "approvals",
+  workflows: "workflows",
 };
 
 export default function RulesPage() {
@@ -153,7 +154,7 @@ export default function RulesPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-brand/25 bg-brand-soft text-sm font-semibold text-brand">
-                  {RULE_SET_ICONS[family.ruleSet] || "◆"}
+                  <PortalIcon name={RULE_SET_ICONS[family.ruleSet] || "rules"} />
                 </span>
                 <span
                   className={

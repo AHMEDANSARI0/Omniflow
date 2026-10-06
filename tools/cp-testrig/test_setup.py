@@ -80,7 +80,7 @@ check("card seven items", card.count("href: \"/dashboard/") == 7)
 check("card responsive grid", "sm:grid-cols-2" in card)
 page_src = open("/tmp/p13/Omniflow/app/dashboard/(portal)/page.tsx").read()
 check("overview renders card", "<SetupChecklist />" in page_src
-      and page_src.index("<SetupChecklist />") < page_src.index("{overview && ("))
+      and page_src.index("<SetupChecklist />") < page_src.index("<KpiStrip token={token} />"))
 
 failures = summary("setup")
 sys.exit(1 if failures else 0)

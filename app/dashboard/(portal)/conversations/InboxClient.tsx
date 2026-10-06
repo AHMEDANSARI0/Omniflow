@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
+import PortalIcon from "../../components/PortalIcon";
 
 
 interface ConversationSummary {
@@ -66,6 +67,10 @@ function waitingLabel(value: string): string {
   return Math.floor(seconds / 86400) + "d";
 }
 
+// Inbox channel filter (§243: telegram and email join the list; §244: sms).
+const INBOX_CHANNELS = ["whatsapp", "instagram", "messenger", "telegram", "email", "sms", "website"] as const;
+type InboxChannel = (typeof INBOX_CHANNELS)[number];
+
 export default function InboxClient({
   initialItems,
   initialCounts,
@@ -88,8 +93,8 @@ export default function InboxClient({
   const statusRef = useRef<"all" | "open" | "closed">("all");
   const [intentFilter, setIntentFilter] = useState("all");
   const intentRef = useRef("all");
-  const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram" | "messenger" | "website">("all");
-  const channelRef = useRef<"all" | "whatsapp" | "instagram" | "messenger" | "website">("all");
+  const [channelFilter, setChannelFilter] = useState<"all" | InboxChannel>("all");
+  const channelRef = useRef<"all" | InboxChannel>("all");
   const [replyFilter, setReplyFilter] = useState("");
   const replyFilterRef = useRef("");
   const [oldestFirst, setOldestFirst] = useState(false);
@@ -425,13 +430,8 @@ export default function InboxClient({
       assignedRef.current = assignedParam;
       setAssignedFilter(assignedParam);
     }
-    const channelParam = urlFilters.get("channel");
-    if (
-      channelParam === "whatsapp" ||
-      channelParam === "instagram" ||
-      channelParam === "messenger" ||
-      channelParam === "website"
-    ) {
+    const channelParam = INBOX_CHANNELS.find((value) => value === urlFilters.get("channel"));
+    if (channelParam) {
       channelRef.current = channelParam;
       setChannelFilter(channelParam);
     }
@@ -994,7 +994,9 @@ export default function InboxClient({
               }}
               className="rounded-full border border-line bg-soft px-2.5 py-1 text-[10px] font-medium text-ink-3 transition-colors hover:text-ink"
             >
-              Clear ✕
+              <span className="inline-flex items-center gap-1">
+                Clear <PortalIcon name="close" className="h-3 w-3" />
+              </span>
             </button>
           )}
         </div>
@@ -1012,7 +1014,7 @@ export default function InboxClient({
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {(["all", "whatsapp", "instagram", "messenger", "website"] as const).map((value) => (
+        {(["all", ...INBOX_CHANNELS] as const).map((value) => (
           <button
             key={"channel-" + value}
             onClick={() => {
@@ -1026,7 +1028,7 @@ export default function InboxClient({
                 : "border-line bg-soft text-ink-3 hover:text-ink"
             }`}
           >
-            {value === "all" ? "All channels" : value}
+            {value === "all" ? "All channels" : value === "sms" ? "SMS" : value}
           </button>
         ))}
         <button
@@ -1522,7 +1524,9 @@ export default function InboxClient({
                             className="shrink-0 rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-ok"
                             title={"VIP — " + item.paidOrders + " paid orders"}
                           >
-                            ★ vip
+                            <span className="inline-flex items-center gap-0.5">
+                              <PortalIcon name="star" className="h-2.5 w-2.5 fill-current" /> vip
+                            </span>
                           </span>
                         )}
                       {item.contactId ? (
@@ -1552,7 +1556,7 @@ export default function InboxClient({
                           : "text-ink-3 hover:text-ink-3"
                       }`}
                     >
-                      {item.starred ? "\u2605" : "\u25c9"}
+                      <PortalIcon name="star" className={"h-4 w-4 " + (item.starred ? "fill-current" : "")} />
                     </button>
                     <button
                       type="button"

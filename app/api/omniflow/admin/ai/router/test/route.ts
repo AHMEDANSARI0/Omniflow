@@ -3,6 +3,7 @@ import {
   testAdminModelRouter,
   type RouterTestTarget,
 } from "../../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../../lib/omniflow/admin-bridge-error";
 import { safeJson, sameOrigin } from "../../../../../../../lib/omniflow/request-security";
 
 // One tiny JSON call against a provider or tier (§229). The provider may
@@ -38,7 +39,9 @@ export async function POST(request: Request) {
       return safeJson({ error: { code: "not_configured", message: result.invalid } }, 409);
     }
     return safeJson(result, 200);
-  } catch {
+  } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     return safeJson(
       { error: { code: "router_unavailable", message: "The test could not reach the Control Plane." } },
       503

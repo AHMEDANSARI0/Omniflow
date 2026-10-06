@@ -12,8 +12,6 @@ immediately so the outreach shows in the thread, exactly like WATI sends.
 
 import json
 import logging
-import os
-import secrets
 
 from flask import Blueprint, jsonify, request
 
@@ -22,6 +20,7 @@ from portal_auth import (
     authenticate_portal_request,
     ensure_human_principal,
 )
+import portal_auth
 import portal_db
 from typing import Any, Dict, List
 
@@ -57,14 +56,7 @@ def _principal_or_error():
 
 def _authorized() -> bool:
     """Same service-key contract as connector_api (bridge -> CP pushes)."""
-    key = request.headers.get("X-Omniflow-Key", "")
-    if not key:
-        return False
-    accepted = [
-        os.environ.get("OMNIFLOW_SERVICE_KEY"),
-        os.environ.get("OMNIFLOW_ADMIN_API_KEY"),
-    ]
-    return any(k for k in accepted if k and secrets.compare_digest(key, k))
+    return portal_auth.service_key_ok()
 
 
 def _ensure_cloud_tables(conn) -> None:

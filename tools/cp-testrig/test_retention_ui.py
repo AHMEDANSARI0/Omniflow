@@ -24,7 +24,9 @@ CLIENT = read("app/dashboard/(portal)/retention/RetentionClient.tsx")
 CARD = read("app/dashboard/(portal)/conversations/[id]/LoyaltyCard.tsx")
 THREAD = read("app/dashboard/(portal)/conversations/[id]/ThreadClient.tsx")
 SIDEBAR = read("app/dashboard/components/DashSidebar.tsx")
+SIDEBAR += "\n" + read("app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
 PALETTE = read("app/dashboard/components/CommandPalette.tsx")
+PALETTE += "\n" + read("app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
 SETTINGS = read("app/api/omniflow/portal/retention/settings/route.ts")
 OVERVIEW = read("app/api/omniflow/portal/retention/overview/route.ts")
 CUSTOMER = read("app/api/omniflow/portal/retention/customer/route.ts")
@@ -78,8 +80,8 @@ check("client: send needs a preview + confirm", 'window.confirm("Send these mess
       and "preview && preview.messages.length > 0" in CLIENT)
 check("client: defaults shown as placeholders, offer needs {code}", "placeholder={fallback}" in CLIENT
       and "Offer line (needs {code})" in CLIENT)
-check("sidebar + palette link", '{ label: "Retention", href: "/dashboard/retention", icon: "\\u25d0", enabled: true }' in SIDEBAR
-      and '{ group: "Pages", label: "Retention", href: "/dashboard/retention" }' in PALETTE)
+check("sidebar + palette link", '{ label: "Retention", href: "/dashboard/retention", icon: "retention" }' in SIDEBAR
+      and "NAV_GROUPS.flatMap(" in PALETTE)
 EMOJI = "[\u25b6\u261d\u2714\u26a1\u2699\u2709\u260e\u2733\u263a\u25fc\u27a1]"
 ESC = r"\\u(25b6|261d|2714|26a1|2699|2709|260e|2733|263a|25fc|27a1)"
 check("no emoji-capable glyphs", not any(re.search(EMOJI, src) or re.search(ESC, src)

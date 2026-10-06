@@ -48,7 +48,24 @@ def channel_for_contact(contact_id: Any) -> str:
         return "instagram"
     if value.startswith(("fb:", "fbc:")):
         return "messenger"
+    if value.startswith("em:"):
+        return "email"  # §243: sent by the Control Plane over SMTP
+    if value.startswith("sms:"):
+        return "sms"  # §244: sent by the Control Plane through Twilio
     return "whatsapp"
+
+
+def dispatch_now(client_id: Any, channel: str) -> None:
+    """§244: deliver a just-queued reply on a Control-Plane channel right
+    away (laptop bridges poll on their own). Fail-soft, never raises."""
+    if channel != "sms":
+        return
+    try:
+        import portal_sms
+
+        portal_sms.send_pending(int(client_id), portal_sms.DISPATCH_LIMIT)
+    except Exception:
+        pass
 
 
 def _iso(value: Any) -> Optional[str]:

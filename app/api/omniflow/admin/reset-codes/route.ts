@@ -1,6 +1,7 @@
 import { createClient } from "../../../../../lib/supabase/server";
 import { ControlPlaneRequestError } from "../../../../../lib/omniflow/control-plane";
 import { listRecentResetCodes } from "../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../lib/omniflow/admin-bridge-error";
 import {
   safeJson,
   sameOrigin,
@@ -36,34 +37,13 @@ export async function GET(request: Request) {
     const codes = await listRecentResetCodes();
     return safeJson({ codes });
   } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     if (error instanceof ControlPlaneRequestError) {
-      if (error.code === "service_not_configured") {
-        return safeJson(
-          {
-            error: {
-              code: "service_not_configured",
-              message:
-                "Admin bridge not configured — set OMNIFLOW_SERVICE_KEY on the website project.",
-            },
-          },
-          503
-        );
-      }
       if (error.status === 404) {
         // Older control-plane deployment without the codes endpoint —
         // treat as "no codes" so the panel simply stays hidden.
         return safeJson({ codes: [] });
-      }
-      if (error.status === 403) {
-        return safeJson(
-          {
-            error: {
-              code: "forbidden",
-              message: "Service key rejected by the Control Plane.",
-            },
-          },
-          503
-        );
       }
     }
     return safeJson(

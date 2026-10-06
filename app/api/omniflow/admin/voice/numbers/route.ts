@@ -3,6 +3,7 @@ import {
   assignAdminVoiceNumber,
   listAdminVoiceNumbers,
 } from "../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../lib/omniflow/admin-bridge-error";
 import {
   safeJson,
   sameOrigin,
@@ -44,7 +45,9 @@ export async function GET(request: Request) {
   try {
     const numbers = await listAdminVoiceNumbers();
     return numbers === null ? unavailable() : safeJson({ numbers }, 200);
-  } catch {
+  } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     return unavailable();
   }
 }
@@ -101,7 +104,9 @@ export async function PUT(request: Request) {
       );
     }
     return unavailable();
-  } catch {
+  } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     return unavailable();
   }
 }

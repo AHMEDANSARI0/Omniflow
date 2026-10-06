@@ -27,11 +27,13 @@ const { renderToStaticMarkup } = require("react-dom/server");
 
 const srcDir = path.join(root, "app", "dashboard", "(portal)", "workflows");
 const files = ["workflow-model.ts", "StepInspector.tsx", "WorkflowCanvas.tsx", "WorkflowGenerator.tsx", "WorkflowsClient.tsx"];
+// §246: the builder's icons come from the shared portal icon set (lucide-react)
+const iconDir = path.join(root, "app", "dashboard", "components");
 // compiled files live next to node_modules so `require("react")` resolves
 const outDir = fs.mkdtempSync(path.join(root, "node_modules", ".cache-of-render-"));
 
-function compile(name) {
-  const src = fs.readFileSync(path.join(srcDir, name), "utf8");
+function compile(name, dir = srcDir) {
+  const src = fs.readFileSync(path.join(dir, name), "utf8");
   const tsx = name.endsWith(".tsx");
   const result = swc.transformSync(src, {
     filename: name,
@@ -46,12 +48,20 @@ function compile(name) {
   const code = typeof result === "string" ? result : result.code;
   // components import each other by extension-less relative paths
   const out = path.join(outDir, name.replace(/\.tsx?$/, ".cjs"));
-  fs.writeFileSync(out, code.replace(/require\("\.\/(workflow-model|StepInspector|WorkflowCanvas|WorkflowGenerator)"\)/g, 'require("./$1.cjs")'));
+  fs.writeFileSync(
+    out,
+    code
+      .replace(/require\("\.\/(workflow-model|StepInspector|WorkflowCanvas|WorkflowGenerator)"\)/g, 'require("./$1.cjs")')
+      .replace(/require\("\.\.\/\.\.\/components\/(PortalIcon)"\)/g, 'require("./$1.cjs")')
+  );
   return out;
 }
 
 let model, inspector, Canvas, Generator, Client;
 try {
+  const PortalIcon = require(compile("PortalIcon.tsx", iconDir)).default;
+  const icon = renderToStaticMarkup(React.createElement(PortalIcon, { name: "split" }));
+  emit("portal icons render as SVG (lucide)", icon.startsWith("<svg") && icon.includes('aria-hidden="true"') && icon.includes("lucide"), icon.slice(0, 120));
   const compiled = Object.fromEntries(files.map((name) => [name, compile(name)]));
   model = require(compiled["workflow-model.ts"]);
   inspector = require(compiled["StepInspector.tsx"]);

@@ -211,6 +211,8 @@ check("rules page", os.path.exists(
     RIG13 + "app/dashboard/(portal)/rules/page.tsx"), "page")
 SIDEBAR = open(RIG13 + "app/dashboard/components/DashSidebar.tsx",
                encoding="utf8").read()
+SIDEBAR += "\n" + open(RIG13 + "app/dashboard/components/portalNav.ts",
+               encoding="utf8").read()  # §246 nav entries live in portalNav.ts
 check("sidebar entry", 'label: "Rules"' in SIDEBAR
       and "/dashboard/rules" in SIDEBAR, "sidebar")
 PORTAL = open(RIG13 + "lib/omniflow/portal.ts", encoding="utf8").read()

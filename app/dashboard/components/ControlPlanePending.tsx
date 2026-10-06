@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PortalIcon from "./PortalIcon";
 
 
 export default function ControlPlanePending({
@@ -17,7 +18,7 @@ export default function ControlPlanePending({
 
       <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.025] px-6 py-12 text-center">
         <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-brand">
-          ◈
+          <PortalIcon name="integrations" className="h-5 w-5" />
         </div>
         <h2 className="text-sm font-semibold text-ink">
           Control Plane connection pending

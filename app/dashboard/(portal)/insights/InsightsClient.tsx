@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { BiProblem, BiReport, BiTopic } from "../../../../lib/omniflow/portal";
+import PortalIcon, { type IconName } from "../../components/PortalIcon";
 
 const SEVERITY_STYLE: Record<string, string> = {
   critical: "border-rose-400/30 bg-rose-400/[0.08] text-danger",
@@ -40,11 +41,11 @@ function hourLabel(hour: number): string {
   return h + suffix;
 }
 
-function trendGlyph(trend: BiTopic["trend"]): string {
-  if (trend === "up") return "\u25b3";
-  if (trend === "down") return "\u25bd";
-  if (trend === "new") return "\u2726";
-  return "\u2013";
+function trendIcon(trend: BiTopic["trend"]): IconName {
+  if (trend === "up") return "trendUp";
+  if (trend === "down") return "trendDown";
+  if (trend === "new") return "sparkles";
+  return "arrowRight";
 }
 
 function evidenceLines(evidence: Record<string, unknown>): string[] {
@@ -316,8 +317,9 @@ export default function InsightsClient() {
                     <div className="flex items-baseline justify-between gap-2 text-xs">
                       <span className="text-ink">
                         {topic.label}
-                        <span className="ml-1.5 text-[10px] text-ink-3">
-                          {trendGlyph(topic.trend)} {topic.trend}
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] text-ink-3">
+                          <PortalIcon name={trendIcon(topic.trend)} className="h-3 w-3" />
+                          {topic.trend}
                         </span>
                       </span>
                       <span className="text-ink-3">

@@ -133,6 +133,7 @@ check("bff depths", bff1.count("../") == 15 and bff2.count("../") == 18,
 page_src = open("/tmp/p13/Omniflow/app/dashboard/(portal)/cod/page.tsx").read()
 check("page client + filters", page_src.startswith('"use client"') and "aria-pressed" in page_src)
 nav_src = open("/tmp/p13/Omniflow/app/dashboard/components/DashSidebar.tsx").read()
+nav_src += "\n" + open("/tmp/p13/Omniflow/app/dashboard/components/portalNav.ts").read()  # §246 nav entries live in portalNav.ts
 check("nav item inserted", 'href: "/dashboard/cod"' in nav_src)
 
 failures = summary("cod")

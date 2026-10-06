@@ -22,7 +22,8 @@ check("counts poll reused", "useUnreadCount()" in bar_src and "include=counts" n
 
 print("== shell ==")
 check("shell renders bar", "<MobileTabBar />" in shell_src)
-check("content clears bar", "pb-24" in shell_src and "lg:pb-12" in shell_src)
+# §246: the bottom padding also clears the Ask Omni bubble.
+check("content clears bar", "pb-36" in shell_src and "lg:pb-28" in shell_src)
 
 print("== css ==")
 check("ios input fix", "@media (max-width: 640px)" in css_src

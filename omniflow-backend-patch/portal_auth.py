@@ -16,9 +16,11 @@ app.py binds the composite root application once at import time
 """
 
 import hashlib
+import hmac
 import io
 import json
 import logging
+import os
 import sys
 import threading
 from typing import Any, Dict, Optional
@@ -32,6 +34,27 @@ logger = logging.getLogger("omniflow.portal-auth")
 
 _ROOT_APP = None
 _BIND_LOCK = threading.Lock()
+
+SERVICE_KEY_ENVS = ("OMNIFLOW_SERVICE_KEY", "OMNIFLOW_ADMIN_API_KEY")
+
+
+def service_key_ok(provided: Optional[str] = None) -> bool:
+    """X-Omniflow-Key check shared by every machine-facing route (batch 245).
+
+    Both sides are stripped, so a trailing space/newline pasted into a Vercel
+    env value cannot lock the admin panel out with a silent 403; the compare
+    stays constant-time (bytes, so non-ASCII input cannot raise)."""
+    if provided is None:
+        provided = request.headers.get("X-Omniflow-Key", "")
+    key = (provided or "").strip().encode("utf8")
+    if not key:
+        return False
+    matched = False
+    for name in SERVICE_KEY_ENVS:
+        accepted = (os.environ.get(name) or "").strip().encode("utf8")
+        if accepted and hmac.compare_digest(key, accepted):
+            matched = True
+    return matched
 
 
 def bind_root_application(app: Any) -> None:

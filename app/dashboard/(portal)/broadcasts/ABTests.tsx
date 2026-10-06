@@ -8,6 +8,7 @@ import type {
   AbTest,
   AbVariant,
 } from "../../../../lib/omniflow/portal";
+import PortalIcon from "../../components/PortalIcon";
 
 const API = "/api/omniflow/portal/ab-tests";
 /** CopyGenCard dispatches this with its versions ("A/B test these"). */
@@ -379,7 +380,7 @@ export default function ABTests() {
     <section ref={panel} className={card + " mx-auto max-w-3xl p-4 sm:p-5"}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-ink">{"\u2442"} A/B tests</h2>
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><PortalIcon name="split" className="h-4 w-4 text-brand" /> A/B tests</h2>
           <p className="mt-0.5 text-[11px] text-ink-3">
             Send 2–{maxVariants} versions to a random part of the audience, see which gets more replies or
             paid orders, then send the winner to everyone else.

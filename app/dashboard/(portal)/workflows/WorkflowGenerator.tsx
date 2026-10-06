@@ -9,6 +9,7 @@ import type {
   WorkflowTemplate,
 } from "../../../../lib/omniflow/portal";
 import { STEP_LABELS, editorFromTemplate, stepSummary, type WorkflowPayload } from "./workflow-model";
+import PortalIcon from "../../components/PortalIcon";
 
 /** The builder's workflow when the owner asks the AI to change it. */
 export interface GeneratorTarget {
@@ -139,7 +140,7 @@ export default function WorkflowGenerator({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-ink">
-            <span aria-hidden className="mr-1.5 text-brand">{"\u2736"}</span>
+            <PortalIcon name="sparkles" className="mr-1.5 inline-block h-4 w-4 align-[-3px] text-brand" />
             {current ? "Change \u201c" + (current.name || "this workflow") + "\u201d with AI" : "Describe a workflow"}
           </h2>
           <p className="mt-1 max-w-2xl text-xs text-ink-2">

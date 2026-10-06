@@ -322,6 +322,8 @@ check("connector side-effect hook",
 
 SIDEBAR = open(RIG13 + "app/dashboard/components/DashSidebar.tsx",
                encoding="utf8").read()
+SIDEBAR += "\n" + open(RIG13 + "app/dashboard/components/portalNav.ts",
+               encoding="utf8").read()  # §246 nav entries live in portalNav.ts
 check("sidebar entry", 'label: "Approvals"' in SIDEBAR
       and "/dashboard/approvals" in SIDEBAR, "sidebar")
 

@@ -16,6 +16,7 @@ def read(rel):
 
 PORTAL = read("lib/omniflow/portal.ts")
 SIDEBAR = read("app/dashboard/components/DashSidebar.tsx")
+SIDEBAR += "\n" + read("app/dashboard/components/portalNav.ts")  # §246 nav entries live in portalNav.ts
 PROFILE = read("app/dashboard/(portal)/customers/profile/ProfileClient.tsx")
 ACTIVITY = read("app/dashboard/(portal)/activity/page.tsx")
 COMPLIANCE = read("app/dashboard/(portal)/compliance/page.tsx")
@@ -99,16 +100,19 @@ print("== activity + sidebar ==")
 
 check("escalations chip", 'label: "Escalations"' in ACTIVITY, "chip")
 check("compliance nav", '{ label: "Compliance", href: "/dashboard/compliance",'
-      ' icon: "\\u26e8", enabled: true }' in SIDEBAR, "nav")
-check("sidebar icons filled", '\\u2302' in SIDEBAR and '\\u2301' in SIDEBAR
-      and '\\u25ad' in SIDEBAR, "icons")
+      ' icon: "compliance" }' in SIDEBAR, "nav")
+check("sidebar icons filled (§246 SVG set)", 'icon: "dashboard"' in SIDEBAR
+      and 'icon: "automation"' in SIDEBAR and 'icon: "profile"' in SIDEBAR, "icons")
 # Icon law (Ph369b): U+2699 is emoji-capable and was retired in the D7
 # sidebar; Settings keeps a text-presentation glyph instead.
 _settings = SIDEBAR[SIDEBAR.find('label: "Settings"'):][:200]
 check("settings icon text-presentation (no U+2699)",
       '\\u2699' not in SIDEBAR and 'icon: "' in _settings, "icon")
-check("nav scrolls both containers", SIDEBAR.count("overflow-y-auto") >= 2,
-      SIDEBAR.count("overflow-y-auto"))
+# §246: the scroll lives inside NavLinks (Settings pinned below it), and
+# NavLinks renders in both containers (desktop rail + phone drawer).
+check("nav scrolls both containers",
+      '<div className="min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden pb-2">' in SIDEBAR
+      and SIDEBAR.count("<NavLinks ") >= 2, SIDEBAR.count("<NavLinks "))
 
 print("== compliance page ==")
 

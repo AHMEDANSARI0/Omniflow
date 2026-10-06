@@ -1,9 +1,9 @@
 import { createClient } from "../../../../../../../../lib/supabase/server";
-import { ControlPlaneRequestError } from "../../../../../../../../lib/omniflow/control-plane";
 import {
   setAdminClientAutonomy,
   type AdminAutonomy,
 } from "../../../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../../../lib/omniflow/admin-bridge-error";
 import {
   noStoreHeaders,
   safeJson,
@@ -75,23 +75,8 @@ export async function POST(request: Request, context: RouteContext) {
     );
     return safeJson(result, 200);
   } catch (error) {
-    if (error instanceof ControlPlaneRequestError) {
-      if (
-        error.code === "service_not_configured" ||
-        error.code === "control_plane_not_configured"
-      ) {
-        return safeJson(
-          {
-            error: {
-              code: "service_not_configured",
-              message:
-                "Admin bridge not configured — set OMNIFLOW_SERVICE_KEY on the website project.",
-            },
-          },
-          503
-        );
-      }
-    }
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     return safeJson(
       {
         error: {

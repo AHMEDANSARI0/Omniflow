@@ -279,6 +279,7 @@ PAGE = open(BASE + "media_page.tsx", encoding="utf8").read()
 check("media page", "Upload" in PAGE and "Transcribe" in PAGE
       and "media/upload".replace("media/", "") in PAGE, "page")
 SIDEBAR = open(BASE + "sidebar.tsx", encoding="utf8").read()
+SIDEBAR += "\n" + open(BASE + "nav.ts", encoding="utf8").read()  # §246 nav entries live in portalNav.ts
 check("sidebar media nav", "/dashboard/media" in SIDEBAR, "nav")
 BRIDGE = open("/tmp/p13/src/control_plane_bridge.py",
               encoding="utf8").read()

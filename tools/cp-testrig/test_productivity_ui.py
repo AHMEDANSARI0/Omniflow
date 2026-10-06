@@ -32,6 +32,9 @@ PICKER = open(
 SIDEBAR = open(
     "/tmp/p13/Omniflow/app/dashboard/components/DashSidebar.tsx", encoding="utf8"
 ).read()
+SIDEBAR += "\n" + open(
+    "/tmp/p13/Omniflow/app/dashboard/components/portalNav.ts", encoding="utf8"
+).read()  # §246 nav entries live in portalNav.ts
 
 print("== portal clients ==")
 

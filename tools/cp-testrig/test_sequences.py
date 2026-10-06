@@ -165,6 +165,7 @@ page_src = open("/tmp/p13/Omniflow/app/dashboard/(portal)/sequences/page.tsx").r
 check("page step builder", "Add step" in page_src and "168" in page_src)
 check("page people log", "People" in page_src)
 nav_src = open("/tmp/p13/Omniflow/app/dashboard/components/DashSidebar.tsx").read()
+nav_src += "\n" + open("/tmp/p13/Omniflow/app/dashboard/components/portalNav.ts").read()  # §246 nav entries live in portalNav.ts
 check("nav item", 'href: "/dashboard/sequences"' in nav_src)
 
 failures = summary("sequences")

@@ -25,6 +25,8 @@ MESSAGE_PAGE_SIZE = 200
 BULK_MAX_IDS = 50
 EXPORT_LIMIT = 500
 ALLOWED_STATUS = ("all", "open", "closed")
+# Inbox channel filter (§243 adds telegram and email to the list).
+INBOX_CHANNELS = ("whatsapp", "website", "instagram", "messenger", "telegram", "email", "sms")
 MAX_TAGS_PER_CONVERSATION = 6
 MAX_TAG_LENGTH = 24
 MAX_TAG_SUMMARY = 30
@@ -161,6 +163,21 @@ def list_conversations():
     principal, error = _principal_or_error()
     if error:
         return error
+    try:
+        import portal_email_channel
+
+        # §243: while the inbox is open, new email arrives without a
+        # connector (background thread, throttled per workspace)
+        portal_email_channel.kick(principal.get("client_id"))
+    except Exception:
+        pass
+    try:
+        import portal_sms
+
+        # §244: queued SMS replies go out while the inbox is open
+        portal_sms.kick(principal.get("client_id"))
+    except Exception:
+        pass
 
     status = (request.args.get("status") or "all").strip().lower()
     if status not in ALLOWED_STATUS:
@@ -230,7 +247,7 @@ def list_conversations():
         sql += " AND c.last_intent = %s"
         params.append(intent_filter[:40])
     channel_filter = (request.args.get("channel") or "").strip().lower()
-    if channel_filter in ("whatsapp", "website", "instagram", "messenger"):
+    if channel_filter in INBOX_CHANNELS:
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     tag_filter = (request.args.get("tag") or "").strip()[:MAX_TAG_LENGTH]
@@ -545,6 +562,8 @@ def send_conversation_message(conversation_id: int):
             conn.close()
     except Exception as error:
         return jsonify(portal_db.portal_unavailable(error, "conversation reply")[0]), 503
+    # §244: SMS replies are sent by the Control Plane right away
+    portal_channels.dispatch_now(client_id, channel)
     return jsonify({"ok": True, "queued": True, "command_id": command_id,
                     "resolved_escalations": resolved}), 200
 
@@ -973,7 +992,7 @@ def export_conversations():
     if intent_filter and intent_filter != "all":
         sql += " AND c.last_intent = %s"
         params.append(intent_filter[:40])
-    if channel_filter in ("whatsapp", "website", "instagram", "messenger"):
+    if channel_filter in INBOX_CHANNELS:
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     if tag_filter:
@@ -1232,7 +1251,7 @@ def list_customers():
         " WHERE c.client_id = %s"
     )
     params = [principal["client_id"]]
-    if channel_filter in ("whatsapp", "website", "instagram", "messenger"):
+    if channel_filter in INBOX_CHANNELS:
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     if search:
@@ -2138,6 +2157,8 @@ def send_customer_message():
             conn.close()
     except Exception as error:
         return jsonify(portal_db.portal_unavailable(error, "manual message")[0]), 503
+    # §244: SMS replies are sent by the Control Plane right away
+    portal_channels.dispatch_now(client_id, channel)
     return jsonify({"ok": True, "command_id": command_id,
                     "resolved_escalations": resolved}), 200
 
