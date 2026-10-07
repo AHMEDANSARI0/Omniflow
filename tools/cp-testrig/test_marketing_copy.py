@@ -53,7 +53,7 @@ check("getCopy validates", "return sanitizeCopy(key, stored);" in CMS, "fallback
 
 MOVED = ["HERO_SECTION", "TEMPLATES_SECTION", "INTEGRATIONS_SECTION", "STORY_SECTION", "HOW_IT_WORKS_SECTION",
          "LIVE_DEMO_SECTION", "DASHBOARD_SECTION", "MULTI_CHANNEL_DIAGRAM", "WHY_OMNIFLOW_STATES",
-         "HERO_VISUAL_CARDS", "STEP_MOCKUP_DATA", "FEATURE_VISUAL_DATA", "CUSTOMER_PROFILE_SAMPLE",
+         "STEP_MOCKUP_DATA", "FEATURE_VISUAL_DATA", "CUSTOMER_PROFILE_SAMPLE",
          "DASHBOARD_PREVIEW", "PAGE_HEROES", "PAGE_CTAS", "PRICING_PLANS", "PRICING_FEATURED_LABEL",
          "PRICING_NOTE", "FEATURE_PILLARS", "ABOUT_STORY", "ABOUT_VALUES", "ABOUT_VALUES_HEAD",
          "SECURITY_AREAS", "SECURITY_NOTE", "CONTACT_CARDS", "BLOG_COPY", "USE_CASE_SAMPLES"]
@@ -67,8 +67,8 @@ for path, needle in [
     ("app/page.tsx", 'getCopy("home_sections"),'),
     ("app/page.tsx", "<AutomationTemplates templates={templates} copy={homeCopy.templates} />"),
     ("app/components/Hero.tsx", "{home.hero.channelsNote}"),
-    ("app/components/hero/HeroVisual.tsx", "const cards = mockups.heroCards;"),
-    ("app/components/hero/BotVisualPlaceholder.tsx", 'const hero = (await getCopy("home_sections")).hero;'),
+    ("app/components/hero/HeroVisual.tsx", 'getCopy("home_sections"), getMarketingList("integrations")'),
+    ("app/components/hero/HeroVisual.tsx", "copy={home.hero.bot}"),
     ("app/components/AIIntelligence.tsx", "const storySection = home.story;"),
     ("app/components/HowItWorks.tsx", 'const section = (await getCopy("home_sections")).howItWorks;'),
     ("app/components/home/StepMockup.tsx", 'const data = (await getCopy("home_mockups")).steps.knowledge;'),

@@ -1,0 +1,1547 @@
+/*
+ * OmniFlowBot (§247-§249, 3D render in §250). Theme tokens only; every
+ * animation is transform or opacity. The robot is a pre-rendered 3D model
+ * in layers on one canvas (see BotVisual). Depth is parallax: each
+ * .depth plane shifts by its depth (--z) with the cursor, so the render
+ * stays pixel-sharp (no 3D re-sampling of the image); the head and arms
+ * pivot at the neck / shoulders (% of the canvas). Base styles
+ * are the FINAL pose, so reduced motion / animated={false} simply drop
+ * the animations; intro={false} drops only the intro performance.
+ * Intro (loops every 12s, timeline in tools/bot-render/motion.py): greeting
+ * + front wave (open palm to the viewer) 0-2.7s, intro line + open hands
+ * 2.7-4.9s, channel line + right arc presented to the viewer 4.9-6.9s,
+ * Soon line + left arc 6.9-8.9s, closing line + welcome with both palms
+ * 8.9-11.95s, then again. Arms are shoulder > elbow > wrist chains; each
+ * joint has its own timeline (the elbow lags the shoulder, the wrist
+ * follows through), with anticipation, overshoot and asymmetric arms; a
+ * foreshortened forearm brings the hand toward the viewer.
+ * --lx / --ly (-1..1, slow: head / body / light), --ex / --ey (fast:
+ * eyes) and --lp (0..1, closeness) come from BotMotion.
+ */
+
+.root {
+  --bot-shell: var(--color-surface);
+  --bot-shade: var(--color-soft);
+  --bot-edge: var(--color-line-2);
+  --bot-ink: var(--color-ink);
+  --bot-accent: var(--color-brand);
+  --bot-accent-light: color-mix(in srgb, var(--color-brand) 48%, var(--color-surface));
+  --bot-halo: url(#ofbot-halo);
+  --bot-disc: url(#ofbot-disc);
+  --bot-rim: url(#ofbot-rim);
+  --bot-floor-shadow: url(#ofbot-floor-shadow);
+  --bot-scanlines: url(#ofbot-scanlines);
+  --bot-spring: cubic-bezier(0.3, 1.32, 0.5, 1);
+  --bot-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --bot-swing: cubic-bezier(0.37, 0, 0.23, 1);
+
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  container-type: inline-size;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- speech ---------- */
+
+.speech {
+  position: absolute;
+  left: 21%;
+  top: 1%;
+  width: 58%;
+  display: grid;
+  padding: clamp(8px, 2.4cqw, 13px) clamp(11px, 3cqw, 16px);
+  border: 1px solid var(--color-line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bot-shell) 94%, transparent);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  transform-origin: 50% 100%;
+  animation: bot-pop 0.5s var(--bot-spring) 0.3s both;
+}
+
+/* tail toward the robot's head */
+.speech::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border: solid var(--color-line);
+  border-width: 0 1px 1px 0;
+  background: inherit;
+  transform: rotate(45deg);
+}
+
+.line {
+  grid-area: 1 / 1;
+  align-self: center;
+  margin: 0;
+  color: var(--color-ink);
+  font-size: clamp(11px, 2.9cqw, 15px);
+  font-weight: 500;
+  line-height: 1.38;
+  text-wrap: balance;
+}
+
+.line1 {
+  font-family: var(--font-display);
+  font-size: clamp(13px, 3.7cqw, 18px);
+  font-weight: 600;
+  opacity: 0;
+  animation: bot-say-1 12s var(--bot-ease) infinite both;
+}
+
+.line2 {
+  opacity: 0;
+  animation: bot-say-2 12s var(--bot-ease) infinite both;
+}
+
+.line3 {
+  opacity: 0;
+  animation: bot-say-3 12s var(--bot-ease) infinite both;
+}
+
+.line4 {
+  opacity: 0;
+  animation: bot-say-4 12s var(--bot-ease) infinite both;
+}
+
+/* the closing line is also the resting line (no motion / intro off) */
+.line5 {
+  animation: bot-say-5 12s var(--bot-ease) infinite both;
+}
+
+/* ---------- 3D model ---------- */
+
+/* the shared canvas of the layers (560 x 846) */
+.figure {
+  position: absolute;
+  left: 29%;
+  top: 21%;
+  width: 42%;
+  aspect-ratio: 560 / 846;
+  animation: bot-pop 0.7s var(--bot-spring) 0.15s both;
+}
+
+.follow,
+.lean,
+.depth,
+.part,
+.tap,
+.head,
+.nod {
+  position: absolute;
+  inset: 0;
+}
+
+/* the robot turns its body a little toward the cursor, from the feet */
+.follow {
+  transform-origin: 50% 97%;
+  transform: rotate(calc(var(--lx, 0) * 1.2deg));
+  will-change: transform;
+}
+
+.lean {
+  transform-origin: 50% 97%;
+  animation: bot-lean 12s var(--bot-swing) infinite;
+}
+
+/* parallax: nearer planes (higher --z) travel further with the cursor */
+.depth {
+  transform: translate(calc(var(--lx, 0) * var(--z) * 0.5cqw), calc(var(--ly, 0) * var(--z) * 0.25cqw));
+  will-change: transform;
+}
+
+.img,
+.light,
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.img {
+  display: block;
+  pointer-events: none;
+}
+
+.overlay {
+  overflow: visible;
+}
+
+/* cursor light: a highlight + shade film masked to each layer's shape */
+.light {
+  overflow: hidden;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mix-blend-mode: soft-light;
+  opacity: calc(0.3 + var(--lp, 0) * 0.6);
+  pointer-events: none;
+}
+
+.lightSpot {
+  position: absolute;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 44% 42%, var(--bot-shell) 0%, transparent 18%),
+    radial-gradient(circle at 44% 42%, transparent 20%, color-mix(in srgb, var(--bot-ink) 70%, transparent) 46%);
+  transform: translate(calc(var(--lx, 0) * 20%), calc(var(--ly, 0) * 18%));
+  will-change: transform;
+}
+
+/* neck pivot: the head follows the cursor (slower than the eyes) and
+   talks through the intro (tilts, nods, turns to each arc) */
+.head {
+  transform-origin: 50.2% 32.4%;
+  transform: translate(calc(var(--lx, 0) * 1.2%), calc(var(--ly, 0) * 0.9%)) rotate(calc(var(--lx, 0) * 5deg));
+  will-change: transform;
+}
+
+.nod {
+  transform-origin: 50.2% 32.4%;
+  animation: bot-head 12s var(--bot-swing) infinite;
+}
+
+.breathe {
+  transform-origin: 50% 98%;
+  animation: bot-breathe 4.8s ease-in-out infinite;
+}
+
+/* joint pivots of the arm chains: shoulder > elbow > wrist */
+.armL {
+  transform-origin: 25.84% 40.61%;
+  --side: 1;
+  animation: bot-arm-l 12s var(--bot-swing) infinite;
+}
+
+.armR,
+.tap {
+  transform-origin: 74.88% 40.59%;
+}
+
+.armR {
+  --side: -1;
+  animation: bot-arm-r 12s var(--bot-swing) infinite;
+}
+
+.foreL {
+  transform-origin: 16.46% 52.22%;
+  animation: bot-fore-l 12s var(--bot-swing) infinite;
+}
+
+.foreR {
+  transform-origin: 84.11% 52.16%;
+  animation: bot-fore-r 12s var(--bot-swing) infinite;
+}
+
+.handL {
+  transform-origin: 11.33% 63.66%;
+  animation: bot-hand-l 12s var(--bot-swing) infinite;
+}
+
+.handR {
+  transform-origin: 88.77% 63.66%;
+  animation: bot-hand-r 12s var(--bot-swing) infinite;
+}
+
+/* open palm over the relaxed hand (resting pose = relaxed) */
+.palm {
+  position: absolute;
+  opacity: 0;
+}
+
+.palmL {
+  animation: bot-palm-l 12s var(--bot-ease) infinite;
+}
+
+.palmR {
+  animation: bot-palm-r 12s var(--bot-ease) infinite;
+}
+
+.gripL {
+  animation: bot-grip-l 12s var(--bot-ease) infinite;
+}
+
+.gripR {
+  animation: bot-grip-r 12s var(--bot-ease) infinite;
+}
+
+.waving .tap {
+  animation: bot-wave 1.6s var(--bot-ease);
+}
+
+/* ---------- face (live, on the render's visor) ---------- */
+
+.ear {
+  fill: color-mix(in srgb, var(--bot-accent) 18%, transparent);
+  stroke: var(--bot-accent-light);
+  stroke-width: 0.5;
+}
+
+.blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bot-blink 13.7s linear 1.2s infinite;
+}
+
+/* eyes + smile shift together = the face turns (slow cursor) */
+.faceTurn {
+  transform: translate(calc(var(--lx, 0) * 1.4px), calc(var(--ly, 0) * 0.9px));
+}
+
+.glance {
+  animation: bot-glance 12s var(--bot-swing) infinite;
+}
+
+/* the eyes lead (fast cursor); all moves together stay inside the visor */
+.look {
+  transform: translate(calc(var(--ex, 0) * 1.8px), calc(var(--ey, 0) * 1.4px));
+}
+
+.eyeGlow {
+  fill: none;
+  stroke: var(--bot-accent-light);
+  stroke-width: 2.4;
+  opacity: 0.3;
+}
+
+.eyeRing {
+  fill: none;
+  stroke: var(--bot-accent-light);
+  stroke-width: 1.15;
+}
+
+.eyeDots {
+  fill: none;
+  stroke: var(--bot-shell);
+  stroke-width: 0.5;
+  stroke-linecap: round;
+  stroke-dasharray: 0.01 1.37;
+  opacity: 0.85;
+}
+
+.smile {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bot-smile 12s var(--bot-swing) infinite;
+}
+
+.smileGlow,
+.smileLine {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.smileGlow {
+  stroke: var(--bot-accent);
+  stroke-width: 2.6;
+  opacity: 0.25;
+}
+
+.smileLine {
+  stroke: var(--bot-accent-light);
+  stroke-width: 0.95;
+}
+
+/* ---------- chest meter (in the render's chest panel) ---------- */
+
+.display {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bot-boot 0.6s steps(6, end) 0.4s both;
+}
+
+.displayText,
+.displayGlow {
+  fill: var(--bot-accent-light);
+  font-family: var(--font-display);
+  font-size: 3.7px;
+  font-weight: 700;
+  letter-spacing: 0.12px;
+}
+
+.displayGlow {
+  stroke: var(--bot-accent);
+  stroke-width: 1.4px;
+  opacity: 0.3;
+}
+
+.bar {
+  fill: var(--bot-accent-light);
+  animation: bot-flicker 1.8s ease-in-out infinite;
+}
+
+.bar:nth-of-type(2) {
+  animation-delay: -0.3s;
+}
+
+.bar:nth-of-type(3) {
+  animation-delay: -0.6s;
+}
+
+.bar:nth-of-type(4) {
+  animation-delay: -0.9s;
+}
+
+.bar:nth-of-type(5) {
+  animation-delay: -1.2s;
+}
+
+.scanlines {
+  fill: var(--bot-scanlines);
+  pointer-events: none;
+}
+
+/* ---------- light surface ---------- */
+
+/* disc centre (39.6% of its box) sits under the feet (97% of the canvas) */
+.platform {
+  position: absolute;
+  left: -16%;
+  top: 88.7%;
+  width: 132%;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.disc {
+  fill: var(--bot-disc);
+}
+
+.discRing {
+  fill: none;
+  stroke: var(--bot-accent-light);
+  stroke-width: 0.8;
+}
+
+.pulse {
+  transform-origin: 50% 39.6%;
+  animation: bot-pulse 3.2s ease-out infinite;
+}
+
+/* ---------- channel nodes ---------- */
+
+.links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.links line {
+  stroke: color-mix(in srgb, var(--bot-accent) 38%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  vector-effect: non-scaling-stroke;
+  animation: bot-fade 0.6s ease var(--d) both;
+}
+
+.links .soonLink {
+  stroke: var(--bot-edge);
+}
+
+.node {
+  position: absolute;
+  width: clamp(30px, 11cqw, 58px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  pointer-events: none;
+  animation:
+    bot-fade 0.5s ease var(--d) both,
+    bot-ping 12s var(--bot-spring) var(--d) infinite;
+}
+
+.bubble {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, var(--bot-shell) 55%, var(--bot-shade));
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, currentColor 10%, transparent),
+    0 12px 24px -14px color-mix(in srgb, var(--bot-ink) 45%, transparent);
+  animation: bot-bob 5.5s ease-in-out var(--bob) infinite;
+}
+
+.bubble {
+  position: relative;
+  overflow: hidden;
+}
+
+/* the cursor light reaches the bubbles too (transform only) */
+.bubble::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--bot-shell) 75%, transparent), transparent 42%);
+  opacity: calc(0.2 + var(--lp, 0) * 0.5);
+  transform: translate(calc(var(--lx, 0) * -22%), calc(var(--ly, 0) * -22%));
+  pointer-events: none;
+}
+
+.bubble svg {
+  width: 46%;
+  height: 46%;
+}
+
+.soonBubble svg {
+  opacity: 0.6;
+}
+
+.badge {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  translate: -50% -55%;
+  padding: 1px 6px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-soft);
+  color: var(--color-ink-3);
+  font-size: clamp(8px, 2.1cqw, 10.5px);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.more {
+  color: var(--color-ink-2);
+  font-family: var(--font-display);
+  font-size: clamp(11px, 3cqw, 15px);
+  font-weight: 600;
+}
+
+/* ---------- intro off / touch screens / pause / still ---------- */
+
+.root[data-nointro] :is(.speech, .figure, .line, .glance, .node, .links line, .smile, .display, .lean, .foreL, .foreR, .handL, .handR, .palmL, .palmR, .gripL, .gripR) {
+  animation: none;
+}
+
+.root[data-nointro] :is(.armL, .armR) {
+  animation: bot-sway 6s ease-in-out infinite;
+}
+
+.root[data-nointro] .nod {
+  animation: bot-nod 8s ease-in-out infinite;
+}
+
+.root[data-nointro] .line:not(.line5) {
+  display: none;
+}
+
+/* small screens: a taller stage, a bigger robot and readable lines (the
+   nodes keep their % spots, so the arcs open up with the stage) */
+@media (max-width: 639px) {
+  .root {
+    aspect-ratio: 5 / 6;
+  }
+
+  .speech {
+    left: 7%;
+    width: 86%;
+  }
+
+  .line {
+    font-size: clamp(12.5px, 3.9cqw, 15px);
+  }
+
+  .line1 {
+    font-size: clamp(14px, 4.6cqw, 18px);
+  }
+
+  .figure {
+    left: 25%;
+    top: 21.5%;
+    width: 50%;
+  }
+
+  .node {
+    width: clamp(34px, 12cqw, 52px);
+  }
+}
+
+/* tablets: the same square stage, the robot a little larger */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .figure {
+    left: 27%;
+    top: 20%;
+    width: 46%;
+  }
+}
+
+/* phones and tablets: no cursor light, fewer moving parts, same look */
+@media (hover: none) {
+  .light,
+  .bubble::after {
+    display: none;
+  }
+
+  .bubble,
+  .pulse,
+  .bar {
+    animation: none;
+  }
+}
+
+.root[data-paused] *,
+.root[data-paused] *::after {
+  animation-play-state: paused;
+}
+
+.root[data-static] *,
+.root[data-static] *::after {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root *,
+  .root *::after {
+    animation: none !important;
+  }
+}
+
+/* ---------- keyframes ---------- */
+
+@keyframes bot-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4%) scale(0.92);
+  }
+}
+
+@keyframes bot-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* motion.py: generated intro keyframes - edit tools/bot-render/motion.py, not here */
+
+@keyframes bot-say-1 {
+  0%,
+  0.42% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  2.92%,
+  20% {
+    opacity: 1;
+    transform: none;
+  }
+  22.5%,
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes bot-say-2 {
+  0%,
+  22.5% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  25%,
+  38.33% {
+    opacity: 1;
+    transform: none;
+  }
+  40.83%,
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes bot-say-3 {
+  0%,
+  40.83% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  43.33%,
+  55% {
+    opacity: 1;
+    transform: none;
+  }
+  57.5%,
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes bot-say-4 {
+  0%,
+  57.5% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  60%,
+  71.67% {
+    opacity: 1;
+    transform: none;
+  }
+  74.17%,
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes bot-say-5 {
+  0%,
+  74.17% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  76.67%,
+  97.08% {
+    opacity: 1;
+    transform: none;
+  }
+  99.58%,
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* viewer's right arm: front wave, open hands, presents the channels, welcome */
+@keyframes bot-arm-r {
+  0% {
+    transform: none;
+  }
+  2.5% {
+    transform: rotate(3deg);
+  }
+  7.92% {
+    transform: rotate(-62deg);
+  }
+  9.58% {
+    transform: rotate(-58deg);
+  }
+  12.08% {
+    transform: rotate(-61deg);
+  }
+  14.58% {
+    transform: rotate(-59deg);
+  }
+  17.08% {
+    transform: rotate(-60deg);
+  }
+  19.17% {
+    transform: rotate(-56deg);
+  }
+  22.08% {
+    transform: rotate(-8deg);
+  }
+  23.75% {
+    transform: none;
+  }
+  25.42% {
+    transform: rotate(-12deg);
+  }
+  29.17% {
+    transform: rotate(-14deg);
+  }
+  32.5% {
+    transform: rotate(-12deg);
+  }
+  35.83% {
+    transform: rotate(-15deg);
+  }
+  39.58% {
+    transform: rotate(-2deg);
+  }
+  40.42% {
+    transform: rotate(2deg);
+  }
+  42.92% {
+    transform: rotate(-30deg);
+  }
+  45.42% {
+    transform: rotate(-33deg);
+  }
+  47.92% {
+    transform: rotate(-30deg);
+  }
+  50.42% {
+    transform: rotate(-33deg);
+  }
+  52.92% {
+    transform: rotate(-30deg);
+  }
+  56.67% {
+    transform: rotate(-2deg);
+  }
+  57.92% {
+    transform: none;
+  }
+  63.33% {
+    transform: rotate(2deg);
+  }
+  71.67% {
+    transform: none;
+  }
+  74.17% {
+    transform: rotate(2deg);
+  }
+  77.5% {
+    transform: rotate(-36deg);
+  }
+  80% {
+    transform: rotate(-33deg);
+  }
+  88.33% {
+    transform: rotate(-35deg);
+  }
+  94.17% {
+    transform: rotate(-4deg);
+  }
+  96.67%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes bot-fore-r {
+  0% {
+    transform: none;
+  }
+  2.5% {
+    transform: rotate(4deg) scale(1, 1);
+  }
+  7.92% {
+    transform: rotate(-108deg) scale(1, 1);
+  }
+  9.58% {
+    transform: rotate(-112deg) scale(1, 1);
+  }
+  12.08% {
+    transform: rotate(-104deg) scale(1, 1);
+  }
+  14.58% {
+    transform: rotate(-112deg) scale(1, 1);
+  }
+  17.08% {
+    transform: rotate(-105deg) scale(1, 1);
+  }
+  19.17% {
+    transform: rotate(-108deg) scale(1, 1);
+  }
+  22.08% {
+    transform: rotate(-14deg) scale(1, 1);
+  }
+  23.75% {
+    transform: none;
+  }
+  25.42% {
+    transform: rotate(20deg) scale(1, 0.85);
+  }
+  29.17% {
+    transform: rotate(28deg) scale(1, 0.82);
+  }
+  32.5% {
+    transform: rotate(18deg) scale(1, 0.85);
+  }
+  35.83% {
+    transform: rotate(30deg) scale(1, 0.82);
+  }
+  39.58% {
+    transform: rotate(4deg) scale(1, 1);
+  }
+  40.42% {
+    transform: rotate(-2deg) scale(1, 1);
+  }
+  42.92% {
+    transform: rotate(40deg) scale(1, 0.85);
+  }
+  45.42% {
+    transform: rotate(46deg) scale(1, 0.83);
+  }
+  47.92% {
+    transform: rotate(40deg) scale(1, 0.85);
+  }
+  50.42% {
+    transform: rotate(46deg) scale(1, 0.83);
+  }
+  52.92% {
+    transform: rotate(40deg) scale(1, 0.85);
+  }
+  56.67% {
+    transform: rotate(2deg) scale(1, 1);
+  }
+  57.92% {
+    transform: none;
+  }
+  63.33% {
+    transform: rotate(-4deg) scale(1, 1);
+  }
+  71.67% {
+    transform: none;
+  }
+  74.17% {
+    transform: rotate(-2deg) scale(1, 1);
+  }
+  77.5% {
+    transform: rotate(44deg) scale(1, 0.84);
+  }
+  80% {
+    transform: rotate(40deg) scale(1, 0.86);
+  }
+  88.33% {
+    transform: rotate(43deg) scale(1, 0.84);
+  }
+  94.17% {
+    transform: rotate(4deg) scale(1, 1);
+  }
+  96.67%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes bot-hand-r {
+  0%,
+  2.5% {
+    transform: none;
+  }
+  7.92% {
+    transform: scale(1, 1) rotate(-4deg);
+  }
+  9.58% {
+    transform: scale(1, 1) rotate(12deg);
+  }
+  12.08% {
+    transform: scale(1, 1) rotate(-10deg);
+  }
+  14.58% {
+    transform: scale(1, 1) rotate(12deg);
+  }
+  17.08% {
+    transform: scale(1, 1) rotate(-8deg);
+  }
+  19.17% {
+    transform: scale(1, 1) rotate(4deg);
+  }
+  22.08%,
+  23.75% {
+    transform: none;
+  }
+  25.42% {
+    transform: scale(1, 1.176) rotate(-6deg);
+  }
+  29.17% {
+    transform: scale(1, 1.22) rotate(-10deg);
+  }
+  32.5% {
+    transform: scale(1, 1.176) rotate(-4deg);
+  }
+  35.83% {
+    transform: scale(1, 1.22) rotate(-10deg);
+  }
+  39.58%,
+  40.42% {
+    transform: none;
+  }
+  42.92% {
+    transform: scale(1, 1.176) rotate(-10deg);
+  }
+  45.42% {
+    transform: scale(1, 1.205) rotate(-12deg);
+  }
+  47.92% {
+    transform: scale(1, 1.176) rotate(-8deg);
+  }
+  50.42% {
+    transform: scale(1, 1.205) rotate(-12deg);
+  }
+  52.92% {
+    transform: scale(1, 1.176) rotate(-10deg);
+  }
+  56.67%,
+  74.17% {
+    transform: none;
+  }
+  77.5% {
+    transform: scale(1, 1.19) rotate(-12deg);
+  }
+  80% {
+    transform: scale(1, 1.163) rotate(-9deg);
+  }
+  88.33% {
+    transform: scale(1, 1.19) rotate(-11deg);
+  }
+  94.17%,
+  100% {
+    transform: none;
+  }
+}
+
+/* viewer's left arm: answers the wave, explains a beat later, presents the Soon channels, welcome */
+@keyframes bot-arm-l {
+  0% {
+    transform: none;
+  }
+  8.33% {
+    transform: rotate(3deg);
+  }
+  20% {
+    transform: rotate(2deg);
+  }
+  22.92% {
+    transform: none;
+  }
+  26.67% {
+    transform: rotate(12deg);
+  }
+  30.83% {
+    transform: rotate(15deg);
+  }
+  34.17% {
+    transform: rotate(12deg);
+  }
+  37.5% {
+    transform: rotate(14deg);
+  }
+  40.42% {
+    transform: rotate(2deg);
+  }
+  46.67% {
+    transform: rotate(-2deg);
+  }
+  55% {
+    transform: none;
+  }
+  57.08% {
+    transform: rotate(-2deg);
+  }
+  59.58% {
+    transform: rotate(30deg);
+  }
+  62.08% {
+    transform: rotate(33deg);
+  }
+  64.58% {
+    transform: rotate(30deg);
+  }
+  67.08% {
+    transform: rotate(33deg);
+  }
+  70.83% {
+    transform: rotate(2deg);
+  }
+  72.92% {
+    transform: none;
+  }
+  75% {
+    transform: rotate(-2deg);
+  }
+  78.33% {
+    transform: rotate(36deg);
+  }
+  80.83% {
+    transform: rotate(33deg);
+  }
+  89.17% {
+    transform: rotate(35deg);
+  }
+  94.58% {
+    transform: rotate(4deg);
+  }
+  97.08%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes bot-fore-l {
+  0% {
+    transform: none;
+  }
+  8.33% {
+    transform: rotate(-5deg) scale(1, 1);
+  }
+  20% {
+    transform: rotate(-4deg) scale(1, 1);
+  }
+  22.92% {
+    transform: none;
+  }
+  26.67% {
+    transform: rotate(-18deg) scale(1, 0.86);
+  }
+  30.83% {
+    transform: rotate(-28deg) scale(1, 0.82);
+  }
+  34.17% {
+    transform: rotate(-18deg) scale(1, 0.86);
+  }
+  37.5% {
+    transform: rotate(-26deg) scale(1, 0.83);
+  }
+  40.42% {
+    transform: rotate(-4deg) scale(1, 1);
+  }
+  46.67% {
+    transform: rotate(4deg) scale(1, 1);
+  }
+  55% {
+    transform: none;
+  }
+  57.08% {
+    transform: rotate(2deg) scale(1, 1);
+  }
+  59.58% {
+    transform: rotate(-40deg) scale(1, 0.85);
+  }
+  62.08% {
+    transform: rotate(-46deg) scale(1, 0.83);
+  }
+  64.58% {
+    transform: rotate(-40deg) scale(1, 0.85);
+  }
+  67.08% {
+    transform: rotate(-46deg) scale(1, 0.83);
+  }
+  70.83% {
+    transform: rotate(-2deg) scale(1, 1);
+  }
+  72.92% {
+    transform: none;
+  }
+  75% {
+    transform: rotate(2deg) scale(1, 1);
+  }
+  78.33% {
+    transform: rotate(-44deg) scale(1, 0.84);
+  }
+  80.83% {
+    transform: rotate(-40deg) scale(1, 0.86);
+  }
+  89.17% {
+    transform: rotate(-43deg) scale(1, 0.84);
+  }
+  94.58% {
+    transform: rotate(-4deg) scale(1, 1);
+  }
+  97.08%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes bot-hand-l {
+  0% {
+    transform: none;
+  }
+  8.33% {
+    transform: scale(1, 1) rotate(2deg);
+  }
+  20%,
+  22.92% {
+    transform: none;
+  }
+  26.67% {
+    transform: scale(1, 1.163) rotate(6deg);
+  }
+  30.83% {
+    transform: scale(1, 1.22) rotate(10deg);
+  }
+  34.17% {
+    transform: scale(1, 1.163) rotate(5deg);
+  }
+  37.5% {
+    transform: scale(1, 1.205) rotate(9deg);
+  }
+  40.42%,
+  57.08% {
+    transform: none;
+  }
+  59.58% {
+    transform: scale(1, 1.176) rotate(10deg);
+  }
+  62.08% {
+    transform: scale(1, 1.205) rotate(12deg);
+  }
+  64.58% {
+    transform: scale(1, 1.176) rotate(8deg);
+  }
+  67.08% {
+    transform: scale(1, 1.205) rotate(12deg);
+  }
+  70.83%,
+  75% {
+    transform: none;
+  }
+  78.33% {
+    transform: scale(1, 1.19) rotate(12deg);
+  }
+  80.83% {
+    transform: scale(1, 1.163) rotate(9deg);
+  }
+  89.17% {
+    transform: scale(1, 1.19) rotate(11deg);
+  }
+  94.58%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes bot-palm-r {
+  0%,
+  4.58% {
+    opacity: 0;
+  }
+  6.67%,
+  93.75% {
+    opacity: 1;
+  }
+  95.83%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes bot-grip-r {
+  0%,
+  5.42% {
+    opacity: 1;
+  }
+  7.08%,
+  93.33% {
+    opacity: 0;
+  }
+  95%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes bot-palm-l {
+  0%,
+  24.17% {
+    opacity: 0;
+  }
+  26.25%,
+  94.17% {
+    opacity: 1;
+  }
+  96.25%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes bot-grip-l {
+  0%,
+  25% {
+    opacity: 1;
+  }
+  26.67%,
+  93.75% {
+    opacity: 0;
+  }
+  95.42%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* the head talks to the viewer: tilt for hello, nods on the beats, a turn to each arc */
+@keyframes bot-head {
+  0%,
+  5% {
+    transform: none;
+  }
+  7.92% {
+    transform: translate(0%, -0.4%) rotate(5deg);
+  }
+  11.67% {
+    transform: translate(0%, 0%) rotate(3deg);
+  }
+  15.83% {
+    transform: translate(0%, 0%) rotate(5deg);
+  }
+  20% {
+    transform: translate(0%, 0%) rotate(2deg);
+  }
+  23.33% {
+    transform: none;
+  }
+  26.67% {
+    transform: translate(0%, 0.5%) rotate(-1deg);
+  }
+  29.17% {
+    transform: translate(0%, -0.2%) rotate(-1.5deg);
+  }
+  34.17% {
+    transform: translate(0%, 0.4%) rotate(-2deg);
+  }
+  36.67% {
+    transform: translate(0%, 0%) rotate(-1deg);
+  }
+  40% {
+    transform: none;
+  }
+  44.17% {
+    transform: translate(0.4%, 0%) rotate(2.5deg);
+  }
+  55% {
+    transform: translate(0.3%, 0%) rotate(2deg);
+  }
+  57.92% {
+    transform: none;
+  }
+  60.83% {
+    transform: translate(-0.4%, 0%) rotate(-2.5deg);
+  }
+  71.67% {
+    transform: translate(-0.3%, 0%) rotate(-2deg);
+  }
+  74.17% {
+    transform: none;
+  }
+  77.5% {
+    transform: translate(0%, 0.8%) rotate(0deg);
+  }
+  80% {
+    transform: translate(0%, -0.3%) rotate(0deg);
+  }
+  82.5% {
+    transform: none;
+  }
+  90% {
+    transform: translate(0%, 0%) rotate(1.5deg);
+  }
+  96.67%,
+  100% {
+    transform: none;
+  }
+}
+
+/* eyes + smile glance at each arc, then back to the viewer (canvas units) */
+@keyframes bot-glance {
+  0% {
+    transform: none;
+  }
+  7.5%,
+  20% {
+    transform: translate(1.2px, 0px);
+  }
+  23.33% {
+    transform: none;
+  }
+  42.5%,
+  46.67% {
+    transform: translate(2px, 0.4px);
+  }
+  50% {
+    transform: none;
+  }
+  59.17%,
+  63.33% {
+    transform: translate(-2px, 0.4px);
+  }
+  66.67%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes bot-lean {
+  0% {
+    transform: none;
+  }
+  7.5% {
+    transform: rotate(-0.8deg);
+  }
+  20% {
+    transform: rotate(-0.6deg);
+  }
+  24.17% {
+    transform: none;
+  }
+  28.33% {
+    transform: translateY(-0.3%);
+  }
+  38.33% {
+    transform: none;
+  }
+  45% {
+    transform: rotate(0.6deg);
+  }
+  55% {
+    transform: rotate(0.5deg);
+  }
+  58.33% {
+    transform: none;
+  }
+  61.67% {
+    transform: rotate(-0.6deg);
+  }
+  71.67% {
+    transform: rotate(-0.5deg);
+  }
+  74.58% {
+    transform: none;
+  }
+  79.17% {
+    transform: translateY(-0.5%);
+  }
+  85.83%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes bot-smile {
+  0%,
+  3.33% {
+    transform: none;
+  }
+  6.67% {
+    transform: scale(1.18, 1.25);
+  }
+  18.33% {
+    transform: scale(1.12, 1.15);
+  }
+  22.5%,
+  74.17% {
+    transform: none;
+  }
+  76.67% {
+    transform: scale(1.18, 1.25);
+  }
+  88.33% {
+    transform: scale(1.12, 1.15);
+  }
+  95%,
+  100% {
+    transform: none;
+  }
+}
+
+/* motion.py: end */
+
+@keyframes bot-ping {
+  0% {
+    transform: none;
+  }
+  2% {
+    transform: scale(0.82);
+  }
+  4.5% {
+    transform: scale(1.1);
+  }
+  7%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes bot-sway {
+  50% {
+    transform: rotate(calc(var(--side) * 4deg));
+  }
+}
+
+@keyframes bot-wave {
+  20%,
+  60% {
+    transform: rotate(-12deg);
+  }
+  40%,
+  80% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes bot-nod {
+  30% {
+    transform: rotate(1.4deg);
+  }
+  70% {
+    transform: rotate(-1deg) translateY(0.3%);
+  }
+}
+
+@keyframes bot-pulse {
+  from {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes bot-breathe {
+  50% {
+    transform: scaleY(1.005);
+  }
+}
+
+@keyframes bot-blink {
+  0%,
+  20%,
+  22.8%,
+  24.3%,
+  27.1%,
+  58.5%,
+  61.3%,
+  86.4%,
+  89.2%,
+  100% {
+    transform: none;
+  }
+  21.4% {
+    transform: scaleY(0.1);
+  }
+  25.7% {
+    transform: scaleY(0.1);
+  }
+  59.9% {
+    transform: scaleY(0.1);
+  }
+  87.8% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes bot-boot {
+  from {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+}
+
+@keyframes bot-flicker {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes bot-bob {
+  50% {
+    transform: translateY(-7%);
+  }
+}

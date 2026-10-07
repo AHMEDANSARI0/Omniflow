@@ -30,7 +30,6 @@ import {
   DASHBOARD_SECTION,
   FEATURE_VISUAL_DATA,
   HERO_SECTION,
-  HERO_VISUAL_CARDS,
   HOW_IT_WORKS_SECTION,
   INTEGRATIONS_SECTION,
   LIVE_DEMO_SECTION,
@@ -71,10 +70,9 @@ export const COPY_BLOCKS = {
   home_mockups: {
     section: "copy_home_mockups",
     title: "Homepage product mockups",
-    description: "Sample text inside the hero cards, How-it-works mockups, feature visuals and customer profile.",
+    description: "Sample text inside the How-it-works mockups, feature visuals and customer profile.",
     hubIcon: "◷",
     defaults: {
-      heroCards: HERO_VISUAL_CARDS,
       steps: STEP_MOCKUP_DATA,
       features: FEATURE_VISUAL_DATA,
       profile: CUSTOMER_PROFILE_SAMPLE,

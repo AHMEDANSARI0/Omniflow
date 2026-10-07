@@ -10,20 +10,18 @@ import type { AIVisualAsset } from "../../../lib/marketing/site";
  * - asset = null      -> `fallback` (lightweight CSS placeholder)
  * - asset.kind image  -> optimized next/image (PNG/WebP/AVIF/SVG)
  * - asset.kind video  -> muted inline loop
- * `children` render on top (floating UI cards, status chips).
+ * The slot holds the visual only (§247: the hero bot draws its own nodes).
  */
 export default function AIVisual({
   asset,
   fallback,
   priority = false,
   className = "",
-  children,
 }: {
   asset: AIVisualAsset | null;
   fallback: ReactNode;
   priority?: boolean;
   className?: string;
-  children?: ReactNode;
 }) {
   let core: ReactNode = fallback;
   if (asset?.kind === "image") {
@@ -57,7 +55,6 @@ export default function AIVisual({
   return (
     <div className={`relative mx-auto aspect-square w-full ${className}`}>
       <div className="absolute inset-[14%] flex items-center justify-center">{core}</div>
-      {children}
     </div>
   );
 }

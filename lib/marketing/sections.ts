@@ -79,29 +79,19 @@ export const FEATURE_VISUALS: FeatureVisual[] = [
 /** Icons for the capability chips (matched by position). */
 export const CAPABILITY_ICONS: IconName[] = ["brain", "target", "hand", "history", "scale", "chart"];
 
-/** Hero copy that has no CMS field yet. */
+/** Hero copy that has no CMS field yet. `bot` = the OmniFlowBot lines. */
 export const HERO_SECTION = {
   channelsNote: "Status shown honestly: live, early access or coming soon.",
   visualLabel: "OmniFlow AI",
-  visualStatus: "Ready",
-};
-
-/**
- * Floating product cards around the hero visual. They stay when the
- * future 3D bot asset replaces the placeholder core.
- */
-export const HERO_VISUAL_CARDS = {
-  message: {
-    channel: "WhatsApp",
-    meta: "New message",
-    text: "Black hoodie medium available hai?",
+  bot: {
+    greeting: "Hi, I'm OmniFlow.",
+    intro: "I bring your customer conversations and automation together.",
+    channels: "WhatsApp, Instagram, Facebook, Messenger...",
+    soon: "Telegram too, with TikTok, X and LinkedIn coming soon.",
+    connected: "All connected in one place.",
+    soonLabel: "Soon",
+    display: "OmniFlow",
   },
-  intent: { label: "Intent detected", value: "Purchase", strength: "High" },
-  workflow: {
-    label: "Workflow running",
-    steps: ["Product found", "Order link sent", "Follow-up set"],
-  },
-  outcome: { label: "Customer qualified" },
 };
 
 export const HOW_IT_WORKS_SECTION = {
