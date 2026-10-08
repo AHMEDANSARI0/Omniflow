@@ -104,18 +104,18 @@ check("same-origin fetches only (relative API)", 'const API = "/api/omniflow/por
 
 print("== inbox + integrations ==")
 check("inbox filter: one list incl. telegram + email, used for buttons and the URL param",
-      'const INBOX_CHANNELS = ["whatsapp", "instagram", "messenger", "telegram", "email", "sms", "website"] as const;' in INBOX
+      re.search(r'const INBOX_CHANNELS = \[\s*"whatsapp",\s*"instagram",\s*"messenger",\s*"telegram",\s*"email",'
+                r'\s*"sms",\s*"website",[^\]]*\] as const;', INBOX)
       and '(["all", ...INBOX_CHANNELS] as const)' in INBOX
       and 'INBOX_CHANNELS.find((value) => value === urlFilters.get("channel"))' in INBOX
       and 'useState<"all" | InboxChannel>("all")' in INBOX)
 import portal_conversations as PC  # noqa: E402
-check("web filter list == CP filter list", sorted(re.search(
-    r"const INBOX_CHANNELS = \[([^\]]*)\]", INBOX).group(1).replace('"', "").replace(" ", "").split(","))
-      == sorted(PC.INBOX_CHANNELS))
+check("web filter list == CP filter list", sorted(re.findall(r'"([a-z_]+)"', re.search(
+    r"const INBOX_CHANNELS = \[([^\]]*)\]", INBOX).group(1))) == sorted(PC.INBOX_CHANNELS))
 email_entry = INTEG[INTEG.index('id: "email"'):INTEG.index('id: "tiktok"')]
-check("Email channel listed as early access (not live), TikTok still coming soon",
+check("Email channel listed as early access (not live); TikTok early access since §255",
       'status: "beta"' in email_entry and 'category: "channels"' in email_entry
-      and 'status: "soon"' in INTEG[INTEG.index('id: "tiktok"'):INTEG.index('id: "youtube"')])
+      and 'status: "beta"' in INTEG[INTEG.index('id: "tiktok"'):INTEG.index('id: "youtube"')])
 check("Gmail entry no longer promises what the Email channel already does",
       "Gmail already works through the Email channel" in INTEG)
 

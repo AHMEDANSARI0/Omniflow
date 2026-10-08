@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { FeaturesContent } from "../../../../../lib/content-defaults";
+import { FEATURES_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -65,7 +66,8 @@ export async function updateFeaturesContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "features",
-    data: values as unknown as FeaturesContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, FEATURES_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

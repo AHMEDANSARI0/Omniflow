@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { WhyOmniFlowContent } from "../../../../../lib/content-defaults";
+import { WHY_OMNIFLOW_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -57,7 +58,8 @@ export async function updateWhyOmniFlowContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "why_omniflow",
-    data: values as unknown as WhyOmniFlowContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, WHY_OMNIFLOW_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

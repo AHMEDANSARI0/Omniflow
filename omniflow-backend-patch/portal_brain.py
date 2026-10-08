@@ -777,6 +777,12 @@ def maybe_answer(client_id, conversation_id, contact_id, contact_name,
 
                 if not portal_instagram.comment_auto_reply(cur, client_id):
                     return None
+            if str(contact_id or "").startswith(("ttc:", "xc:", "lic:", "ytc:")):
+                # §255: same rule for TikTok / X / LinkedIn / YouTube comments
+                import portal_social
+
+                if not portal_social.comment_auto_reply(cur, client_id, str(contact_id)):
+                    return None
             payload, grounding = _reason(
                 cur, client_id, int(conversation_id or 0),
                 str(contact_id or ""), str(contact_name or ""), text,

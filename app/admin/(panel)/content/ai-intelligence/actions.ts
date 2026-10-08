@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { AiIntelligenceContent } from "../../../../../lib/content-defaults";
+import { AI_INTELLIGENCE_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -58,7 +59,8 @@ export async function updateAiIntelligenceContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "ai_intelligence",
-    data: values as unknown as AiIntelligenceContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, AI_INTELLIGENCE_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

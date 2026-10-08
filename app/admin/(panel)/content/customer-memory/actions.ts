@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { CustomerMemoryContent } from "../../../../../lib/content-defaults";
+import { CUSTOMER_MEMORY_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -46,7 +47,8 @@ export async function updateCustomerMemoryContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "customer_memory",
-    data: values as unknown as CustomerMemoryContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, CUSTOMER_MEMORY_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

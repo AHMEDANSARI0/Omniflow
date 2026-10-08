@@ -26,7 +26,8 @@ BULK_MAX_IDS = 50
 EXPORT_LIMIT = 500
 ALLOWED_STATUS = ("all", "open", "closed")
 # Inbox channel filter (§243 adds telegram and email to the list).
-INBOX_CHANNELS = ("whatsapp", "website", "instagram", "messenger", "telegram", "email", "sms")
+INBOX_CHANNELS = ("whatsapp", "website", "instagram", "messenger", "telegram", "email", "sms",
+                  "tiktok", "x", "linkedin", "youtube", "telegram_user")  # §255 social
 MAX_TAGS_PER_CONVERSATION = 6
 MAX_TAG_LENGTH = 24
 MAX_TAG_SUMMARY = 30
@@ -176,6 +177,22 @@ def list_conversations():
 
         # §244: queued SMS replies go out while the inbox is open
         portal_sms.kick(principal.get("client_id"))
+    except Exception:
+        pass
+    try:
+        import portal_social
+
+        # §255: API-mode social channels poll comments and send queued
+        # replies while the inbox is open (background, throttled)
+        portal_social.kick(principal.get("client_id"))
+    except Exception:
+        pass
+    try:
+        import portal_instagram
+
+        # §256: queued Instagram / Messenger replies go out while the inbox
+        # is open (background, throttled)
+        portal_instagram.kick(principal.get("client_id"))
     except Exception:
         pass
 

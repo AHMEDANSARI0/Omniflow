@@ -107,8 +107,8 @@ check("same-origin fetches only (relative API)", 'const API = "/api/omniflow/por
       and "http" not in CARD and "dangerouslySetInnerHTML" not in CARD)
 
 print("== inbox + integrations ==")
-check("inbox filter shows SMS (not 'Sms')", '"email", "sms", "website"] as const;' in INBOX
-      and 'value === "sms" ? "SMS" : value' in INBOX)
+check("inbox filter shows SMS (not 'Sms')", re.search(r'"email",\s*"sms",\s*"website",', INBOX)
+      and '  sms: "SMS",' in INBOX and '(CHANNEL_LABELS[value] ?? value)' in INBOX)
 sms_entry = INTEG[INTEG.index('id: "sms"'):INTEG.index('id: "tiktok"')]
 icon = re.search(r'icon: "([a-z-]+)"', sms_entry).group(1)
 check("SMS listed as early access with an existing icon, honest about Pakistan",

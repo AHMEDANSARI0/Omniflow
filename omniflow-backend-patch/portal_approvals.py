@@ -87,6 +87,7 @@ KINDS = (
     ("workflow_step", "Workflow step"),
     ("customer_request", "Customer request"),
     ("config_change", "Settings change"),
+    ("social_post", "Social post"),  # §255: portal_social registers the resolver
     ("other", "Other"),
 )
 KIND_LABELS = dict(KINDS)

@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { FaqContent } from "../../../../../lib/content-defaults";
+import { FAQ_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -61,7 +62,8 @@ export async function updateFaqContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "faq",
-    data: values as unknown as FaqContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, FAQ_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

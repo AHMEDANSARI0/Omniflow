@@ -210,11 +210,13 @@ check("channel_for_contact: em: -> email; others unchanged",
       [portal_channels.channel_for_contact(c) for c in ("em:a@b.pk", "EM:A@B.PK", "tg:1", "ig:1", "fb:1", "9230")]
       == ["email", "email", "telegram", "instagram", "messenger", "whatsapp"])
 check("email is an ingest channel and Control-Plane dispatched",
-      "email" in connector_api.ALLOWED_CHANNELS and connector_api.CP_DISPATCHED_CHANNELS == ("email", "sms"))
+      "email" in connector_api.ALLOWED_CHANNELS and connector_api.CP_DISPATCHED_CHANNELS[:2] == ("email", "sms"))
 CONN = src("connector_api.py")
 check("unfiltered bridge poll excludes Control-Plane channels",
-      'cmd_sql += " AND channel <> ALL(%s)"' in CONN and "cmd_params.append(list(CP_DISPATCHED_CHANNELS))" in CONN)
-check("laptop away-reply poll excludes em: contacts", "\" AND contact_id NOT LIKE 'em:%%'\"" in CONN)
+      'cmd_sql += " AND channel <> ALL(%s)"' in CONN
+      and "cmd_params.append(list(CP_DISPATCHED_CHANNELS + SOCIAL_CHANNELS))" in CONN)
+check("laptop away-reply poll excludes em: contacts", "em:" in connector_api.CP_AWAY_PREFIXES
+      and "away_params.append([p + \"%\" for p in CP_AWAY_PREFIXES + SOCIAL_AWAY_PREFIXES])" in CONN)
 check("brain answers customers only (never recorded outgoing messages)",
       'if claimed_by is None and item["direction"] == "in":\n' in CONN
       and CONN.index('if claimed_by is None and item["direction"] == "in":') < CONN.index("portal_brain.maybe_answer("))
@@ -226,7 +228,7 @@ check("connector tick kicks the email channel in its own guard",
 CONV = src("portal_conversations.py")
 check("inbox list kicks the email channel; filter knows telegram + email",
       'portal_email_channel.kick(principal.get("client_id"))' in CONV
-      and 'INBOX_CHANNELS = ("whatsapp", "website", "instagram", "messenger", "telegram", "email", "sms")' in CONV
+      and 'INBOX_CHANNELS = ("whatsapp", "website", "instagram", "messenger", "telegram", "email", "sms",' in CONV
       and CONV.count("if channel_filter in INBOX_CHANNELS:") == 3)
 check("app registers the blueprint", "aux_app.register_blueprint(portal_email_channel_bp)" in src("app.py"))
 MOD = src("portal_email_channel.py")

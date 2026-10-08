@@ -135,14 +135,18 @@ t("render: a node per channel + the +N node", () => {
 });
 t("render: soon badge + dim link only for soon channels", () => {
   const { secondary } = real();
-  const soon = secondary.filter((c) => c.soon).length;
-  const html = render();
-  assert.ok(soon > 0);
-  assert.strictEqual(count(html, 'class="badge">' + bot.soonLabel + "</span>"), soon);
-  assert.strictEqual(count(html, 'class="soonLink"'), soon);
-  assert.strictEqual(count(html, "soonBubble"), soon);
-  const live = render({ secondary: secondary.map((c) => ({ ...c, soon: false })) });
-  assert.strictEqual(count(live, 'class="badge"'), 0);
+  // §255: TikTok, X and LinkedIn are early access, Telegram live - the real arc has no Soon badge
+  assert.strictEqual(secondary.filter((c) => c.soon).length, 0);
+  assert.strictEqual(count(render(), 'class="badge"'), 0);
+  assert.strictEqual(count(render(), 'class="soonLink"'), 0);
+  // a channel the CMS marks "soon" again gets the badge, dim link and bubble
+  const one = render({ secondary: secondary.map((c) => ({ ...c, soon: c.id === "tiktok" })) });
+  assert.strictEqual(count(one, 'class="badge">' + bot.soonLabel + "</span>"), 1);
+  assert.strictEqual(count(one, 'class="soonLink"'), 1);
+  assert.strictEqual(count(one, "soonBubble"), 1);
+});
+t("render: the spoken arc line never promises 'coming soon' for shipped channels", () => {
+  assert.ok(!/coming soon/i.test(bot.soon), bot.soon);
 });
 t("render: linkedin keeps its own viewBox", () => {
   assert.strictEqual(count(render(), 'viewBox="0 0 16 16"'), real().secondary.some((c) => c.id === "linkedin") ? 1 : 0);

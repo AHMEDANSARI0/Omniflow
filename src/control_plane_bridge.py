@@ -661,6 +661,135 @@ class ControlPlaneBridge:
             " buttons)."
         )
 
+    # §256 bridge drift: Cloud API templates (§212 send_template + the
+    # template list sync) lived only in connector-bridge/ - now here too.
+    def send_template_message(self, payload, adapter):
+        """Deliver a send_template command: POST a Cloud API template
+        message. No text fallback - an unapproved or mis-parameterized
+        template is rejected by the API and the command fails with the
+        reason (raised, so the command is never acked as done)."""
+        to = str(payload.get("external_user_id") or "").strip()
+        template_name = str(payload.get("template_name") or "").strip()
+        language_code = (
+            str(payload.get("language_code") or "").strip() or "en"
+        )
+        raw_parameters = payload.get("parameters")
+        if not isinstance(raw_parameters, list):
+            raw_parameters = []
+        parameters = [
+            {"type": "text", "text": str(item)[:500]}
+            for item in raw_parameters[:10]
+            if str(item).strip()
+        ]
+        if not to or not template_name:
+            raise ValueError("Invalid template payload.")
+
+        cloud_url = os.environ.get("OMNIFLOW_WA_CLOUD_URL", "").strip()
+        token = os.environ.get("OMNIFLOW_WA_TOKEN", "").strip()
+        if not cloud_url or not token:
+            raise ValueError(
+                "Cloud API not configured - set OMNIFLOW_WA_CLOUD_URL"
+                " + OMNIFLOW_WA_TOKEN to send templates."
+            )
+        header_name = (
+            os.environ.get("OMNIFLOW_WA_AUTH_HEADER", "").strip()
+            or "Authorization"
+        )
+        header_value = (
+            os.environ.get("OMNIFLOW_WA_AUTH_VALUE", "").strip()
+            or ("Bearer " + token)
+        )
+        endpoint = cloud_url
+        if not endpoint.endswith("/"):
+            endpoint = endpoint + "/"
+        request = urllib.request.Request(
+            endpoint,
+            data=json.dumps(
+                {
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": to,
+                    "type": "template",
+                    "template": {
+                        "name": template_name,
+                        "language": {"code": language_code},
+                        "components": [
+                            {"type": "body", "parameters": parameters}
+                        ],
+                    },
+                }
+            ).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                header_name: header_value,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=20) as response:
+            response.read()
+        return "Template sent via Cloud API."
+
+    def sync_message_templates(self):
+        """Push the Meta template list into the portal snapshot (best
+        effort - the portal's Cloud templates card reads this list)."""
+        cloud_url = os.environ.get("OMNIFLOW_WA_CLOUD_URL", "").strip()
+        token = os.environ.get("OMNIFLOW_WA_TOKEN", "").strip()
+        if not cloud_url or not token:
+            return
+        base = cloud_url
+        if base.endswith("/"):
+            base = base[:-1]
+        if not base.endswith("/messages"):
+            return
+        list_url = base[: -len("/messages")] + "/message_templates?limit=200"
+        header_name = (
+            os.environ.get("OMNIFLOW_WA_AUTH_HEADER", "").strip()
+            or "Authorization"
+        )
+        header_value = (
+            os.environ.get("OMNIFLOW_WA_AUTH_VALUE", "").strip()
+            or ("Bearer " + token)
+        )
+        request = urllib.request.Request(
+            list_url,
+            headers={
+                "Accept": "application/json",
+                header_name: header_value,
+            },
+            method="GET",
+        )
+        with urllib.request.urlopen(request, timeout=20) as response:
+            payload = json.loads(
+                response.read().decode("utf-8", "replace")
+            )
+        templates = []
+        for row in (payload.get("data") or [])[:200]:
+            if not isinstance(row, dict) or not str(row.get("name") or "").strip():
+                continue
+            language = row.get("language")
+            if isinstance(language, dict):
+                language = language.get("code")
+            templates.append(
+                {
+                    "name": str(row.get("name")).strip()[:120],
+                    "language": str(language or "").strip()[:20],
+                    "status": str(row.get("status") or "").strip()[:20],
+                    "category": str(row.get("category") or "").strip()[:60],
+                }
+            )
+        status, _body = self._request(
+            "POST",
+            "/api/v1/connector/cloud-templates/sync",
+            {"client_id": self.client_id, "templates": templates},
+        )
+        print(
+            "CP bridge template sync: HTTP "
+            + str(status)
+            + " ("
+            + str(len(templates))
+            + " templates)"
+        )
+
     def run_due_commands(
         self,
         adapter,
@@ -675,6 +804,15 @@ class ControlPlaneBridge:
             self.process_due_away(adapter)
         except Exception as away_error:
             print(f"CP bridge away warning: {away_error}")
+
+        # §256: keep the portal's Cloud template list fresh (every 10 min)
+        now = time.time()
+        if now - getattr(self, "_last_template_sync", 0.0) > 600:
+            self._last_template_sync = now
+            try:
+                self.sync_message_templates()
+            except Exception as error:
+                print("CP bridge template sync failed: " + str(error))
 
         commands = self.fetch_commands()
 
@@ -779,6 +917,12 @@ class ControlPlaneBridge:
 
                 elif action == "send_media":
                     note = self.send_media_message(
+                        command.get("payload") or {}, adapter
+                    )
+
+                elif action == "send_template":
+                    # §256: Cloud API template (raises on failure)
+                    note = self.send_template_message(
                         command.get("payload") or {}, adapter
                     )
                 else:

@@ -61,6 +61,20 @@ export default function ContentHubPage() {
         </p>
       </div>
 
+      <Link
+        href="/admin/content/overrides"
+        className="mb-10 flex items-center justify-between gap-4 rounded-2xl border border-line bg-white p-5 shadow-card transition-colors duration-300 hover:border-brand/20"
+      >
+        <div>
+          <h2 className="text-sm font-semibold text-ink">Overrides</h2>
+          <p className="mt-1 text-xs leading-relaxed text-ink-3">
+            Saved text replaces the built-in default, even after the default changes. See what is still overridden
+            and hand fields back to the default.
+          </p>
+        </div>
+        <span className="text-ink-3">→</span>
+      </Link>
+
       <div className="space-y-10">
         {groups.map((group) => (
           <section key={group.title}>

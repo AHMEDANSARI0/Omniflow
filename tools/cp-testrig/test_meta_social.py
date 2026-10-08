@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 
 from test_lib import check, summary, human_principal, PrincipalStub
@@ -124,9 +125,9 @@ def web():
           and 'status: "beta",\n    description:\n      "Facebook Page messages' in integ)
     inbox = read("app/dashboard/(portal)/conversations/InboxClient.tsx")
     check("inbox: messenger filter + comment marker",
-          'INBOX_CHANNELS = ["whatsapp", "instagram", "messenger", "telegram", "email", "sms", "website"]' in inbox
+          re.search(r'INBOX_CHANNELS = \[\s*"whatsapp",\s*"instagram",\s*"messenger",', inbox)
           and '(["all", ...INBOX_CHANNELS] as const)' in inbox
-          and "(igc|fbc):" in inbox)
+          and "(igc|fbc|" in inbox)
     portal = read("lib/omniflow/portal.ts")
     check("portal.ts: settings fields + real CP messages",
           all(s in portal for s in ("messengerEnabled: boolean;", "comment_auto_reply: input.commentAutoReply",
@@ -372,7 +373,9 @@ check("Messenger switched off -> Page DMs are not taken in", r.status_code == 20
 sql("UPDATE portal_instagram_accounts SET messenger_enabled = TRUE WHERE client_id = 1", fetch=False)
 
 r = client.get("/api/v1/connector/whatsapp/commands?client_id=1&channel=messenger", headers=SVC)
-check("connector queue accepts channel=messenger", r.status_code == 200, r.get_data(as_text=True)[:200])
+# §256: the Control Plane sends Meta replies itself - a bridge poll for
+# channel=messenger is refused (OF_META_CP_SEND=0 would accept it again)
+check("connector queue refuses channel=messenger (CP sends Meta, §256)", r.status_code == 400, r.get_data(as_text=True)[:200])
 
 
 def command(contact, source="manual", action="send_message", body="Ji, 3 din mein.", channel=None):

@@ -68,7 +68,28 @@ function waitingLabel(value: string): string {
 }
 
 // Inbox channel filter (§243: telegram and email join the list; §244: sms).
-const INBOX_CHANNELS = ["whatsapp", "instagram", "messenger", "telegram", "email", "sms", "website"] as const;
+const INBOX_CHANNELS = [
+  "whatsapp",
+  "instagram",
+  "messenger",
+  "telegram",
+  "email",
+  "sms",
+  "website",
+  "tiktok",
+  "x",
+  "linkedin",
+  "youtube",
+  "telegram_user",
+] as const;
+// §255: display names where the channel id is not the brand spelling
+const CHANNEL_LABELS: Partial<Record<string, string>> = {
+  sms: "SMS",
+  tiktok: "TikTok",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  telegram_user: "Telegram (personal)",
+};
 type InboxChannel = (typeof INBOX_CHANNELS)[number];
 
 export default function InboxClient({
@@ -1028,7 +1049,7 @@ export default function InboxClient({
                 : "border-line bg-soft text-ink-3 hover:text-ink"
             }`}
           >
-            {value === "all" ? "All channels" : value === "sms" ? "SMS" : value}
+            {value === "all" ? "All channels" : (CHANNEL_LABELS[value] ?? value)}
           </button>
         ))}
         <button
@@ -1589,8 +1610,8 @@ export default function InboxClient({
                             : "bg-cyan-400")
                         }
                       />
-                      {item.channel}
-                      {/^(igc|fbc):/.test(item.contactId ?? "") ? " \u00b7 comment" : ""}
+                      {CHANNEL_LABELS[item.channel] ?? item.channel}
+                      {/^(igc|fbc|ttc|xc|lic|ytc):/.test(item.contactId ?? "") ? " \u00b7 comment" : ""}
                     </p>
                     <p
                       className={`mt-1 text-[10px] ${

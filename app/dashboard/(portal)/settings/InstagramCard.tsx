@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { INTEGRATIONS } from "../../../../lib/marketing/integrations";
+import MetaSetupPanel from "./MetaSetupPanel";
 
 // §228: one Meta connection - Instagram DMs, Facebook Messenger and comments
 // on Instagram / Facebook posts. Other social channels are listed honestly
@@ -22,6 +23,9 @@ type MetaState = {
   webhookPath: string;
   lastCheckAt: string | null;
   lastError: string | null;
+  cpSends: boolean;
+  lastSentAt: string | null;
+  sendError: string | null;
 };
 
 const EMPTY: MetaState = {
@@ -39,6 +43,9 @@ const EMPTY: MetaState = {
   webhookPath: "/api/v1/public/meta/webhook",
   lastCheckAt: null,
   lastError: null,
+  cpSends: false,
+  lastSentAt: null,
+  sendError: null,
 };
 
 // the same honest availability list the marketing site uses
@@ -321,12 +328,24 @@ export default function InstagramCard() {
           Subscribe the Instagram object to <span className="text-ink-2">messages</span> and{" "}
           <span className="text-ink-2">comments</span>, and the Page object to{" "}
           <span className="text-ink-2">messages</span> and <span className="text-ink-2">feed</span>.
+          The setup check below can register the webhooks and subscribe the Page for you.
           Automated campaigns and follow-ups are never posted as public comments.
         </p>
+        {settings.cpSends ? (
+          <p className="mt-1">
+            Replies are sent by the Control Plane, so no laptop bridge is needed.
+            {settings.lastSentAt ? " Last reply sent: " + settings.lastSentAt + "." : ""}
+          </p>
+        ) : null}
       </div>
+
+      <MetaSetupPanel disabled={!settings.configured} />
 
       {settings.lastError ? (
         <p className="mt-3 text-[11px] text-danger">Last provider error: {settings.lastError}</p>
+      ) : null}
+      {settings.sendError ? (
+        <p className="mt-2 text-[11px] text-danger">Replies: {settings.sendError}</p>
       ) : null}
       {settings.lastCheckAt ? (
         <p className="mt-2 text-[10px] text-ink-3">Last verified: {settings.lastCheckAt}</p>
@@ -349,19 +368,21 @@ export default function InstagramCard() {
         {note ? <span className="text-[11px] text-ink-3">{note}</span> : null}
       </div>
 
-      <div className="mt-5 border-t border-line pt-4">
-        <p className="text-[11px] text-ink-3">Other social channels</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {COMING_SOON.map((name) => (
-            <span
-              key={name}
-              className="rounded-md border border-line bg-soft px-2 py-1 text-[11px] text-ink-3"
-            >
-              {name} <span className="text-[10px]">Coming soon</span>
-            </span>
-          ))}
+      {COMING_SOON.length ? (
+        <div className="mt-5 border-t border-line pt-4">
+          <p className="text-[11px] text-ink-3">Other social channels</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {COMING_SOON.map((name) => (
+              <span
+                key={name}
+                className="rounded-md border border-line bg-soft px-2 py-1 text-[11px] text-ink-3"
+              >
+                {name} <span className="text-[10px]">Coming soon</span>
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }

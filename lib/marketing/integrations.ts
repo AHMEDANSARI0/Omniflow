@@ -115,8 +115,10 @@ export const INTEGRATIONS: Integration[] = [
     mark: "TT",
     accent: "#111827",
     category: "channels",
-    status: "soon",
-    description: "Messages from TikTok will become conversations in the same inbox.",
+    status: "beta",
+    description:
+      "TikTok Business messages and video comments join the same inbox, with optional video publishing.",
+    points: ["Your own TikTok app (Business accounts)", "Comment replies follow your approval rules", "Not available in the EEA, Switzerland or UK"],
   },
   {
     id: "youtube",
@@ -124,8 +126,9 @@ export const INTEGRATIONS: Integration[] = [
     mark: "YT",
     accent: "#FF0000",
     category: "channels",
-    status: "soon",
-    description: "Comments on your videos will arrive in the same inbox.",
+    status: "beta",
+    description: "Comments on your videos arrive in the same inbox and replies post back to YouTube.",
+    points: ["Your own Google app", "Comments only (YouTube has no direct messages)"],
   },
   {
     id: "linkedin",
@@ -133,8 +136,10 @@ export const INTEGRATIONS: Integration[] = [
     mark: "IN",
     accent: "#0A66C2",
     category: "channels",
-    status: "soon",
-    description: "Company page messages and comments will join the same inbox.",
+    status: "beta",
+    description:
+      "Publish posts and answer Company Page comments; direct messages through the optional account login.",
+    points: ["Your own LinkedIn app", "Messages only in login mode (unofficial)"],
   },
   {
     id: "x",
@@ -142,8 +147,9 @@ export const INTEGRATIONS: Integration[] = [
     mark: "X",
     accent: "#111827",
     category: "channels",
-    status: "soon",
-    description: "Mentions and direct messages will become conversations.",
+    status: "beta",
+    description: "Mentions and direct messages become conversations; replies and posts go back to X.",
+    points: ["Your own X developer app (pay per use)", "Or the account login on your laptop"],
   },
   {
     id: "shopify",

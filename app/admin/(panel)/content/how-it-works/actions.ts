@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { HowItWorksContent } from "../../../../../lib/content-defaults";
+import { HOW_IT_WORKS_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -62,7 +63,8 @@ export async function updateHowItWorksContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "how_it_works",
-    data: values as unknown as HowItWorksContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, HOW_IT_WORKS_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

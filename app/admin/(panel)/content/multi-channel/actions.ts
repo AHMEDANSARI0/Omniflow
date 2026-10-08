@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { MultiChannelContent } from "../../../../../lib/content-defaults";
+import { MULTI_CHANNEL_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -65,7 +66,8 @@ export async function updateMultiChannelContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "multi_channel",
-    data: values as unknown as MultiChannelContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, MULTI_CHANNEL_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

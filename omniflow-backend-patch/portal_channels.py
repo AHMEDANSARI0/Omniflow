@@ -52,12 +52,42 @@ def channel_for_contact(contact_id: Any) -> str:
         return "email"  # §243: sent by the Control Plane over SMTP
     if value.startswith("sms:"):
         return "sms"  # §244: sent by the Control Plane through Twilio
+    # §255: social channels (portal_social) - API mode is sent by the
+    # Control Plane, login mode by the social login bridge
+    if value.startswith(("tt:", "ttc:")):
+        return "tiktok"
+    if value.startswith(("x:", "xc:")):
+        return "x"
+    if value.startswith(("li:", "lic:")):
+        return "linkedin"
+    if value.startswith("ytc:"):
+        return "youtube"
+    if value.startswith("tgu:"):
+        return "telegram_user"
     return "whatsapp"
 
 
 def dispatch_now(client_id: Any, channel: str) -> None:
     """§244: deliver a just-queued reply on a Control-Plane channel right
     away (laptop bridges poll on their own). Fail-soft, never raises."""
+    if channel in ("tiktok", "x", "linkedin", "youtube"):
+        try:
+            import portal_social
+
+            # §255: sent now when the channel runs in API mode
+            portal_social.dispatch(client_id, channel)
+        except Exception:
+            pass
+        return
+    if channel in ("instagram", "messenger"):
+        try:
+            import portal_instagram
+
+            # §256: Meta replies leave from the Control Plane now
+            portal_instagram.send_pending(int(client_id), portal_instagram.DISPATCH_LIMIT)
+        except Exception:
+            pass
+        return
     if channel != "sms":
         return
     try:

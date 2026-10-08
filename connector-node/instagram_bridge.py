@@ -14,6 +14,11 @@ Optional:
   POLL_SECONDS                 default 5
 
 Run from the connector-node directory with: python3 instagram_bridge.py
+
+§256: the Control Plane now sends Instagram / Messenger replies itself, so
+this bridge is no longer needed. Against such a Control Plane it says so and
+exits on its own; it only keeps polling when the Control Plane runs with
+OF_META_CP_SEND=0 (rollback switch).
 """
 
 import json
@@ -61,20 +66,33 @@ def _request_json(path: str, method: str = "GET",
         return value if isinstance(value, dict) else {}
 
 
+class ControlPlaneSends(Exception):
+    """§256: the Control Plane sends Meta replies itself (HTTP 400 for both
+    channels) - this bridge has nothing to do."""
+
+
 def poll_once() -> int:
     delivered = 0
+    refused = 0
     for channel in CHANNELS:
-        delivered += _poll_channel(channel)
+        count = _poll_channel(channel)
+        if count < 0:
+            refused += 1
+        else:
+            delivered += count
+    if refused == len(CHANNELS):
+        raise ControlPlaneSends()
     return delivered
 
 
 def _poll_channel(channel: str) -> int:
+    """Delivered commands, or -1 when the Control Plane refuses the channel."""
     try:
         batch = _request_json(COMMANDS_PATH, channel=channel)
     except urllib.error.HTTPError as error:
         # an older Control Plane rejects channel=messenger - keep Instagram
         print("Meta bridge:", channel, "not available yet (HTTP", error.code, ")")
-        return 0
+        return -1 if error.code == 400 else 0
     delivered = 0
     for command in batch.get("commands") or []:
         if not isinstance(command, dict):
@@ -116,6 +134,10 @@ def main() -> None:
             count = poll_once()
             if count:
                 print("Instagram commands delivered:", count)
+        except ControlPlaneSends:
+            print("The Control Plane sends Instagram / Messenger replies itself now"
+                  " (OmniFlow 256) - this bridge is no longer needed. Exiting.")
+            return
         except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
             print("Instagram bridge deferred:", error)
         except Exception as error:

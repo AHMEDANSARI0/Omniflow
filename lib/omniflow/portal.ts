@@ -7296,6 +7296,11 @@ export interface InstagramSettings {
   verifyTokenMasked: string;
   lastCheckAt: string | null;
   lastError: string | null;
+  /** §256: replies leave from the Control Plane (no laptop bridge). */
+  cpSends: boolean;
+  lastWebhookAt: string | null;
+  lastSentAt: string | null;
+  sendError: string | null;
 }
 
 export async function getInstagramSettings(
@@ -7329,6 +7334,10 @@ export async function getInstagramSettings(
     verifyTokenMasked: typeof row.verifyTokenMasked === "string" ? row.verifyTokenMasked : "",
     lastCheckAt: typeof row.lastCheckAt === "string" ? row.lastCheckAt : null,
     lastError: typeof row.lastError === "string" ? row.lastError : null,
+    cpSends: row.cpSends === true,
+    lastWebhookAt: typeof row.lastWebhookAt === "string" ? row.lastWebhookAt : null,
+    lastSentAt: typeof row.lastSentAt === "string" ? row.lastSentAt : null,
+    sendError: typeof row.sendError === "string" ? row.sendError : null,
   };
 }
 
@@ -12739,6 +12748,7 @@ export type ApprovalKind =
   | "workflow_step"
   | "customer_request"
   | "config_change"
+  | "social_post"
   | "other";
 
 export interface ApprovalImpact {
@@ -18397,4 +18407,198 @@ export function saveSmsChannel(accessToken: string, input: SmsChannelInput) {
 export function testSmsChannel(accessToken: string, to: string) {
   return portalService<{ ok: boolean; status: string }>(
     accessToken, SMS_CHANNEL + "/test", { method: "POST", body: JSON.stringify({ to }) }, SMS_CHANNEL_TIMEOUT_MS);
+}
+
+// §255 social channels: TikTok, X, LinkedIn, YouTube and a personal Telegram
+// account - API mode (the merchant's own app + OAuth) or login mode (laptop bridge).
+const SOCIAL_CHANNELS = "api/v1/portal/channels/social";
+// connect / test / webhook / "check now" wait for the platform (10 s per call on the Control Plane)
+const SOCIAL_TIMEOUT_MS = 45_000;
+
+export const SOCIAL_CHANNEL_IDS = ["tiktok", "x", "linkedin", "youtube", "telegram_user"] as const;
+export type SocialChannelId = (typeof SOCIAL_CHANNEL_IDS)[number];
+export type SocialMode = "api" | "login";
+export type SocialFeature = "dm" | "comments" | "publish";
+export const SOCIAL_ACTIONS = ["test", "webhook", "sync", "disconnect"] as const;
+export type SocialAction = (typeof SOCIAL_ACTIONS)[number];
+
+export interface SocialChannelAccount {
+  channel: SocialChannelId;
+  label: string;
+  mode: SocialMode;
+  modes: SocialMode[];
+  capabilities: Record<SocialMode, SocialFeature[]>;
+  enabled: boolean;
+  flags: Record<SocialFeature | "comment_auto_reply", boolean>;
+  app_id: string;
+  app_secret_masked: string;
+  consumer_secret_masked: string;
+  bearer_token_masked: string;
+  organization_id: string;
+  connected: boolean;
+  bridge_live: boolean;
+  bridge_state: string;
+  account_name: string;
+  webhook_url: string;
+  webhook_registered: boolean;
+  token_expires_at: string | null;
+  last_check_at: string | null;
+  last_in_at: string | null;
+  last_sent_at: string | null;
+  last_error: string;
+  limits: string[];
+  post_max: number;
+}
+
+export interface SocialPost {
+  id: number;
+  channel: SocialChannelId;
+  body: string;
+  media_url: string;
+  status: "pending_approval" | "queued" | "published" | "failed" | "rejected";
+  source: string;
+  provider_post_id: string;
+  error: string;
+  created_at: string | null;
+}
+
+export interface SocialChannelsState {
+  available: boolean;
+  can_edit: boolean;
+  channels: SocialChannelAccount[];
+  posts: SocialPost[];
+}
+
+export interface SocialChannelInput {
+  mode?: SocialMode;
+  enabled?: boolean;
+  app_id?: string;
+  app_secret?: string;
+  consumer_secret?: string;
+  bearer_token?: string;
+  organization_id?: string;
+  flags?: Partial<Record<SocialFeature | "comment_auto_reply", boolean>>;
+}
+
+export function getSocialChannels(accessToken: string) {
+  return portalService<SocialChannelsState>(accessToken, SOCIAL_CHANNELS, { method: "GET" });
+}
+
+export function saveSocialChannel(accessToken: string, channel: SocialChannelId, input: SocialChannelInput) {
+  return portalService<SocialChannelsState & { ok: boolean }>(accessToken, SOCIAL_CHANNELS + "/" + channel, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function startSocialOAuth(accessToken: string, channel: SocialChannelId, redirectUri: string) {
+  return portalService<{ url: string }>(accessToken, SOCIAL_CHANNELS + "/" + channel + "/oauth/start", {
+    method: "POST",
+    body: JSON.stringify({ redirect_uri: redirectUri }),
+  });
+}
+
+export function finishSocialOAuth(accessToken: string, state: string, code: string) {
+  return portalService<{ ok: boolean; channel: SocialChannelId }>(
+    accessToken, SOCIAL_CHANNELS + "/oauth/finish",
+    { method: "POST", body: JSON.stringify({ state, code }) }, SOCIAL_TIMEOUT_MS);
+}
+
+export function runSocialAction(accessToken: string, channel: SocialChannelId, action: SocialAction) {
+  return portalService<Record<string, unknown>>(
+    accessToken, SOCIAL_CHANNELS + "/" + channel + "/" + action,
+    { method: "POST", body: "{}" }, SOCIAL_TIMEOUT_MS);
+}
+
+export function createSocialPost(accessToken: string, channel: SocialChannelId, text: string, mediaUrl: string) {
+  return portalService<{ ok: boolean; id: number; status: SocialPost["status"] }>(
+    accessToken, SOCIAL_CHANNELS + "/posts",
+    { method: "POST", body: JSON.stringify({ channel, text, media_url: mediaUrl }) }, SOCIAL_TIMEOUT_MS);
+}
+
+// §256 Meta setup check: what the Graph API says is (not yet) set up, plus
+// the two one-click fixes it can do (Page subscription, app webhooks).
+export const META_SETUP_FIXES = ["subscribe_page", "subscribe_app"] as const;
+export type MetaSetupFix = (typeof META_SETUP_FIXES)[number];
+export type MetaSetupStatus = "ok" | "warn" | "fail" | "skip" | "manual";
+const META_SETUP_STATUSES: readonly MetaSetupStatus[] = ["ok", "warn", "fail", "skip", "manual"];
+
+export interface MetaSetupCheck {
+  id: string;
+  label: string;
+  status: MetaSetupStatus;
+  detail: string;
+  fix: MetaSetupFix | null;
+}
+
+export interface MetaSetupReport {
+  checks: MetaSetupCheck[];
+  webhookUrl: string;
+  queued: number;
+  app: { id: string; name: string } | null;
+  note: string;
+}
+
+export function isMetaSetupFix(value: unknown): value is MetaSetupFix {
+  return typeof value === "string" && (META_SETUP_FIXES as readonly string[]).includes(value);
+}
+
+function metaSetupReport(row: Record<string, unknown>): MetaSetupReport {
+  const text = (value: unknown, max: number) => (typeof value === "string" ? value.slice(0, max) : "");
+  const checks = (Array.isArray(row.checks) ? row.checks : []).flatMap((item): MetaSetupCheck[] => {
+    if (item === null || typeof item !== "object") return [];
+    const c = item as Record<string, unknown>;
+    const status = META_SETUP_STATUSES.find((s) => s === c.status);
+    if (!status || typeof c.id !== "string" || typeof c.label !== "string") return [];
+    return [
+      {
+        id: c.id.slice(0, 40),
+        label: c.label.slice(0, 80),
+        status,
+        detail: text(c.detail, 400),
+        fix: isMetaSetupFix(c.fix) ? c.fix : null,
+      },
+    ];
+  });
+  const app = row.app !== null && typeof row.app === "object" ? (row.app as Record<string, unknown>) : null;
+  return {
+    checks,
+    webhookUrl: /^https:\/\//.test(text(row.webhookUrl, 500)) ? text(row.webhookUrl, 500) : "",
+    queued: typeof row.queued === "number" && row.queued >= 0 ? Math.floor(row.queued) : 0,
+    app: app && typeof app.id === "string" ? { id: app.id, name: text(app.name, 120) } : null,
+    note: text(row.note, 300),
+  };
+}
+
+/** Run the setup check, or one fix (which answers with a fresh check). */
+export async function runMetaSetup(
+  accessToken: string,
+  fix: MetaSetupFix | null
+): Promise<MetaSetupReport | { failed: string; status: number } | null> {
+  let response: Response;
+  try {
+    response = await portalRequest(
+      accessToken,
+      fix ? "api/v1/portal/instagram/setup-fix" : "api/v1/portal/instagram/setup-check",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fix ? { fix } : {}),
+      }
+    );
+  } catch (error) {
+    assertNotAuthError(error);
+    return null;
+  }
+  if (response.status === 401) throw new ControlPlaneRequestError(401, "unauthorized");
+  const payload: unknown = await response.json().catch(() => null);
+  const row = payload !== null && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  if ([400, 403, 409, 502].includes(response.status)) {
+    // the Control Plane's / Meta's own sentence
+    const error = row.error !== null && typeof row.error === "object" ? (row.error as Record<string, unknown>) : {};
+    const message = typeof error.message === "string" && error.message ? error.message.slice(0, 300) : "";
+    return { failed: message || "Meta rejected the request.", status: response.status };
+  }
+  if (!response.ok || row.ok !== true) return null;
+  return metaSetupReport(row);
 }

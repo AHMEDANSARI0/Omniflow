@@ -2,6 +2,7 @@
 
 import { requireSiteAdmin, writeSiteContent } from "../../../../../lib/supabase/site-admin";
 import { isMarketingListKey, MARKETING_LISTS, sanitizeList } from "../../../../../lib/marketing/lists";
+import { sameContent } from "../../../../../lib/marketing/overrides";
 
 export interface ListActionState {
   success: boolean;
@@ -47,7 +48,9 @@ export async function saveMarketingList(
       };
     }
     const skipped = sent - items.length;
-    data = { items };
+    // §256: a list equal to the defaults is stored empty, so later code
+    // updates to the default list still reach the site
+    data = sameContent(items, spec.defaults) ? {} : { items };
     message =
       `Saved — ${items.length} ${spec.itemLabel}${items.length === 1 ? "" : "s"} live on the website.` +
       (skipped > 0 ? ` ${skipped} incomplete or extra item${skipped === 1 ? " was" : "s were"} skipped.` : "");

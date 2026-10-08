@@ -10,7 +10,7 @@ detail_src = portal_thread_source()
 print("== phase 72: channel dot ==")
 check("dot span", "inline-block h-1.5 w-1.5 rounded-full " in inbox_src)
 check("whatsapp green", 'item.channel === "whatsapp"' in inbox_src)
-check("channel label", "{item.channel}" in inbox_src)
+check("channel label", "{CHANNEL_LABELS[item.channel] ?? item.channel}" in inbox_src)
 check("waiting label intact", '"waiting " + waitingLabel(item.lastMessageAt)' in inbox_src)
 
 print("== phase 73: char counter ==")

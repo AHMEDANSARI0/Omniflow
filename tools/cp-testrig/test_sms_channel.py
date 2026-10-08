@@ -184,7 +184,8 @@ check("channel_for_contact: sms: -> sms",
 check("sms is an ingest channel and Control-Plane dispatched",
       "sms" in connector_api.ALLOWED_CHANNELS and "sms" in connector_api.CP_DISPATCHED_CHANNELS)
 CONN = src("connector_api.py")
-check("laptop away-reply poll excludes sms: contacts", "\" AND contact_id NOT LIKE 'sms:%%'\"" in CONN)
+check("laptop away-reply poll excludes sms: contacts", "sms:" in connector_api.CP_AWAY_PREFIXES
+      and "CP_AWAY_PREFIXES + SOCIAL_AWAY_PREFIXES" in CONN)
 check("connector tick kicks the SMS channel in its own guard",
       "                    import portal_sms\n" in CONN and 'portal_sms.kick(tenant["client_id"])' in CONN)
 CONV = src("portal_conversations.py")

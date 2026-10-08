@@ -29,9 +29,11 @@ logger = logging.getLogger("omniflow.cp_outbox")
 AWAY_TABLE = "portal_away_replies"
 
 
-def pending(cur, client_id: int, channel: str, prefix: str, limit: int) -> List[Dict[str, Any]]:
+def pending(cur, client_id: int, channel: str, prefix: Any, limit: int) -> List[Dict[str, Any]]:
     """Due queued replies (commands) for the channel, then pending away
-    replies for its contacts. Oldest first; tenant-scoped."""
+    replies for its contacts. Oldest first; tenant-scoped. ``prefix`` is one
+    contact prefix or a tuple of them (§256: Meta DMs and comments)."""
+    prefixes = [prefix] if isinstance(prefix, str) else [str(p) for p in prefix]
     import portal_events
 
     portal_events._ensure_ddl(cur)
@@ -55,8 +57,8 @@ def pending(cur, client_id: int, channel: str, prefix: str, limit: int) -> List[
     found = portal_db.rows(cur)
     if found and found[0].get("t"):
         cur.execute("SELECT id, contact_id, body FROM " + portal_db._q(AWAY_TABLE) +
-                    " WHERE client_id = %s AND status = 'pending' AND contact_id LIKE %s"
-                    " ORDER BY id ASC LIMIT %s", (client_id, prefix + "%", limit))
+                    " WHERE client_id = %s AND status = 'pending' AND contact_id LIKE ANY(%s)"
+                    " ORDER BY id ASC LIMIT %s", (client_id, [p + "%" for p in prefixes], limit))
         for row in portal_db.rows(cur):
             out.append({"kind": "away", "id": int(row["id"]), "action": "send_message",
                         "payload": {"external_user_id": row.get("contact_id"),

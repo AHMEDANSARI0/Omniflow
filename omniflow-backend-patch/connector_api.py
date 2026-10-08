@@ -321,6 +321,25 @@ def list_commands():
                 except Exception:
                     pass
                 try:
+                    import portal_social
+
+                    # §255: social channels in API mode - poll comments and
+                    # send queued replies / posts (background thread, at
+                    # most every OF_SOCIAL_POLL_SECONDS).
+                    portal_social.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_instagram
+
+                    # §256: Instagram / Messenger replies leave from the
+                    # Control Plane (background thread, at most every
+                    # OF_META_POLL_SECONDS; webhook events and teammate
+                    # replies are sent right away without waiting for this).
+                    portal_instagram.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
                     import portal_inbound_media
 
                     # §214: retention sweep for stored customer files
@@ -349,11 +368,17 @@ def list_commands():
                     cmd_params.append(channel)
                 else:
                     cmd_sql += " AND channel <> ALL(%s)"
-                    cmd_params.append(list(CP_DISPATCHED_CHANNELS))
+                    cmd_params.append(list(CP_DISPATCHED_CHANNELS + SOCIAL_CHANNELS))
                 cmd_sql += " ORDER BY id ASC LIMIT %s"
                 cmd_params.append(limit)
                 cur.execute(cmd_sql, tuple(cmd_params))
                 found = portal_db.rows(cur)
+                if channel in SOCIAL_CHANNELS:
+                    import portal_social
+
+                    # §255: login mode only; policy refusals are final
+                    found = portal_social.filter_bridge_commands(
+                        cur, conn, tenant["client_id"], channel, found)
         finally:
             conn.close()
     except Exception as error:
@@ -399,6 +424,9 @@ def ack_command():
                     "WHERE id = %s AND client_id = %s RETURNING id",
                     ("done" if ok_flag else "failed", note, command_id, tenant["client_id"]),
                 )
+                # §255: read the RETURNING row before the bookkeeping below runs
+                # its own UPDATE on this cursor (that left a saved ack answering 404).
+                updated = portal_db.rows(cur)
                 try:
                     import portal_events
 
@@ -412,7 +440,6 @@ def ack_command():
                     )
                 except Exception:
                     pass
-                updated = portal_db.rows(cur)
             conn.commit()
         finally:
             conn.close()
@@ -482,11 +509,22 @@ def connector_bot_config():
 
 MAX_INGEST_MESSAGES = 100
 ALLOWED_DIRECTIONS = ("in", "out")
-ALLOWED_CHANNELS = ("whatsapp", "telegram", "instagram", "messenger", "email", "sms")
+ALLOWED_CHANNELS = ("whatsapp", "telegram", "instagram", "messenger", "email", "sms",
+                    "tiktok", "x", "linkedin", "youtube", "telegram_user")
 # §243 / §244: channels the Control Plane delivers itself (portal_email_channel,
 # portal_sms via portal_cp_outbox) - laptop bridges never receive their
-# commands or away replies.
-CP_DISPATCHED_CHANNELS = ("email", "sms")
+# commands or away replies. §256: Instagram + Messenger too (portal_instagram
+# sends through the Graph API itself); OF_META_CP_SEND=0 hands them back to
+# the laptop instagram_bridge.py.
+META_CP_SEND = os.environ.get("OF_META_CP_SEND", "1").strip() != "0"
+CP_DISPATCHED_CHANNELS = ("email", "sms") + (("instagram", "messenger") if META_CP_SEND else ())
+#: away-reply contact prefixes of those channels (the laptop away poll skips them)
+CP_AWAY_PREFIXES = ("em:", "sms:") + (("ig:", "igc:", "fb:", "fbc:") if META_CP_SEND else ())
+# §255: social channels (portal_social) - sent by the Control Plane in API
+# mode; in login mode only the social login bridge receives them (polled
+# with ?channel=<name>), never the WhatsApp bridge's unfiltered poll.
+SOCIAL_CHANNELS = ("tiktok", "x", "linkedin", "youtube", "telegram_user")
+SOCIAL_AWAY_PREFIXES = ("tt:", "x:", "li:", "tgu:", "ttc:", "xc:", "lic:", "ytc:")
 
 
 _AWAY_TABLE_READY = False
@@ -637,22 +675,39 @@ def list_due_away_replies():
     if error:
         return error
     limit = _query_int("limit", 5, 1, 20)
+    social = (args.get("social") or "").strip()
+    if social and social not in SOCIAL_CHANNELS:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "social " + "|".join(SOCIAL_CHANNELS) + " hon."}}), 400
 
     try:
         _ensure_away_table()
         conn = portal_db._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute(
+                away_sql = (
                     "SELECT id, contact_id, body, created_at FROM " +
                     portal_db._q("portal_away_replies") +
                     " WHERE client_id = %s AND status = 'pending'"
                     " AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())"
-                    " AND contact_id NOT LIKE 'em:%%'"
-                    " AND contact_id NOT LIKE 'sms:%%'"
-                    " ORDER BY id ASC LIMIT %s",
-                    (tenant["client_id"], limit),
                 )
+                away_params: list = [tenant["client_id"]]
+                if social:
+                    # §255: the social login bridge - DM away replies of a
+                    # login-mode channel only (never public comments)
+                    import portal_social
+
+                    prefix = portal_social.away_prefix(cur, tenant["client_id"], social)
+                    conn.commit()
+                    if not prefix:
+                        return jsonify({"away_replies": []}), 200
+                    away_sql += " AND contact_id LIKE %s"
+                    away_params.append(prefix + "%")
+                else:
+                    away_sql += " AND contact_id NOT LIKE ALL(%s)"
+                    away_params.append([p + "%" for p in CP_AWAY_PREFIXES + SOCIAL_AWAY_PREFIXES])
+                cur.execute(away_sql + " ORDER BY id ASC LIMIT %s",
+                            tuple(away_params + [limit]))
                 found = portal_db.rows(cur)
         finally:
             conn.close()

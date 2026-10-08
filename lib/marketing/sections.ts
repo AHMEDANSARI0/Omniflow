@@ -87,7 +87,7 @@ export const HERO_SECTION = {
     greeting: "Hi, I'm OmniFlow.",
     intro: "I bring your customer conversations and automation together.",
     channels: "WhatsApp, Instagram, Facebook, Messenger...",
-    soon: "Telegram too, with TikTok, X and LinkedIn coming soon.",
+    soon: "Telegram too, with TikTok, X and LinkedIn in early access.",
     connected: "All connected in one place.",
     soonLabel: "Soon",
     display: "OmniFlow",

@@ -109,6 +109,11 @@ from portal_ai_traces import bp as portal_ai_traces_bp  # noqa: E402
 from portal_proactive import bp as portal_proactive_bp  # noqa: E402
 from portal_email_channel import bp as portal_email_channel_bp  # noqa: E402
 from portal_sms import bp as portal_sms_bp, public_bp as portal_sms_public_bp  # noqa: E402
+from portal_social import (  # noqa: E402  (§255 social channels)
+    bp as portal_social_bp,
+    public_bp as portal_social_public_bp,
+    connector_bp as portal_social_connector_bp,
+)
 from portal_model_router import bp as admin_model_router_bp  # noqa: E402
 from portal_policy import bp as portal_policy_bp  # noqa: E402
 from portal_obs import install_obs as _install_obs  # noqa: E402
@@ -214,6 +219,9 @@ aux_app.register_blueprint(portal_proactive_bp)
 aux_app.register_blueprint(portal_email_channel_bp)
 aux_app.register_blueprint(portal_sms_bp)
 aux_app.register_blueprint(portal_sms_public_bp)
+aux_app.register_blueprint(portal_social_bp)
+aux_app.register_blueprint(portal_social_public_bp)
+aux_app.register_blueprint(portal_social_connector_bp)
 aux_app.register_blueprint(admin_model_router_bp)
 aux_app.register_blueprint(portal_policy_bp)
 aux_app.register_blueprint(admin_providers_bp)
