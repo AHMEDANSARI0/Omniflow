@@ -12,10 +12,12 @@ sit at inset 0 and only move by transform:
           shows a gap) down to the wrist seam
   hand-l / hand-r - hand from the wrist seam (the forearm keeps the seam
           too, so a turned wrist stays closed)
-  palm-l / palm-r - the same hands open, palms to the camera (from the
-          palms render, key.py), cut at the same seam; the open thumbs reach
-          past the canvas, so each palm is a small box of its own (printed in
-          % of the canvas) inside the hand joint
+  palm-r - the waving hand: taken from the wave render (key.py; the same
+          robot with its arm up, palm to the camera, fingers together), cut
+          at the wrist ring, turned and scaled onto this hand's wrist (cuff
+          widths match, ring on ring), so it is exactly this robot's hand
+          size; a small box of its own (printed in % of the canvas) inside
+          the hand joint. Resting hands stay relaxed (palms to the body).
   Elbow / wrist cuts run across each segment's own axis.
 Prints the pivots (shoulders, elbows, wrists) and the visor / chest-panel boxes in % of the canvas
 for the component. Output: ../../public/bot/omniflow-bot-*.webp
@@ -98,20 +100,52 @@ def segments(arm, shoulder, elbow, wrist):
 upper_l, fore_l, hand_l = segments(arm_l, ball_l, elbow_l, wrist_l)
 upper_r, fore_r, hand_r = segments(arm_r, ball_r, elbow_r, wrist_r)
 
-# open palms: same render with open hands (lines up 1:1, key.py)
-palms = np.asarray(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "palms_rgba.png"))).copy()
-palms[:4, :, 3] = palms[-4:, :, 3] = 0
-palms[:, :4, 3] = palms[:, -4:, 3] = 0
-plab, _ = ndimage.label((palms[..., 3] > 8) & (gy > WRIST_Y - 60))  # below here the arms stand free
+# the waving hand (wave render, key.py): the raised forearm's axis from its cuff, the hand cut at the wrist ring
+wave = np.asarray(Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "wave_rgba.png"))).copy()
+wsolid = wave[..., 3] > 128
+WAVE_CUFF = (500, 560)  # rows of the raised forearm's cuff, below the wrist ring
+WAVE_HAND = (1060, 1420, 120)  # x0, x1, y0: the region around the raised hand
 
-def palm(elbow, wrist, side):
-    zone = plab[1000:, :560] if side == "l" else plab[1000:, 990:]
-    ids, counts = np.unique(zone[zone > 0], return_counts=True)
-    mask = (plab == ids[np.argmax(counts)]) & (along(elbow, wrist) > -4)
-    ys, xs = np.where(mask)
-    return mask, (int(xs.min()) - 4, int(ys.min()) - 4, int(xs.max()) + 5, int(ys.max()) + 5)
 
-palm_l, palm_r = palm(elbow_l, wrist_l, "l"), palm(elbow_r, wrist_r, "r")
+def run_at(mask, y, x):
+    xs = np.where(mask[y])[0]
+    runs = np.split(xs, np.where(np.diff(xs) > 1)[0] + 1)
+    run = next(r for r in runs if r.min() <= x <= r.max())
+    return float(run.min()), float(run.max())
+
+
+def axis(mask, rows, x):
+    """centre line of a cuff: points (x, y) per row, its unit direction (increasing y), its width across the axis."""
+    pts = [((lambda l, r: ((l + r) / 2, y, r - l))(*run_at(mask, y, x))) for y in range(rows[0], rows[1], 2)]
+    xs, ys, ws = (np.array(v) for v in zip(*pts))
+    k = np.polyfit(ys, xs, 1)[0]
+    u = np.array([k, 1.0]) / np.hypot(k, 1.0)
+    return (xs.mean(), ys.mean()), u, float(np.median(ws)) * u[1]
+
+
+def ring_top(img, centre, u, sign):
+    """first dark pixel walking from the cuff centre along +-u: where the wrist ring starts."""
+    for t in range(0, 200):
+        x, y = centre[0] + sign * u[0] * t, centre[1] + sign * u[1] * t
+        if img[int(round(y)), int(round(x)), 0] < 80:
+            return np.array([x, y])
+    raise AssertionError("no wrist ring")
+
+
+m_centre, m_u, m_width = axis(arm_r, (WRIST_Y - 68, WRIST_Y - 12), int(wrist_r[0]))
+w_centre, w_u, w_width = axis(wsolid, WAVE_CUFF, 1240)
+m_ring, w_ring = ring_top(rgba, m_centre, m_u, 1), ring_top(wave, w_centre, w_u, -1)
+turn = np.arctan2(m_u[1], m_u[0]) - np.arctan2(-w_u[1], -w_u[0])  # raised hand (fingers up) -> hanging (fingers down)
+zoom = m_width / w_width
+wy, wx = np.mgrid[0:wave.shape[0], 0:wave.shape[1]]
+beyond = -((wx - w_ring[0]) * w_u[0] + (wy - w_ring[1]) * w_u[1])  # distance past the ring top, toward the fingers
+region = np.zeros_like(wsolid)
+region[WAVE_HAND[2]:, WAVE_HAND[0]:WAVE_HAND[1]] = True
+wlab, _ = ndimage.label(wsolid & region & (beyond > -2))
+hand_id = wlab[int(w_ring[1] - w_u[1] * 60), int(w_ring[0] - w_u[0] * 60)]
+assert hand_id, "the waving hand was not found above its ring"
+wave_hand = wave.copy()
+wave_hand[..., 3] = np.where(wlab == hand_id, wave[..., 3], 0)
 
 ys, xs = np.where(solid)
 pad = 24
@@ -133,17 +167,26 @@ for name, mask in LAYERS:
     total += os.path.getsize(path)
     print(name, os.path.getsize(path), "bytes")
 
-boxes = {}
-for name, (mask, (bx0, by0, bx1, by1)) in (("palm-l", palm_l), ("palm-r", palm_r)):
-    layer = palms.copy()
-    layer[..., 3] = np.where(mask, palms[..., 3], 0)
-    img = Image.fromarray(layer[by0:by1, bx0:bx1], "RGBA").resize((round((bx1 - bx0) * scale), round((by1 - by0) * scale)), Image.LANCZOS)
-    path = os.path.join(OUT, "omniflow-bot-%s.webp" % name)
-    img.save(path, "WEBP", quality=82, method=6, alpha_quality=90)
-    total += os.path.getsize(path)
-    boxes[name] = {"size": list(img.size), "box": [round((bx0 - x0) / cw * 100, 2), round((by0 - y0) / ch * 100, 2),
-                                                    round((bx1 - bx0) / cw * 100, 2), round((by1 - by0) / ch * 100, 2)]}
-    print(name, os.path.getsize(path), "bytes")
+# waving hand -> canvas px: p = (m_ring + zoom * R(turn) (q - w_ring) - (x0, y0)) * scale
+c, sn = np.cos(turn), np.sin(turn)
+fwd = np.array([[c, -sn], [sn, c]]) * zoom * scale
+ys_, xs_ = np.where(wave_hand[..., 3] > 0)
+pts = (np.stack([xs_ - w_ring[0], ys_ - w_ring[1]]).T @ fwd.T) + (m_ring - (x0, y0)) * scale
+bx0, by0 = np.floor(pts.min(0)) - 3
+bx1, by1 = np.ceil(pts.max(0)) + 3
+inv = np.linalg.inv(fwd)
+# output pixel (u, v) -> wave pixel; PIL wants the inverse affine
+off = w_ring - inv @ ((m_ring - (x0, y0)) * scale - (bx0, by0))
+supersample = 4
+big = Image.fromarray(wave_hand, "RGBA").transform((int(bx1 - bx0) * supersample, int(by1 - by0) * supersample), Image.AFFINE,
+                                                   (*(inv[0] / supersample), off[0], *(inv[1] / supersample), off[1]), Image.BICUBIC)
+img = big.resize((int(bx1 - bx0), int(by1 - by0)), Image.LANCZOS)
+path = os.path.join(OUT, "omniflow-bot-palm-r.webp")
+img.save(path, "WEBP", quality=82, method=6, alpha_quality=90)
+total += os.path.getsize(path)
+print("palm-r", os.path.getsize(path), "bytes", "turn %.1f deg, zoom %.3f" % (np.degrees(turn), zoom))
+boxes = {"palm-r": {"size": list(img.size), "box": [round(bx0 / WIDTH * 100, 2), round(by0 / size[1] * 100, 2),
+                                                    round((bx1 - bx0) / WIDTH * 100, 2), round((by1 - by0) / size[1] * 100, 2)]}}
 
 pct = lambda x, y: [round(float(x - x0) / cw * 100, 2), round(float(y - y0) / ch * 100, 2)]
 info = {

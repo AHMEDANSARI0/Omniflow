@@ -1,5 +1,5 @@
 // Functional tests for the hero OmniFlowBot (batch 247, 3D model + Soon arc in 248, intro/interactive in 249,
-// pre-rendered 3D layers + closing line in 250, arm joint chains in 251, open palms in 252), run by
+// pre-rendered 3D layers + closing line in 250, arm joint chains in 251, open palms in 252, only the waving palm in 254), run by
 // test_hero_bot.py. Loads the real TS/TSX through the repo's own
 // `typescript` (transpileModule) and renders with react-dom/server;
 // CSS modules resolve to their class names. No extra deps.
@@ -208,27 +208,26 @@ t("render: eight pre-rendered layers, each with its own light mask", () => {
     assert.ok(fs.statSync(path.join(root, "public", src)).size > 4000, src);
     assert.ok(html.includes("mask-image:url(" + src + ")"), src);
   }
-  assert.strictEqual(count(html, 'class="light"'), 10);
+  assert.strictEqual(count(html, 'class="light"'), 9);
 });
-t("render: open palms on each wrist, in their own boxes", () => {
+t("render: open palm only on the waving hand, in its own box; the other hand stays relaxed", () => {
   const html = render();
-  for (const [side, box, size] of [["l", "left:-10.16%;top:61.64%;width:27.95%;height:20.86%", 'width="157" height="176"'],
-                                   ["r", "left:82.42%;top:61.71%;width:27.95%;height:20.73%", 'width="157" height="175"']]) {
-    const S = side.toUpperCase();
-    const hand = new RegExp('<div class="part hand' + S + '"><div class="part grip' + S + '"><img src="/bot/omniflow-bot-hand-' + side + '.webp"[^>]+>'
-      + '<span class="light"[^>]*><span class="lightSpot"></span></span></div><div class="palm palm' + S + '" style="' + box + '">'
-      + '<img src="/bot/omniflow-bot-palm-' + side + '.webp" alt="" ' + size);
-    assert.ok(hand.test(html), side);
-    assert.ok(html.includes("mask-image:url(/bot/omniflow-bot-palm-" + side + ".webp)"), side);
-    assert.ok(fs.statSync(path.join(root, "public/bot/omniflow-bot-palm-" + side + ".webp")).size > 4000, side);
-  }
+  const hand = new RegExp('<div class="part handR"><div class="part gripR"><img src="/bot/omniflow-bot-hand-r.webp"[^>]+>'
+    + '<span class="light"[^>]*><span class="lightSpot"></span></span></div><div class="palm palmR" style="left:81.25%;top:61.58%;width:25.36%;height:19.03%">'
+    + '<img src="/bot/omniflow-bot-palm-r.webp" alt="" width="142" height="161"');
+  assert.ok(hand.test(html));
+  assert.ok(html.includes("mask-image:url(/bot/omniflow-bot-palm-r.webp)"));
+  assert.ok(fs.statSync(path.join(root, "public/bot/omniflow-bot-palm-r.webp")).size > 4000);
+  assert.ok(/<div class="part handL"><img src="\/bot\/omniflow-bot-hand-l.webp"/.test(html));
+  assert.strictEqual(count(html, 'class="palm '), 1);
+  assert.ok(!html.includes("palm-l") && !html.includes("gripL"));
 });
 t("render: arms are shoulder > elbow > wrist chains", () => {
   const html = render();
-  for (const side of ["L", "R"]) {
+  for (const [side, grip] of [["L", ""], ["R", '<div class="part gripR">']]) {
     const chain = new RegExp('class="part arm' + side + '"><img [^>]+><span class="light"[^>]*><span class="lightSpot"></span></span>'
       + '<div class="part fore' + side + '"><img [^>]+><span class="light"[^>]*><span class="lightSpot"></span></span>'
-      + '<div class="part hand' + side + '"><div class="part grip' + side + '"><img ');
+      + '<div class="part hand' + side + '">' + grip + '<img ');
     assert.ok(chain.test(html), side);
   }
   assert.ok(html.indexOf('class="tap"') < html.indexOf('class="part armR"'));

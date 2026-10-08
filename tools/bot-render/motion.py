@@ -9,8 +9,12 @@ readable and in one place. Run after editing a pose:
 Arms: (seconds, shoulder, elbow, wrist, k). Angles in CSS degrees
 (negative = the viewer's right arm out / up, positive = the left arm);
 k < 1 foreshortens the forearm, i.e. the hand comes toward the viewer
-(the wrist undoes the squash, so the hand keeps its shape). Palms: the
-open hand (palm to the viewer) fades in over the relaxed one.
+(the wrist undoes the squash, so the hand keeps its shape). A pose that
+lies on the way between its neighbours is passed through without stopping
+(per-segment cubic-bezier from monotone slopes); turning points and holds
+ease in and out. Hands rest and gesture relaxed, palms to the body, like a
+person's; the open waving hand (palm to the viewer) unfolds from the wrist
+over the relaxed one only for the wave, once the forearm is up.
 """
 import os
 import re
@@ -19,24 +23,29 @@ LOOP = 12.0
 CSS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "app", "components", "OmniFlowBot", "OmniFlowBot.module.css")
 REST = (0, 0, 0, 1)
 
-# viewer's right arm: front wave, open hands while explaining, presents the
-# channels to the viewer (palm out, beats on each bubble), welcome at the end
+# viewer's right arm: a natural hello wave, explaining hands, presents the
+# channels to the viewer (a beat per bubble), welcome at the end
 ARM_R = [
-    (0.3, 3, 4, 0, 1),  # anticipation
-    (0.95, -62, -108, -4, 1),
-    (1.15, -58, -112, 12, 1),  # wave: forearm up, palm to the viewer, wrist wags
-    (1.45, -61, -104, -10, 1),
-    (1.75, -59, -112, 12, 1),
-    (2.05, -60, -105, -8, 1),
-    (2.3, -56, -108, 4, 1),
-    (2.65, -8, -14, 0, 1),
-    (2.85, *REST),
-    (3.05, -12, 20, -6, 0.85),  # explain: open hand toward the viewer, on the beats
-    (3.5, -14, 28, -10, 0.82),
-    (3.9, -12, 18, -4, 0.85),
-    (4.3, -15, 30, -10, 0.82),
-    (4.75, -2, 4, 0, 1),
-    (4.85, 2, -2, 0, 1),
+    (0.2, 3, 4, 0, 1),  # anticipation
+    (0.42, -4, -30, -18, 0.62),  # the elbow leads, the wrist turns the hand up: it rises toward the viewer, not out to the side
+    (0.66, -10, -80, -55, 0.42),
+    (0.8, -24, -100, -25, 0.6),
+    (0.94, -40, -115, -6, 0.85),
+    (1.2, -60, -110, 6, 1),  # wave: forearm up, palm to the viewer, wrist wags
+    (1.45, -58, -112, 12, 1),
+    (1.7, -61, -104, -10, 1),
+    (1.95, -59, -112, 12, 1),
+    (2.2, -60, -105, -8, 1),
+    (2.4, -58, -108, 4, 1),
+    (2.62, -40, -115, -6, 0.85),  # lowers the way it came up (palm closes while the hand is still up), then explains
+    (2.76, -24, -100, -25, 0.6),
+    (2.9, -10, -80, -55, 0.42),
+    (3.14, -4, -30, -18, 0.62),
+    (3.45, -12, 20, -6, 0.85),  # explain: the hand comes toward the viewer on the beats
+    (3.8, -14, 28, -10, 0.82),
+    (4.15, -12, 18, -4, 0.85),
+    (4.5, -15, 30, -10, 0.82),
+    (4.85, -2, 4, 0, 1),
     (5.15, -30, 40, -10, 0.85),  # channels: presents them to the viewer, a beat per bubble
     (5.45, -33, 46, -12, 0.83),
     (5.75, -30, 40, -8, 0.85),
@@ -47,7 +56,7 @@ ARM_R = [
     (7.6, 2, -4, 0, 1),
     (8.6, *REST),
     (8.9, 2, -2, 0, 1),
-    (9.3, -36, 44, -12, 0.84),  # connected: both hands open to the viewer
+    (9.3, -36, 44, -12, 0.84),  # connected: both arms open a little toward the viewer
     (9.6, -33, 40, -9, 0.86),
     (10.6, -35, 43, -11, 0.84),
     (11.3, -4, 4, 0, 1),
@@ -80,8 +89,10 @@ ARM_L = [
     (11.35, 4, -4, 0, 1),
     (11.65, *REST),
 ]
-# open palm over the relaxed hand: (opens from, open at, closes from, closed at)
-PALM = {"r": (0.55, 0.8, 11.25, 11.5), "l": (2.9, 3.15, 11.3, 11.55)}
+# the waving hand's open palm over the relaxed one: (opens at, closes at); each change takes FADE seconds,
+# while the arm is moving - it opens once the forearm is nearly up and closes before it comes down
+PALM = {"r": [(0.84, 2.84)]}
+FADE = 0.1
 # speech lines: (in from, in at, out from, out at)
 SAY = [(0.05, 0.35, 2.4, 2.7), (2.7, 3.0, 4.6, 4.9), (4.9, 5.2, 6.6, 6.9), (6.9, 7.2, 8.6, 8.9), (8.9, 9.2, 11.65, 11.95)]
 # head (neck pivot): (seconds, x %, y %, deg) - it talks to the viewer
@@ -106,11 +117,35 @@ def pct(t):
 
 
 def num(v):
-    return "%g" % round(v, 3)
+    return "%g" % (round(v, 3) + 0)
 
 
-def keyframes(name, frames, prop="transform", comment=None):
-    """frames: [(seconds, value)], 0 and 100% padded with the rest value; equal neighbours merge."""
+def slopes(ts, vs):
+    """Monotone (Fritsch-Butland) slopes: 0 at turning points and holds, so nothing overshoots."""
+    d = [(v1 - v0) / (t1 - t0) for t0, t1, v0, v1 in zip(ts, ts[1:], vs, vs[1:])]
+    m = [0.0] * len(vs)
+    for i in range(1, len(vs) - 1):
+        if d[i - 1] * d[i] > 0:
+            h0, h1 = ts[i] - ts[i - 1], ts[i + 1] - ts[i]
+            w0, w1 = 2 * h1 + h0, h1 + 2 * h0
+            m[i] = (w0 + w1) / (w0 / d[i - 1] + w1 / d[i])
+    return d, m
+
+
+def timings(ts, vs):
+    """{segment start: cubic-bezier} for segments that pass through a pose (CSS eases each segment on its own)."""
+    d, m = slopes(ts, vs)
+    out = {}
+    for i, di in enumerate(d):
+        if di and (m[i] or m[i + 1]):
+            a, b = m[i] / di, m[i + 1] / di
+            out[ts[i]] = "cubic-bezier(0.333, %s, 0.667, %s)" % (num(a / 3), num(1 - b / 3))
+    return out
+
+
+def keyframes(name, frames, prop="transform", comment=None, timing=None):
+    """frames: [(seconds, value)], 0 and 100% padded with the rest value; equal neighbours merge.
+    prop=None: values are whole declarations. timing: {segment start: timing function}."""
     rest = "none" if prop == "transform" else "1"
     frames = sorted(frames)
     if not frames or frames[0][0] > 0:
@@ -127,7 +162,10 @@ def keyframes(name, frames, prop="transform", comment=None):
     out.append("@keyframes %s {\n" % name)
     for ts, v in groups:
         stops = sorted({ts[0], ts[-1]})
-        out.append(",\n".join("  " + pct(t) for t in stops) + " {\n    %s: %s;\n  }\n" % (prop, v))
+        decl = "    %s: %s;\n" % (prop, v) if prop else "".join("    %s;\n" % x for x in v.split("; "))
+        if timing and ts[-1] in timing:
+            decl += "    animation-timing-function: %s;\n" % timing[ts[-1]]
+        out.append(",\n".join("  " + pct(t) for t in stops) + " {\n" + decl + "  }\n")
     return "".join(out) + "}\n"
 
 
@@ -140,16 +178,21 @@ def arm(side, poses, comment):
     upper = [(t, rot(s) if s else "none") for t, s, f, h, k in poses]
     fore = [(t, "none" if (f, k) == (0, 1) else "%s scale(1, %s)" % (rot(f), num(k))) for t, s, f, h, k in poses]
     hand = [(t, "none" if (h, k) == (0, 1) else "scale(1, %s) %s" % (num(1 / k), rot(h))) for t, s, f, h, k in poses]
-    return (keyframes("bot-arm-" + side, upper, comment=comment) + "\n" + keyframes("bot-fore-" + side, fore) + "\n"
-            + keyframes("bot-hand-" + side, hand))
+    ts = [p[0] for p in poses]
+    elbow = timings(ts, [p[2] for p in poses])
+    return (keyframes("bot-arm-" + side, upper, comment=comment, timing=timings(ts, [p[1] for p in poses])) + "\n"
+            + keyframes("bot-fore-" + side, fore, timing=elbow) + "\n" + keyframes("bot-hand-" + side, hand, timing=elbow))
 
 
 def palm(side):
-    a, b, c, d = PALM[side]
-    opened = keyframes("bot-palm-" + side, [(0, "0"), (a, "0"), (b, "1"), (c, "1"), (d, "0")], "opacity")
-    # the relaxed hand goes a moment after the palm covers it, and comes back before it leaves
-    grip = keyframes("bot-grip-" + side, [(0, "1"), (a + 0.1, "1"), (b + 0.05, "0"), (c - 0.05, "0"), (d - 0.1, "1")], "opacity")
-    return opened + "\n" + grip
+    shut, open_ = "opacity: 0; transform: scale(0.85)", "opacity: 1; transform: none"
+    opened, grip = [(0, shut)], [(0, "1")]
+    for a, c in PALM[side]:
+        opened += [(a, shut), (a + FADE, open_), (c, open_), (c + FADE, shut)]
+        # the relaxed hand goes once the palm covers it, and is back before the palm has folded away
+        grip += [(a + FADE / 2, "1"), (a + FADE, "0"), (c, "0"), (c + FADE / 2, "1")]
+    return (keyframes("bot-palm-" + side, opened, None, "the waving hand's open palm unfolds from the wrist for the wave") + "\n"
+            + keyframes("bot-grip-" + side, grip, "opacity"))
 
 
 def say(i, a, b, c, d):
@@ -165,8 +208,7 @@ def build():
     parts = [say(i + 1, *s) for i, s in enumerate(SAY)]
     parts.append(arm("r", ARM_R, "viewer's right arm: front wave, open hands, presents the channels, welcome"))
     parts.append(arm("l", ARM_L, "viewer's left arm: answers the wave, explains a beat later, presents the Soon channels, welcome"))
-    parts.append(palm("r"))
-    parts.append(palm("l"))
+    parts += [palm(side) for side in PALM]
     parts.append(keyframes("bot-head", [(t, "none" if (x, y, d) == (0, 0, 0) else "translate(%s%%, %s%%) %s" % (num(x), num(y), rot(d)))
                                         for t, x, y, d in HEAD], comment="the head talks to the viewer: tilt for hello, nods on the beats, a turn to each arc"))
     parts.append(keyframes("bot-glance", [(t, "none" if (x, y) == (0, 0) else "translate(%spx, %spx)" % (num(x), num(y))) for t, x, y in GLANCE],

@@ -7,9 +7,10 @@ import s from "./OmniFlowBot.module.css";
  * share one canvas (public/bot/, ~99 KB together; made by
  * tools/bot-render/key.py + split.py): body, head, and per arm an upper
  * arm, a forearm and a hand, so shoulders, elbows and wrists bend like a
- * person's. Each hand also has an open version (palm to the viewer, from a
- * second render) that fades in for the front wave and the gestures toward
- * the viewer. Kept in its own file so the robot
+ * person's. Hands rest relaxed with the palms to the body; only the waving
+ * hand has an open version (palm to the viewer, fingers together, cut from
+ * a wave render of the same robot at this hand's size) that unfolds for the
+ * wave. Kept in its own file so the robot
  * can be swapped without touching the container, the motion island or
  * the hero.
  * - layers sit at their own depth and shift with the cursor (parallax),
@@ -69,22 +70,21 @@ const LAYERS = {
   body: "/bot/omniflow-bot-body.webp",
   head: "/bot/omniflow-bot-head.webp",
 };
-/** Open palms: own small box (left, top, width, height in % of the canvas; the open thumbs reach past it). */
-const ARMS = {
+const SIZE = { width: 560, height: 846 };
+type Size = typeof SIZE;
+/** The waving hand's open palm: own small box (left, top, width, height in % of the canvas; the thumb reaches past it). */
+type Palm = { src: string; size: Size; box: number[]; grip: string; open: string };
+const ARMS: Record<"left" | "right", { joints: string[]; layers: string[]; palm?: Palm }> = {
   left: {
     joints: [s.armL, s.foreL, s.handL],
     layers: ["/bot/omniflow-bot-upper-l.webp", "/bot/omniflow-bot-fore-l.webp", "/bot/omniflow-bot-hand-l.webp"],
-    palm: { src: "/bot/omniflow-bot-palm-l.webp", size: { width: 157, height: 176 }, box: [-10.16, 61.64, 27.95, 20.86], grip: s.gripL, open: s.palmL },
   },
   right: {
     joints: [s.armR, s.foreR, s.handR],
     layers: ["/bot/omniflow-bot-upper-r.webp", "/bot/omniflow-bot-fore-r.webp", "/bot/omniflow-bot-hand-r.webp"],
-    palm: { src: "/bot/omniflow-bot-palm-r.webp", size: { width: 157, height: 175 }, box: [82.42, 61.71, 27.95, 20.73], grip: s.gripR, open: s.palmR },
+    palm: { src: "/bot/omniflow-bot-palm-r.webp", size: { width: 142, height: 161 }, box: [81.25, 61.58, 25.36, 19.03], grip: s.gripR, open: s.palmR },
   },
 };
-const SIZE = { width: 560, height: 846 };
-type Size = typeof SIZE;
-type Palm = (typeof ARMS)["left"]["palm"];
 
 /** A render layer + its cursor light, masked to the layer's own shape. */
 function Layer({ src, size = SIZE }: { src: string; size?: Size }) {
@@ -101,11 +101,11 @@ function Layer({ src, size = SIZE }: { src: string; size?: Size }) {
 }
 
 /** An arm as a joint chain: shoulder > elbow > wrist, each segment nested in its parent. */
-function Arm({ joints, layers, palm }: { joints: string[]; layers: string[]; palm: Palm }) {
+function Arm({ joints, layers, palm }: { joints: string[]; layers: string[]; palm?: Palm }) {
   return joints.reduceRight<ReactNode>(
     (inner, joint, i) => (
       <div className={`${s.part} ${joint}`}>
-        {inner ? <Layer src={layers[i]} /> : <Hand src={layers[i]} palm={palm} />}
+        {inner || !palm ? <Layer src={layers[i]} /> : <Hand src={layers[i]} palm={palm} />}
         {inner}
       </div>
     ),
@@ -113,7 +113,7 @@ function Arm({ joints, layers, palm }: { joints: string[]; layers: string[]; pal
   );
 }
 
-/** The relaxed hand and the open palm on one wrist; the intro crossfades them. */
+/** The relaxed hand and the open palm on one wrist; the wave crossfades them. */
 function Hand({ src, palm }: { src: string; palm: Palm }) {
   const [left, top, width, height] = palm.box;
   return (

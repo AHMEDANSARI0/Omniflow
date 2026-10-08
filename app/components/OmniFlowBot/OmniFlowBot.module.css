@@ -8,13 +8,15 @@
  * are the FINAL pose, so reduced motion / animated={false} simply drop
  * the animations; intro={false} drops only the intro performance.
  * Intro (loops every 12s, timeline in tools/bot-render/motion.py): greeting
- * + front wave (open palm to the viewer) 0-2.7s, intro line + open hands
- * 2.7-4.9s, channel line + right arc presented to the viewer 4.9-6.9s,
- * Soon line + left arc 6.9-8.9s, closing line + welcome with both palms
- * 8.9-11.95s, then again. Arms are shoulder > elbow > wrist chains; each
- * joint has its own timeline (the elbow lags the shoulder, the wrist
- * follows through), with anticipation, overshoot and asymmetric arms; a
- * foreshortened forearm brings the hand toward the viewer.
+ * + a natural hello wave (open palm to the viewer) 0-2.7s, intro line +
+ * explaining hands 2.7-4.9s, channel line + right arc presented to the
+ * viewer 4.9-6.9s, Soon line + left arc 6.9-8.9s, closing line + welcome
+ * 8.9-11.95s, then again; hands stay relaxed (palms to the body) except
+ * the waving one. Arms are shoulder > elbow > wrist chains; each
+ * joint has its own timeline (the elbow leads the lift, the wrist follows
+ * through), with anticipation and asymmetric arms; a foreshortened forearm
+ * brings the hand toward the viewer, poses on the way are passed through
+ * without stopping, and the palm opens only for the wave.
  * --lx / --ly (-1..1, slow: head / body / light), --ex / --ey (fast:
  * eyes) and --lp (0..1, closeness) come from BotMotion.
  */
@@ -254,22 +256,16 @@
   animation: bot-hand-r 12s var(--bot-swing) infinite;
 }
 
-/* open palm over the relaxed hand (resting pose = relaxed) */
+/* the waving hand's open palm over the relaxed hand (resting pose = relaxed, palms to the body);
+   it unfolds from the wrist (% of its own box) */
 .palm {
   position: absolute;
   opacity: 0;
 }
 
-.palmL {
-  animation: bot-palm-l 12s var(--bot-ease) infinite;
-}
-
 .palmR {
+  transform-origin: 29.65% 10.93%;
   animation: bot-palm-r 12s var(--bot-ease) infinite;
-}
-
-.gripL {
-  animation: bot-grip-l 12s var(--bot-ease) infinite;
 }
 
 .gripR {
@@ -528,7 +524,7 @@
 
 /* ---------- intro off / touch screens / pause / still ---------- */
 
-.root[data-nointro] :is(.speech, .figure, .line, .glance, .node, .links line, .smile, .display, .lean, .foreL, .foreR, .handL, .handR, .palmL, .palmR, .gripL, .gripR) {
+.root[data-nointro] :is(.speech, .figure, .line, .glance, .node, .links line, .smile, .display, .lean, .foreL, .foreR, .handL, .handR, .palmR, .gripR) {
   animation: none;
 }
 
@@ -727,53 +723,82 @@
   0% {
     transform: none;
   }
-  2.5% {
+  1.67% {
     transform: rotate(3deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.706);
   }
-  7.92% {
-    transform: rotate(-62deg);
+  3.5% {
+    transform: rotate(-4deg);
+    animation-timing-function: cubic-bezier(0.333, 0.374, 0.667, 0.437);
   }
-  9.58% {
-    transform: rotate(-58deg);
+  5.5% {
+    transform: rotate(-10deg);
+    animation-timing-function: cubic-bezier(0.333, 0.141, 0.667, 0.644);
   }
-  12.08% {
-    transform: rotate(-61deg);
+  6.67% {
+    transform: rotate(-24deg);
+    animation-timing-function: cubic-bezier(0.333, 0.311, 0.667, 0.726);
   }
-  14.58% {
-    transform: rotate(-59deg);
+  7.83% {
+    transform: rotate(-40deg);
+    animation-timing-function: cubic-bezier(0.333, 0.406, 0.667, 1);
   }
-  17.08% {
+  10% {
     transform: rotate(-60deg);
   }
-  19.17% {
-    transform: rotate(-56deg);
+  12.08% {
+    transform: rotate(-58deg);
   }
-  22.08% {
-    transform: rotate(-8deg);
+  14.17% {
+    transform: rotate(-61deg);
   }
-  23.75% {
-    transform: none;
+  16.25% {
+    transform: rotate(-59deg);
   }
-  25.42% {
+  18.33% {
+    transform: rotate(-60deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.413);
+  }
+  20% {
+    transform: rotate(-58deg);
+    animation-timing-function: cubic-bezier(0.333, 0.072, 0.667, 0.607);
+  }
+  21.83% {
+    transform: rotate(-40deg);
+    animation-timing-function: cubic-bezier(0.333, 0.282, 0.667, 0.689);
+  }
+  23% {
+    transform: rotate(-24deg);
+    animation-timing-function: cubic-bezier(0.333, 0.356, 0.667, 0.859);
+  }
+  24.17% {
+    transform: rotate(-10deg);
+    animation-timing-function: cubic-bezier(0.333, 0.563, 0.667, 1);
+  }
+  26.17% {
+    transform: rotate(-4deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.878);
+  }
+  28.75% {
     transform: rotate(-12deg);
+    animation-timing-function: cubic-bezier(0.333, 0.553, 0.667, 1);
   }
-  29.17% {
+  31.67% {
     transform: rotate(-14deg);
   }
-  32.5% {
+  34.58% {
     transform: rotate(-12deg);
   }
-  35.83% {
+  37.5% {
     transform: rotate(-15deg);
   }
-  39.58% {
-    transform: rotate(-2deg);
-  }
   40.42% {
-    transform: rotate(2deg);
+    transform: rotate(-2deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.935);
   }
   42.92% {
     transform: rotate(-30deg);
+    animation-timing-function: cubic-bezier(0.333, 0.602, 0.667, 1);
   }
   45.42% {
     transform: rotate(-33deg);
@@ -783,15 +808,19 @@
   }
   50.42% {
     transform: rotate(-33deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.452);
   }
   52.92% {
     transform: rotate(-30deg);
+    animation-timing-function: cubic-bezier(0.333, 0.088, 0.667, 0.894);
   }
   56.67% {
     transform: rotate(-2deg);
+    animation-timing-function: cubic-bezier(0.333, 0.496, 0.667, 0.856);
   }
   57.92% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0.623, 0.667, 1);
   }
   63.33% {
     transform: rotate(2deg);
@@ -810,9 +839,11 @@
   }
   88.33% {
     transform: rotate(-35deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.856);
   }
   94.17% {
     transform: rotate(-4deg);
+    animation-timing-function: cubic-bezier(0.333, 0.478, 0.667, 1);
   }
   96.67%,
   100% {
@@ -824,53 +855,81 @@
   0% {
     transform: none;
   }
-  2.5% {
+  1.67% {
     transform: rotate(4deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.618);
   }
-  7.92% {
-    transform: rotate(-108deg) scale(1, 1);
+  3.5% {
+    transform: rotate(-30deg) scale(1, 0.62);
+    animation-timing-function: cubic-bezier(0.333, 0.283, 0.667, 0.733);
   }
-  9.58% {
-    transform: rotate(-112deg) scale(1, 1);
+  5.5% {
+    transform: rotate(-80deg) scale(1, 0.42);
+    animation-timing-function: cubic-bezier(0.333, 0.389, 0.667, 0.714);
+  }
+  6.67% {
+    transform: rotate(-100deg) scale(1, 0.6);
+    animation-timing-function: cubic-bezier(0.333, 0.381, 0.667, 1);
+  }
+  7.83% {
+    transform: rotate(-115deg) scale(1, 0.85);
+  }
+  10% {
+    transform: rotate(-110deg) scale(1, 1);
   }
   12.08% {
-    transform: rotate(-104deg) scale(1, 1);
-  }
-  14.58% {
     transform: rotate(-112deg) scale(1, 1);
   }
-  17.08% {
+  14.17% {
+    transform: rotate(-104deg) scale(1, 1);
+  }
+  16.25% {
+    transform: rotate(-112deg) scale(1, 1);
+  }
+  18.33% {
     transform: rotate(-105deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.549);
   }
-  19.17% {
+  20% {
     transform: rotate(-108deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0.212, 0.667, 1);
   }
-  22.08% {
-    transform: rotate(-14deg) scale(1, 1);
+  21.83% {
+    transform: rotate(-115deg) scale(1, 0.85);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.619);
   }
-  23.75% {
-    transform: none;
+  23% {
+    transform: rotate(-100deg) scale(1, 0.6);
+    animation-timing-function: cubic-bezier(0.333, 0.286, 0.667, 0.611);
   }
-  25.42% {
+  24.17% {
+    transform: rotate(-80deg) scale(1, 0.42);
+    animation-timing-function: cubic-bezier(0.333, 0.267, 0.667, 0.708);
+  }
+  26.17% {
+    transform: rotate(-30deg) scale(1, 0.62);
+    animation-timing-function: cubic-bezier(0.333, 0.378, 0.667, 0.916);
+  }
+  28.75% {
     transform: rotate(20deg) scale(1, 0.85);
+    animation-timing-function: cubic-bezier(0.333, 0.593, 0.667, 1);
   }
-  29.17% {
+  31.67% {
     transform: rotate(28deg) scale(1, 0.82);
   }
-  32.5% {
+  34.58% {
     transform: rotate(18deg) scale(1, 0.85);
   }
-  35.83% {
+  37.5% {
     transform: rotate(30deg) scale(1, 0.82);
   }
-  39.58% {
-    transform: rotate(4deg) scale(1, 1);
-  }
   40.42% {
-    transform: rotate(-2deg) scale(1, 1);
+    transform: rotate(4deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.905);
   }
   42.92% {
     transform: rotate(40deg) scale(1, 0.85);
+    animation-timing-function: cubic-bezier(0.333, 0.571, 0.667, 1);
   }
   45.42% {
     transform: rotate(46deg) scale(1, 0.83);
@@ -880,15 +939,19 @@
   }
   50.42% {
     transform: rotate(46deg) scale(1, 0.83);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.482);
   }
   52.92% {
     transform: rotate(40deg) scale(1, 0.85);
+    animation-timing-function: cubic-bezier(0.333, 0.123, 0.667, 0.919);
   }
   56.67% {
     transform: rotate(2deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0.514, 0.667, 0.772);
   }
   57.92% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0.494, 0.667, 1);
   }
   63.33% {
     transform: rotate(-4deg) scale(1, 1);
@@ -907,9 +970,11 @@
   }
   88.33% {
     transform: rotate(43deg) scale(1, 0.84);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.881);
   }
   94.17% {
     transform: rotate(4deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0.497, 0.667, 1);
   }
   96.67%,
   100% {
@@ -919,49 +984,81 @@
 
 @keyframes bot-hand-r {
   0%,
-  2.5% {
+  1.67% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.618);
   }
-  7.92% {
-    transform: scale(1, 1) rotate(-4deg);
+  3.5% {
+    transform: scale(1, 1.613) rotate(-18deg);
+    animation-timing-function: cubic-bezier(0.333, 0.283, 0.667, 0.733);
   }
-  9.58% {
-    transform: scale(1, 1) rotate(12deg);
+  5.5% {
+    transform: scale(1, 2.381) rotate(-55deg);
+    animation-timing-function: cubic-bezier(0.333, 0.389, 0.667, 0.714);
   }
-  12.08% {
-    transform: scale(1, 1) rotate(-10deg);
+  6.67% {
+    transform: scale(1, 1.667) rotate(-25deg);
+    animation-timing-function: cubic-bezier(0.333, 0.381, 0.667, 1);
   }
-  14.58% {
-    transform: scale(1, 1) rotate(12deg);
-  }
-  17.08% {
-    transform: scale(1, 1) rotate(-8deg);
-  }
-  19.17% {
-    transform: scale(1, 1) rotate(4deg);
-  }
-  22.08%,
-  23.75% {
-    transform: none;
-  }
-  25.42% {
+  7.83% {
     transform: scale(1, 1.176) rotate(-6deg);
   }
-  29.17% {
+  10% {
+    transform: scale(1, 1) rotate(6deg);
+  }
+  12.08% {
+    transform: scale(1, 1) rotate(12deg);
+  }
+  14.17% {
+    transform: scale(1, 1) rotate(-10deg);
+  }
+  16.25% {
+    transform: scale(1, 1) rotate(12deg);
+  }
+  18.33% {
+    transform: scale(1, 1) rotate(-8deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.549);
+  }
+  20% {
+    transform: scale(1, 1) rotate(4deg);
+    animation-timing-function: cubic-bezier(0.333, 0.212, 0.667, 1);
+  }
+  21.83% {
+    transform: scale(1, 1.176) rotate(-6deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.619);
+  }
+  23% {
+    transform: scale(1, 1.667) rotate(-25deg);
+    animation-timing-function: cubic-bezier(0.333, 0.286, 0.667, 0.611);
+  }
+  24.17% {
+    transform: scale(1, 2.381) rotate(-55deg);
+    animation-timing-function: cubic-bezier(0.333, 0.267, 0.667, 0.708);
+  }
+  26.17% {
+    transform: scale(1, 1.613) rotate(-18deg);
+    animation-timing-function: cubic-bezier(0.333, 0.378, 0.667, 0.916);
+  }
+  28.75% {
+    transform: scale(1, 1.176) rotate(-6deg);
+    animation-timing-function: cubic-bezier(0.333, 0.593, 0.667, 1);
+  }
+  31.67% {
     transform: scale(1, 1.22) rotate(-10deg);
   }
-  32.5% {
+  34.58% {
     transform: scale(1, 1.176) rotate(-4deg);
   }
-  35.83% {
+  37.5% {
     transform: scale(1, 1.22) rotate(-10deg);
   }
-  39.58%,
   40.42% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.905);
   }
   42.92% {
     transform: scale(1, 1.176) rotate(-10deg);
+    animation-timing-function: cubic-bezier(0.333, 0.571, 0.667, 1);
   }
   45.42% {
     transform: scale(1, 1.205) rotate(-12deg);
@@ -971,9 +1068,11 @@
   }
   50.42% {
     transform: scale(1, 1.205) rotate(-12deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.482);
   }
   52.92% {
     transform: scale(1, 1.176) rotate(-10deg);
+    animation-timing-function: cubic-bezier(0.333, 0.123, 0.667, 0.919);
   }
   56.67%,
   74.17% {
@@ -987,6 +1086,7 @@
   }
   88.33% {
     transform: scale(1, 1.19) rotate(-11deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.881);
   }
   94.17%,
   100% {
@@ -1001,15 +1101,19 @@
   }
   8.33% {
     transform: rotate(3deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.298);
   }
   20% {
     transform: rotate(2deg);
+    animation-timing-function: cubic-bezier(0.333, 0.088, 0.667, 1);
   }
   22.92% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.876);
   }
   26.67% {
     transform: rotate(12deg);
+    animation-timing-function: cubic-bezier(0.333, 0.55, 0.667, 1);
   }
   30.83% {
     transform: rotate(15deg);
@@ -1019,9 +1123,11 @@
   }
   37.5% {
     transform: rotate(14deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.902);
   }
   40.42% {
     transform: rotate(2deg);
+    animation-timing-function: cubic-bezier(0.333, 0.633, 0.667, 1);
   }
   46.67% {
     transform: rotate(-2deg);
@@ -1031,9 +1137,11 @@
   }
   57.08% {
     transform: rotate(-2deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.943);
   }
   59.58% {
     transform: rotate(30deg);
+    animation-timing-function: cubic-bezier(0.333, 0.61, 0.667, 1);
   }
   62.08% {
     transform: rotate(33deg);
@@ -1043,12 +1151,15 @@
   }
   67.08% {
     transform: rotate(33deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.936);
   }
   70.83% {
     transform: rotate(2deg);
+    animation-timing-function: cubic-bezier(0.333, 0.555, 0.667, 0.667);
   }
   72.92% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0.333, 0.667, 1);
   }
   75% {
     transform: rotate(-2deg);
@@ -1061,9 +1172,11 @@
   }
   89.17% {
     transform: rotate(35deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.864);
   }
   94.58% {
     transform: rotate(4deg);
+    animation-timing-function: cubic-bezier(0.333, 0.487, 0.667, 1);
   }
   97.08%,
   100% {
@@ -1077,15 +1190,19 @@
   }
   8.33% {
     transform: rotate(-5deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.238);
   }
   20% {
     transform: rotate(-4deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0.048, 0.667, 1);
   }
   22.92% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.776);
   }
   26.67% {
     transform: rotate(-18deg) scale(1, 0.86);
+    animation-timing-function: cubic-bezier(0.333, 0.447, 0.667, 1);
   }
   30.83% {
     transform: rotate(-28deg) scale(1, 0.82);
@@ -1095,9 +1212,11 @@
   }
   37.5% {
     transform: rotate(-26deg) scale(1, 0.83);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.894);
   }
   40.42% {
     transform: rotate(-4deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0.624, 0.667, 1);
   }
   46.67% {
     transform: rotate(4deg) scale(1, 1);
@@ -1107,9 +1226,11 @@
   }
   57.08% {
     transform: rotate(2deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.917);
   }
   59.58% {
     transform: rotate(-40deg) scale(1, 0.85);
+    animation-timing-function: cubic-bezier(0.333, 0.583, 0.667, 1);
   }
   62.08% {
     transform: rotate(-46deg) scale(1, 0.83);
@@ -1119,12 +1240,15 @@
   }
   67.08% {
     transform: rotate(-46deg) scale(1, 0.83);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.953);
   }
   70.83% {
     transform: rotate(-2deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0.57, 0.667, 0.667);
   }
   72.92% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0.333, 0.667, 1);
   }
   75% {
     transform: rotate(2deg) scale(1, 1);
@@ -1137,9 +1261,11 @@
   }
   89.17% {
     transform: rotate(-43deg) scale(1, 0.84);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.888);
   }
   94.58% {
     transform: rotate(-4deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.333, 0.506, 0.667, 1);
   }
   97.08%,
   100% {
@@ -1153,13 +1279,16 @@
   }
   8.33% {
     transform: scale(1, 1) rotate(2deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.238);
   }
   20%,
   22.92% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.776);
   }
   26.67% {
     transform: scale(1, 1.163) rotate(6deg);
+    animation-timing-function: cubic-bezier(0.333, 0.447, 0.667, 1);
   }
   30.83% {
     transform: scale(1, 1.22) rotate(10deg);
@@ -1169,13 +1298,16 @@
   }
   37.5% {
     transform: scale(1, 1.205) rotate(9deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.894);
   }
   40.42%,
   57.08% {
     transform: none;
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.917);
   }
   59.58% {
     transform: scale(1, 1.176) rotate(10deg);
+    animation-timing-function: cubic-bezier(0.333, 0.583, 0.667, 1);
   }
   62.08% {
     transform: scale(1, 1.205) rotate(12deg);
@@ -1185,6 +1317,7 @@
   }
   67.08% {
     transform: scale(1, 1.205) rotate(12deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.953);
   }
   70.83%,
   75% {
@@ -1198,6 +1331,7 @@
   }
   89.17% {
     transform: scale(1, 1.19) rotate(11deg);
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0.888);
   }
   94.58%,
   100% {
@@ -1205,61 +1339,35 @@
   }
 }
 
+/* the waving hand's open palm unfolds from the wrist for the wave */
 @keyframes bot-palm-r {
   0%,
-  4.58% {
+  7% {
     opacity: 0;
+    transform: scale(0.85);
   }
-  6.67%,
-  93.75% {
+  7.83%,
+  23.67% {
     opacity: 1;
+    transform: none;
   }
-  95.83%,
+  24.5%,
   100% {
     opacity: 0;
+    transform: scale(0.85);
   }
 }
 
 @keyframes bot-grip-r {
   0%,
-  5.42% {
+  7.42% {
     opacity: 1;
   }
-  7.08%,
-  93.33% {
+  7.83%,
+  23.67% {
     opacity: 0;
   }
-  95%,
-  100% {
-    opacity: 1;
-  }
-}
-
-@keyframes bot-palm-l {
-  0%,
-  24.17% {
-    opacity: 0;
-  }
-  26.25%,
-  94.17% {
-    opacity: 1;
-  }
-  96.25%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes bot-grip-l {
-  0%,
-  25% {
-    opacity: 1;
-  }
-  26.67%,
-  93.75% {
-    opacity: 0;
-  }
-  95.42%,
+  24.08%,
   100% {
     opacity: 1;
   }

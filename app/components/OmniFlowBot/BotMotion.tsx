@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, type HTMLAttributes } from "react";
 
-/** The CSS intro loops every 12s; taps during the first run are ignored. */
-const INTRO_MS = 12000;
 /** Eyes lead, head / body / light follow: two easings of one pointer. */
 const EASE_EYES = 0.2;
 const EASE = 0.08;
@@ -21,7 +19,8 @@ const clamp = (value: number) => Math.max(-1, Math.min(1, value));
  *   custom properties (no React state), so the eyes lead and the head
  *   follows like a person's
  * - data-paused while offscreen, so the CSS animations stop
- * - a short wave on touch, after the intro (tap = false turns it off)
+ * - a short wave on a touch tap, only when the intro is off (the looping
+ *   intro owns the arms and waves itself; tap = false turns it off)
  * Nothing runs with prefers-reduced-motion or data-static.
  */
 export default function BotMotion({
@@ -42,7 +41,6 @@ export default function BotMotion({
     const el = ref.current;
     if (!el || el.hasAttribute("data-static") || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const born = el.hasAttribute("data-nointro") ? -INTRO_MS : performance.now();
     let visible = true;
     let raf = 0;
     let waveTimer = 0;
@@ -87,8 +85,9 @@ export default function BotMotion({
       pointer = { x: box.left + box.width * 0.5, y: box.top + box.height * 0.45, near: false };
       schedule();
     };
-    const onTap = (event: PointerEvent) => {
-      if (event.pointerType === "mouse" || waveTimer || performance.now() - born < INTRO_MS) return;
+    // click, not pointerdown: a finger that scrolls the page is not a tap
+    const onTap = (event: MouseEvent) => {
+      if ((event as PointerEvent).pointerType === "mouse" || waveTimer) return;
       el.classList.add(waveClass);
       waveTimer = window.setTimeout(() => {
         el.classList.remove(waveClass);
@@ -102,7 +101,7 @@ export default function BotMotion({
       if (visible) schedule();
     });
     observer.observe(el);
-    if (tap) el.addEventListener("pointerdown", onTap, { passive: true });
+    if (tap && el.hasAttribute("data-nointro")) el.addEventListener("click", onTap, { passive: true });
 
     const tracking = track && matchMedia("(hover: hover) and (pointer: fine)").matches;
     if (tracking) {
@@ -113,7 +112,7 @@ export default function BotMotion({
 
     return () => {
       observer.disconnect();
-      el.removeEventListener("pointerdown", onTap);
+      el.removeEventListener("click", onTap);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("scroll", schedule);
       document.documentElement.removeEventListener("mouseleave", onLeave);

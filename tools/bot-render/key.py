@@ -6,7 +6,7 @@ background share follows from the chroma: (1-a) = (P - P_g) / (K - K_g).
 Pixels not connected to the background become fully opaque (glossy
 white reflects a little magenta, which must not turn into holes), and
 the colour is neutralised (no magenta tint left on the edges).
-Writes robot_rgba.png and palms_rgba.png (full size, git-ignored) for
+Writes robot_rgba.png and wave_rgba.png (full size, git-ignored) for
 split.py.
 """
 import os
@@ -16,9 +16,9 @@ from PIL import Image
 from scipy import ndimage
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# main render, and the same render with open palms facing the camera
-# (1024 px, upscaled to the main render's size - it lines up 1:1)
-RENDERS = (("omniflow-bot-render.webp", "robot_rgba.png"), ("omniflow-bot-render-palms.webp", "palms_rgba.png"))
+# main render, and the same robot waving (1024 px, upscaled to the main
+# render's size); split.py only takes the waving hand from it
+RENDERS = (("omniflow-bot-render.webp", "robot_rgba.png"), ("omniflow-bot-render-wave.webp", "wave_rgba.png"))
 
 
 def key(src, dst):
