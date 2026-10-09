@@ -36,6 +36,11 @@ const SECTIONS = [
     title: "Deletion and control",
     body: "You can remove conversations, customers and knowledge from the portal at any time. Account-level deletion is available on request and removes your workspace data from production systems.",
   },
+  // §260: website analytics notice (keep in step with db/site_analytics.sql and the 90-day setting).
+  {
+    title: "Website analytics",
+    body: "We measure how the public website is used (page views, time on a page, clicks on sign-up and contact buttons, and form submissions) so we can improve it. For this measurement we use no cookies and no local storage, and we do not store IP addresses. Each visit gets a visitor code that is a one-way hash which changes every day, so visits cannot be linked across days. We record the page, the website that referred the visit, campaign tags, the device type, the browser family, the language and the country. We never record names, contact details or chat content. Visit records are kept for up to 90 days and then deleted. We keep no long-term statistics. Browsers with Do Not Track turned on are not measured.",
+  },
   {
     title: "Changes to this policy",
     body: "As OmniFlow evolves, this page will reflect what changed and when. Material changes will be announced before they take effect.",
@@ -73,7 +78,7 @@ export default function PrivacyPage() {
           ))}
           <Reveal>
             <p className="text-center text-xs text-ink-3">
-              Last updated: September 2026 · Questions? Use the contact page.
+              Last updated: October 2026 · Questions? Use the contact page.
             </p>
           </Reveal>
         </div>

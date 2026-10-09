@@ -434,9 +434,9 @@ def read(path):
     return open(P13 + path, encoding="utf8").read()
 
 
-SIDEBAR = read("app/admin/components/AdminSidebar.tsx")
-check("sidebar integrations", "/admin/integrations" in SIDEBAR
-      and "Integrations" in SIDEBAR, "nav")
+ADMIN_NAV_SRC = read("lib/omniflow/admin-nav.ts")  # §259: the nav list moved here
+check("sidebar integrations (plug icon, §259)", "/admin/integrations" in ADMIN_NAV_SRC
+      and "Integrations" in ADMIN_NAV_SRC and 'icon: "plug"' in ADMIN_NAV_SRC, "nav")
 PAGE = read("app/admin/(panel)/integrations/page.tsx")
 check("admin page guards session", "supabase.auth.getUser" in PAGE
       and "/admin/login" in PAGE, "guard")

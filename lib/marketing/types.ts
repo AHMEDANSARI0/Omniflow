@@ -3,6 +3,7 @@
  * name so content stays plain data; app/components/ui/Icon.tsx maps
  * each name to its SVG component.
  */
+// §259: "search" added for the admin SEO section.
 export const ICON_NAMES = [
   "message",
   "messages",
@@ -31,6 +32,7 @@ export const ICON_NAMES = [
   "database",
   "plug",
   "scan",
+  "search",
   "workflow",
   "route",
   "bell",

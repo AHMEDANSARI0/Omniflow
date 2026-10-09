@@ -37,9 +37,11 @@ check("copy locked keys", 'const LOCKED_KEYS = new Set(["id", "tone"]);' in COPY
 check("copy one sanitizer", "export function sanitizeCopy<K extends CopyBlockKey>(key: K, raw: unknown): CopyValue<K>" in COPY, "sanitize")
 check("copy own-key guard", "Object.prototype.hasOwnProperty.call(COPY_BLOCKS, value)" in COPY, "proto")
 check("copy stores only edits", "export function copyOverrides<K extends CopyBlockKey>" in COPY, "overrides")
-check("copy hub icons safe glyphs",
-      all(g in "◈⑂✶▷◷✓⇄⚑■⁙◉⇉▽" for g in re.findall(r'hubIcon: "(.)"', COPY)) and len(re.findall(r'hubIcon: "', COPY)) == 8,
-      "icon law")
+ICON_NAMES = read("lib/marketing/types.ts")
+ICON_NAMES = ICON_NAMES[ICON_NAMES.index("ICON_NAMES = ["):].split("]", 1)[0]
+check("copy hub icons are registry names (§259)",
+      all(('"%s"' % n) in ICON_NAMES for n in re.findall(r'hubIcon: "([a-z\-]+)"', COPY))
+      and len(re.findall(r'hubIcon: "', COPY)) == 8, "icon law")
 FIELDS = read("lib/marketing/fields.ts")
 check("fields shared", "export function cleanValue(field: ListField, raw: unknown): unknown" in FIELDS
       and 'from "./fields"' in read("lib/marketing/lists.ts"), "one vocabulary")

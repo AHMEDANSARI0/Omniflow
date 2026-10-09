@@ -5,25 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import SignOutButton from "./SignOutButton";
+import Icon from "../../components/ui/Icon";
+import { ADMIN_NAV } from "../../../lib/omniflow/admin-nav";
+import {
+  ArrowUpRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Menu,
+  X,
+} from "lucide-react";
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: string;
-  enabled: boolean;
-}
-
-const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/admin", icon: "◈", enabled: true },
-  { label: "SEO", href: "/admin/seo", icon: "◎", enabled: true },
-  { label: "Content", href: "/admin/content", icon: "✦", enabled: true },
-  { label: "Leads", href: "/admin/leads", icon: "◇", enabled: true },
-  { label: "Customers", href: "/admin/customers", icon: "◉", enabled: true },
-  { label: "Integrations", href: "/admin/integrations", icon: "◍", enabled: true },
-  { label: "AI Control", href: "/admin/ai-control", icon: "\u2736", enabled: true },
-  { label: "Model Router", href: "/admin/ai-router", icon: "\u21c4", enabled: true },
-  { label: "Settings", href: "/admin/settings", icon: "⌘", enabled: true },
-];
+// §259: one nav list (ADMIN_NAV) feeds the sidebar and the dashboard.
+const navItems = ADMIN_NAV;
 
 function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
@@ -72,7 +65,7 @@ function NavLinks({
               }`}
             >
               <span className="flex items-center gap-3 text-sm text-ink-3">
-                <span className="text-xs">{item.icon}</span>
+                <Icon name={item.icon} className="h-4 w-4 shrink-0" />
                 {!collapsed && item.label}
               </span>
               {!collapsed && (
@@ -98,8 +91,8 @@ function NavLinks({
                 : "border-transparent text-ink-3 hover:bg-line/60 hover:text-ink"
             }`}
           >
-            <span className={`text-xs ${isActive ? "text-brand" : ""}`}>
-              {item.icon}
+            <span className={`shrink-0 ${isActive ? "text-brand" : ""}`}>
+              <Icon name={item.icon} className="h-4 w-4" />
             </span>
             {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
           </Link>
@@ -126,7 +119,7 @@ function SidebarFooter({
           title="View website"
           className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-line/60 hover:text-ink-2"
         >
-          ↗
+          <ArrowUpRight className="h-4 w-4" aria-hidden />
         </a>
         <SignOutButton compact />
       </div>
@@ -141,7 +134,7 @@ function SidebarFooter({
         rel="noopener noreferrer"
         className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-ink-3 transition-colors duration-200 hover:bg-line/60 hover:text-ink-2"
       >
-        <span>↗</span> View website
+        <ArrowUpRight className="h-3.5 w-3.5 shrink-0" aria-hidden /> View website
       </a>
       <div className="px-3">
         <p className="truncate text-[11px] text-ink-3" title={userEmail}>
@@ -190,7 +183,11 @@ export default function AdminSidebar({
             title={collapsed ? "Expand" : "Collapse"}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-soft text-xs text-ink-3 transition-colors duration-200 hover:border-line-2 hover:text-ink"
           >
-            {collapsed ? "»" : "«"}
+            {collapsed ? (
+              <ChevronsRight className="h-4 w-4" aria-hidden />
+            ) : (
+              <ChevronsLeft className="h-4 w-4" aria-hidden />
+            )}
           </button>
         </div>
 
@@ -211,7 +208,11 @@ export default function AdminSidebar({
           aria-expanded={mobileOpen}
           className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white shadow-card text-ink-2"
         >
-          {mobileOpen ? "✕" : "☰"}
+          {mobileOpen ? (
+            <X className="h-4 w-4" aria-hidden />
+          ) : (
+            <Menu className="h-4 w-4" aria-hidden />
+          )}
         </button>
       </div>
 
@@ -242,7 +243,7 @@ export default function AdminSidebar({
                   aria-label="Close menu"
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-3"
                 >
-                  ✕
+                  <X className="h-4 w-4" aria-hidden />
                 </button>
               </div>
               <div className="flex-1">

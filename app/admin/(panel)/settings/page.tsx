@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import PasswordForm from "./PasswordForm";
+// §259: the account card uses the registry icon.
+import Icon from "../../../components/ui/Icon";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -32,7 +34,7 @@ export default async function SettingsPage() {
 
         <div className="flex items-center gap-3 rounded-xl border border-line bg-white shadow-card px-4 py-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-sm text-brand">
-            ◈
+            <Icon name="user" className="h-4 w-4" />
           </div>
           <div>
             <p className="text-sm font-medium text-ink">{user.email}</p>

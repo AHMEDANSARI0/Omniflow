@@ -40,6 +40,7 @@ import {
   Route,
   Scale,
   ScanSearch,
+  Search,
   Send,
   Settings,
   Sheet,
@@ -63,6 +64,7 @@ import {
 } from "lucide-react";
 import type { IconName } from "../../../lib/marketing/types";
 
+// §259: "search" (lucide Search) is the admin SEO icon.
 const REGISTRY: Record<IconName, LucideIcon> = {
   message: MessageCircle,
   messages: MessagesSquare,
@@ -91,6 +93,7 @@ const REGISTRY: Record<IconName, LucideIcon> = {
   database: Database,
   plug: PlugZap,
   scan: ScanSearch,
+  search: Search,
   workflow: Workflow,
   route: Route,
   bell: Bell,

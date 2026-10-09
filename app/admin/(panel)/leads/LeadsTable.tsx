@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+// §259: lucide icons replace the symbol glyphs.
+import { Check, TriangleAlert, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   updateLeadStatus,
@@ -119,7 +121,7 @@ function LeadRow({
             aria-label={`Delete lead ${lead.name}`}
             className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink-3 transition-colors duration-200 hover:border-red-400/30 hover:text-danger disabled:cursor-not-allowed"
           >
-            ✕
+            <X className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
       </td>
@@ -148,7 +150,11 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
                   inviteResult.success ? "text-ok" : "text-danger"
                 }`}
               >
-                {inviteResult.success ? "✓ " : "✕ "}
+                {inviteResult.success ? (
+                  <Check className="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden />
+                ) : (
+                  <X className="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden />
+                )}
                 {inviteResult.message}
               </p>
 
@@ -162,7 +168,7 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
                     Password: {inviteResult.tempPassword}
                   </code>
                   <p className="text-[11px] text-ink-3">
-                    ⚠ This password will not be shown again — copy it now and
+                    <TriangleAlert className="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden />This password will not be shown again — copy it now and
                     share it securely with the client.
                   </p>
                 </div>
@@ -175,7 +181,7 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
               aria-label="Dismiss"
               className="shrink-0 rounded-lg border border-line px-2 py-1 text-xs text-ink-3 hover:text-ink"
             >
-              ✕
+              <X className="h-3.5 w-3.5" aria-hidden />
             </button>
           </div>
         </div>

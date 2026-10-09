@@ -26,6 +26,8 @@ import { FEATURE_VISUAL_KINDS } from "./sections";
 import { AUTOMATION_TEMPLATES, TEMPLATE_CATEGORIES } from "./templates";
 import { STORY_NODES } from "./workflow";
 
+import type { IconName } from "./types";
+
 export type { ListField };
 
 export type ListSpec = {
@@ -33,7 +35,7 @@ export type ListSpec = {
   section: string;
   title: string;
   description: string;
-  hubIcon: string;
+  hubIcon: IconName; // §259: a registry name, not a symbol glyph
   /** Singular noun for buttons ("Add template"). */
   itemLabel: string;
   /** Field shown as each item's heading in the editor. */
@@ -59,7 +61,7 @@ export const MARKETING_LISTS = {
     section: "marketing_templates",
     title: "Automation templates",
     description: "The template cards and their steps in the homepage templates section.",
-    hubIcon: "⑂",
+    hubIcon: "layers",
     itemLabel: "template",
     titleKey: "title",
     idKey: "id",
@@ -85,7 +87,7 @@ export const MARKETING_LISTS = {
     section: "marketing_integrations",
     title: "Integrations",
     description: "Channels and tools with their honest status, used on the homepage, the hero chips and /integrations.",
-    hubIcon: "⇄",
+    hubIcon: "plug",
     itemLabel: "integration",
     titleKey: "name",
     idKey: "id",
@@ -120,7 +122,7 @@ export const MARKETING_LISTS = {
     section: "marketing_demo",
     title: "Live demo scenarios",
     description: "The conversations played step by step in the homepage live demo.",
-    hubIcon: "▷",
+    hubIcon: "bot",
     itemLabel: "scenario",
     titleKey: "label",
     idKey: "id",
@@ -143,7 +145,7 @@ export const MARKETING_LISTS = {
     section: "marketing_story",
     title: "Workflow story nodes",
     description: "The six connected nodes in the homepage intelligence story (message to action).",
-    hubIcon: "⇉",
+    hubIcon: "workflow",
     itemLabel: "node",
     titleKey: "label",
     idKey: "key",
@@ -161,7 +163,7 @@ export const MARKETING_LISTS = {
     section: "marketing_nav",
     title: "Navigation links",
     description: "The top navbar links (desktop and mobile menu).",
-    hubIcon: "⁙",
+    hubIcon: "compass",
     itemLabel: "link",
     titleKey: "label",
     maxItems: 8,
@@ -175,7 +177,7 @@ export const MARKETING_LISTS = {
     section: "marketing_footer",
     title: "Footer links",
     description: "Footer link columns. Links with the same column name are grouped, in this order.",
-    hubIcon: "▽",
+    hubIcon: "list",
     itemLabel: "link",
     titleKey: "label",
     maxItems: 40,
@@ -190,7 +192,7 @@ export const MARKETING_LISTS = {
     section: "marketing_pricing_plans",
     title: "Pricing plans",
     description: "The plan cards on /pricing. Keep prices honest - use \"Coming soon\" until pricing is final.",
-    hubIcon: "■",
+    hubIcon: "cart",
     itemLabel: "plan",
     titleKey: "name",
     maxItems: 4,
@@ -209,7 +211,7 @@ export const MARKETING_LISTS = {
     section: "marketing_feature_pillars",
     title: "Platform pillars",
     description: "The large alternating rows on /features, each with points and a product visual.",
-    hubIcon: "◈",
+    hubIcon: "sparkles",
     itemLabel: "pillar",
     titleKey: "title",
     maxItems: 6,
@@ -232,7 +234,7 @@ export const MARKETING_LISTS = {
     section: "marketing_about_values",
     title: "About page principles",
     description: "The principle cards on /about.",
-    hubIcon: "✶",
+    hubIcon: "heart-hand",
     itemLabel: "principle",
     titleKey: "title",
     maxItems: 8,
@@ -247,7 +249,7 @@ export const MARKETING_LISTS = {
     section: "marketing_security_areas",
     title: "Security page areas",
     description: "The cards on /security. Describe only what OmniFlow implements today.",
-    hubIcon: "◉",
+    hubIcon: "lock",
     itemLabel: "area",
     titleKey: "title",
     maxItems: 12,
@@ -262,7 +264,7 @@ export const MARKETING_LISTS = {
     section: "marketing_use_case_samples",
     title: "Use case sample chats",
     description: "The sample customer message and AI reply shown with each use case tab (in tab order).",
-    hubIcon: "⇄",
+    hubIcon: "message",
     itemLabel: "sample",
     titleKey: "q",
     fixed: true,

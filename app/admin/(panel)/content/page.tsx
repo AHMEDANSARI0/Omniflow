@@ -1,29 +1,33 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import Icon from "../../../components/ui/Icon";
 import { COPY_BLOCKS } from "../../../../lib/marketing/copy";
 import { MARKETING_LISTS } from "../../../../lib/marketing/lists";
+import type { IconName } from "../../../../lib/marketing/types";
 
 interface ContentLink {
   label: string;
   description: string;
   href: string;
-  icon: string;
+  icon: IconName;
 }
 
+// §259: each section gets the icon of what it shows on the website.
 const sections: ContentLink[] = [
-  { label: "Hero", description: "Main headline, description, buttons and channel chips.", href: "/admin/content/hero", icon: "◇" },
-  { label: "AI Intelligence", description: "Section heading and the 3 intelligence pillars.", href: "/admin/content/ai-intelligence", icon: "✦" },
-  { label: "How It Works", description: "Section heading and the 4 workflow steps.", href: "/admin/content/how-it-works", icon: "↗" },
-  { label: "Problem / Solution", description: "The problem framing and OmniFlow's answer.", href: "/admin/content/problem-solution", icon: "◇" },
-  { label: "Features", description: "Capability cards and the section heading.", href: "/admin/content/features", icon: "◇" },
-  { label: "Use cases", description: "The 5 business tabs — headlines, automations and statuses.", href: "/admin/content/use-cases", icon: "◇" },
-  { label: "Why OmniFlow", description: "Section heading and the 4 benefit rows.", href: "/admin/content/why-omniflow", icon: "◆" },
-  { label: "Final CTA", description: "Early-access headline, copy and notes.", href: "/admin/content/final-cta", icon: "◇" },
-  { label: "FAQ", description: "Questions, answers and contact email.", href: "/admin/content/faq", icon: "◎" },
-  { label: "Multi-Channel", description: "Channel cards, workflow strip and section heading.", href: "/admin/content/multi-channel", icon: "◈" },
-  { label: "Footer", description: "Footer description and link labels.", href: "/admin/content/footer", icon: "⌘" },
-  { label: "Trust", description: "The 4 trust pillars and principles strip.", href: "/admin/content/trust", icon: "✦" },
-  { label: "Customer Memory", description: "Section heading, context points and bottom note.", href: "/admin/content/customer-memory", icon: "◉" },
-  { label: "Blog", description: "Write, publish and manage blog articles.", href: "/admin/content/blog", icon: "✎" },
+  { label: "Hero", description: "Main headline, description, buttons and channel chips.", href: "/admin/content/hero", icon: "megaphone" },
+  { label: "AI Intelligence", description: "Section heading and the 3 intelligence pillars.", href: "/admin/content/ai-intelligence", icon: "brain" },
+  { label: "How It Works", description: "Section heading and the 4 workflow steps.", href: "/admin/content/how-it-works", icon: "workflow" },
+  { label: "Problem / Solution", description: "The problem framing and OmniFlow's answer.", href: "/admin/content/problem-solution", icon: "scale" },
+  { label: "Features", description: "Capability cards and the section heading.", href: "/admin/content/features", icon: "zap" },
+  { label: "Use cases", description: "The 5 business tabs — headlines, automations and statuses.", href: "/admin/content/use-cases", icon: "store" },
+  { label: "Why OmniFlow", description: "Section heading and the 4 benefit rows.", href: "/admin/content/why-omniflow", icon: "trending" },
+  { label: "Final CTA", description: "Early-access headline, copy and notes.", href: "/admin/content/final-cta", icon: "target" },
+  { label: "FAQ", description: "Questions, answers and contact email.", href: "/admin/content/faq", icon: "help" },
+  { label: "Multi-Channel", description: "Channel cards, workflow strip and section heading.", href: "/admin/content/multi-channel", icon: "messages" },
+  { label: "Footer", description: "Footer description and link labels.", href: "/admin/content/footer", icon: "map" },
+  { label: "Trust", description: "The 4 trust pillars and principles strip.", href: "/admin/content/trust", icon: "shield" },
+  { label: "Customer Memory", description: "Section heading, context points and bottom note.", href: "/admin/content/customer-memory", icon: "history" },
+  { label: "Blog", description: "Write, publish and manage blog articles.", href: "/admin/content/blog", icon: "book" },
 ];
 
 // Lists and copy blocks: one generic editor each, config-driven.
@@ -72,7 +76,7 @@ export default function ContentHubPage() {
             and hand fields back to the default.
           </p>
         </div>
-        <span className="text-ink-3">→</span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-ink-3" aria-hidden />
       </Link>
 
       <div className="space-y-10">
@@ -88,12 +92,13 @@ export default function ContentHubPage() {
                   className="group rounded-2xl border border-line bg-white p-5 shadow-card transition-colors duration-300 hover:border-brand/20"
                 >
                   <div className="mb-4 flex items-start justify-between">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-sm text-brand">
-                      {link.icon}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-brand">
+                      <Icon name={link.icon} className="h-4 w-4" />
                     </div>
-                    <span className="text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-brand">
-                      →
-                    </span>
+                    <ArrowRight
+                      className="h-4 w-4 text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-brand"
+                      aria-hidden
+                    />
                   </div>
                   <h3 className="text-sm font-semibold text-ink">{link.label}</h3>
                   <p className="mt-1.5 text-xs leading-relaxed text-ink-3">{link.description}</p>

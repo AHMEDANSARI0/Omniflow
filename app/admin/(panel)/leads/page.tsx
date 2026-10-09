@@ -1,6 +1,8 @@
 import { createClient } from "../../../../lib/supabase/server";
 import type { Lead } from "./types";
 import LeadsTable from "./LeadsTable";
+// §259: the empty state uses the registry icon.
+import Icon from "../../../components/ui/Icon";
 
 export default async function LeadsPage() {
   const supabase = await createClient();
@@ -36,7 +38,7 @@ export default async function LeadsPage() {
       {leads.length === 0 ? (
         <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-16 text-center">
           <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white shadow-card text-ink-3">
-            ◇
+            <Icon name="user-plus" className="h-5 w-5" />
           </div>
           <p className="text-sm font-medium text-ink-2">No leads yet</p>
           <p className="mt-1.5 text-xs text-ink-3">

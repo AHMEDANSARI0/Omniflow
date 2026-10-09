@@ -8,6 +8,7 @@ the lib/marketing defaults. Static pins + the functional harness
 (marketing_lists_harness.cjs) that runs the real sanitizer.
 """
 import os
+import re
 import shutil
 import subprocess
 
@@ -94,7 +95,10 @@ check("editor add/remove/move", "const add = () =>" in ED and "const remove = (u
 check("editor reset confirm", "<SaveBar" in ED and "window.confirm(" in read("app/admin/(panel)/content/editor-ui.tsx"), "confirm")
 HUB = read("app/admin/(panel)/content/page.tsx")
 check("hub config driven", "links: Object.entries(MARKETING_LISTS).map(([key, spec]) => ({" in HUB, "hub")
-check("hub icons safe glyphs", all(g in LISTS for g in ("⑂", "⇄", "▷", "⇉", "⁙", "▽")), "icon law")
+ICON_NAMES = TYPES[TYPES.index("ICON_NAMES = ["):].split("]", 1)[0]
+check("hub icons are registry names (§259)",
+      all(('"%s"' % n) in ICON_NAMES for n in re.findall(r'hubIcon: "([a-z\-]+)"', LISTS))
+      and len(re.findall(r'hubIcon: "', LISTS)) == 11, "icon law")
 
 print("== functional (real sanitizer) ==")
 

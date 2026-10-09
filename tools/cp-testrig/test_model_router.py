@@ -296,7 +296,10 @@ def web():
                                   "Models in use", "Routing and failover", "routes_json")))
     check("client page imports types only", "import type {" in page
           and 'from "../../../../lib/omniflow/admin-control-plane"' in page)
-    check("sidebar entry", 'href: "/admin/ai-router"' in read("app/admin/components/AdminSidebar.tsx"))
+    # §259: the nav list lives in lib/omniflow/admin-nav.ts; the sidebar reads it
+    check("sidebar entry (route icon, §259)",
+          'href: "/admin/ai-router"' in read("lib/omniflow/admin-nav.ts")
+          and 'icon: "route"' in read("lib/omniflow/admin-nav.ts"))
     lib = read("lib/omniflow/admin-control-plane.ts")
     check("admin client: router group, overview, test, CP 400 message kept",
           all(s in lib for s in ('| "router";', "export async function getAdminModelRouter(",

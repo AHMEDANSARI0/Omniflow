@@ -40,12 +40,14 @@ import {
   WHY_OMNIFLOW_STATES,
 } from "./sections";
 
+import type { IconName } from "./types";
+
 export type CopyBlockSpec = {
   /** `site_content.section` that stores the block. */
   section: string;
   title: string;
   description: string;
-  hubIcon: string;
+  hubIcon: IconName; // §259: a registry name, not a symbol glyph
   defaults: object;
 };
 
@@ -54,7 +56,7 @@ export const COPY_BLOCKS = {
     section: "copy_home_sections",
     title: "Homepage section copy",
     description: "Headings, intros and buttons of the homepage blocks that have no section form of their own.",
-    hubIcon: "▷",
+    hubIcon: "file",
     defaults: {
       hero: HERO_SECTION,
       story: STORY_SECTION,
@@ -71,7 +73,7 @@ export const COPY_BLOCKS = {
     section: "copy_home_mockups",
     title: "Homepage product mockups",
     description: "Sample text inside the How-it-works mockups, feature visuals and customer profile.",
-    hubIcon: "◷",
+    hubIcon: "eye",
     defaults: {
       steps: STEP_MOCKUP_DATA,
       features: FEATURE_VISUAL_DATA,
@@ -82,42 +84,42 @@ export const COPY_BLOCKS = {
     section: "copy_dashboard_preview",
     title: "Dashboard preview",
     description: "Sample data in the homepage dashboard preview. Keep it clearly sample data, not reported results.",
-    hubIcon: "⁙",
+    hubIcon: "dashboard",
     defaults: DASHBOARD_PREVIEW,
   },
   page_heroes: {
     section: "copy_page_heroes",
     title: "Inner page heroes",
     description: "Eyebrow, headline and intro at the top of each inner page. The emphasis part gets the brand gradient.",
-    hubIcon: "◈",
+    hubIcon: "megaphone",
     defaults: PAGE_HEROES,
   },
   page_ctas: {
     section: "copy_page_ctas",
     title: "Inner page CTAs",
     description: "The closing call-to-action band on inner pages and blog articles.",
-    hubIcon: "⇉",
+    hubIcon: "target",
     defaults: PAGE_CTAS,
   },
   pricing_page: {
     section: "copy_pricing_page",
     title: "Pricing page copy",
     description: "The featured-plan badge and the note under the plans (plans themselves: Pricing plans).",
-    hubIcon: "■",
+    hubIcon: "cart",
     defaults: { featuredLabel: PRICING_FEATURED_LABEL, note: PRICING_NOTE },
   },
   about_page: {
     section: "copy_about_page",
     title: "About page copy",
     description: "The story section and the principles heading (cards themselves: About page principles).",
-    hubIcon: "✶",
+    hubIcon: "heart-hand",
     defaults: { story: ABOUT_STORY, valuesHead: ABOUT_VALUES_HEAD },
   },
   other_pages: {
     section: "copy_other_pages",
     title: "Security, contact & blog copy",
     description: "The security note, the contact page cards and the small blog labels.",
-    hubIcon: "▽",
+    hubIcon: "globe",
     defaults: { securityNote: SECURITY_NOTE, contact: CONTACT_CARDS, blog: BLOG_COPY },
   },
 } as const satisfies Record<string, CopyBlockSpec>;

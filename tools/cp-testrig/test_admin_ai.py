@@ -382,9 +382,10 @@ check("admin AI Control Center page",
       and 'group: "ai"' in PAGE and "/api/omniflow/admin/ai/overview?days="
       in PAGE and "/autonomy" in PAGE and "Recent AI activity" in PAGE
       and "Pending approvals" in PAGE, "page")
-SIDEBAR = read("app/admin/components/AdminSidebar.tsx")
-check("admin sidebar entry (text-presentation glyph)",
-      '/admin/ai-control' in SIDEBAR and '"\\u2736"' in SIDEBAR, "sidebar")
+ADMIN_NAV_SRC = read("lib/omniflow/admin-nav.ts")  # §259: the nav list moved here
+check("admin sidebar entry (brain icon, §259)",
+      'href: "/admin/ai-control"' in ADMIN_NAV_SRC and 'icon: "brain"' in ADMIN_NAV_SRC
+      and "ADMIN_NAV" in read("app/admin/components/AdminSidebar.tsx"), "sidebar")
 CARD = read("app/dashboard/(portal)/settings/BrainCard.tsx")
 check("owner BrainCard shows platform pause / cap notice",
       "paused platform-wide" in CARD and "effective_autonomy" in CARD, "card")
