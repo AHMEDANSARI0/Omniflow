@@ -209,7 +209,7 @@ export default function SocialChannelsCard() {
             aria-selected={item.channel === selected}
             onClick={() => setSelected(item.channel)}
             className={
-              "rounded-lg border px-3 py-1.5 text-xs font-medium " +
+              "rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium " +
               (item.channel === selected ? "border-brand/30 bg-brand/[0.06] text-brand" : "border-line bg-soft text-ink-3 hover:text-ink")
             }
           >
@@ -232,7 +232,7 @@ export default function SocialChannelsCard() {
                   disabled={!canEdit || busy !== "" || account.modes.length < 2}
                   onClick={() => value !== mode && save({ mode: value }, value === "api" ? "API mode selected." : "Login mode selected.")}
                   className={
-                    "rounded-lg border px-2.5 py-1 text-[11px] disabled:cursor-default " +
+                    "rounded-lg border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] disabled:cursor-default " +
                     (value === mode ? "border-brand/30 bg-brand/[0.06] text-brand" : "border-line bg-soft text-ink-3")
                   }
                 >
@@ -254,7 +254,7 @@ export default function SocialChannelsCard() {
               disabled={!canEdit || busy !== "" || (!account.enabled && mode === "api" && !account.connected)}
               onClick={() => save({ enabled: !account.enabled }, account.enabled ? account.label + " is off." : account.label + " is on.")}
               className={
-                "rounded-lg border px-2.5 py-1 text-[11px] disabled:opacity-60 " +
+                "rounded-lg border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] disabled:opacity-60 " +
                 (account.enabled ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok" : "border-line bg-soft text-ink-3")
               }
             >
@@ -391,7 +391,7 @@ export default function SocialChannelsCard() {
                 disabled={!canEdit || busy !== ""}
                 onClick={() => save({ flags: { [feature]: !account.flags[feature] } }, FEATURE_LABELS[feature] + (account.flags[feature] ? " off." : " on."))}
                 className={
-                  "rounded-lg border px-2.5 py-1 text-[11px] disabled:opacity-60 " +
+                  "rounded-lg border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] disabled:opacity-60 " +
                   (account.flags[feature] ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok" : "border-line bg-soft text-ink-3")
                 }
               >
@@ -412,7 +412,7 @@ export default function SocialChannelsCard() {
                   )
                 }
                 className={
-                  "rounded-lg border px-2.5 py-1 text-[11px] disabled:opacity-60 " +
+                  "rounded-lg border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] disabled:opacity-60 " +
                   (account.flags.comment_auto_reply ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok" : "border-line bg-soft text-ink-3")
                 }
               >

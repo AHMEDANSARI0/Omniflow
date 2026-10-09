@@ -22,14 +22,14 @@ const STAGES = [
   {
     value: "interested",
     label: "Interested",
-    dot: "bg-cyan-400",
+    dot: "bg-brand",
     text: "text-brand",
   },
   {
     value: "negotiating",
     label: "Negotiating",
     dot: "bg-amber-400",
-    text: "text-amber-600",
+    text: "text-amber-700",
   },
   { value: "won", label: "Won", dot: "bg-emerald-400", text: "text-ok" },
   { value: "lost", label: "Lost", dot: "bg-rose-400", text: "text-danger" },
@@ -139,14 +139,14 @@ export default function PipelinePage() {
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:bg-soft hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:bg-line/60 hover:text-ink"
           >
             Refresh
           </button>
         </div>
 
         {note ? (
-          <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-200">
+          <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-800">
             {note}
           </p>
         ) : null}
@@ -191,7 +191,7 @@ export default function PipelinePage() {
                       {column.contacts.map((contact) => (
                         <li
                           key={contact.contactId}
-                          className="rounded-xl border border-line bg-white/[0.01] p-2"
+                          className="rounded-xl border border-line bg-white p-2"
                         >
                           <Link
                             prefetch={false}

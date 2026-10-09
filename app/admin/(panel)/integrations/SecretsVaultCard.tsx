@@ -178,13 +178,13 @@ export default function SecretsVaultCard() {
         </button>
         <button
           onClick={() => setGenerated(newKey())}
-          className="rounded-xl border border-line bg-white px-4 py-2 text-xs text-ink-2 shadow-card transition-colors hover:bg-soft"
+          className="rounded-xl border border-line bg-white px-4 py-2 text-xs text-ink-2 shadow-card transition-colors hover:bg-line/60"
         >
           Generate a key
         </button>
         <button
           onClick={() => void load()}
-          className="rounded-xl border border-line bg-white px-4 py-2 text-xs text-ink-2 shadow-card transition-colors hover:bg-soft"
+          className="rounded-xl border border-line bg-white px-4 py-2 text-xs text-ink-2 shadow-card transition-colors hover:bg-line/60"
         >
           Refresh
         </button>

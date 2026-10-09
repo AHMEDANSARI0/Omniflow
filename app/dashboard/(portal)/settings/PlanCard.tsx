@@ -52,7 +52,7 @@ function UsageRow({
           className={
             "h-full rounded-full " +
             (unlimited
-              ? "bg-cyan-400/40"
+              ? "bg-brand/40"
               : pct >= 100
                 ? "bg-rose-400/60"
                 : pct >= 80
@@ -136,7 +136,7 @@ export default function PlanCard() {
           {[0, 1, 2, 3, 4].map((row) => (
             <div
               key={row}
-              className="h-8 animate-pulse rounded-lg bg-white/5"
+              className="h-8 animate-pulse rounded-lg bg-line/60"
             />
           ))}
         </div>
@@ -162,8 +162,8 @@ export default function PlanCard() {
                 className={
                   "rounded-lg border px-3 py-1.5 text-[11px] disabled:opacity-40 " +
                   (entry.key === data.plan
-                    ? "border-brand/40 bg-cyan-400/[0.12] text-brand"
-                    : "border-line bg-soft text-ink-2 hover:bg-soft")
+                    ? "border-brand/40 bg-brand/[0.12] text-brand"
+                    : "border-line bg-soft text-ink-2 hover:bg-line/60")
                 }
               >
                 {entry.label}

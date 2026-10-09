@@ -642,7 +642,7 @@ export default function AdminAiControlPage() {
             type="button"
             onClick={() => void saveControls()}
             disabled={savingControls || loading}
-            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
           >
             {savingControls ? "Saving…" : "Save controls"}
           </button>

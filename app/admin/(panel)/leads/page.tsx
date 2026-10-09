@@ -27,7 +27,7 @@ export default async function LeadsPage() {
           <span className="rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs text-ink-3">
             Total: <span className="font-semibold text-ink">{leads.length}</span>
           </span>
-          <span className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] px-4 py-2 text-xs text-brand">
+          <span className="rounded-xl border border-brand/20 bg-brand/[0.05] px-4 py-2 text-xs text-brand">
             New: <span className="font-semibold">{newCount}</span>
           </span>
         </div>

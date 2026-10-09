@@ -122,7 +122,7 @@ export default function WhatsAppChannelPage() {
           <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
+            className="mt-3 inline-block text-xs text-brand underline-offset-2 transition-colors hover:underline"
           >
             Re-authenticate →
           </a>
@@ -156,7 +156,7 @@ export default function WhatsAppChannelPage() {
 
       {!status ? (
         <div className="animate-pulse rounded-2xl border border-line bg-white shadow-card p-6">
-          <div className="h-5 w-40 rounded bg-white/[0.06]" />
+          <div className="h-5 w-40 rounded bg-soft" />
           <div className="mt-4 h-3 w-64 rounded bg-soft" />
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="h-16 rounded-xl bg-soft" />
@@ -199,7 +199,7 @@ export default function WhatsAppChannelPage() {
           )}
 
           {state === "connecting" && (
-            <p className="mt-5 text-xs leading-relaxed text-amber-600/90">
+            <p className="mt-5 text-xs leading-relaxed text-amber-700">
               Pairing in progress — scan the QR / enter the pairing code from your
               phone. This updates automatically.
             </p>
@@ -218,7 +218,7 @@ export default function WhatsAppChannelPage() {
               <button
                 onClick={() => void runAction("restart")}
                 disabled={busy}
-                className="rounded-xl border border-line bg-white shadow-card px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl border border-line bg-white shadow-card px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:bg-line/60 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy ? "Working…" : "Restart session"}
               </button>
@@ -227,7 +227,7 @@ export default function WhatsAppChannelPage() {
               <button
                 onClick={() => void runAction("connect")}
                 disabled={busy || state === "connecting"}
-                className="rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {state === "connecting" ? "Connecting…" : busy ? "Working…" : "Start pairing"}
               </button>
@@ -243,7 +243,7 @@ export default function WhatsAppChannelPage() {
             <motion.p
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-4 rounded-lg border border-brand/20 bg-cyan-400/[0.05] px-3 py-2 text-xs leading-relaxed text-brand/90"
+              className="mt-4 rounded-lg border border-brand/20 bg-brand/[0.05] px-3 py-2 text-xs leading-relaxed text-brand"
             >
               {notice}
             </motion.p>
@@ -308,7 +308,7 @@ function AwayChip() {
 
   if (!awayActive) return null;
   return (
-    <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-400/25 bg-amber-400/[0.06] px-3 py-1.5 text-xs font-medium text-amber-600">
+    <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-400/25 bg-amber-400/[0.06] min-h-9 px-3 py-1.5 text-xs font-medium text-amber-700">
       <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
       Away replies are active until business hours
     </div>

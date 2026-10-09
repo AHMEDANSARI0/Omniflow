@@ -48,7 +48,7 @@ export default function FAQ({ content }: { content: FaqContent }) {
               </p>
               <a
                 href={"mailto:" + content.contact_email}
-                className="mt-3 inline-flex items-center gap-2 rounded text-sm font-semibold text-brand-2 hover:text-brand"
+                className="-my-1 mt-3 inline-flex items-center gap-2 rounded py-1 text-sm font-semibold text-brand-2 hover:text-brand hover:underline hover:underline-offset-4"
               >
                 {content.contact_email}
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -61,7 +61,7 @@ export default function FAQ({ content }: { content: FaqContent }) {
           {pairs.map(({ q, a }) => (
             <Reveal key={q}>
               <details className="group rounded-xl3 border border-line bg-white shadow-card transition-colors open:border-brand/25">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-xl3 px-5 py-4 text-[15.5px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-xl3 px-5 py-4 text-[15.5px] font-semibold text-ink transition-colors hover:bg-soft/60 [&::-webkit-details-marker]:hidden">
                   {q}
                   <span
                     aria-hidden

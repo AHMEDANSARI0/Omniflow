@@ -4,9 +4,7 @@ type Variant =
   | "primary" // solid indigo — the default CTA
   | "secondary" // white + border
   | "ghost" // quiet text button
-  | "ai" // indigo -> violet gradient, AI moments only
-  | "dark" // white solid, for dark sections
-  | "night-outline"; // outline for dark sections
+  | "ai"; // indigo -> violet gradient, AI moments only
 
 type Size = "sm" | "md" | "lg";
 
@@ -20,9 +18,6 @@ const VARIANTS: Record<Variant, string> = {
     "border border-line-2 bg-white text-ink shadow-[0_1px_2px_rgba(11,18,32,0.05)] hover:-translate-y-px hover:border-brand/40 hover:text-brand",
   ghost: "text-brand hover:bg-brand-soft",
   ai: "bg-gradient-to-r from-brand to-ai text-white shadow-cta hover:-translate-y-px hover:brightness-110",
-  dark: "bg-white text-ink hover:-translate-y-px hover:bg-slate-100",
-  "night-outline":
-    "border border-white/25 text-snow hover:border-white/50 hover:bg-white/10",
 };
 
 const SIZES: Record<Size, string> = {

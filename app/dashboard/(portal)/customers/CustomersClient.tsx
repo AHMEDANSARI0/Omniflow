@@ -437,7 +437,7 @@ export default function CustomersClient({
                 key={entry.contactId}
                 href={"/dashboard/customers/profile?contact=" +
                   encodeURIComponent(entry.contactId)}
-                className="rounded-xl border border-line bg-white shadow-card px-2.5 py-1.5 transition-colors hover:bg-soft"
+                className="rounded-xl border border-line bg-white shadow-card px-2.5 py-1.5 transition-colors hover:bg-line/60"
               >
                 <p className="text-xs text-ink">
                   {entry.name || entry.contactId}
@@ -470,7 +470,7 @@ export default function CustomersClient({
               setChannelFilter(value);
               void refresh();
             }}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
               channelFilter === value
                 ? "border-brand/30 bg-brand-soft text-brand"
                 : "border-line bg-soft text-ink-3 hover:text-ink"
@@ -484,7 +484,7 @@ export default function CustomersClient({
           type="button"
           onClick={() => exportCustomers()}
           disabled={!customers || customers.length === 0}
-          className="ml-auto rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
+          className="ml-auto rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
         >
           Export CSV
         </button>
@@ -525,7 +525,7 @@ export default function CustomersClient({
                   "/dashboard/conversations?q=" +
                   encodeURIComponent(customer.contactId)
                 }
-                className="min-w-0 flex-1 p-4 transition-colors duration-300 hover:bg-soft"
+                className="min-w-0 flex-1 p-4 transition-colors duration-300 hover:bg-line/60"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
@@ -595,8 +595,8 @@ export default function CustomersClient({
                       className={
                         "inline-block rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider " +
                         (customer.leadTemp === "hot"
-                          ? "border-orange-400/25 bg-orange-400/[0.08] text-amber-600"
-                          : "border-amber-400/20 bg-amber-400/[0.05] text-amber-200/80")
+                          ? "border-orange-400/25 bg-orange-400/[0.08] text-amber-700"
+                          : "border-amber-400/20 bg-amber-400/[0.05] text-amber-800")
                       }
                     >
                       {customer.leadTemp} lead
@@ -608,7 +608,7 @@ export default function CustomersClient({
                   <a
                     href={`/dashboard/customers/profile?contact=${encodeURIComponent(customer.contactId)}`}
                     title="Open customer 360"
-                    className="border-b border-line py-2 text-[10px] font-semibold uppercase tracking-wider text-brand/90 transition-colors duration-300 hover:text-brand"
+                    className="border-b border-line py-2 text-[10px] font-semibold uppercase tracking-wider text-brand transition-colors duration-300 hover:text-brand"
                   >
                     360
                   </a>
@@ -629,7 +629,7 @@ export default function CustomersClient({
                     target="_blank"
                     rel="noreferrer"
                     title="Open in WhatsApp"
-                    className="flex-1 border-b border-line text-[10px] font-semibold uppercase tracking-wider text-ok/90 transition-colors duration-300 hover:text-ok"
+                    className="flex-1 border-b border-line text-[10px] font-semibold uppercase tracking-wider text-ok transition-colors duration-300 hover:text-ok"
                   >
                     Chat
                   </a>
@@ -698,13 +698,13 @@ export default function CustomersClient({
                       type="button"
                       onClick={() => void mergeContact(customer.contactId)}
                       disabled={mergeBusy}
-                      className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-40"
+                      className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-40"
                     >
                       {mergeBusy ? "Merging\u2026" : "Merge"}
                     </button>
                   </div>
                   {mergeNote ? (
-                    <p className="mt-2 text-[11px] text-amber-600">{mergeNote}</p>
+                    <p className="mt-2 text-[11px] text-amber-700">{mergeNote}</p>
                   ) : null}
                 </div>
               )}
@@ -722,7 +722,7 @@ export default function CustomersClient({
                       {(notesByContact[customer.contactId] || []).map((note) => (
                         <li
                           key={"note-" + String(note.id)}
-                          className="rounded-xl border border-line bg-white/[0.01] px-3 py-2"
+                          className="rounded-xl border border-line bg-white px-3 py-2"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <p className="min-w-0 whitespace-pre-wrap break-words text-xs text-ink-2">
@@ -756,7 +756,7 @@ export default function CustomersClient({
                       type="button"
                       onClick={() => void addNote(customer.contactId)}
                       disabled={noteBusy || !noteDraft.trim()}
-                      className="rounded-xl border border-brand/25 bg-brand-soft px-3 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+                      className="rounded-xl border border-brand/25 bg-brand-soft px-3 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
                     >
                       {noteBusy ? "Saving…" : "Add note"}
                     </button>
@@ -784,7 +784,7 @@ export default function CustomersClient({
                       type="button"
                       onClick={() => void sendMessage(customer.contactId)}
                       disabled={msgBusy || !msgDraft.trim()}
-                      className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+                      className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
                     >
                       {msgBusy ? "Sending..." : "Send message"}
                     </button>

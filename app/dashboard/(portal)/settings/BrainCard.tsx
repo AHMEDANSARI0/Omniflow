@@ -127,7 +127,7 @@ export default function BrainCard() {
     <section className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">AI Brain</h3>
+          <h3 className="text-sm font-semibold text-ink">AI Brain</h3>
           <p className="mt-0.5 text-xs text-ink-3">
             Answers from your orders, knowledge base and the conversation —
             policy-checked, with provenance traces. Never invents facts.
@@ -136,7 +136,7 @@ export default function BrainCard() {
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
+          className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -165,7 +165,7 @@ export default function BrainCard() {
                 "block w-full rounded-xl border px-3 py-2 text-left transition-colors " +
                 (autonomy === level.value
                   ? "border-emerald-400/30 bg-emerald-400/[0.07]"
-                  : "border-line bg-soft hover:bg-soft")
+                  : "border-line bg-soft hover:bg-line/60")
               }
             >
               <span className="text-xs font-semibold text-ink">
@@ -185,12 +185,12 @@ export default function BrainCard() {
                 value={tone}
                 onChange={(event) => setTone(event.target.value)}
                 placeholder="e.g. warm, concise, friendly"
-                className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-white/[0.2]"
+                className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-brand/50"
               />
               <button
                 onClick={() => void save(autonomy, tone)}
                 disabled={busy}
-                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
               >
                 Save tone
               </button>

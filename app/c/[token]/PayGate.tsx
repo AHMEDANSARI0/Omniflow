@@ -112,12 +112,12 @@ export default function PayGate({
               inputMode="numeric"
               maxLength={6}
               placeholder="123456"
-              className="w-28 rounded-xl border border-line bg-soft px-3 py-2 text-sm tracking-[0.3em] text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
+              className="min-h-10 w-28 rounded-xl border border-line bg-soft px-3 py-2 text-sm tracking-[0.3em] text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
             />
             <button
               onClick={() => void verify()}
               disabled={busy}
-              className="rounded-xl border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand hover:bg-brand-soft disabled:opacity-50"
+              className="min-h-10 rounded-xl border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand-2 transition-colors hover:bg-brand/15 disabled:opacity-50"
             >
               {busy ? "Checking…" : "Verify"}
             </button>
@@ -126,7 +126,7 @@ export default function PayGate({
           <button
             onClick={() => void sendCode()}
             disabled={busy}
-            className="mt-2 rounded-xl border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand hover:bg-brand-soft disabled:opacity-50"
+            className="mt-2 min-h-10 rounded-xl border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand-2 transition-colors hover:bg-brand/15 disabled:opacity-50"
           >
             {busy ? "Sending…" : "Send my code"}
           </button>
@@ -147,7 +147,7 @@ export default function PayGate({
   return (
     <a
       href={"/api/omniflow/public/checkout/" + encodeURIComponent(token) + "/pay"}
-      className="mt-3 block rounded-xl border border-emerald-400/30 bg-emerald-400/[0.1] px-4 py-3 text-center text-sm font-semibold text-ok hover:bg-emerald-400/[0.18]"
+      className="mt-3 block min-h-12 rounded-xl bg-brand px-4 py-3 text-center text-sm font-semibold text-white shadow-cta transition-colors hover:bg-brand-2"
     >
       Pay {due} online
     </a>

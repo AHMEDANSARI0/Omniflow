@@ -155,7 +155,7 @@ export default function AssistCard({ conversationId }: { conversationId: number 
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:bg-line/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Checking…" : "Refresh"}
         </button>
@@ -171,7 +171,7 @@ export default function AssistCard({ conversationId }: { conversationId: number 
               sentiment === "negative"
                 ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
                 : sentiment === "mixed"
-                  ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                  ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
                   : "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
             }`}
           >
@@ -195,7 +195,7 @@ export default function AssistCard({ conversationId }: { conversationId: number 
       </div>
 
       {assist.sentiment && assist.sentiment.negative.length > 0 ? (
-        <p className="mt-2 text-[11px] text-amber-600/80">
+        <p className="mt-2 text-[11px] text-amber-700">
           Flagged: {assist.sentiment.negative.join(", ")}
         </p>
       ) : null}
@@ -230,7 +230,7 @@ export default function AssistCard({ conversationId }: { conversationId: number 
           <button
             onClick={() => void makeDraft()}
             disabled={draftBusy}
-            className="rounded-xl border border-ai/30 bg-violet-400/[0.08] px-3 py-1.5 text-[11px] font-medium text-violet-200 transition-colors hover:bg-violet-400/[0.14] disabled:opacity-50"
+            className="rounded-xl border border-ai/30 bg-violet-400/[0.08] px-3 py-1.5 text-[11px] font-medium text-violet-700 transition-colors hover:bg-violet-400/[0.14] disabled:opacity-50"
           >
             {draftBusy ? "Working…" : "Draft with AI"}
           </button>
@@ -257,7 +257,7 @@ export default function AssistCard({ conversationId }: { conversationId: number 
               <button
                 onClick={() => void saveDraftToKb()}
                 disabled={draftBusy}
-                className="mt-2 rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-ok transition-colors hover:bg-emerald-400/[0.14] disabled:opacity-50"
+                className="mt-2 rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ok transition-colors hover:bg-emerald-400/[0.14] disabled:opacity-50"
               >
                 Save as KB answer
               </button>

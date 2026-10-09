@@ -150,7 +150,7 @@ export default function TagsCard({
           type="button"
           onClick={() => void addTag()}
           disabled={busy || tags.length >= MAX_TAGS || !value.trim()}
-          className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+          className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {busy ? "Working…" : "Add label"}
         </button>

@@ -28,7 +28,7 @@ for token, value in [
     ("--color-ai", "#7c3aed"),
     ("--color-flow", "#06b6d4"),
     ("--color-night", "#080d18"),
-    ("--color-ok", "#16a34a"),
+    ("--color-ok", "#15803d"),
 ]:
     check("token " + token, token + ": " + value in GLOBALS, token)
 
@@ -72,7 +72,7 @@ NAV = read("app/components/Navbar.tsx")
 NAVCFG = read("lib/marketing/navigation.ts")
 SITE = read("lib/marketing/site.ts")
 CSS = read("app/globals.css")
-for needle in ("useScrolled(NAVBAR_SCROLL_THRESHOLD)", "{items.map((item) => (",
+for needle in ("useScrolled(NAVBAR_SCROLL_THRESHOLD)", "{items.map((item) => {",
                "NAV_ACTIONS.primary", "aria-expanded={open}",
                "aria-controls={panelId}", '"Escape"', "inert={!open}"):
     check("navbar " + needle[:28], needle in NAV, "pin")

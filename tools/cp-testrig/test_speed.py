@@ -30,7 +30,7 @@ check("away state", "const [awayActive, setAwayActive] = useState(false);" in de
 check("away fetch", 'fetch("/api/omniflow/portal/business-hours"' in detail_src)
 check("away computes closed", "const openNow =\n          day && day.enabled && now >= day.start && now <= day.end;" in detail_src)
 check("away banner render", "Away message is active. Customers get an automatic reply until" in detail_src)
-check("banner amber", 'className="mt-0.5 text-[10px] font-medium text-amber-600"' in detail_src)
+check("banner amber", 'className="mt-0.5 text-[10px] font-medium text-amber-700"' in detail_src)
 check("cancel guard", "let cancelled = false;" in detail_src and "cancelled = true;" in detail_src)
 
 failures = summary("speed")

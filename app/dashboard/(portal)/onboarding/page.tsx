@@ -108,7 +108,7 @@ export default function OnboardingPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-4xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
@@ -133,7 +133,7 @@ export default function OnboardingPage() {
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={String(index)}
-                className="h-28 animate-pulse rounded-2xl bg-white/5"
+                className="h-28 animate-pulse rounded-2xl bg-line/60"
               />
             ))}
           </div>
@@ -146,8 +146,8 @@ export default function OnboardingPage() {
                 className={
                   "rounded-2xl border p-4 text-left transition-colors duration-300 " +
                   (selected === pack.key
-                    ? "border-brand/40 bg-cyan-400/[0.07]"
-                    : "border-line bg-soft hover:border-brand/25 hover:bg-cyan-400/[0.04]")
+                    ? "border-brand/40 bg-brand/[0.07]"
+                    : "border-line bg-soft hover:border-brand/25 hover:bg-brand/[0.04]")
                 }
               >
                 <div className="flex items-center justify-between gap-2">
@@ -169,7 +169,7 @@ export default function OnboardingPage() {
         )}
 
         {active ? (
-          <section className="mt-4 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.03] p-4">
+          <section className="mt-4 rounded-2xl border border-brand/20 bg-brand/[0.03] p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold text-ink">
                 Preview: {active.label}
@@ -177,7 +177,7 @@ export default function OnboardingPage() {
               <button
                 onClick={() => void applyTemplate(active.key)}
                 disabled={busy}
-                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
               >
                 {applied === active.key
                   ? "Re-apply (fills gaps only)"
@@ -225,7 +225,7 @@ export default function OnboardingPage() {
                 <ul className="mt-1 space-y-1">
                   {active.kb.map((entry) => (
                     <li key={entry.title}
-                      className="rounded-lg border border-line bg-white/[0.01] px-2.5 py-1.5">
+                      className="rounded-lg border border-line bg-white px-2.5 py-1.5">
                       <p className="text-[11px] text-ink">
                         {entry.title}
                         <span className="ml-2 text-[10px] text-ink-3">

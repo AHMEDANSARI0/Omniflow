@@ -32,7 +32,7 @@ export default function WorkflowNode({
           aria-hidden
           className={`inline-flex h-11 w-11 items-center justify-center rounded-xl2 border transition-colors duration-300 ${
             highlight
-              ? "of-gradient border-transparent text-white"
+              ? "of-gradient-deep border-transparent text-white"
               : "border-brand/15 bg-brand-soft text-brand group-hover:border-brand/30"
           }`}
         >

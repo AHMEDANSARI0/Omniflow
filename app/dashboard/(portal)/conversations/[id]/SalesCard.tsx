@@ -8,8 +8,8 @@ const ghostBtn =
   "rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-3 transition-colors duration-300 hover:text-ink disabled:opacity-50";
 const field = "rounded-lg border border-line bg-white px-2 py-1 text-xs text-ink";
 const LABEL_TONE: Record<string, string> = {
-  hot: "text-emerald-600",
-  warm: "text-amber-600",
+  hot: "text-emerald-700",
+  warm: "text-amber-700",
   cold: "text-ink-3",
 };
 
@@ -346,7 +346,7 @@ export default function SalesCard({ conversationId }: { conversationId: number }
               <p className="text-ink-3">Add prices to your catalog to send quotes from here.</p>
             )
           ) : null}
-          {notice ? <p className="text-[11px] text-amber-600">{notice}</p> : null}
+          {notice ? <p className="text-[11px] text-amber-700">{notice}</p> : null}
         </div>
       ) : null}
     </section>

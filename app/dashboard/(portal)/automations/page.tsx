@@ -412,7 +412,7 @@ export default function AutomationsPage() {
             type="button"
             onClick={() => setWelcomeEnabled(!welcomeEnabled)}
             className={
-              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              "shrink-0 rounded-full border inline-flex min-h-8 items-center px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
               (welcomeEnabled
                 ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
                 : "border-line bg-soft text-ink-3")
@@ -437,7 +437,7 @@ export default function AutomationsPage() {
             type="button"
             onClick={() => void saveWelcome()}
             disabled={welcomeBusy || (welcomeEnabled && !welcomeText.trim())}
-            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
           >
             {welcomeBusy ? "Saving…" : "Save welcome message"}
           </button>
@@ -469,7 +469,7 @@ export default function AutomationsPage() {
             type="button"
             onClick={() => setCloseEnabled(!closeEnabled)}
             className={
-              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              "shrink-0 rounded-full border inline-flex min-h-8 items-center px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
               (closeEnabled
                 ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
                 : "border-line bg-soft text-ink-3")
@@ -494,7 +494,7 @@ export default function AutomationsPage() {
             type="button"
             onClick={() => void saveAutoClose()}
             disabled={closeBusy}
-            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50 sm:ml-auto"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50 sm:ml-auto"
           >
             {closeBusy ? "Saving…" : "Save auto-close"}
           </button>
@@ -526,7 +526,7 @@ export default function AutomationsPage() {
             type="button"
             onClick={() => setAssignEnabled(!assignEnabled)}
             className={
-              "shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+              "shrink-0 rounded-full border inline-flex min-h-8 items-center px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
               (assignEnabled
                 ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
                 : "border-line bg-soft text-ink-3")
@@ -540,7 +540,7 @@ export default function AutomationsPage() {
             type="button"
             onClick={() => void saveAutoAssign()}
             disabled={assignBusy}
-            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
           >
             {assignBusy ? "Saving…" : "Save auto-assign"}
           </button>
@@ -608,7 +608,7 @@ export default function AutomationsPage() {
             disabled={
               busy || !keyword.trim() || !actionValue.trim()
             }
-            className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+            className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
           >
             {busy ? "Working…" : "Add automation"}
           </button>

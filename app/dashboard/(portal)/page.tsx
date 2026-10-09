@@ -120,7 +120,7 @@ export default async function ClientDashboardPage() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-ink-2 transition-colors duration-200 hover:bg-brand-soft hover:text-ink"
+                      className="flex items-center gap-2.5 rounded-lg min-h-9 px-2 py-1.5 text-sm text-ink-2 transition-colors duration-200 hover:bg-brand-soft hover:text-ink"
                     >
                       <PortalIcon name={item.icon} className="h-4 w-4 text-ink-3" />
                       {item.label}

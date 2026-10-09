@@ -107,7 +107,7 @@ function LeadRow({
             onClick={handleInvite}
             disabled={pending}
             title="Create client account"
-            className="rounded-lg border border-brand/20 bg-cyan-400/[0.05] px-3 py-1.5 text-xs font-medium text-brand transition-colors duration-200 hover:border-brand/40 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg border border-brand/20 bg-brand/[0.05] px-3 py-1.5 text-xs font-medium text-brand transition-colors duration-200 hover:border-brand/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Invite
           </button>

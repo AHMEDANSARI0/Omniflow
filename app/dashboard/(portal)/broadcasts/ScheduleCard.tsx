@@ -196,7 +196,7 @@ export default function ScheduleCard() {
   );
 
   return (
-    <div className="mb-5 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.025] p-4 sm:p-5">
+    <div className="mb-5 rounded-2xl border border-brand/20 bg-brand/[0.025] p-4 sm:p-5">
       <h2 className="text-sm font-semibold text-ink">Schedule for later</h2>
       <p className="mt-1 text-xs text-ink-3">
         Queue a broadcast for a future date and time. It sends automatically, as long as your
@@ -235,7 +235,7 @@ export default function ScheduleCard() {
           type="button"
           onClick={() => void submit()}
           disabled={busy}
-          className="w-full rounded-xl bg-cyan-400/15 px-4 py-2.5 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
+          className="w-full rounded-xl bg-brand/15 px-4 py-2.5 text-sm font-medium text-brand transition hover:bg-brand/25 disabled:opacity-50"
         >
           {busy ? "Working…" : "Schedule broadcast"}
         </button>
@@ -254,7 +254,7 @@ export default function ScheduleCard() {
         <p
           className={
             "mt-2 text-xs " +
-            (noteTone === "emerald" ? "text-ok" : "text-amber-600")
+            (noteTone === "emerald" ? "text-ok" : "text-amber-700")
           }
         >
           {note}
@@ -288,7 +288,7 @@ export default function ScheduleCard() {
                   type="button"
                   onClick={() => void cancel(row.id)}
                   disabled={busy}
-                  className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger disabled:opacity-50"
+                  className="shrink-0 rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger disabled:opacity-50"
                 >
                   Cancel
                 </button>

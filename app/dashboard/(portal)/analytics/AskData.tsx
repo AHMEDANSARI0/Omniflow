@@ -15,7 +15,7 @@ const PINS = "/api/omniflow/portal/analytics/pins";
 
 const card = "rounded-2xl border border-line bg-white shadow-card";
 const chip =
-  "rounded-xl border border-line bg-soft px-3 py-1.5 text-xs text-ink-2 transition-colors duration-300 hover:border-brand/25 hover:text-brand";
+  "rounded-xl border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition-colors duration-300 hover:border-brand/25 hover:text-brand";
 const select =
   "rounded-xl border border-line bg-white px-2.5 py-1.5 text-xs text-ink-2 focus:border-brand/40 focus:outline-none";
 
@@ -379,7 +379,7 @@ export default function AskData() {
               <button
                 type="button"
                 onClick={() => void pin()}
-                className="ml-auto rounded-xl border border-line px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:border-brand/25 hover:text-brand"
+                className="ml-auto rounded-xl border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:border-brand/25 hover:text-brand"
               >
                 <PortalIcon name="pin" className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]" /> Pin
               </button>

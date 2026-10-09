@@ -120,7 +120,7 @@ interface ExtractBody {
 const inputClass =
   "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 const ghostBtn =
   "rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-50";
 
@@ -758,7 +758,7 @@ export default function KbSourcesCard() {
                           type="button"
                           onClick={() => void setStatus(source, "published")}
                           disabled={busyId !== 0 || source.chunk_count === 0}
-                          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2.5 py-1 text-[11px] font-medium text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
                         >
                           Publish
                         </button>
@@ -788,7 +788,7 @@ export default function KbSourcesCard() {
                           aria-pressed={source.auto_refresh === true}
                           className={
                             source.auto_refresh
-                              ? "rounded-lg border border-brand/25 bg-brand-soft px-2.5 py-1 text-[11px] font-medium text-brand disabled:opacity-50"
+                              ? "rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-brand disabled:opacity-50"
                               : ghostBtn
                           }
                         >
@@ -817,7 +817,7 @@ export default function KbSourcesCard() {
                         type="button"
                         onClick={() => void remove(source)}
                         disabled={busyId !== 0}
-                        className="rounded-lg border border-rose-400/20 px-2.5 py-1 text-[11px] text-danger hover:bg-rose-400/[0.07] disabled:opacity-50"
+                        className="rounded-lg border border-rose-400/20 inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-danger hover:bg-rose-400/[0.07] disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -892,7 +892,7 @@ export default function KbSourcesCard() {
                     setKind(option);
                     setNotice(null);
                   }}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
                     kind === option
                       ? "border-brand/30 bg-brand-soft text-brand"
                       : "border-line bg-soft text-ink-3 hover:text-ink"

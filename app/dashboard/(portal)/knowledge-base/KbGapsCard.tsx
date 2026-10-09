@@ -81,7 +81,7 @@ export default function KbGapsCard() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xs font-semibold text-ink">
           Knowledge gaps
-          <span className="ml-2 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600">
+          <span className="ml-2 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700">
             {String(openCount)} open
           </span>
         </h2>
@@ -105,7 +105,7 @@ export default function KbGapsCard() {
                   {" · "}
                   <a
                     href={"/dashboard/conversations/" + String(gap.conversationId)}
-                    className="text-brand/80 transition-colors hover:text-brand"
+                    className="text-brand underline-offset-2 transition-colors hover:underline"
                   >
                     open chat
                   </a>
@@ -115,7 +115,7 @@ export default function KbGapsCard() {
                 type="button"
                 onClick={() => resolve(gap.id)}
                 disabled={busyId !== null}
-                className="w-full shrink-0 rounded-xl border border-line bg-white shadow-card px-3 py-1.5 text-[11px] font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
+                className="w-full shrink-0 rounded-xl border border-line bg-white shadow-card px-3 py-1.5 text-[11px] font-medium text-ink-2 transition-colors duration-300 hover:bg-line/60 disabled:opacity-50 sm:w-auto"
               >
                 {busyId === gap.id ? "…" : "Resolve"}
               </button>

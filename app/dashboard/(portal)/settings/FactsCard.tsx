@@ -161,7 +161,7 @@ export default function FactsCard() {
     <section className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">Business facts</h3>
+          <h3 className="text-sm font-semibold text-ink">Business facts</h3>
           <p className="mt-0.5 text-xs text-ink-3">
             The rules the AI answers from — policies, SOPs, pricing, refund
             and escalation rules, working hours. Stored as structured data
@@ -172,7 +172,7 @@ export default function FactsCard() {
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
+          className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -232,7 +232,7 @@ export default function FactsCard() {
                       })
                     }
                     disabled={busy}
-                    className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
+                    className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
                   >
                     Edit
                   </button>
@@ -240,7 +240,7 @@ export default function FactsCard() {
                     <button
                       onClick={() => void archive(fact.id)}
                       disabled={busy}
-                      className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
+                      className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
                     >
                       Archive
                     </button>
@@ -248,7 +248,7 @@ export default function FactsCard() {
                     <button
                       onClick={() => void reactivate(fact)}
                       disabled={busy}
-                      className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
+                      className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
                     >
                       Re-activate
                     </button>
@@ -280,7 +280,7 @@ export default function FactsCard() {
                 onChange={(event) =>
                   setForm({ ...form, kind: event.target.value as FactKind })
                 }
-                className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none focus:border-white/[0.2]"
+                className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none focus:border-brand/50"
               >
                 {KINDS.map((kind) => (
                   <option key={kind.value} value={kind.value}>
@@ -295,7 +295,7 @@ export default function FactsCard() {
                 }
                 placeholder="Short label, e.g. Refund window"
                 maxLength={120}
-                className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-white/[0.2]"
+                className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-brand/50"
               />
             </div>
             <textarea
@@ -306,7 +306,7 @@ export default function FactsCard() {
               placeholder="The rule itself, e.g. Refunds within 7 days of delivery if the product is unused."
               maxLength={2000}
               rows={3}
-              className="w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-white/[0.2]"
+              className="w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-brand/50"
             />
             <input
               value={form.keywords}
@@ -315,13 +315,13 @@ export default function FactsCard() {
               }
               placeholder="Match words (optional), e.g. refund, wapas, return"
               maxLength={200}
-              className="w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-white/[0.2]"
+              className="w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-brand/50"
             />
             <div className="flex items-center gap-2">
               <button
                 onClick={() => void save()}
                 disabled={busy}
-                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
               >
                 {form.id > 0 ? "Save changes" : "Add fact"}
               </button>
@@ -329,7 +329,7 @@ export default function FactsCard() {
                 <button
                   onClick={() => setForm({ ...EMPTY_FORM })}
                   disabled={busy}
-                  className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-soft disabled:opacity-50"
+                  className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
                 >
                   Cancel
                 </button>

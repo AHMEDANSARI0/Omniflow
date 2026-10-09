@@ -35,7 +35,8 @@ export default function DashTopbar({
           type="button"
           onClick={() => openCommandPalette()}
           aria-label="Search pages, chats and customers"
-          className="flex h-9 w-9 items-center justify-center gap-2.5 rounded-xl border border-line bg-soft text-sm text-ink-3 transition-colors duration-200 hover:border-line-2 hover:bg-white lg:w-72 lg:justify-start lg:px-3 xl:w-80"
+          aria-haspopup="dialog"
+          className="flex h-9 w-9 items-center justify-center gap-2.5 rounded-xl border border-line bg-soft text-sm text-ink-3 transition-colors duration-200 hover:border-brand/40 hover:bg-brand-soft hover:text-ink lg:w-72 lg:justify-start lg:px-3 xl:w-80"
         >
           <PortalIcon name="search" />
           <span className="hidden flex-1 truncate text-left lg:inline">Search pages, chats, customers</span>

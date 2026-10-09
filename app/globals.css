@@ -35,11 +35,11 @@
   --color-flow-soft: #ecfeff;
 
   /* Status */
-  --color-ok: #16a34a;
+  --color-ok: #15803d; /* §257: AA on white for small text */
   --color-ok-soft: #ecfdf3;
   --color-warn: #f59e0b;
   --color-warn-soft: #fffbeb;
-  --color-danger: #dc2626;
+  --color-danger: #b91c1c; /* §257: AA on the tinted alert surfaces */
   --color-danger-soft: #fef2f2;
 
   /* Marketing additions (§216) — new names only, no existing value changed */
@@ -88,6 +88,41 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* §257: Tailwind v4 resets buttons to the default arrow cursor - every
+   clickable control shows the hand again (utilities still override). */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  label[for],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled)::file-selector-button {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+  /* §257: one visible keyboard-focus ring for the app shell (buttons and
+     links that do not set their own outline).
+     §258: form fields are included so public pages (store links, order
+     summaries) get a ring too - those pages have no app shell to lean on. */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
 }
 
 /* Selection */
@@ -638,10 +673,12 @@ html.of-js .of-reveal.of-reveal-in {
   background: rgba(99, 91, 255, 0.16);
 }
 
+/* §258: the radius line used to snap rounded cards to 6px while focused
+   (and animated it, because the CTA carries transition-all) - a focus ring
+   must never change the shape of the thing it highlights. */
 .of-site :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
-  border-radius: 6px;
 }
 
 /* Subtle surfaces */
@@ -653,6 +690,14 @@ html.of-js .of-reveal.of-reveal-in {
 }
 .of-site .of-gradient {
   background-image: linear-gradient(120deg, #635bff 0%, #7a5af8 50%, #0ea5e9 100%);
+}
+/* §258: the same sweep, deepened, for surfaces that carry WHITE text.
+   The bright version is a brand mark and reads beautifully as large text,
+   but white labels on its sky end measured 2.8:1. Every stop of this one
+   clears 4.5:1 against white, so numbers, initials and action chips stay
+   legible. Used only where content sits on top of the fill. */
+.of-site .of-gradient-deep {
+  background-image: linear-gradient(120deg, #4f46e5 0%, #4338ca 55%, #5b21b6 100%);
 }
 .of-tint-glow {
   background:
@@ -922,6 +967,29 @@ html.of-js .of-reveal.of-reveal-in {
   .of-nav-bar,
   .of-enter {
     animation: none;
+  }
+  /* §258: every looping decoration stops, and scroll reveals land already
+     visible instead of waiting for an animation that would not play. */
+  .of-float,
+  .of-bob,
+  .of-spin-slow,
+  .of-spin-rev,
+  .of-grid-drift,
+  .of-hex-drift,
+  .of-dot-blink,
+  .of-ripple,
+  .of-borderpulse,
+  .of-pulse,
+  .of-orb-a,
+  .of-orb-b,
+  .of-orb-c {
+    animation: none;
+  }
+  .of-reveal,
+  html.of-js .of-reveal:not(.of-reveal-in) {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
   .of-connector::after {
     display: none;

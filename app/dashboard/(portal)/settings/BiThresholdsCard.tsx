@@ -215,7 +215,7 @@ export default function BiThresholdsCard() {
             type="button"
             disabled={busy || !thresholds}
             onClick={() => void save()}
-            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
           >
             {busy ? "Saving..." : "Save"}
           </button>

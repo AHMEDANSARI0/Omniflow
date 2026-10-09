@@ -73,7 +73,7 @@ export default function AdminDashboardPage() {
             return (
               <div
                 key={mod.title}
-                className="cursor-not-allowed rounded-2xl border border-line bg-white/[0.01] p-5 opacity-50"
+                className="cursor-not-allowed rounded-2xl border border-line bg-white p-5 opacity-50"
               >
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white shadow-card text-sm text-ink-3">
@@ -100,7 +100,7 @@ export default function AdminDashboardPage() {
               className="group rounded-2xl border border-line bg-white shadow-card p-5 transition-colors duration-300 hover:border-brand/20"
             >
               <div className="mb-4 flex items-start justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-sm text-brand">
                   {mod.icon}
                 </div>
                 <span className="rounded-md border border-emerald-400/20 bg-emerald-400/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-wider text-ok">

@@ -44,7 +44,7 @@ const inputClass =
   "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 
 function roleChipClass(role: string): string {
   if (role === "owner") {
@@ -239,7 +239,7 @@ export default function TeamClient({
           <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
+            className="mt-3 inline-block text-xs text-brand underline-offset-2 transition-colors hover:underline"
           >
             Re-authenticate →
           </a>
@@ -269,7 +269,7 @@ export default function TeamClient({
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+            <div className="rounded-xl border border-line bg-white px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Open chats
               </p>
@@ -277,7 +277,7 @@ export default function TeamClient({
                 {perf.board.openConversations}
               </p>
             </div>
-            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+            <div className="rounded-xl border border-line bg-white px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Unassigned
               </p>
@@ -285,7 +285,7 @@ export default function TeamClient({
                 {perf.board.unassignedOpen}
               </p>
             </div>
-            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+            <div className="rounded-xl border border-line bg-white px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Team replies
               </p>
@@ -293,7 +293,7 @@ export default function TeamClient({
                 {perf.board.repliesSent}
               </p>
             </div>
-            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+            <div className="rounded-xl border border-line bg-white px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 CSAT avg
               </p>
@@ -362,7 +362,7 @@ export default function TeamClient({
               {perf.members.map((member) => (
                 <li
                   key={"perf-" + String(member.id)}
-                  className="rounded-xl border border-line bg-white/[0.01] p-3"
+                  className="rounded-xl border border-line bg-white p-3"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -546,7 +546,7 @@ export default function TeamClient({
                           })
                         }
                         disabled={busy}
-                        className="w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
+                        className="w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-line/60 disabled:opacity-50 sm:w-auto"
                       >
                         {member.status === "active" ? "Disable" : "Enable"}
                       </button>

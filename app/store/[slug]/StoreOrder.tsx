@@ -65,7 +65,7 @@ export default function StoreOrder({
 
   if (note && note.ok) {
     return (
-      <p className="mt-3 rounded-xl border border-emerald-400/25 bg-emerald-400/[0.08] px-3 py-2 text-[11px] text-ok">
+      <p className="mt-3 rounded-xl border border-ok/20 bg-ok-soft px-3 py-2 text-[11px] text-ok">
         {note.text}
       </p>
     );
@@ -81,26 +81,26 @@ export default function StoreOrder({
             inputMode="numeric"
             placeholder="WhatsApp number, e.g. 923001234567"
             autoComplete="off"
-            className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
+            className="min-h-11 w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
           />
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Your name (optional)"
             autoComplete="off"
-            className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
+            className="min-h-11 w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
           />
           <div className="flex items-center gap-2">
             <button
               onClick={() => void order()}
               disabled={busy}
-              className="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.1] px-3 py-2 text-xs font-semibold text-ok hover:bg-emerald-400/[0.18] disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white shadow-cta transition-colors hover:bg-brand-2 disabled:opacity-50"
             >
               {busy ? "Sending…" : "Confirm order"}
             </button>
             <button
               onClick={() => setOpen(false)}
-              className="rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink-3 hover:bg-white/[0.06]"
+              className="min-h-11 rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink-3 transition-colors hover:bg-line/50"
             >
               Cancel
             </button>
@@ -109,7 +109,7 @@ export default function StoreOrder({
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.08] px-3 py-2 text-xs font-semibold text-ok hover:bg-emerald-400/[0.14]"
+          className="min-h-11 rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white shadow-cta transition-colors hover:bg-brand-2"
         >
           Order on WhatsApp
         </button>

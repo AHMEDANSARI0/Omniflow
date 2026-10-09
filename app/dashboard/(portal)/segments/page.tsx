@@ -234,7 +234,7 @@ export default function SegmentsPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             OmniFlow
           </p>
           <h1 className="text-2xl font-semibold text-ink">Segments</h1>
@@ -307,7 +307,7 @@ export default function SegmentsPage() {
               type="button"
               onClick={() => void create()}
               disabled={busy}
-              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
+              className="rounded-xl bg-brand/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-brand/25 disabled:opacity-50"
             >
               {busy ? "Working\u2026" : "Save segment"}
             </button>
@@ -315,7 +315,7 @@ export default function SegmentsPage() {
               <p
                 className={
                   "text-xs " +
-                  (noteTone === "emerald" ? "text-ok" : "text-amber-600")
+                  (noteTone === "emerald" ? "text-ok" : "text-amber-700")
                 }
               >
                 {note}
@@ -355,28 +355,28 @@ export default function SegmentsPage() {
                     <button
                       type="button"
                       onClick={() => void showMembers(row.id)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {openMembers === row.id ? "Hide people" : "People"}
                     </button>
                     <button
                       type="button"
                       onClick={() => openCast(row)}
-                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft"
+                      className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/[0.12]"
                     >
                       Send broadcast
                     </button>
                     <button
                       type="button"
                       onClick={() => void remove(row)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
                 {openMembers === row.id ? (
-                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white p-3">
                     {members.length === 0 ? (
                       <p className="text-xs text-ink-3">
                         No members match right now.
@@ -401,7 +401,7 @@ export default function SegmentsPage() {
                   </div>
                 ) : null}
                 {castOpenFor === row.id ? (
-                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white p-3">
                     <p className="text-[11px] uppercase tracking-wider text-ink-3">
                       Message everyone in {row.name}
                     </p>
@@ -418,19 +418,19 @@ export default function SegmentsPage() {
                         type="button"
                         onClick={() => void sendCast(row)}
                         disabled={castBusy}
-                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                        className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-50"
                       >
                         {castBusy ? "Sending..." : "Send now"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setCastOpenFor(null)}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                        className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                       >
                         Close
                       </button>
                       {castNote ? (
-                        <p className="text-xs text-amber-600">{castNote}</p>
+                        <p className="text-xs text-amber-700">{castNote}</p>
                       ) : null}
                     </div>
                     <p className="mt-2 text-[10px] text-ink-3">

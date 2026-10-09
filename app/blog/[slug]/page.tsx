@@ -111,7 +111,7 @@ export default async function ArticlePage({
             <div className="mx-auto max-w-3xl">
               <a
                 href="/blog"
-                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-brand"
+                className="-my-1 inline-flex items-center gap-1.5 rounded py-1 text-[13px] font-medium text-ink-2 hover:text-brand"
               >
                 <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
                 {blogCopy.allArticles}

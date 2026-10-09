@@ -90,7 +90,7 @@ const field =
 const primary =
   "rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white transition-opacity duration-300 hover:opacity-90 disabled:opacity-50";
 const secondary =
-  "rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-soft disabled:opacity-50";
+  "rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -104,7 +104,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Pill({ tone, children }: { tone: "ok" | "warn" | "danger" | "soft"; children: React.ReactNode }) {
   const style = {
     ok: "bg-ok-soft text-ok",
-    warn: "bg-warn-soft text-warn",
+    warn: "bg-warn-soft text-amber-700",
     danger: "bg-danger-soft text-danger",
     soft: "bg-soft text-ink-2",
   }[tone];
@@ -145,7 +145,7 @@ function Result({ result }: { result: SandboxResult }) {
           <p className="mt-2 text-xs text-ink-2">No reply would be sent to the customer.</p>
         )}
         {outcome.notes.map((note) => (
-          <p key={note} className="mt-2 rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn">
+          <p key={note} className="mt-2 rounded-lg bg-warn-soft px-3 py-2 text-xs text-amber-700">
             {note}
           </p>
         ))}

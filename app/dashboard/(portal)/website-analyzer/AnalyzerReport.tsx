@@ -338,7 +338,7 @@ export default function AnalyzerReport({
                         href={safeHref(link)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-lg border border-line px-2 py-0.5 text-xs capitalize text-ink-2 hover:bg-soft"
+                        className="rounded-lg border border-line px-2 py-0.5 text-xs capitalize text-ink-2 hover:bg-line/60"
                       >
                         {network}
                       </a>

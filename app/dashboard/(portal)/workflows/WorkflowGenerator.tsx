@@ -21,13 +21,13 @@ export interface GeneratorTarget {
 const inputClass =
   "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 const ghostBtn =
   "rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:border-line-2 hover:text-ink disabled:opacity-50";
 
 const LEVEL_STYLE: Record<string, string> = {
   info: "border-line bg-soft text-ink-2",
-  warn: "border-warn/30 bg-warn-soft text-warn",
+  warn: "border-warn/30 bg-warn-soft text-amber-700",
   high: "border-danger/30 bg-danger-soft text-danger",
 };
 
@@ -155,7 +155,7 @@ export default function WorkflowGenerator({
       </div>
 
       {blocked ? (
-        <p className="mt-4 rounded-xl border border-warn/30 bg-warn-soft px-3 py-2 text-xs text-warn">
+        <p className="mt-4 rounded-xl border border-warn/30 bg-warn-soft px-3 py-2 text-xs text-amber-700">
           {status?.reason || "The workflow generator is not available right now."}
         </p>
       ) : null}
@@ -269,7 +269,7 @@ export default function WorkflowGenerator({
           </div>
           <div className="lg:col-span-2">
             {current?.active ? (
-              <p className="mb-2 rounded-xl border border-warn/30 bg-warn-soft px-3 py-2 text-xs text-warn">
+              <p className="mb-2 rounded-xl border border-warn/30 bg-warn-soft px-3 py-2 text-xs text-amber-700">
                 This workflow is active. Saving it in the builder puts the change live right away.
               </p>
             ) : null}

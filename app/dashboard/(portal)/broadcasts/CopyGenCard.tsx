@@ -90,7 +90,7 @@ export default function CopyGenCard() {
         <button
           onClick={() => void generate()}
           disabled={busy || !topic.trim()}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
         >
           {busy ? "Generating..." : "Generate"}
         </button>

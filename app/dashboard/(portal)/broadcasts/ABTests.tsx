@@ -20,9 +20,9 @@ const field =
 const select =
   "rounded-xl border border-line bg-white px-2.5 py-1.5 text-xs text-ink-2 focus:border-brand/40 focus:outline-none";
 const primary =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 const quiet =
-  "rounded-xl border border-line bg-soft px-3 py-1.5 text-xs text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-50";
+  "rounded-xl border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-50";
 
 const PERCENTS = [20, 30, 50, 100];
 const HOURS = [6, 12, 24, 48, 72];
@@ -55,7 +55,7 @@ function withOption(list: number[], value: number): number[] {
 function statusChip(test: AbTest): { text: string; tone: string } {
   if (test.status === "completed") return { text: "Completed", tone: "text-ok border-emerald-400/25" };
   if (test.status === "cancelled") return { text: "Cancelled", tone: "text-ink-3 border-line" };
-  if (test.windowOver) return { text: "Ready to decide", tone: "text-amber-600 border-amber-400/30" };
+  if (test.windowOver) return { text: "Ready to decide", tone: "text-amber-700 border-amber-400/30" };
   return { text: "Collecting results", tone: "text-brand border-brand/25" };
 }
 
@@ -196,7 +196,7 @@ function TestCard({
         </p>
       ) : null}
       {test.status === "running" && test.autoNote ? (
-        <p className="mt-1 text-[11px] text-amber-600">{test.autoNote}</p>
+        <p className="mt-1 text-[11px] text-amber-700">{test.autoNote}</p>
       ) : null}
       <p className="mt-1 text-[10px] text-ink-3">
         A reply or paid order counts when it comes from that customer within {test.decideHours} h of their message.
@@ -206,7 +206,7 @@ function TestCard({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {confirm ? (
             <>
-              <span className="text-xs text-amber-600">
+              <span className="text-xs text-amber-700">
                 {confirm === "cancel"
                   ? "Stop this test? Sent messages cannot be recalled."
                   : test.restSize > 0
@@ -504,7 +504,7 @@ export default function ABTests() {
                   : ""}
               </p>
               {plan.warnings.map((warning) => (
-                <p key={warning} className="mt-1 text-amber-600">
+                <p key={warning} className="mt-1 text-amber-700">
                   {warning}
                 </p>
               ))}

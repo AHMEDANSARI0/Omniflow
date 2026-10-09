@@ -958,7 +958,7 @@ export default function InboxClient({
           <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
+            className="mt-3 inline-block text-xs text-brand underline-offset-2 transition-colors hover:underline"
           >
             Re-authenticate →
           </a>
@@ -999,8 +999,8 @@ export default function InboxClient({
               }}
               className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
                 intentFilter === entry.intent
-                  ? "border-brand/40 bg-cyan-400/[0.12] text-brand"
-                  : "border-cyan-400/15 bg-cyan-400/[0.04] text-brand/70 hover:bg-cyan-400/[0.09]"
+                  ? "border-brand/40 bg-brand/[0.12] text-brand"
+                  : "border-brand/20 bg-brand/[0.04] text-brand hover:bg-brand/[0.09]"
               }`}
             >
               {entry.intent.replace(/_/g, " ")} · {entry.conversations}
@@ -1043,9 +1043,9 @@ export default function InboxClient({
               setChannelFilter(value);
               void refresh();
             }}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+            className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
               channelFilter === value
-                ? "border-ai/30 bg-violet-400/[0.08] text-violet-200"
+                ? "border-ai/30 bg-violet-400/[0.08] text-violet-700"
                 : "border-line bg-soft text-ink-3 hover:text-ink"
             }`}
           >
@@ -1060,15 +1060,15 @@ export default function InboxClient({
             setReplyFilter(next);
             void refresh();
           }}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
             replyFilter === "1"
-              ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
+              ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-800"
               : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Needs reply
           {chipCounts.needsReply > 0 && (
-            <span className="ml-1.5 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
+            <span className="ml-1.5 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
               {chipCounts.needsReply}
             </span>
           )}
@@ -1081,9 +1081,9 @@ export default function InboxClient({
             setReplyFilter(next);
             void refresh();
           }}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
             replyFilter === "overdue"
-              ? "border-red-400/30 bg-red-400/[0.08] text-red-200"
+              ? "border-red-400/30 bg-red-400/[0.08] text-red-700"
               : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
@@ -1101,7 +1101,7 @@ export default function InboxClient({
             setOldestFirst(oldestRef.current);
             void refresh();
           }}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
             oldestFirst
               ? "border-brand/30 bg-brand-soft text-brand"
               : "border-line bg-soft text-ink-3 hover:text-ink"
@@ -1117,15 +1117,15 @@ export default function InboxClient({
             setAssignedFilter(next);
             void refresh();
           }}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
             assignedFilter === "unassigned"
-              ? "border-sky-400/30 bg-sky-400/[0.08] text-sky-200"
+              ? "border-sky-400/30 bg-sky-400/[0.08] text-sky-700"
               : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
           Unassigned
           {chipCounts.unassigned > 0 && (
-            <span className="ml-1.5 rounded-md bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300">
+            <span className="ml-1.5 rounded-md bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
               {chipCounts.unassigned}
             </span>
           )}
@@ -1138,9 +1138,9 @@ export default function InboxClient({
             setAssignedFilter(next);
             void refresh();
           }}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
             assignedFilter === "me"
-              ? "border-brand/30 bg-indigo-400/[0.08] text-indigo-200"
+              ? "border-brand/30 bg-indigo-400/[0.08] text-indigo-700"
               : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
@@ -1168,9 +1168,9 @@ export default function InboxClient({
             setUnreadFilter(next);
             void refresh();
           }}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
             unreadFilter === "1"
-              ? "border-ai/30 bg-violet-400/[0.08] text-violet-200"
+              ? "border-ai/30 bg-violet-400/[0.08] text-violet-700"
               : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
@@ -1184,9 +1184,9 @@ export default function InboxClient({
             setStarredFilter(next);
             void refresh();
           }}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
             starredFilter === "1"
-              ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
+              ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-800"
               : "border-line bg-soft text-ink-3 hover:text-ink"
           }`}
         >
@@ -1196,7 +1196,7 @@ export default function InboxClient({
           type="button"
           onClick={() => resetFilters()}
           title="Clear every filter and sort back to the default view"
-          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-3 transition-colors hover:text-ink"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-3 transition-colors hover:text-ink"
         >
           Reset
         </button>
@@ -1213,9 +1213,9 @@ export default function InboxClient({
                 setTagFilter(next);
                 void refresh();
               }}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
                 tagFilter === entry.tag
-                  ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-200"
+                  ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-800"
                   : "border-line bg-soft text-ink-3 hover:text-ink"
               }`}
             >
@@ -1234,7 +1234,7 @@ export default function InboxClient({
               setStatusFilter(value);
               void refresh();
             }}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+            className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
               statusFilter === value
                 ? "border-brand/30 bg-brand-soft text-brand"
                 : "border-line bg-soft text-ink-3 hover:text-ink"
@@ -1251,7 +1251,7 @@ export default function InboxClient({
               ? "Notification sound is on"
               : "Play a sound when new customer messages arrive"
           }
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
             soundEnabled
               ? "border-brand/30 bg-brand-soft text-brand"
               : "border-line bg-soft text-ink-2 hover:text-ink"
@@ -1271,7 +1271,7 @@ export default function InboxClient({
               ? "The inbox refreshes itself"
               : "Auto-refresh is paused - click Resume to go live again"
           }
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
             liveMode
               ? "border-brand/30 bg-brand-soft text-brand"
               : "border-line bg-soft text-ink-2 hover:text-ink"
@@ -1284,7 +1284,7 @@ export default function InboxClient({
           onClick={() => void refresh()}
           disabled={pending}
           title="Refresh now"
-          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
         >
           {pending ? "Refreshing" : "Refresh"}
         </button>
@@ -1299,7 +1299,7 @@ export default function InboxClient({
               ? "Roomy list"
               : "Fit more conversations on the screen"
           }
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
             compactList
               ? "border-brand/30 bg-brand-soft text-brand"
               : "border-line bg-soft text-ink-2 hover:text-ink"
@@ -1311,7 +1311,7 @@ export default function InboxClient({
           type="button"
           onClick={() => setHelpOpen((open) => !open)}
           title="Keyboard shortcuts"
-          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink"
         >
           ?
         </button>
@@ -1323,7 +1323,7 @@ export default function InboxClient({
               ? "Desktop alerts are on"
               : "Get a desktop alert when new customer messages arrive"
           }
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
             alertEnabled
               ? "border-brand/30 bg-brand-soft text-brand"
               : "border-line bg-soft text-ink-2 hover:text-ink"
@@ -1336,7 +1336,7 @@ export default function InboxClient({
           onClick={() => void markAllRead()}
           disabled={bulkBusy || !chipCounts.unread}
           title="Mark every open conversation as read"
-          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
         >
           Mark all read
         </button>
@@ -1344,14 +1344,14 @@ export default function InboxClient({
           type="button"
           onClick={() => void exportCsv()}
           disabled={exporting || !items || items.length === 0}
-          className="ml-auto rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
+          className="ml-auto rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
         >
           {exporting ? "Preparing…" : "Export CSV"}
         </button>
       </div>
 
       {selectedIds.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand/20 bg-cyan-400/[0.04] px-3 py-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand/20 bg-brand/[0.04] px-3 py-2">
           <span className="text-xs font-medium text-brand">
             {selectedIds.length} selected
           </span>
@@ -1424,7 +1424,7 @@ export default function InboxClient({
           <button
             type="button"
             onClick={() => setSelectedIds([])}
-            className="ml-auto rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink"
+            className="ml-auto rounded-lg border border-line bg-soft px-2.5 inline-flex min-h-9 items-center py-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink"
           >
             Clear
           </button>
@@ -1473,7 +1473,7 @@ export default function InboxClient({
             <button
               type="button"
               onClick={() => resetFilters()}
-              className="mt-4 rounded-lg border border-line bg-soft px-4 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink"
+              className="mt-4 rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-4 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink"
             >
               Clear filters
             </button>
@@ -1492,7 +1492,7 @@ export default function InboxClient({
               data-conv-row={item.id}
               className={
                 "flex items-start gap-2 rounded-2xl " +
-                (item.unread ? "bg-cyan-400/[0.03] " : "") +
+                (item.unread ? "bg-brand/[0.03] " : "") +
                 (item.needsReply && item.status === "open"
                   ? "border-l-2 border-l-amber-400/60 "
                   : "") +
@@ -1508,16 +1508,16 @@ export default function InboxClient({
                 }
                 checked={selectedIds.includes(item.id)}
                 onChange={() => toggleSelected(item.id)}
-                className="mt-4 h-5 w-5 shrink-0 accent-cyan-400"
+                className="mt-4 h-5 w-5 shrink-0 accent-brand"
               />
               <Link
                 href={`/dashboard/conversations/${item.id}`}
                 prefetch={false}
-                className={`block min-w-0 flex-1 rounded-2xl border border-line bg-soft ${compactList ? "p-2.5" : "p-4"} transition-colors duration-300 hover:border-brand/30 hover:bg-white/[0.025]`}
+                className={`block min-w-0 flex-1 rounded-2xl border border-line bg-soft ${compactList ? "p-2.5" : "p-4"} transition-colors duration-300 hover:border-brand/30 hover:bg-line/60`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-xs font-semibold text-brand">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-xs font-semibold text-brand">
                       {(item.contactName || item.contactId || "?").slice(0, 2).toUpperCase()}
                     </span>
                     <div className="min-w-0">
@@ -1527,13 +1527,13 @@ export default function InboxClient({
                         </span>
                         {item.unread && (
                           <span
-                            className="h-2 w-2 shrink-0 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"
+                            className="h-2 w-2 shrink-0 rounded-full bg-brand shadow-[0_0_12px_rgba(79,70,229,0.45)]"
                             title="Unread messages"
                           />
                         )}
                         {item.needsReply && (
                           <span
-                            className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600"
+                            className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700"
                             title="Customer sent the last message — waiting for a reply"
                           >
                             awaiting reply
@@ -1573,7 +1573,7 @@ export default function InboxClient({
                       onClick={() => void toggleStar(item.id)}
                       className={`text-base leading-none transition-transform hover:scale-110 ${
                         item.starred
-                          ? "text-amber-600"
+                          ? "text-amber-700"
                           : "text-ink-3 hover:text-ink-3"
                       }`}
                     >
@@ -1607,7 +1607,7 @@ export default function InboxClient({
                           "inline-block h-1.5 w-1.5 rounded-full " +
                           (item.channel === "whatsapp"
                             ? "bg-emerald-400"
-                            : "bg-cyan-400")
+                            : "bg-brand")
                         }
                       />
                       {CHANNEL_LABELS[item.channel] ?? item.channel}
@@ -1616,7 +1616,7 @@ export default function InboxClient({
                     <p
                       className={`mt-1 text-[10px] ${
                         item.needsReply && item.status === "open" && item.lastMessageAt
-                          ? "text-amber-600/80"
+                          ? "text-amber-700"
                           : "text-ink-3"
                       }`}
                     >
@@ -1638,12 +1638,12 @@ export default function InboxClient({
                   item.tags.length > 0) && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {item.lastIntent && item.lastIntent !== "general" && (
-                      <span className="inline-block rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-brand/70">
+                      <span className="inline-block rounded-md border border-brand/20 bg-brand/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-brand">
                         {item.lastIntent.replace(/_/g, " ")}
                       </span>
                     )}
                     {item.leadTemp === "hot" && (
-                      <span className="inline-block rounded-md border border-orange-400/25 bg-orange-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600">
+                      <span className="inline-block rounded-md border border-orange-400/25 bg-orange-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-700">
                         Hot lead
                       </span>
                     )}
@@ -1717,43 +1717,43 @@ export default function InboxClient({
             <ul className="mt-3 space-y-2 text-xs text-ink-2">
               <li className="flex items-center justify-between gap-6">
                 <span>Focus search</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">/</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">/</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Move down / up the list</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">j / k</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">j / k</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Open the highlighted chat</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">Enter</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">Enter</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Back to the inbox (inside a chat)</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">Esc</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">Esc</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Toggle the needs-reply view</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">r</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">r</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Toggle assigned-to-me</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">a</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">a</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Toggle the starred view</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">s</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">s</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Toggle unread-only</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">u</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">u</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Select or deselect the highlighted chat</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">x</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">x</kbd>
               </li>
               <li className="flex items-center justify-between gap-6">
                 <span>Open or close this panel</span>
-                <kbd className="rounded border border-white/[0.12] px-1.5 py-0.5 text-[10px]">?</kbd>
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px]">?</kbd>
               </li>
             </ul>
             <button

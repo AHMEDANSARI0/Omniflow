@@ -171,7 +171,7 @@ export default function EscalationsCard() {
             key={option}
             type="button"
             onClick={() => setStatus(option)}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
               status === option
                 ? "border-brand/30 bg-brand-soft text-brand"
                 : "border-line bg-soft text-ink-3 hover:text-ink"
@@ -199,7 +199,7 @@ export default function EscalationsCard() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="min-w-0 text-xs text-ink">
                   {item.severity === "high" ? (
-                    <span className="mr-1 text-amber-600">&#9679;</span>
+                    <span className="mr-1 text-amber-700">&#9679;</span>
                   ) : null}
                   <a
                     href={"/dashboard/conversations/" + item.conversation_id}

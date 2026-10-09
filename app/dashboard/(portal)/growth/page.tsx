@@ -862,7 +862,7 @@ export default function GrowthPage() {
       </div>
 
       {failed ? (
-        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-600">
+        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-700">
           Some insights are temporarily unavailable. Try again shortly.
         </p>
       ) : null}
@@ -876,7 +876,7 @@ export default function GrowthPage() {
                 "omniflow-revenue.csv"
               )
             }
-            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 hover:bg-white/[0.06]"
+            className="inline-flex min-h-8 items-center rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60"
           >
             Export revenue CSV
           </button>
@@ -890,10 +890,10 @@ export default function GrowthPage() {
               <button
                 key={option}
                 onClick={() => setDays(option)}
-                className={`rounded-lg border px-2.5 py-1 text-xs transition-colors ${
+                className={`rounded-lg border px-2.5 inline-flex min-h-9 items-center py-1 text-xs transition-colors ${
                   days === option
                     ? "border-brand/30 bg-brand-soft text-brand"
-                    : "border-line bg-soft text-ink-3 hover:bg-soft"
+                    : "border-line bg-soft text-ink-3 hover:bg-line/60"
                 }`}
               >
                 {option}d
@@ -1015,7 +1015,7 @@ export default function GrowthPage() {
               {(
                 [
                   ["Stock up", restock.stockUp, "text-ok"],
-                  ["Watch", restock.watch, "text-amber-600"],
+                  ["Watch", restock.watch, "text-amber-700"],
                   ["Slow movers", restock.slow, "text-ink-3"],
                 ] as const
               ).map(([label, list, tone]) => (
@@ -1097,7 +1097,7 @@ export default function GrowthPage() {
                     className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] ${
                       entry.tier === "at_risk"
                         ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
-                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
                     }`}
                   >
                     {entry.score} ·{" "}
@@ -1154,8 +1154,8 @@ export default function GrowthPage() {
                     title={entry.hour + ":00 - " + entry.chats + " chats"}
                     className={`flex-1 rounded-t ${
                       staffing.suggested.includes(entry.hour)
-                        ? "bg-cyan-400/60"
-                        : "bg-white/[0.08]"
+                        ? "bg-brand/60"
+                        : "bg-soft"
                     }`}
                     style={{
                       height: Math.max(4, (entry.chats / peak) * 96) + "px",
@@ -1204,7 +1204,7 @@ export default function GrowthPage() {
                 <span>Max discount: {settings.maxPercent}%</span>
                 <button
                   onClick={() => void saveLimits(!settings.enabled)}
-                  className={`rounded-lg border px-2.5 py-1 text-xs transition-colors ${
+                  className={`rounded-lg border px-2.5 inline-flex min-h-9 items-center py-1 text-xs transition-colors ${
                     settings.enabled
                       ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
                       : "border-line bg-soft text-ink-3"
@@ -1228,7 +1228,7 @@ export default function GrowthPage() {
                 />
                 <button
                   onClick={() => void runQuote()}
-                  className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft"
+                  className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand/[0.12]"
                 >
                   Calculate
                 </button>
@@ -1242,7 +1242,7 @@ export default function GrowthPage() {
                       accept {quote.counter}
                     </span>
                   ) : (
-                    <span className="text-amber-600">
+                    <span className="text-amber-700">
                       counter at {quote.counter} (max {quote.maxPercent}%)
                     </span>
                   )}
@@ -1351,7 +1351,7 @@ export default function GrowthPage() {
           hint="Shareable order summaries - the customer opens the link, you close the deal in chat."
         >
           {composer.open ? (
-            <div className="mb-3 rounded-xl border border-brand/20 bg-cyan-400/[0.04] p-3">
+            <div className="mb-3 rounded-xl border border-brand/20 bg-brand/[0.04] p-3">
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
                   <span className="text-[11px] text-ink-3">
@@ -1364,7 +1364,7 @@ export default function GrowthPage() {
                       updateComposer({ contact: event.target.value })
                     }
                     placeholder="92300xxxxxxx"
-                    className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none"
                   />
                 </label>
                 <label className="block">
@@ -1378,7 +1378,7 @@ export default function GrowthPage() {
                       updateComposer({ title: event.target.value })
                     }
                     placeholder="Eid bundle"
-                    className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none"
                   />
                 </label>
               </div>
@@ -1418,7 +1418,7 @@ export default function GrowthPage() {
                         updateRow(index, { name: event.target.value })
                       }
                       placeholder="Item"
-                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                     />
                     <input
                       type="number"
@@ -1427,7 +1427,7 @@ export default function GrowthPage() {
                       onChange={(event) =>
                         updateRow(index, { qty: event.target.value })
                       }
-                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                     />
                     <input
                       type="number"
@@ -1438,7 +1438,7 @@ export default function GrowthPage() {
                         updateRow(index, { price: event.target.value })
                       }
                       placeholder="Price"
-                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                      className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                     />
                     <button
                       onClick={() =>
@@ -1448,7 +1448,7 @@ export default function GrowthPage() {
                           ),
                         })
                       }
-                      className="rounded-lg border border-line px-1 text-[10px] text-ink-3 hover:bg-white/[0.06]"
+                      className="rounded-lg border border-line px-1 text-[10px] text-ink-3 hover:bg-line/60"
                     >
                       x
                     </button>
@@ -1465,7 +1465,7 @@ export default function GrowthPage() {
                       ],
                     })
                   }
-                  className="text-[11px] text-brand hover:text-brand"
+                  className="text-[11px] text-brand underline-offset-2 hover:underline"
                 >
                   + Add item
                 </button>
@@ -1481,7 +1481,7 @@ export default function GrowthPage() {
                         updateComposer({ discount: event.target.value })
                       }
                       placeholder="0"
-                      className="w-20 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                      className="w-20 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                     />
                   </label>
                   <label className="flex items-center gap-2 text-[11px] text-ink-3">
@@ -1495,7 +1495,7 @@ export default function GrowthPage() {
                         updateComposer({ advance: event.target.value })
                       }
                       placeholder="0 = full payment"
-                      className="w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                      className="w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                     />
                   </label>
                   {brandOptions.length > 0 && (
@@ -1506,7 +1506,7 @@ export default function GrowthPage() {
                         onChange={(event) =>
                           updateComposer({ brand: event.target.value })
                         }
-                        className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                        className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                       >
                         <option value="">No brand</option>
                         {brandOptions.map((brand) => (
@@ -1524,7 +1524,7 @@ export default function GrowthPage() {
                       onChange={(event) =>
                         updateComposer({ expiry: event.target.value })
                       }
-                      className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                      className="rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                     >
                       <option value="">Never</option>
                       <option value="3">3 days</option>
@@ -1539,13 +1539,13 @@ export default function GrowthPage() {
                 <button
                   onClick={() => void createLink()}
                   disabled={composer.busy}
-                  className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand hover:bg-cyan-400/[0.18] disabled:opacity-50"
+                  className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand hover:bg-brand/[0.18] disabled:opacity-50"
                 >
                   {composer.busy ? "Creating…" : "Create link"}
                 </button>
                 <button
                   onClick={() => setComposer(EMPTY_COMPOSER)}
-                  className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 hover:bg-white/[0.06]"
+                  className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 hover:bg-line/60"
                 >
                   Cancel
                 </button>
@@ -1554,14 +1554,14 @@ export default function GrowthPage() {
           ) : (
             <button
               onClick={() => setComposer({ ...EMPTY_COMPOSER, open: true })}
-              className="mb-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand hover:bg-brand-soft"
+              className="mb-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand hover:bg-brand/[0.12]"
             >
               + New checkout link
             </button>
           )}
           {changeReqs.length > 0 ? (
             <div className="mb-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-3">
-              <p className="text-xs font-medium text-amber-200">
+              <p className="text-xs font-medium text-amber-800">
                 Customer change requests ({changeReqs.length})
               </p>
               <ul className="mt-2 space-y-1.5">
@@ -1595,7 +1595,7 @@ export default function GrowthPage() {
                       <button
                         onClick={() => void decideChange(req.id, "decline")}
                         disabled={reqBusy === req.id}
-                        className="rounded-md border border-line-2 px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
+                        className="rounded-md border border-line-2 px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
                       >
                         Decline
                       </button>
@@ -1651,22 +1651,22 @@ export default function GrowthPage() {
                             : link.status === "cancelled"
                               ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
                               : link.status === "shipped"
-                                ? "border-sky-400/25 bg-sky-400/[0.08] text-sky-300"
+                                ? "border-sky-400/25 bg-sky-400/[0.08] text-sky-700"
                                 : link.status === "delivered"
                                   ? "border-violet-400/25 bg-violet-400/[0.08] text-ai"
-                                  : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                                  : "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
                         }`}
                       >
                         {link.status}
                       </span>
                       {(link.advancePercent || 0) > 0 && link.status === "open" ? (
-                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[10px] text-sky-300">
+                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[10px] text-sky-700">
                           Pay Rs {link.advanceDue} now · Rs {link.codBalance}{" "}
                           on delivery
                         </span>
                       ) : null}
                       {link.brandName ? (
-                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[10px] text-sky-300">
+                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[10px] text-sky-700">
                           {link.brandName}
                         </span>
                       ) : null}
@@ -1674,25 +1674,25 @@ export default function GrowthPage() {
                         <>
                           <button
                             onClick={() => void markLink(link, "paid")}
-                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                           >
                             Paid
                           </button>
                           <button
                             onClick={() => void markLink(link, "cancelled")}
-                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                           >
                             Cancel
                           </button>
                           <button
                             onClick={() => startEdit(link)}
-                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => void duplicateLink(link)}
-                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                           >
                             Duplicate
                           </button>
@@ -1707,7 +1707,7 @@ export default function GrowthPage() {
                       {link.status === "paid" ? (
                         <button
                           onClick={() => void markLink(link, "shipped")}
-                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                         >
                           Shipped
                         </button>
@@ -1715,7 +1715,7 @@ export default function GrowthPage() {
                       {link.status === "shipped" ? (
                         <button
                           onClick={() => void markLink(link, "delivered")}
-                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                         >
                           Delivered
                         </button>
@@ -1729,7 +1729,7 @@ export default function GrowthPage() {
                               returnFor === link.id ? null : link.id
                             )
                           }
-                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                         >
                           Returned
                         </button>
@@ -1737,7 +1737,7 @@ export default function GrowthPage() {
                       {link.status !== "open" ? (
                         <button
                           onClick={() => openTracking(link)}
-                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                          className="rounded-lg border border-line bg-soft px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                         >
                           Tracking
                         </button>
@@ -1753,7 +1753,7 @@ export default function GrowthPage() {
                               setTrackCourier(event.target.value)
                             }
                             placeholder="Courier (TCS, Leopards...)"
-                            className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                            className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                           />
                           <input
                             type="text"
@@ -1762,20 +1762,20 @@ export default function GrowthPage() {
                               setTrackNumber(event.target.value)
                             }
                             placeholder="Tracking #"
-                            className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                            className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                           />
                         </div>
                         <div className="mt-2 flex items-center gap-2">
                           <button
                             onClick={() => void saveTracking()}
                             disabled={trackBusy}
-                            className="rounded-lg border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11px] text-brand hover:bg-brand-soft disabled:opacity-50"
+                            className="rounded-lg border border-brand/30 bg-brand-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-brand hover:bg-brand/[0.12] disabled:opacity-50"
                           >
                             {trackBusy ? "Saving..." : "Save tracking"}
                           </button>
                           <button
                             onClick={() => setTrackFor(null)}
-                            className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-3 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-3 hover:bg-line/60"
                           >
                             Cancel
                           </button>
@@ -1799,7 +1799,7 @@ export default function GrowthPage() {
                             onChange={(event) =>
                               setEditTitle(event.target.value)
                             }
-                            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
+                            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none"
                           />
                         </label>
                         <label className="mt-2 block">
@@ -1811,7 +1811,7 @@ export default function GrowthPage() {
                             onChange={(event) =>
                               setEditExpiry(event.target.value)
                             }
-                            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
+                            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none"
                           >
                             <option value="">Keep current</option>
                             <option value="0">No expiry</option>
@@ -1835,12 +1835,12 @@ export default function GrowthPage() {
                                 setAdvanceAmount(event.target.value)
                               }
                               placeholder="e.g. 500"
-                              className="w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                              className="w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                             />
                             <button
                               onClick={() => void recordAdvance(link)}
                               disabled={advanceBusy}
-                              className="rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.14] disabled:opacity-50"
+                              className="rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.14] disabled:opacity-50"
                             >
                               {advanceBusy ? "Recording…" : "Record"}
                             </button>
@@ -1873,7 +1873,7 @@ export default function GrowthPage() {
                                   )
                                 }
                                 placeholder="Item"
-                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                               />
                               <input
                                 type="number"
@@ -1888,7 +1888,7 @@ export default function GrowthPage() {
                                     )
                                   )
                                 }
-                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                               />
                               <input
                                 type="number"
@@ -1904,7 +1904,7 @@ export default function GrowthPage() {
                                     )
                                   )
                                 }
-                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                                className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                               />
                             </div>
                           ))}
@@ -1913,13 +1913,13 @@ export default function GrowthPage() {
                           <button
                             onClick={() => void saveEdit()}
                             disabled={editBusy}
-                            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.14] disabled:opacity-50"
+                            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.14] disabled:opacity-50"
                           >
                             {editBusy ? "Saving…" : "Save changes"}
                           </button>
                           <button
                             onClick={() => setEditFor(null)}
-                            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-3 hover:bg-white/[0.06]"
+                            className="rounded-lg border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-3 hover:bg-line/60"
                           >
                             Cancel
                           </button>
@@ -1935,7 +1935,7 @@ export default function GrowthPage() {
                               setReturnFor(null);
                               void markLink(link, "returned", code);
                             }}
-                            className="rounded-lg border border-amber-400/25 bg-amber-400/[0.08] px-2 py-1 text-[10px] text-amber-600 hover:bg-amber-400/[0.14]"
+                            className="rounded-lg border border-amber-400/25 bg-amber-400/[0.08] px-2 py-1 text-[10px] text-amber-700 hover:bg-amber-400/[0.14]"
                           >
                             {label}
                           </button>
@@ -1969,7 +1969,7 @@ export default function GrowthPage() {
             <button
               onClick={() => void addKeyword()}
               disabled={!keyword.trim()}
-              className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+              className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
             >
               Watch
             </button>
@@ -2018,7 +2018,7 @@ export default function GrowthPage() {
             <button
               onClick={() => void addRoute()}
               disabled={!match.trim()}
-              className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+              className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
             >
               Add rule
             </button>

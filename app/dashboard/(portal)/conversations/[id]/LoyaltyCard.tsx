@@ -72,7 +72,7 @@ export default function LoyaltyCard({ contactId }: { contactId: string | null })
             .join(" and ")}
         </p>
       ) : null}
-      {view.optedOut ? <p className="mt-2 text-[11px] text-amber-600">Opted out of messages.</p> : null}
+      {view.optedOut ? <p className="mt-2 text-[11px] text-amber-700">Opted out of messages.</p> : null}
       {view.due && !view.optedOut ? (
         <div className="mt-2 rounded-lg bg-soft px-2.5 py-1.5 text-[11px]">
           <p className="text-ink-2">

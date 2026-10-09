@@ -84,7 +84,7 @@ export default async function MultiChannel({
             <div className="flex items-center gap-2.5">
               <span
                 aria-hidden
-                className="of-gradient inline-flex h-9 w-9 items-center justify-center rounded-xl"
+                className="of-gradient-deep inline-flex h-9 w-9 items-center justify-center rounded-xl"
               >
                 <Workflow className="h-[18px] w-[18px] text-white" />
               </span>
@@ -108,7 +108,10 @@ export default async function MultiChannel({
               <div className="flex justify-center">
                 <span aria-hidden className="h-4 w-px bg-line-2" />
               </div>
-              <div className="of-gradient rounded-xl2 px-4 py-3.5">
+              {/* §258: deep gradient + dark chips - white labels on the
+                  bright gradient measured 3.3:1; on this one every stop
+                  clears 4.5:1 and the chips read at 8:1. */}
+              <div className="of-gradient-deep rounded-xl2 px-4 py-3.5">
                 <p className="flex items-center gap-2 text-[13px] font-semibold text-white">
                   <Workflow className="h-4 w-4 shrink-0" aria-hidden />
                   {diagram.decide}
@@ -117,7 +120,7 @@ export default async function MultiChannel({
                   {actions.map((action) => (
                     <span
                       key={action}
-                      className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white"
+                      className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] font-medium text-white"
                     >
                       {action}
                     </span>

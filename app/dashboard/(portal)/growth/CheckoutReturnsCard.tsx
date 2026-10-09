@@ -80,7 +80,7 @@ export default function CheckoutReturnsCard() {
     <section className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">Returns</h3>
+          <h3 className="text-sm font-semibold text-ink">Returns</h3>
           <p className="mt-0.5 text-xs text-ink-3">
             Orders marked returned, newest first. Returned orders drop out of
             revenue and VIP counts automatically.
@@ -90,7 +90,7 @@ export default function CheckoutReturnsCard() {
           <button
             type="button"
             onClick={() => void exportCsv()}
-            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 hover:bg-white/[0.06]"
+            className="rounded-lg border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60"
           >
             Export CSV
           </button>
@@ -106,7 +106,7 @@ export default function CheckoutReturnsCard() {
           shows up here with the reason.
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-white/[0.05]">
+        <ul className="mt-3 divide-y divide-line">
           {items.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
@@ -120,7 +120,7 @@ export default function CheckoutReturnsCard() {
                     : ""}
                 </p>
               </div>
-              <span className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[10px] text-amber-600">
+              <span className="shrink-0 rounded-md border border-amber-400/25 bg-amber-400/[0.08] px-1.5 py-0.5 text-[10px] text-amber-700">
                 {REASON_LABELS[row.reason] || row.reason}
               </span>
             </li>

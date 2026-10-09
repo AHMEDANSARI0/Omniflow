@@ -42,7 +42,7 @@ export default function MobileTabBar() {
               <span className="relative leading-none">
                 <PortalIcon name={tab.icon} className="h-5 w-5" />
                 {tab.label === "Inbox" && unreadCount > 0 ? (
-                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-rose-500 px-1 text-center text-[9px] font-semibold leading-4 text-white">
+                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-rose-600 px-1 text-center text-[9px] font-semibold leading-4 text-white">
                     {unreadCount > 99 ? "99+" : String(unreadCount)}
                   </span>
                 ) : null}

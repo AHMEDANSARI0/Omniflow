@@ -54,7 +54,7 @@ const COMING_SOON = INTEGRATIONS.filter(
 ).map((item) => item.name);
 
 const INPUT =
-  "mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none";
+  "mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none";
 
 function SecretField(props: {
   label: string;
@@ -354,14 +354,14 @@ export default function InstagramCard() {
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs text-brand hover:bg-brand-soft disabled:opacity-50"
+          className="rounded-lg border border-brand/30 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-brand hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save configuration"}
         </button>
         <button
           onClick={() => void verify()}
           disabled={busy || !settings.configured}
-          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
+          className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           Verify with Meta
         </button>

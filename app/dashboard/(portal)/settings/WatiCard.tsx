@@ -125,7 +125,7 @@ export default function WatiCard() {
           <button
             onClick={() => setEnabled((value) => !value)}
             className={
-              "mt-1 block rounded-lg border px-3 py-1.5 text-xs "
+              "mt-1 inline-flex min-h-9 items-center rounded-lg border px-3 py-1.5 text-xs "
               + (enabled
                 ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
                 : "border-line text-ink-3")
@@ -142,7 +142,7 @@ export default function WatiCard() {
             value={baseUrl}
             onChange={(event) => setBaseUrl(event.target.value)}
             placeholder="https://live-mt-server.wati.io/xxxxx"
-            className="mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none"
           />
         </label>
         <label className="block flex-1 min-w-56">
@@ -154,20 +154,20 @@ export default function WatiCard() {
             value={tokenInput}
             onChange={(event) => setTokenInput(event.target.value)}
             placeholder={tokenMasked ? "Unchanged - bas badalna ho to likhein" : "Paste API token"}
-            className="mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none"
           />
         </label>
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs text-brand hover:bg-brand-soft disabled:opacity-50"
+          className="rounded-lg border border-brand/30 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-brand hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save"}
         </button>
         <button
           onClick={() => void sync()}
           disabled={busy || !enabled}
-          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
+          className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           Sync approved templates
         </button>

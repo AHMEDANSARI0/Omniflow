@@ -260,7 +260,7 @@ export default function InteractiveCard({
         </div>
         <button
           onClick={() => setShowBuilder((value) => !value)}
-          className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-white/[0.06]"
+          className="shrink-0 rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60"
         >
           {showBuilder ? "Close" : "New template"}
         </button>
@@ -275,7 +275,7 @@ export default function InteractiveCard({
                 setBuilder({ ...builder, name: event.target.value })
               }
               placeholder="Template name"
-              className="w-40 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+              className="w-40 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
             />
             <div className="flex overflow-hidden rounded-lg border border-line">
               {["buttons", "list"].map((kind) => (
@@ -283,10 +283,10 @@ export default function InteractiveCard({
                   key={kind}
                   onClick={() => setBuilder({ ...builder, kind })}
                   className={
-                    "px-2.5 py-1 text-[11px] "
+                    "inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] "
                     + (builder.kind === kind
                       ? "bg-brand-soft text-brand"
-                      : "text-ink-3 hover:bg-soft")
+                      : "text-ink-3 hover:bg-line/60")
                   }
                 >
                   {kind === "buttons" ? "Buttons (3)" : "List (10)"}
@@ -300,7 +300,7 @@ export default function InteractiveCard({
               setBuilder({ ...builder, body: event.target.value })
             }
             placeholder="Message body (required)"
-            className="mt-2 w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+            className="mt-2 w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
           />
           <div className="mt-2 grid grid-cols-2 gap-2">
             <input
@@ -309,7 +309,7 @@ export default function InteractiveCard({
                 setBuilder({ ...builder, header: event.target.value })
               }
               placeholder="Header (optional)"
-              className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
             />
             <input
               value={builder.footer}
@@ -317,7 +317,7 @@ export default function InteractiveCard({
                 setBuilder({ ...builder, footer: event.target.value })
               }
               placeholder="Footer (optional)"
-              className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
             />
           </div>
           {builder.kind === "list" ? (
@@ -327,7 +327,7 @@ export default function InteractiveCard({
                 setBuilder({ ...builder, listLabel: event.target.value })
               }
               placeholder="List button label"
-              className="mt-2 w-48 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+              className="mt-2 w-48 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
             />
           ) : null}
           <div className="mt-2 space-y-1.5">
@@ -350,7 +350,7 @@ export default function InteractiveCard({
                       ? "Button " + (index + 1) + " (max 20 chars)"
                       : "Option " + (index + 1) + " (max 24 chars)"
                   }
-                  className="w-44 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                  className="w-44 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                 />
                 {builder.kind === "list" ? (
                   <input
@@ -366,7 +366,7 @@ export default function InteractiveCard({
                       })
                     }
                     placeholder="Description (optional)"
-                    className="flex-1 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                    className="flex-1 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                   />
                 ) : null}
                 <button
@@ -376,7 +376,7 @@ export default function InteractiveCard({
                       rows: builder.rows.filter((_, at) => at !== index),
                     })
                   }
-                  className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-3 hover:bg-white/[0.06]"
+                  className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-3 hover:bg-line/60"
                 >
                   x
                 </button>
@@ -392,14 +392,14 @@ export default function InteractiveCard({
                 })
               }
               disabled={builder.rows.length >= maxRows}
-              className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-white/[0.06] disabled:opacity-40"
+              className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-40"
             >
               + Add option
             </button>
             <button
               onClick={() => void saveTemplate()}
               disabled={busy}
-              className="rounded-lg border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11px] text-brand hover:bg-brand-soft disabled:opacity-50"
+              className="rounded-lg border border-brand/30 bg-brand-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-brand hover:bg-brand/[0.12] disabled:opacity-50"
             >
               {busy ? "Saving..." : "Save template"}
             </button>
@@ -434,14 +434,14 @@ export default function InteractiveCard({
                 <button
                   onClick={() => void send(template.id)}
                   disabled={busy}
-                  className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                  className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
                 >
                   {busy ? "Sending..." : "Send"}
                 </button>
                 <button
                   onClick={() => void removeTemplate(template.id)}
                   disabled={busy}
-                  className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-3 hover:bg-white/[0.06] disabled:opacity-50"
+                  className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-3 hover:bg-line/60 disabled:opacity-50"
                 >
                   Delete
                 </button>
@@ -470,7 +470,7 @@ export default function InteractiveCard({
                   <button
                     onClick={() => void sendWati(template.name)}
                     disabled={watiBusy}
-                    className="shrink-0 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                    className="shrink-0 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
                   >
                     {watiBusy ? "Sending..." : "Send"}
                   </button>
@@ -484,7 +484,7 @@ export default function InteractiveCard({
                     })
                   }
                   placeholder="Parameters (Value1 | Value2 | ...)"
-                  className="mt-1.5 w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                  className="mt-1.5 w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                 />
               </div>
             ))}
@@ -521,7 +521,7 @@ export default function InteractiveCard({
                   <button
                     onClick={() => void sendCloud(template.name)}
                     disabled={cloudBusy}
-                    className="shrink-0 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                    className="shrink-0 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
                   >
                     {cloudBusy ? "Sending..." : "Send"}
                   </button>
@@ -536,7 +536,7 @@ export default function InteractiveCard({
                       })
                     }
                     placeholder="Parameters (Value1 | Value2 | ...)"
-                    className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                    className="w-full rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                   />
                   <input
                     value={cloudLangs[template.name] || ""}
@@ -547,7 +547,7 @@ export default function InteractiveCard({
                       })
                     }
                     placeholder="en"
-                    className="w-16 shrink-0 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none"
+                    className="w-16 shrink-0 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none"
                   />
                 </div>
               </div>

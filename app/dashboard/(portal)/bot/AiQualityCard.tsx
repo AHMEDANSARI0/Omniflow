@@ -270,7 +270,7 @@ export default function AiQualityCard() {
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 hover:border-line-2"
+            className="rounded-xl border border-line bg-white inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 hover:border-line-2"
           >
             Refresh
           </button>
@@ -459,14 +459,14 @@ export default function AiQualityCard() {
                   type="button"
                   disabled={runningId === set.id}
                   onClick={() => void runSet(set.id)}
-                  className="rounded-lg border border-line bg-white px-2.5 py-1 text-[11px] font-medium text-ink-2 disabled:opacity-50"
+                  className="rounded-lg border border-line bg-white inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 disabled:opacity-50"
                 >
                   {runningId === set.id ? "Running..." : "Run checks"}
                 </button>
                 <button
                   type="button"
                   onClick={() => void archiveSet(set.id)}
-                  className="rounded-lg border border-line bg-white px-2.5 py-1 text-[11px] text-ink-3"
+                  className="rounded-lg border border-line bg-white inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-3"
                 >
                   Archive
                 </button>

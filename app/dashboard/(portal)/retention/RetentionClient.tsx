@@ -14,9 +14,9 @@ import type {
 const card = "rounded-2xl border border-line bg-white p-5 shadow-card";
 const input = "rounded-lg border border-line bg-white px-2 py-1.5 text-sm text-ink";
 const ghostBtn =
-  "rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-50";
+  "rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-50";
 const primaryBtn =
-  "rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white transition-opacity duration-300 hover:opacity-90 disabled:opacity-50";
+  "rounded-lg bg-brand inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-white transition-opacity duration-300 hover:opacity-90 disabled:opacity-50";
 const KIND_LABEL: Record<string, string> = { reorder: "Reorder", winback: "Win-back", cart: "Cart" };
 const MODE_LABEL: Record<string, string> = { auto: "Automatic", manual: "Send now", queue: "Win-back queue" };
 const HELD_LABEL: Record<string, string> = {
@@ -508,7 +508,7 @@ export default function RetentionClient({
                   </span>
                 </span>
                 <span className="text-xs text-ink-3">
-                  {entry.returned ? <span className="text-emerald-600">Came back</span> : "No order yet"}
+                  {entry.returned ? <span className="text-emerald-700">Came back</span> : "No order yet"}
                   {" \u00b7 "}
                   {when(entry.createdAt)}
                 </span>

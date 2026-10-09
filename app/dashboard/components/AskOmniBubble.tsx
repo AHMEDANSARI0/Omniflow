@@ -61,7 +61,7 @@ export default function AskOmniBubble() {
               onClick={() => setOpen(false)}
               title="Open full page"
               aria-label="Open full page"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-soft hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition-colors duration-200 hover:bg-line/50 hover:text-ink"
             >
               <PortalIcon name="expand" />
             </Link>
@@ -69,7 +69,7 @@ export default function AskOmniBubble() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close Ask Omni"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-soft hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 transition-colors duration-200 hover:bg-line/50 hover:text-ink"
             >
               <PortalIcon name="close" />
             </button>
@@ -88,7 +88,7 @@ export default function AskOmniBubble() {
         }}
         aria-label={open ? "Close Ask Omni" : "Ask Omni"}
         aria-expanded={open}
-        className={`fixed bottom-[max(5.25rem,calc(4.5rem_+_env(safe-area-inset-bottom)))] right-4 z-[56] h-14 w-14 items-center justify-center gap-2 rounded-full bg-brand text-white shadow-[0_10px_30px_rgba(79,70,229,0.35)] transition-transform duration-200 hover:scale-105 active:scale-95 sm:right-6 lg:bottom-6 lg:w-auto lg:px-5 ${
+        className={`fixed bottom-[max(5.25rem,calc(4.5rem_+_env(safe-area-inset-bottom)))] right-4 z-[56] h-14 w-14 items-center justify-center gap-2 rounded-full bg-brand text-white shadow-[0_10px_30px_rgba(79,70,229,0.35)] transition-[transform,background-color] duration-200 hover:scale-105 hover:bg-brand-2 active:scale-95 sm:right-6 lg:bottom-6 lg:w-auto lg:px-5 ${
           open ? "hidden sm:flex" : "flex"
         }`}
       >

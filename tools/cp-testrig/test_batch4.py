@@ -23,7 +23,7 @@ print("== phase 84: send error feedback ==")
 check("error state", "const [sendError, setSendError] = useState<string | null>(null);" in detail_src)
 check("cleared on success", "setSendError(null);" in detail_src)
 check("set on failure", '"The reply did not go through. Check the connection and try again."' in detail_src)
-check("error rendered amber", 'className="mb-2 text-[11px] font-medium text-amber-600"' in detail_src)
+check("error rendered amber", 'className="mb-2 text-[11px] font-medium text-amber-700"' in detail_src)
 
 print("== phase 85: focus refresh ==")
 check("focus listener", 'window.addEventListener("focus", onFocus)' in inbox_src)

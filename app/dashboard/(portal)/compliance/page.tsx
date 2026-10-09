@@ -133,7 +133,7 @@ export default function CompliancePage() {
           <button
             onClick={() => void addOptOut()}
             disabled={busy || !contact.trim()}
-            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Add
           </button>
@@ -153,7 +153,7 @@ export default function CompliancePage() {
             />
             <button
               onClick={() => void load(query)}
-              className="shrink-0 rounded-xl border border-line bg-white shadow-card px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:bg-soft"
+              className="shrink-0 rounded-xl border border-line bg-white shadow-card inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:bg-line/60"
             >
               Search
             </button>
@@ -191,7 +191,7 @@ export default function CompliancePage() {
                 <button
                   onClick={() => void removeOptOut(row)}
                   disabled={busy}
-                  className="shrink-0 rounded-lg border border-line bg-soft px-3 py-1 text-xs text-ink-2 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-lg border border-line bg-soft px-3 inline-flex min-h-9 items-center py-1 text-xs text-ink-2 transition-colors hover:bg-line/60 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Remove
                 </button>

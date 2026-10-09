@@ -281,7 +281,7 @@ export default function IntegrationsPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Integrations</h1>
@@ -307,7 +307,7 @@ export default function IntegrationsPage() {
                 aria-pressed={picked.includes(option.key)}
                 onClick={() => toggleEvent(option.key)}
                 className={
-                  "rounded-lg border px-3 py-1.5 text-xs font-medium transition " +
+                  "rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition " +
                   (picked.includes(option.key)
                     ? "border-brand/30 bg-brand-soft text-brand"
                     : "border-line bg-soft text-ink-3 hover:text-ink")
@@ -327,7 +327,7 @@ export default function IntegrationsPage() {
               type="button"
               onClick={() => void create()}
               disabled={busy}
-              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
+              className="rounded-xl bg-brand/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-brand/25 disabled:opacity-50"
             >
               {busy ? "Working\u2026" : "Add endpoint"}
             </button>
@@ -335,7 +335,7 @@ export default function IntegrationsPage() {
               <p
                 className={
                   "text-xs " +
-                  (noteTone === "emerald" ? "text-ok" : "text-amber-600")
+                  (noteTone === "emerald" ? "text-ok" : "text-amber-700")
                 }
               >
                 {note}
@@ -344,7 +344,7 @@ export default function IntegrationsPage() {
           </div>
           {newSecret ? (
             <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-3.5 py-3">
-              <p className="text-[11px] uppercase tracking-wider text-ok/80">
+              <p className="text-[11px] uppercase tracking-wider text-ok">
                 Signing secret (shown once)
               </p>
               <code className="mt-1 block break-all font-mono text-xs text-ok">
@@ -391,7 +391,7 @@ export default function IntegrationsPage() {
                         type="button"
                         onClick={() => void replayDead(row)}
                         disabled={busy}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-danger transition hover:bg-soft disabled:opacity-50"
+                        className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-danger transition hover:bg-line/60 disabled:opacity-50"
                       >
                         Replay failed
                       </button>
@@ -400,28 +400,28 @@ export default function IntegrationsPage() {
                       type="button"
                       onClick={() => void runTest(row)}
                       disabled={testBusy}
-                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                      className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-50"
                     >
                       {testBusy ? "Testing..." : "Send test"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void setEnabled(row, !row.enabled)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {row.enabled ? "Pause" : "Resume"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void showLog(row.id)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {openLog === row.id ? "Hide log" : "Deliveries"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void remove(row)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
                     >
                       Delete
                     </button>
@@ -431,7 +431,7 @@ export default function IntegrationsPage() {
                   <p className="mt-2 text-[11px] text-ink-3">{testNote}</p>
                 ) : null}
                 {openLog === row.id ? (
-                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white p-3">
                     {deliveries.length === 0 ? (
                       <p className="text-xs text-ink-3">No deliveries yet.</p>
                     ) : (
@@ -448,7 +448,7 @@ export default function IntegrationsPage() {
                                   ? "text-ok"
                                   : delivery.dead
                                     ? "text-danger"
-                                    : "text-amber-600"
+                                    : "text-amber-700"
                               }
                             >
                               {delivery.deliveredAt

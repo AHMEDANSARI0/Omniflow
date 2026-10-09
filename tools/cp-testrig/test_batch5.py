@@ -9,7 +9,7 @@ detail_src = portal_thread_source()
 card_src = open("/tmp/p13/Omniflow/app/dashboard/(portal)/conversations/[id]/CustomerCard.tsx").read()
 
 print("== phase 87: unread background ==")
-check("unread bg class", '(item.unread ? "bg-cyan-400/[0.03] " : "")' in inbox_src)
+check("unread bg class", '(item.unread ? "bg-brand/[0.03] " : "")' in inbox_src)
 check("amber border intact", 'border-l-2 border-l-amber-400/60 ' in inbox_src)
 check("ring intact", "ring-1 ring-brand/40" in inbox_src)
 

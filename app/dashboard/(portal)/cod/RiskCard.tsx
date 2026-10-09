@@ -30,11 +30,11 @@ const RECO: Record<string, { label: string; cls: string }> = {
   },
   collect_advance: {
     label: "Collect advance",
-    cls: "border-amber-400/30 bg-amber-400/[0.08] text-amber-200",
+    cls: "border-amber-400/30 bg-amber-400/[0.08] text-amber-800",
   },
   hold: {
     label: "Hold",
-    cls: "border-rose-400/30 bg-rose-400/[0.08] text-rose-200",
+    cls: "border-rose-400/30 bg-rose-400/[0.08] text-rose-700",
   },
 };
 
@@ -173,7 +173,7 @@ export default function RiskCard() {
         <button
           onClick={() => void check()}
           disabled={busy || !contact.trim()}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
         >
           Check risk
         </button>
@@ -224,7 +224,7 @@ export default function RiskCard() {
             ))}
           </ul>
           {result.task_created ? (
-            <p className="mt-2 text-[11px] text-amber-600">
+            <p className="mt-2 text-[11px] text-amber-700">
               Staff task created - it is in the list below.
             </p>
           ) : null}
@@ -243,7 +243,7 @@ export default function RiskCard() {
         <button
           onClick={() => void saveSettings(threshold, staffTasks)}
           disabled={busy}
-          className="text-[11px] text-brand hover:underline disabled:opacity-40"
+          className="inline-flex min-h-8 items-center rounded-md px-1 text-[11px] text-brand hover:bg-brand-soft hover:underline disabled:opacity-40"
         >
           Save
         </button>
@@ -251,7 +251,7 @@ export default function RiskCard() {
           onClick={() => void saveSettings(threshold, !staffTasks)}
           disabled={busy}
           className={
-            "ml-auto rounded-full border px-3 py-1 text-[11px] " +
+            "ml-auto inline-flex min-h-8 items-center rounded-full border px-3 py-1 text-[11px] " +
             (staffTasks
               ? "border-emerald-400/40 bg-emerald-400/[0.12] text-ok"
               : "border-line bg-soft text-ink-3")
@@ -268,7 +268,7 @@ export default function RiskCard() {
               key={task.id}
               className="flex items-center justify-between gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-1.5"
             >
-              <span className="min-w-0 truncate text-[11px] text-amber-200">
+              <span className="min-w-0 truncate text-[11px] text-amber-800">
                 Review {task.contact_id} (risk {task.score})
               </span>
               <button

@@ -111,10 +111,10 @@ export default function LiveDemo({
                 setActive(index);
                 setRunId((value) => value + 1);
               }}
-              className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[13.5px] font-semibold transition-all duration-200 ${
+              className={`inline-flex h-11 items-center gap-2 rounded-full border px-4 text-[13.5px] font-semibold transition-all duration-200 ${
                 selected
-                  ? "border-brand/30 bg-white text-brand-2 shadow-card"
-                  : "border-line bg-white/70 text-ink-2 hover:bg-white hover:text-ink"
+                  ? "border-brand/30 bg-white text-brand-2 shadow-card hover:border-brand/50"
+                  : "border-line bg-white/70 text-ink-2 hover:border-line-2 hover:bg-soft hover:text-ink"
               }`}
             >
               <Icon name={item.icon} className="h-4 w-4" />
@@ -129,7 +129,7 @@ export default function LiveDemo({
         <div className="flex flex-col overflow-hidden rounded-xl3 border border-line bg-white shadow-card-hover">
           <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
             <div className="flex items-center gap-3">
-              <span aria-hidden className="of-gradient inline-flex h-9 w-9 items-center justify-center rounded-full text-white">
+              <span aria-hidden className="of-gradient-deep inline-flex h-9 w-9 items-center justify-center rounded-full text-white">
                 <Sparkles className="h-4 w-4" />
               </span>
               <div>
@@ -193,7 +193,7 @@ export default function LiveDemo({
             <button
               type="button"
               onClick={() => setRunId((value) => value + 1)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-2 bg-white px-3 text-[13px] font-semibold text-ink transition-colors hover:border-brand/40 hover:text-brand"
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line-2 bg-white px-3 text-[13px] font-semibold text-ink transition-colors hover:border-brand/40 hover:text-brand"
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden />
               {copy.replay}

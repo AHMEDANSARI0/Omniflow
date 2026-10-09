@@ -75,7 +75,7 @@ function renderMessageBody(body: string, query: string): ReactNode {
     pieces.push(
       <mark
         key={"hit-" + found}
-        className="rounded bg-amber-300/25 px-0.5 text-amber-100"
+        className="rounded bg-amber-300/25 px-0.5 text-amber-800"
       >
         {body.slice(found, found + needle.length)}
       </mark>
@@ -526,7 +526,7 @@ export default function ThreadClient({
       <div className="mb-6">
         <Link
           href="/dashboard/conversations"
-          className="-ml-2 inline-block rounded-lg px-2 py-1.5 text-sm text-ink-3 transition-colors hover:bg-soft hover:text-brand"
+          className="-ml-2 inline-flex min-h-9 items-center rounded-lg px-2 py-1.5 text-sm text-ink-3 transition-colors hover:bg-line/60 hover:text-brand"
         >
           ← Conversations
         </Link>
@@ -542,7 +542,7 @@ export default function ThreadClient({
               Press Esc to return to the inbox
             </p>
             {awayActive && (
-              <p className="mt-0.5 text-[10px] font-medium text-amber-600">
+              <p className="mt-0.5 text-[10px] font-medium text-amber-700">
                 Away message is active. Customers get an automatic reply until
                 business hours.
               </p>
@@ -562,10 +562,10 @@ export default function ThreadClient({
               <button
                 onClick={() => void toggleStatus()}
                 disabled={statusBusy}
-                className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`rounded-md border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   conversation.status === "open"
                     ? "border-red-400/25 bg-red-400/[0.06] text-danger hover:bg-red-400/[0.12]"
-                    : "border-brand/25 bg-brand-soft text-brand hover:bg-cyan-400/[0.12]"
+                    : "border-brand/25 bg-brand-soft text-brand hover:bg-brand/[0.12]"
                 }`}
               >
                 {statusBusy
@@ -580,7 +580,7 @@ export default function ThreadClient({
                     href={`https://wa.me/${conversation.contactId.replace(/[^0-9]/g, "")}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-md border border-emerald-400/25 bg-emerald-400/[0.06] px-2.5 py-1 text-[11px] font-medium text-ok transition-colors hover:bg-emerald-400/[0.12]"
+                    className="rounded-md border border-emerald-400/25 bg-emerald-400/[0.06] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ok transition-colors hover:bg-emerald-400/[0.12]"
                   >
                     WhatsApp
                   </a>
@@ -588,7 +588,7 @@ export default function ThreadClient({
                     type="button"
                     onClick={() => copyNumber()}
                     title="Copy number"
-                    className="rounded-md border border-line bg-soft px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
+                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
                   >
                     Copy
                   </button>
@@ -598,7 +598,7 @@ export default function ThreadClient({
                       void navigator.clipboard.writeText(window.location.href)
                     }
                     title="Copy a link to this conversation"
-                    className="rounded-md border border-line bg-soft px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
+                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
                   >
                     Link
                   </button>
@@ -606,7 +606,7 @@ export default function ThreadClient({
                     type="button"
                     onClick={() => downloadTranscript()}
                     title="Download the loaded messages as a text file"
-                    className="rounded-md border border-line bg-soft px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
+                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
                   >
                     Transcript
                   </button>
@@ -614,7 +614,7 @@ export default function ThreadClient({
                     type="button"
                     onClick={() => exportThreadCsv()}
                     title="Download the loaded messages as a CSV file"
-                    className="rounded-md border border-line bg-soft px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
+                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
                   >
                     CSV
                   </button>
@@ -674,7 +674,7 @@ export default function ThreadClient({
           <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
+            className="mt-3 inline-block text-xs text-brand underline-offset-2 transition-colors hover:underline"
           >
             Re-authenticate →
           </a>
@@ -764,7 +764,7 @@ export default function ThreadClient({
                 {message.direction === "in" && mediaByMessage[message.id] ? (
                   <MessageMedia items={mediaByMessage[message.id]} />
                 ) : null}
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-100">
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">
                   {renderMessageBody(message.body, threadQuery)}
                 </p>
                 <p className="mt-1 text-[10px] text-ink-3">
@@ -810,7 +810,7 @@ export default function ThreadClient({
           </button>
         )}
         {sendError && (
-          <p className="mb-2 text-[11px] font-medium text-amber-600">
+          <p className="mb-2 text-[11px] font-medium text-amber-700">
             {sendError}
           </p>
         )}
@@ -829,7 +829,7 @@ export default function ThreadClient({
                   key={emoji}
                   type="button"
                   onClick={() => setDraft((current) => current + emoji)}
-                  className="rounded px-1 text-base leading-6 transition-colors hover:bg-white/[0.06]"
+                  className="rounded px-1 text-base leading-6 transition-colors hover:bg-line/60"
                 >
                   {emoji}
                 </button>
@@ -858,7 +858,7 @@ export default function ThreadClient({
           <button
             type="submit"
             disabled={sending || !draft.trim()}
-            className="shrink-0 rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sending ? "Sending…" : "Send"}
           </button>

@@ -2,7 +2,7 @@ export default function ControlPlaneUnavailable() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas px-5">
       <div className="w-full max-w-md rounded-2xl border border-amber-400/15 bg-amber-400/[0.03] p-7 text-center">
-        <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/[0.05] text-amber-600">
+        <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/[0.05] text-amber-700">
           !
         </div>
         <h1 className="text-base font-semibold text-ink">

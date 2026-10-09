@@ -1,10 +1,15 @@
 import { Check } from "lucide-react";
 import type { Integration } from "../../../lib/marketing/integrations";
 import { INTEGRATION_CATEGORIES } from "../../../lib/marketing/integrations";
+import { readableInk } from "../../../lib/marketing/color";
 import { AvailabilityBadge } from "./StatusIndicator";
 import Icon from "./Icon";
 
-/** Logo tile: lucide icon when the integration has one, else a monogram. */
+/**
+ * Logo tile: lucide icon when the integration has one, else a monogram.
+ * §258: the tile is painted with the integration's own brand colour, so the
+ * mark colour is chosen from that fill - white disappears on light greens.
+ */
 export function IntegrationLogo({
   integration,
   size = "md",
@@ -16,8 +21,8 @@ export function IntegrationLogo({
   return (
     <span
       aria-hidden
-      className={`inline-flex shrink-0 items-center justify-center font-display font-bold text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.12)] ${box}`}
-      style={{ backgroundColor: integration.accent }}
+      className={`inline-flex shrink-0 items-center justify-center font-display font-bold shadow-[inset_0_-1px_0_rgba(0,0,0,0.12)] ${box}`}
+      style={{ backgroundColor: integration.accent, color: readableInk(integration.accent) }}
     >
       {integration.icon ? (
         <Icon name={integration.icon} className={size === "sm" ? "h-3.5 w-3.5" : "h-5 w-5"} />

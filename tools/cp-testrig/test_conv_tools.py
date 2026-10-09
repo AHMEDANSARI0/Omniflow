@@ -22,7 +22,7 @@ check("url pattern", "MESSAGE_URL_PATTERN = /(https?:\\/\\/[^\\s]+)/g;" in detai
 check("linkify helper", "function linkifyText(text: string, keyPrefix: string): ReactNode[] {" in detail_src)
 check("render body helper", "function renderMessageBody(body: string, query: string): ReactNode {" in detail_src)
 check("safe link attrs", 'target="_blank"' in detail_src and 'rel="noreferrer"' in detail_src)
-check("highlight mark", 'className="rounded bg-amber-300/25 px-0.5 text-amber-100"' in detail_src)
+check("highlight mark", 'className="rounded bg-amber-300/25 px-0.5 text-amber-800"' in detail_src)
 check("bubble uses helper", "{renderMessageBody(message.body, threadQuery)}" in detail_src)
 
 print("== phase 57: sticky composer ==")

@@ -16,8 +16,8 @@ export default function ControlPlanePending({
         <p className="mt-1.5 text-sm text-ink-3">{description}</p>
       </div>
 
-      <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.025] px-6 py-12 text-center">
-        <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-brand">
+      <div className="rounded-2xl border border-brand/20 bg-brand/[0.025] px-6 py-12 text-center">
+        <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-brand">
           <PortalIcon name="integrations" className="h-5 w-5" />
         </div>
         <h2 className="text-sm font-semibold text-ink">
@@ -29,7 +29,7 @@ export default function ControlPlanePending({
         </p>
         <Link
           href="/dashboard"
-          className="mt-5 inline-block text-xs text-brand transition-colors hover:text-brand"
+          className="mt-5 inline-block text-xs text-brand underline-offset-2 transition-colors hover:underline"
         >
           Return to secure overview →
         </Link>

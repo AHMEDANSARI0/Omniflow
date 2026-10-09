@@ -114,7 +114,7 @@ export default function VideoCard({ conversationId }: { conversationId: number }
           <button
             onClick={() => void invite()}
             disabled={busy}
-            className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+            className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
           >
             {busy ? "Creating…" : "Create & send invite"}
           </button>
@@ -137,7 +137,7 @@ export default function VideoCard({ conversationId }: { conversationId: number }
                 href={room.url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between gap-2 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-[11px] text-ink-2 hover:bg-soft"
+                className="flex items-center justify-between gap-2 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-[11px] text-ink-2 hover:bg-line/60"
               >
                 <span className="truncate">{room.url}</span>
                 <span className="shrink-0 rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-3">

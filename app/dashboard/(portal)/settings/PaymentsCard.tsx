@@ -95,7 +95,7 @@ export default function PaymentsCard() {
   }
 
   const inputClass =
-    "mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none";
+    "mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none";
 
   return (
     <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
@@ -209,7 +209,7 @@ export default function PaymentsCard() {
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs text-brand hover:bg-brand-soft disabled:opacity-50"
+          className="rounded-lg border border-brand/30 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-brand hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save payment settings"}
         </button>

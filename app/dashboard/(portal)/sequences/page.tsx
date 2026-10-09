@@ -646,7 +646,7 @@ export default function SequencesPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Sequences</h1>
@@ -667,7 +667,7 @@ export default function SequencesPage() {
                 key={template.label}
                 type="button"
                 onClick={() => applyTemplate(template)}
-                className="rounded-full border border-line px-3 py-1 text-xs text-ink-2 transition hover:border-brand/40 hover:text-brand"
+                className="rounded-full border border-line inline-flex min-h-9 items-center px-3 py-1 text-xs text-ink-2 transition hover:border-brand/40 hover:text-brand"
               >
                 {template.label}
               </button>
@@ -689,7 +689,7 @@ export default function SequencesPage() {
             {draft.map((step, index) => (
               <div
                 key={index}
-                className="rounded-xl border border-line bg-white/[0.01] p-3"
+                className="rounded-xl border border-line bg-white p-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[11px] uppercase tracking-wider text-ink-3">
@@ -737,7 +737,7 @@ export default function SequencesPage() {
                         onlyIfIdleHours: event.target.checked ? 24 : null,
                       })
                     }
-                    className="h-3.5 w-3.5 accent-cyan-400"
+                    className="h-4 w-4 accent-brand"
                   />
                   Send only if no reply for
                   <input
@@ -774,7 +774,7 @@ export default function SequencesPage() {
               <button
                 type="button"
                 onClick={addStep}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
               >
                 + Add step
               </button>
@@ -783,7 +783,7 @@ export default function SequencesPage() {
               type="button"
               onClick={() => void create()}
               disabled={busy}
-              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
+              className="rounded-xl bg-brand/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-brand/25 disabled:opacity-50"
             >
               {busy ? "Working\u2026" : "Create series"}
             </button>
@@ -791,7 +791,7 @@ export default function SequencesPage() {
               <p
                 className={
                   "text-xs " +
-                  (noteTone === "emerald" ? "text-ok" : "text-amber-600")
+                  (noteTone === "emerald" ? "text-ok" : "text-amber-700")
                 }
               >
                 {note}
@@ -818,7 +818,7 @@ export default function SequencesPage() {
                     current ? { ...current, enabled: event.target.checked } : current
                   )
                 }
-                className="h-4 w-4 accent-cyan-400"
+                className="h-4 w-4 accent-brand"
               />
               {quiet && quiet.enabled ? "On" : "Off"}
             </label>
@@ -899,11 +899,11 @@ export default function SequencesPage() {
                 type="button"
                 onClick={() => void saveQuiet()}
                 disabled={quietBusy}
-                className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-50"
               >
                 {quietBusy ? "Saving..." : "Save"}
               </button>
-              {quietNote ? <p className="text-xs text-amber-600">{quietNote}</p> : null}
+              {quietNote ? <p className="text-xs text-amber-700">{quietNote}</p> : null}
             </div>
           ) : (
             <p className="mt-3 text-xs text-ink-3">{"Loading window\u2026"}</p>
@@ -942,7 +942,7 @@ export default function SequencesPage() {
                         className={
                           "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] transition " +
                           (row.pauseOnReply
-                            ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                            ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
                             : "border-line bg-soft text-ink-3")
                         }
                       >
@@ -987,56 +987,56 @@ export default function SequencesPage() {
                     <button
                       type="button"
                       onClick={() => void setEnabled(row, !row.enabled)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {row.enabled ? "Turn off" : "Turn on"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void showLog(row.id)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {openLog === row.id ? "Hide people" : "People"}
                     </button>
                     <button
                       type="button"
                       onClick={() => void toggleStats(row.id)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       {openStats === row.id ? "Hide stats" : "Stats"}
                     </button>
                     <button
                       type="button"
                       onClick={() => openAdd(row.id)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       Add people
                     </button>
                     <button
                       type="button"
                       onClick={() => openTrigger(row)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       Trigger
                     </button>
                     <button
                       type="button"
                       onClick={() => openEdit(row)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => void remove(row)}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
+                      className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:border-rose-400/40 hover:text-danger"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
                 {openStats === row.id ? (
-                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white p-3">
                     <p className="text-[11px] uppercase tracking-wider text-ink-3">
                       Step delivery
                     </p>
@@ -1064,7 +1064,7 @@ export default function SequencesPage() {
                             </div>
                             <div className="mt-1 h-2 overflow-hidden rounded-full bg-soft">
                               <div
-                                className="h-full rounded-full bg-cyan-400/50"
+                                className="h-full rounded-full bg-brand/50"
                                 style={{ width: pct + "%" }}
                               />
                             </div>
@@ -1075,7 +1075,7 @@ export default function SequencesPage() {
                   </div>
                 ) : null}
                 {openLog === row.id ? (
-                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[11px] uppercase tracking-wider text-ink-3">
                         People in {row.name}
@@ -1094,7 +1094,7 @@ export default function SequencesPage() {
                         <button
                           type="button"
                           onClick={() => void bulkEnrollments(row.id, "pause-all")}
-                          className="text-[11px] text-ink-3 transition hover:text-amber-600"
+                          className="text-[11px] text-ink-3 transition hover:text-amber-700"
                         >
                           Pause all
                         </button>
@@ -1124,7 +1124,7 @@ export default function SequencesPage() {
                               className={
                                 enrollment.status === "completed"
                                   ? "text-ok"
-                                  : "text-amber-600"
+                                  : "text-amber-700"
                               }
                             >
                               {enrollment.status === "completed"
@@ -1144,7 +1144,7 @@ export default function SequencesPage() {
                                   onClick={() =>
                                     void setEnrollmentState(row.id, enrollment.id, "pause")
                                   }
-                                  className="text-[11px] text-ink-3 transition hover:text-amber-600"
+                                  className="text-[11px] text-ink-3 transition hover:text-amber-700"
                                 >
                                   Pause
                                 </button>
@@ -1180,7 +1180,7 @@ export default function SequencesPage() {
                   </div>
                 ) : null}
                 {triggerOpenFor === row.id ? (
-                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white p-3">
                     <p className="text-[11px] uppercase tracking-wider text-ink-3">
                       Keyword trigger for {row.name}
                     </p>
@@ -1195,14 +1195,14 @@ export default function SequencesPage() {
                         type="button"
                         onClick={() => void saveTrigger(row)}
                         disabled={triggerBusy}
-                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                        className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-50"
                       >
                         {triggerBusy ? "Saving..." : "Save"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setTriggerOpenFor(null)}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                        className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                       >
                         Close
                       </button>
@@ -1214,7 +1214,7 @@ export default function SequencesPage() {
                   </div>
                 ) : null}
                 {editOpenFor === row.id ? (
-                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white p-3">
                     <p className="text-[11px] uppercase tracking-wider text-ink-3">
                       {"Edit steps \u2014 "}{row.name}
                     </p>
@@ -1269,7 +1269,7 @@ export default function SequencesPage() {
                                   onlyIfIdleHours: event.target.checked ? 24 : null,
                                 })
                               }
-                              className="h-3.5 w-3.5 accent-cyan-400"
+                              className="h-4 w-4 accent-brand"
                             />
                             Send only if no reply for
                             <input
@@ -1313,7 +1313,7 @@ export default function SequencesPage() {
                               { delay_hours: 24, body: "", onlyIfIdleHours: null },
                             ])
                           }
-                          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                          className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                         >
                           + Add step
                         </button>
@@ -1322,7 +1322,7 @@ export default function SequencesPage() {
                         type="button"
                         onClick={() => void saveEdit(row, false)}
                         disabled={editBusy}
-                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                        className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-50"
                       >
                         {editBusy ? "Saving..." : "Save"}
                       </button>
@@ -1330,19 +1330,19 @@ export default function SequencesPage() {
                         type="button"
                         onClick={() => void saveEdit(row, true)}
                         disabled={editBusy}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink disabled:opacity-50"
+                        className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink disabled:opacity-50"
                       >
                         Save as copy
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditOpenFor(null)}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                        className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                       >
                         Close
                       </button>
                       {editNote ? (
-                        <p className="text-xs text-amber-600">{editNote}</p>
+                        <p className="text-xs text-amber-700">{editNote}</p>
                       ) : null}
                     </div>
                     <p className="mt-2 text-[10px] text-ink-3">
@@ -1352,7 +1352,7 @@ export default function SequencesPage() {
                   </div>
                 ) : null}
                 {addOpenFor === row.id ? (
-                  <div className="mt-3 rounded-xl border border-line bg-white/[0.01] p-3">
+                  <div className="mt-3 rounded-xl border border-line bg-white p-3">
                     <p className="text-[11px] uppercase tracking-wider text-ink-3">
                       Add people to {row.name}
                     </p>
@@ -1368,14 +1368,14 @@ export default function SequencesPage() {
                         type="button"
                         onClick={() => void submitAdd(row.id)}
                         disabled={addBusy || !addDraft.trim()}
-                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+                        className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-50"
                       >
                         {addBusy ? "Adding..." : "Add to sequence"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setAddOpenFor(null)}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                        className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
                       >
                         Close
                       </button>

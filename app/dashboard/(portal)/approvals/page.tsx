@@ -32,7 +32,7 @@ const TABS = ["pending", "approved", "rejected", "expired", "all"] as const;
 type Tab = (typeof TABS)[number];
 
 const STATUS_CHIP: Record<string, string> = {
-  pending: "border-amber-400/30 bg-amber-400/10 text-amber-600",
+  pending: "border-amber-400/30 bg-amber-400/10 text-amber-700",
   approved: "border-emerald-400/30 bg-emerald-400/10 text-ok",
   rejected: "border-rose-400/30 bg-rose-400/10 text-danger",
   expired: "border-line-2 bg-soft text-ink-3",
@@ -288,7 +288,7 @@ export default function ApprovalsPage() {
             type="button"
             onClick={() => setTab(item)}
             className={
-              "rounded-full border px-3.5 py-1.5 text-xs font-medium capitalize transition-colors duration-300 " +
+              "rounded-full border inline-flex min-h-9 items-center px-3.5 py-1.5 text-xs font-medium capitalize transition-colors duration-300 " +
               (tab === item
                 ? "border-brand/30 bg-brand-soft text-brand"
                 : "border-line bg-white text-ink-3 hover:text-ink-2")
@@ -302,7 +302,7 @@ export default function ApprovalsPage() {
             aria-label="Type"
             value={kind}
             onChange={(event) => setKind(event.target.value)}
-            className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink-2 outline-none"
+            className="rounded-full border border-line bg-white inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 outline-none"
           >
             <option value="">All types</option>
             {kinds.map((item) => (

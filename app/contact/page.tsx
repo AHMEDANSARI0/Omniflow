@@ -45,7 +45,7 @@ export default async function ContactPage() {
               <p className="mt-2 text-[14px] leading-relaxed text-ink-2">{cards.email.copy}</p>
               <a
                 href={"mailto:" + email}
-                className="mt-4 inline-flex items-center gap-2 rounded text-sm font-semibold text-brand-2 hover:text-brand"
+                className="-my-1 mt-4 inline-flex items-center gap-2 rounded py-1 text-sm font-semibold text-brand-2 hover:text-brand hover:underline hover:underline-offset-4"
               >
                 {email}
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -57,7 +57,7 @@ export default async function ContactPage() {
             <Card gradientRing className="h-full p-7">
               <span
                 aria-hidden
-                className="of-gradient inline-flex h-11 w-11 items-center justify-center rounded-xl2"
+                className="of-gradient-deep inline-flex h-11 w-11 items-center justify-center rounded-xl2"
               >
                 <MessageCircle className="h-5 w-5 text-white" />
               </span>

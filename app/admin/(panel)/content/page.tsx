@@ -88,7 +88,7 @@ export default function ContentHubPage() {
                   className="group rounded-2xl border border-line bg-white p-5 shadow-card transition-colors duration-300 hover:border-brand/20"
                 >
                   <div className="mb-4 flex items-start justify-between">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-sm text-brand">
                       {link.icon}
                     </div>
                     <span className="text-ink-3 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-brand">

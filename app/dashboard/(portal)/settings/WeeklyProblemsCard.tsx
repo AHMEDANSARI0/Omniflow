@@ -173,7 +173,7 @@ export default function WeeklyProblemsCard() {
           aria-checked={enabled}
           onClick={() => setEnabled((prev) => !prev)}
           className={
-            "rounded-lg border px-2.5 py-1 text-[11px] " +
+            "rounded-lg border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] " +
             (enabled
               ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
               : "border-line bg-soft text-ink-3")
@@ -230,7 +230,7 @@ export default function WeeklyProblemsCard() {
           type="button"
           disabled={saving || !loaded}
           onClick={() => void save()}
-          className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+          className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>

@@ -32,9 +32,9 @@ const STATUS_LABELS: Record<DeliveryStatus, string> = {
 };
 
 const STATUS_STYLES: Record<DeliveryStatus, string> = {
-  pending: "border-sky-400/25 bg-sky-400/[0.07] text-sky-200",
-  failed: "border-amber-400/25 bg-amber-400/[0.07] text-amber-200",
-  dead: "border-rose-400/25 bg-rose-400/[0.07] text-rose-200",
+  pending: "border-sky-400/25 bg-sky-400/[0.07] text-sky-700",
+  failed: "border-amber-400/25 bg-amber-400/[0.07] text-amber-800",
+  dead: "border-rose-400/25 bg-rose-400/[0.07] text-rose-700",
   done: "border-emerald-400/25 bg-emerald-400/[0.07] text-ok",
 };
 
@@ -111,7 +111,7 @@ export default function DeliveriesCard() {
     <section className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">Deliveries</h3>
+          <h3 className="text-sm font-semibold text-ink">Deliveries</h3>
           <p className="mt-0.5 text-xs text-ink-3">
             Outbound WhatsApp queue — failed sends retry automatically with
             backoff; replay anything that ended up failed.
@@ -120,7 +120,7 @@ export default function DeliveriesCard() {
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
+          className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -136,7 +136,7 @@ export default function DeliveriesCard() {
                 "rounded-lg border px-2 py-0.5 text-[11px] " +
                 (filter === status
                   ? STATUS_STYLES[status]
-                  : "border-line text-ink-3 hover:bg-soft")
+                  : "border-line text-ink-3 hover:bg-line/60")
               }
             >
               {STATUS_LABELS[status]} · {counts[status] ?? 0}

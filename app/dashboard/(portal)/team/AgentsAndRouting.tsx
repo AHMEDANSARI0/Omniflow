@@ -136,7 +136,7 @@ const inputClass =
   "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 
 function StatusChip({ active }: { active: boolean }) {
   return (
@@ -901,19 +901,19 @@ export default function AgentsAndRouting() {
                 <div className="flex shrink-0 gap-1.5">
                   <button
                     onClick={() => startEdit(agent)}
-                    className="rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink-2"
+                    className="rounded-lg border border-line bg-white px-2.5 inline-flex min-h-9 items-center py-1 text-xs text-ink-2"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => void toggleVersions(agent.id)}
-                    className="rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink-2"
+                    className="rounded-lg border border-line bg-white px-2.5 inline-flex min-h-9 items-center py-1 text-xs text-ink-2"
                   >
                     Versions
                   </button>
                   <button
                     onClick={() => void archive(agent.id)}
-                    className="rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-danger"
+                    className="rounded-lg border border-line bg-white px-2.5 inline-flex min-h-9 items-center py-1 text-xs text-danger"
                   >
                     Archive
                   </button>
@@ -1069,7 +1069,7 @@ export default function AgentsAndRouting() {
                 </span>
                 <button
                   onClick={() => void removeRule(rule)}
-                  className="shrink-0 rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-danger"
+                  className="shrink-0 rounded-lg border border-line bg-white px-2.5 inline-flex min-h-9 items-center py-1 text-xs text-danger"
                 >
                   Remove
                 </button>

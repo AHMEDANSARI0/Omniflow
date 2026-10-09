@@ -299,7 +299,7 @@ export default function CatalogCard() {
           : ""}
       </button>
       {syncOpen ? (
-        <div className="mt-2 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.03] p-3">
+        <div className="mt-2 rounded-xl border border-brand/20 bg-brand/[0.03] p-3">
           <p className="text-[11px] text-ink-3">
             One-way import from WooCommerce or Shopify - names, prices,
             stock and images. Your manual items are never touched, and
@@ -348,7 +348,7 @@ export default function CatalogCard() {
             <button
               onClick={() => void saveSyncSettings()}
               disabled={syncBusy || !syncForm.base_url.trim()}
-              className="rounded-lg border border-line bg-soft px-3 py-1.5 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-40"
+              className="rounded-lg border border-line bg-soft px-3 py-1.5 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-40"
             >
               Save source
             </button>
@@ -424,13 +424,13 @@ export default function CatalogCard() {
           type="button"
           onClick={() => void create()}
           disabled={busy}
-          className="shrink-0 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="shrink-0 rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           Add item
         </button>
       </div>
 
-      {note ? <p className="mt-2 text-[11px] text-amber-600">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] text-amber-700">{note}</p> : null}
 
 
       {brands.length > 0 ? (
@@ -439,7 +439,7 @@ export default function CatalogCard() {
             id="catalogBrandFilter"
             value={brandFilter}
             onChange={(event) => setBrandFilter(event.target.value)}
-            className="rounded-xl border border-line bg-soft px-3 py-1.5 text-xs text-ink outline-none focus:border-brand/40"
+            className="rounded-xl border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink outline-none focus:border-brand/40"
           >
             <option value="">All brands</option>
             {brands.map((brand) => (
@@ -467,7 +467,7 @@ export default function CatalogCard() {
               >
                 <span className="float-right flex items-center gap-1.5">
                   {row.brand_name ? (
-                    <span className="rounded-full border border-sky-400/25 bg-sky-400/[0.08] px-2 py-0.5 text-[9px] uppercase tracking-wide text-sky-300">
+                    <span className="rounded-full border border-sky-400/25 bg-sky-400/[0.08] px-2 py-0.5 text-[9px] uppercase tracking-wide text-sky-700">
                       {row.brand_name}
                     </span>
                   ) : null}
@@ -575,7 +575,7 @@ export default function CatalogCard() {
                             brandId: row.brand_id ? String(row.brand_id) : "",
                           });
                         }}
-                        className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06]"
+                        className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60"
                       >
                         Edit
                       </button>

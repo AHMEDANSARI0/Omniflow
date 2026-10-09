@@ -43,7 +43,7 @@ export default async function HowItWorks({ content }: { content: HowItWorksConte
               <article className="flex h-full flex-col gap-6 rounded-xl3 border border-line bg-white p-5 shadow-card sm:p-6 lg:flex-row lg:items-center">
                 <div className="lg:w-[46%]">
                   <p className="flex items-center gap-2.5">
-                    <span className="of-gradient inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 font-display text-[12px] font-semibold tabular-nums text-white">
+                    <span className="of-gradient-deep inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 font-display text-[12px] font-semibold tabular-nums text-white">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-2">

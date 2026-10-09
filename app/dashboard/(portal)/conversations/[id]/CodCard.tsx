@@ -102,7 +102,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
               setExpanded(true);
               setMessage(null);
             }}
-            className="w-full shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft sm:w-auto"
+            className="w-full shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] sm:w-auto"
           >
             Send COD confirmation
           </button>
@@ -156,7 +156,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
           type="button"
           onClick={() => sendRequest()}
           disabled={busy}
-          className="w-full shrink-0 rounded-xl border border-line-2 bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-white/[0.06] disabled:opacity-50 sm:w-auto"
+          className="w-full shrink-0 rounded-xl border border-line-2 bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-line/60 disabled:opacity-50 sm:w-auto"
         >
           {busy ? "Sending..." : "Send again"}
         </button>
@@ -179,7 +179,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
                 setExpanded(false);
                 setDetails("");
               }}
-              className="flex-1 rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft sm:flex-none"
+              className="flex-1 rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-line/60 sm:flex-none"
             >
               Cancel
             </button>
@@ -187,7 +187,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
               type="button"
               onClick={() => sendRequest()}
               disabled={busy}
-              className="flex-1 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50 sm:flex-none"
+              className="flex-1 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50 sm:flex-none"
             >
               {busy ? "Sending..." : "Send"}
             </button>
@@ -199,7 +199,7 @@ export default function CodCard({ conversationId }: { conversationId: number }) 
         <p
           className={
             "mt-2 text-[11px] " +
-            (message.kind === "ok" ? "text-ok/90" : "text-danger/90")
+            (message.kind === "ok" ? "text-ok" : "text-danger")
           }
         >
           {message.text}

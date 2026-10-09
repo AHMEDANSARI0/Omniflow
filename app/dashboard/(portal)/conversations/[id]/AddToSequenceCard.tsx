@@ -108,7 +108,7 @@ export default function AddToSequenceCard({ contactId }: { contactId: string | n
           type="button"
           onClick={() => void enroll()}
           disabled={busy || picked === null}
-          className="shrink-0 rounded-lg border border-brand/25 bg-brand-soft px-3 py-2 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
+          className="shrink-0 rounded-lg border border-brand/25 bg-brand-soft px-3 py-2 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {busy ? "Adding..." : "Add"}
         </button>
@@ -117,7 +117,7 @@ export default function AddToSequenceCard({ contactId }: { contactId: string | n
         <p
           className={
             "mt-2 text-[11px] " +
-            (tone === "emerald" ? "text-ok" : "text-amber-600")
+            (tone === "emerald" ? "text-ok" : "text-amber-700")
           }
         >
           {message}

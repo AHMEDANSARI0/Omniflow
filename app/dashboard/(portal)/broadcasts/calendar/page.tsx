@@ -113,7 +113,7 @@ export default function BroadcastCalendarPage() {
           </div>
           <a
             href="/dashboard/broadcasts"
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
           >
             Back
           </a>
@@ -123,7 +123,7 @@ export default function BroadcastCalendarPage() {
           <button
             type="button"
             onClick={() => setMonth((current) => shiftMonth(current, -1))}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
             {"\u2190"} Prev
           </button>
@@ -131,7 +131,7 @@ export default function BroadcastCalendarPage() {
           <button
             type="button"
             onClick={() => setMonth((current) => shiftMonth(current, 1))}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
             Next {"\u2192"}
           </button>
@@ -160,7 +160,7 @@ export default function BroadcastCalendarPage() {
                 return (
                   <div
                     key={date}
-                    className="min-h-16 rounded-lg border border-line bg-white/[0.01] p-1"
+                    className="min-h-16 rounded-lg border border-line bg-white p-1"
                   >
                     <p className="text-[10px] text-ink-3">{dayNumber}</p>
                     {entry && entry.sent > 0 ? (
@@ -169,7 +169,7 @@ export default function BroadcastCalendarPage() {
                       </p>
                     ) : null}
                     {entry && entry.scheduled > 0 ? (
-                      <p className="mt-0.5 rounded bg-amber-400/10 px-0.5 text-[9px] text-amber-600">
+                      <p className="mt-0.5 rounded bg-amber-400/10 px-0.5 text-[9px] text-amber-700">
                         {entry.scheduled} queued
                       </p>
                     ) : null}
@@ -195,7 +195,7 @@ export default function BroadcastCalendarPage() {
                       <span
                         className={
                           "shrink-0 " +
-                          (item.scheduled ? "text-amber-600" : "text-ok")
+                          (item.scheduled ? "text-amber-700" : "text-ok")
                         }
                       >
                         {item.scheduled ? "queued" : "sent"} {"\u00b7"} {item.recipients}

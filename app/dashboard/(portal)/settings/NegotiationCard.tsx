@@ -110,7 +110,7 @@ export default function NegotiationCard() {
     <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">
+          <h3 className="text-sm font-semibold text-ink">
             Negotiation bounds
           </h3>
           <p className="mt-0.5 text-xs text-ink-3">
@@ -122,7 +122,7 @@ export default function NegotiationCard() {
           onClick={() => void saveBounds(!enabled)}
           disabled={busy}
           className={
-            "rounded-full border px-3 py-1 text-[11px] " +
+            "rounded-full border inline-flex min-h-8 items-center px-3 py-1 text-[11px] " +
             (enabled
               ? "border-emerald-400/40 bg-emerald-400/[0.12] text-ok"
               : "border-line bg-soft text-ink-3")
@@ -155,7 +155,7 @@ export default function NegotiationCard() {
       <button
         onClick={() => void saveBounds(enabled)}
         disabled={busy}
-        className="mt-2 rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-soft disabled:opacity-50"
+        className="mt-2 rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
       >
         Save bounds
       </button>
@@ -182,7 +182,7 @@ export default function NegotiationCard() {
           <button
             onClick={() => void decide()}
             disabled={busy || !price || !offer}
-            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
           >
             Decide
           </button>
@@ -195,7 +195,7 @@ export default function NegotiationCard() {
                   result.decision === "accept"
                     ? "text-ok"
                     : result.decision === "counter"
-                      ? "text-amber-600"
+                      ? "text-amber-700"
                       : "text-danger"
                 }
               >

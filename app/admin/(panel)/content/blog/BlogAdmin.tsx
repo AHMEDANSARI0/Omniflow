@@ -10,7 +10,7 @@ import {
 const initialState: BlogActionState = { success: false, message: "" };
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
@@ -64,7 +64,7 @@ export default function BlogAdmin({ posts }: { posts: AdminPost[] }) {
                 className={
                   post.status === "published"
                     ? "rounded-full bg-ok-soft px-2 py-0.5 text-[10px] font-semibold text-ok"
-                    : "rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-semibold text-ink-3"
+                    : "rounded-full bg-line/50 px-2 py-0.5 text-[10px] font-semibold text-ink-3"
                 }
               >
                 {post.status}
@@ -74,7 +74,7 @@ export default function BlogAdmin({ posts }: { posts: AdminPost[] }) {
                 <button
                   type="submit"
                   disabled={deletePending}
-                  className="text-[11px] font-medium text-danger/80 transition-colors hover:text-danger disabled:opacity-50"
+                  className="text-[11px] font-medium text-danger transition-colors hover:text-danger disabled:opacity-50"
                 >
                   Delete
                 </button>
@@ -213,7 +213,7 @@ export default function BlogAdmin({ posts }: { posts: AdminPost[] }) {
           <button
             type="submit"
             disabled={savePending}
-            className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+            className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
           >
             {savePending ? "Saving..." : "Save post"}
           </button>

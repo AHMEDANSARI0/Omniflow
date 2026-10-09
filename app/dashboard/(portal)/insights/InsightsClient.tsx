@@ -145,7 +145,7 @@ function ProblemCard({ problem }: { problem: BiProblem }) {
       </div>
       <a
         href={problem.action.href}
-        className="mt-3 inline-block rounded-xl border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-soft"
+        className="mt-3 inline-flex min-h-9 items-center rounded-xl border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand/[0.12]"
       >
         {problem.action.label} {"\u2192"}
       </a>
@@ -184,7 +184,7 @@ export default function InsightsClient() {
           key={option}
           type="button"
           onClick={() => setDays(option)}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
             days === option
               ? "border-brand/30 bg-brand-soft text-brand"
               : "border-line bg-soft text-ink-3 hover:text-ink"

@@ -141,14 +141,14 @@ export default function BrandsCard() {
           type="button"
           onClick={() => void addBrand()}
           disabled={busy || !name.trim()}
-          className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-3.5 py-2 text-xs font-medium text-brand transition-colors duration-200 hover:bg-brand-soft disabled:opacity-40"
+          className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-3.5 py-2 text-xs font-medium text-brand transition-colors duration-200 hover:bg-brand/[0.12] disabled:opacity-40"
         >
           Add brand
         </button>
       </div>
 
       {note ? (
-        <p className="mt-2 text-[11px] text-amber-600">{note}</p>
+        <p className="mt-2 text-[11px] text-amber-700">{note}</p>
       ) : null}
 
       {brands === null ? (
@@ -156,7 +156,7 @@ export default function BrandsCard() {
           {[0, 1].map((row) => (
             <div
               key={row}
-              className="h-9 animate-pulse rounded-lg bg-white/5"
+              className="h-9 animate-pulse rounded-lg bg-line/60"
             />
           ))}
         </div>
@@ -169,7 +169,7 @@ export default function BrandsCard() {
           {brands.map((brand) => (
             <li
               key={brand.id}
-              className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white/[0.01] px-3 py-2"
+              className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white px-3 py-2"
             >
               {renaming === brand.id ? (
                 <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -219,7 +219,7 @@ export default function BrandsCard() {
                         href={"/store/" + brand.slug}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-brand/80 transition-colors duration-200 hover:text-brand"
+                        className="text-brand transition-colors duration-200 hover:text-brand"
                         title={"Open the " + brand.name + " store page"}
                       >
                         Store
@@ -251,7 +251,7 @@ export default function BrandsCard() {
                       type="button"
                       disabled={busy}
                       onClick={() => void removeBrand(brand.id)}
-                      className="text-danger/80 transition-colors duration-200 hover:text-danger disabled:opacity-40"
+                      className="text-danger transition-colors duration-200 hover:text-danger disabled:opacity-40"
                     >
                       Remove
                     </button>

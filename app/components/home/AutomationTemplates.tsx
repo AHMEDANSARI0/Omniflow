@@ -63,9 +63,9 @@ export default function AutomationTemplates({
               type="button"
               aria-pressed={active}
               onClick={() => setCategory(item.key)}
-              className={`h-9 rounded-full border px-4 text-[13px] font-semibold transition-all duration-200 ${
+              className={`h-11 rounded-full border px-4 text-[13px] font-semibold transition-all duration-200 ${
                 active
-                  ? "border-brand bg-brand text-white shadow-cta"
+                  ? "border-brand bg-brand text-white shadow-cta hover:bg-brand-2"
                   : "border-line bg-white text-ink-2 hover:border-line-2 hover:text-ink"
               }`}
             >
@@ -109,7 +109,7 @@ export default function AutomationTemplates({
 
               <a
                 href={SITE_ROUTES.start}
-                className="mt-6 inline-flex items-center gap-1.5 self-start rounded-lg text-[14px] font-semibold text-brand-2 transition-colors hover:text-brand"
+                className="-my-1 mt-6 inline-flex items-center gap-1.5 self-start rounded-lg py-1 text-[14px] font-semibold text-brand-2 transition-colors hover:text-brand hover:underline hover:underline-offset-4"
                 aria-label={`${template.cta}: ${template.title}`}
               >
                 {template.cta}

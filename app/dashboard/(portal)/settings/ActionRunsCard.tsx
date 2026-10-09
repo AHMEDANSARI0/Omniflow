@@ -106,7 +106,7 @@ export default function ActionRunsCard() {
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
+          className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -123,7 +123,7 @@ export default function ActionRunsCard() {
                 "rounded-lg border border-line px-2 py-0.5 text-[11px] " +
                 (filter === status
                   ? STATUS_STYLES[status]
-                  : "text-ink-3 hover:bg-soft")
+                  : "text-ink-3 hover:bg-line/60")
               }
             >
               {STATUS_LABELS[status]} · {data.counts[status] ?? 0}

@@ -86,7 +86,7 @@ export function Card({
           {title}
         </h2>
         {href && (
-          <Link href={href} className="flex items-center gap-1 text-xs font-medium text-brand hover:underline">
+          <Link href={href} className="-my-2 flex items-center gap-1 rounded-md px-1 py-2 text-xs font-medium text-brand hover:bg-brand-soft/70 hover:underline">
             {linkLabel}
             <PortalIcon name="arrowRight" className="h-3 w-3" />
           </Link>
@@ -576,7 +576,7 @@ export async function HotLeadsCard({ token }: { token: string }) {
                 className="flex items-center justify-between gap-3 rounded-xl border border-line px-3.5 py-2.5 transition-colors duration-200 hover:border-amber-400/40"
               >
                 <span className="flex min-w-0 items-center gap-2.5">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/10 text-amber-600">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/10 text-amber-700">
                     <PortalIcon name="flame" className="h-4 w-4" />
                   </span>
                   <span className="min-w-0">
@@ -585,7 +585,7 @@ export async function HotLeadsCard({ token }: { token: string }) {
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-amber-700">
                     {lead.leadScore !== null ? "score " + lead.leadScore : "hot"}
                   </span>
                   <span className="block text-[10px] text-ink-3">{whenLabel(lead.lastMessageAt)}</span>

@@ -134,7 +134,7 @@ export default function HandoffBriefCard({
 
           {brief.handoff ? (
             <p className="text-ink-2">
-              <span className={brief.handoff.severity === "high" ? "text-amber-600" : "text-ink-3"}>
+              <span className={brief.handoff.severity === "high" ? "text-amber-700" : "text-ink-3"}>
                 {brief.handoff.status === "open" ? "Waiting handoff" : "Last handoff"}
               </span>
               {" \u00b7 " + brief.handoff.reasonLabel}
@@ -246,7 +246,7 @@ export default function HandoffBriefCard({
               <span className="text-[10px] text-ink-3">{view.aiReason}</span>
             ) : null}
           </div>
-          {notice ? <p className="text-[11px] text-amber-600">{notice}</p> : null}
+          {notice ? <p className="text-[11px] text-amber-700">{notice}</p> : null}
         </div>
       ) : null}
     </section>

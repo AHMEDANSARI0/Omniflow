@@ -62,7 +62,7 @@ function Toggle({
       </span>
       <span
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-          checked ? "bg-cyan-400" : "bg-white/[0.1]"
+          checked ? "bg-brand" : "bg-line-2"
         }`}
       >
         <span
@@ -169,7 +169,7 @@ export default function BotForm({
       className="space-y-5"
     >
       {!serverConfigured && (
-        <p className="rounded-xl border border-brand/20 bg-cyan-400/[0.05] px-4 py-3 text-xs leading-relaxed text-brand/90">
+        <p className="rounded-xl border border-brand/20 bg-brand/[0.05] px-4 py-3 text-xs leading-relaxed text-brand">
           Backend module pending — you can configure everything now; settings are
           kept as a local draft and sync to the server automatically later.
         </p>
@@ -311,7 +311,7 @@ export default function BotForm({
             message.kind === "ok"
               ? "border-emerald-400/20 bg-emerald-400/[0.06] text-ok"
               : message.kind === "info"
-                ? "border-brand/20 bg-cyan-400/[0.05] text-brand/90"
+                ? "border-brand/20 bg-brand/[0.05] text-brand"
                 : "border-red-400/20 bg-red-400/[0.06] text-danger"
           }`}
         >
@@ -323,7 +323,7 @@ export default function BotForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>

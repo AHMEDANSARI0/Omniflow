@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 
 type Mode = "coupon" | "address" | "cancel";
 
@@ -24,6 +25,10 @@ export default function SelfServe({
   const [noteTone, setNoteTone] = useState<"ok" | "error">("ok");
 
   const open = status === "open";
+
+  /* §258: on a settled order (paid/shipped/delivered) there is nothing to
+     self-serve - render nothing instead of an empty bordered box. */
+  if (!open) return null;
 
   async function applyCoupon() {
     if (busy || !code.trim()) {
@@ -154,7 +159,7 @@ export default function SelfServe({
                   setMode("coupon");
                   setNote("");
                 }}
-                className="rounded-lg border border-brand/25 bg-cyan-400/[0.07] px-2.5 py-1.5 text-[11px] font-medium text-brand hover:bg-brand-soft"
+                className="min-h-10 rounded-lg border border-brand/25 bg-brand-soft px-2.5 py-1.5 text-[11px] font-medium text-brand-2 transition-colors hover:bg-brand/15"
               >
                 Have a coupon code?
               </button>
@@ -164,7 +169,7 @@ export default function SelfServe({
                   setMode("address");
                   setNote("");
                 }}
-                className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-2 hover:bg-white/[0.06]"
+                className="min-h-10 rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-2 transition-colors hover:bg-line/50"
               >
                 Change address
               </button>
@@ -174,7 +179,7 @@ export default function SelfServe({
                   setMode("cancel");
                   setNote("");
                 }}
-                className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 hover:border-rose-400/40 hover:text-danger"
+                className="min-h-10 rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 transition-colors hover:border-danger/40 hover:bg-danger-soft hover:text-danger"
               >
                 Cancel order
               </button>
@@ -185,7 +190,7 @@ export default function SelfServe({
               type="button"
               onClick={() => void removeCoupon()}
               disabled={busy}
-              className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 hover:bg-white/[0.06] disabled:opacity-50"
+              className="min-h-10 rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-3 transition-colors hover:bg-line/50 disabled:opacity-50"
             >
               Remove coupon
             </button>
@@ -206,16 +211,17 @@ export default function SelfServe({
             type="button"
             onClick={() => void applyCoupon()}
             disabled={busy}
-            className="shrink-0 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand disabled:opacity-50"
+            className="min-h-10 shrink-0 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-xs font-medium text-brand-2 transition-colors hover:bg-brand/15 disabled:opacity-50"
           >
             {busy ? "…" : "Apply"}
           </button>
           <button
             type="button"
             onClick={() => setMode(null)}
-            className="shrink-0 rounded-lg border border-line px-2 py-2 text-xs text-ink-3"
+            aria-label="Close"
+            className="flex min-h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line text-ink-3 transition-colors hover:bg-line/50 hover:text-ink"
           >
-            ✕
+            <X className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
       ) : null}
@@ -228,14 +234,14 @@ export default function SelfServe({
             rows={2}
             maxLength={500}
             placeholder="Your correct delivery address (house, street, area, city)"
-            className="w-full resize-none rounded-lg border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
+            className="w-full resize-none rounded-lg border border-line bg-soft px-3 py-2.5 text-xs text-ink outline-none focus:border-brand/40"
           />
           <input
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             maxLength={500}
             placeholder="Note for the business (optional)"
-            className="w-full rounded-lg border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
+            className="min-h-10 w-full rounded-lg border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
           />
           <div className="flex items-center gap-1.5">
             <button
@@ -264,21 +270,21 @@ export default function SelfServe({
             onChange={(event) => setMessage(event.target.value)}
             maxLength={500}
             placeholder="Reason (optional)"
-            className="w-full rounded-lg border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
+            className="min-h-10 w-full rounded-lg border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand/40"
           />
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => void submitRequest("cancel")}
               disabled={busy}
-              className="rounded-lg border border-rose-400/30 bg-rose-400/[0.08] px-3 py-1.5 text-xs font-medium text-rose-200 hover:bg-rose-400/[0.15] disabled:opacity-50"
+              className="min-h-10 rounded-lg border border-danger/20 bg-danger-soft px-3 py-1.5 text-xs font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
             >
               {busy ? "Sending…" : "Request cancellation"}
             </button>
             <button
               type="button"
               onClick={() => setMode(null)}
-              className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-3"
+              className="min-h-10 rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-3 transition-colors hover:bg-line/50"
             >
               Back
             </button>

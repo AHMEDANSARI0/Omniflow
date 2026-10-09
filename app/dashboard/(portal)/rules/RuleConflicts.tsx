@@ -7,11 +7,11 @@ import PortalIcon from "../../components/PortalIcon";
 const primaryBtn =
   "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 disabled:opacity-50";
 const ghostBtn =
-  "rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:border-line-2 hover:text-ink disabled:opacity-50";
+  "rounded-xl border border-line bg-white inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:border-line-2 hover:text-ink disabled:opacity-50";
 
 const SEVERITY: Record<RuleConflict["severity"], { label: string; badge: string; border: string }> = {
   high: { label: "High", badge: "bg-danger-soft text-danger", border: "border-danger/30" },
-  warn: { label: "Warning", badge: "bg-warn-soft text-warn", border: "border-warn/30" },
+  warn: { label: "Warning", badge: "bg-warn-soft text-amber-700", border: "border-warn/30" },
   info: { label: "Info", badge: "bg-soft text-ink-2", border: "border-line" },
 };
 
@@ -139,7 +139,7 @@ export default function RuleConflicts() {
                   {report.counts.high} high
                 </span>
               ) : null}
-              <span className="rounded-full bg-warn-soft px-2.5 py-1 text-[11px] font-medium text-warn">
+              <span className="rounded-full bg-warn-soft px-2.5 py-1 text-[11px] font-medium text-amber-700">
                 {report.counts.warn} warnings
               </span>
               <span className="rounded-full bg-soft px-2.5 py-1 text-[11px] font-medium text-ink-2">
@@ -252,7 +252,7 @@ export default function RuleConflicts() {
                 </p>
               ) : null}
               {!report.ai.ready && report.ai.reason ? (
-                <p className="mt-0.5 text-[11px] text-warn">{report.ai.reason}</p>
+                <p className="mt-0.5 text-[11px] text-amber-700">{report.ai.reason}</p>
               ) : null}
             </div>
             <button

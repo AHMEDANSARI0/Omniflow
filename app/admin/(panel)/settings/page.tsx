@@ -31,7 +31,7 @@ export default async function SettingsPage() {
         </p>
 
         <div className="flex items-center gap-3 rounded-xl border border-line bg-white shadow-card px-4 py-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-cyan-400/[0.05] text-sm text-brand">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-sm text-brand">
             ◈
           </div>
           <div>

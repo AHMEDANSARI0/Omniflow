@@ -180,7 +180,7 @@ export default function SavedRepliesPage() {
   return (
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
           Workspace
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
@@ -197,7 +197,7 @@ export default function SavedRepliesPage() {
               "mt-4 rounded-lg border px-3 py-2 text-xs " +
               (noteTone === "emerald"
                 ? "border-emerald-400/20 bg-emerald-400/[0.05] text-ok"
-                : "border-amber-400/20 bg-amber-400/[0.05] text-amber-200")
+                : "border-amber-400/20 bg-amber-400/[0.05] text-amber-800")
             }
           >
             {note}
@@ -224,7 +224,7 @@ export default function SavedRepliesPage() {
             type="button"
             onClick={() => void createReply()}
             disabled={busy}
-            className="mt-2 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-40"
+            className="mt-2 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand/[0.12] disabled:opacity-40"
           >
             {busy ? "Saving\\u2026" : "Save reply"}
           </button>
@@ -263,14 +263,14 @@ export default function SavedRepliesPage() {
                         type="button"
                         onClick={() => void saveEdit()}
                         disabled={busy}
-                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs text-brand transition hover:bg-brand-soft disabled:opacity-40"
+                        className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-brand transition hover:bg-brand/[0.12] disabled:opacity-40"
                       >
                         Save
                       </button>
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
+                        className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
                       >
                         Cancel
                       </button>

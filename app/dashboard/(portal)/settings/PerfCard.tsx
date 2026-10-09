@@ -64,7 +64,7 @@ export default function PerfCard() {
                 "rounded-full border px-2.5 py-1 text-[11px] " +
                 (report.ok
                   ? "border-emerald-400/30 bg-emerald-400/[0.08] text-ok"
-                  : "border-amber-400/30 bg-amber-400/[0.08] text-amber-200")
+                  : "border-amber-400/30 bg-amber-400/[0.08] text-amber-800")
               }
             >
               {report.ok ? "Indexes healthy" : "Index missing"}
@@ -118,7 +118,7 @@ export default function PerfCard() {
         <p className="mt-2 text-[11px] text-ink-3">Loading...</p>
       )}
       {report && !report.ok ? (
-        <p className="mt-2 text-[11px] text-amber-600">
+        <p className="mt-2 text-[11px] text-amber-700">
           Missing: {report.missing_hot_indexes.join(", ")} - the CP
           creates them automatically; try Refresh after a restart.
         </p>

@@ -78,7 +78,7 @@ export default function ProblemSolution({ content }: { content: ProblemSolutionC
         <Reveal lift className="h-full">
           <div className="h-full rounded-xl3 border border-brand/25 bg-white p-6 shadow-card sm:p-8 [background-image:radial-gradient(28rem_18rem_at_100%_0%,rgba(99,91,255,0.07),transparent_65%)]">
             <p className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-brand-2">
-              <span className="of-gradient inline-flex h-7 w-7 items-center justify-center rounded-lg text-white">
+              <span className="of-gradient-deep inline-flex h-7 w-7 items-center justify-center rounded-lg text-white">
                 <Check className="h-3.5 w-3.5" aria-hidden />
               </span>
               {content.solution_title}

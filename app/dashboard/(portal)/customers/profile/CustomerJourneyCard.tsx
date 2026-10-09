@@ -142,10 +142,10 @@ export default function CustomerJourneyCard({ contact }: { contact: string }) {
               onClick={() => void move(stage.id)}
               disabled={busy}
               className={
-                "rounded-full border px-3 py-1 text-[11px] transition-colors " +
+                "rounded-full border inline-flex min-h-8 items-center px-3 py-1 text-[11px] transition-colors " +
                 (stage.id === currentStageId
                   ? "border-emerald-400/40 bg-emerald-400/[0.12] text-ok"
-                  : "border-line bg-soft text-ink-3 hover:bg-soft")
+                  : "border-line bg-soft text-ink-3 hover:bg-line/60")
               }
             >
               {stage.name}

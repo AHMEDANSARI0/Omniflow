@@ -184,14 +184,14 @@ export default function CourierProvidersCard() {
         <button
           onClick={() => setFormOpen(!formOpen)}
           aria-label="Add courier company"
-          className="rounded-full border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-soft"
+          className="rounded-full border border-brand/30 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand/[0.12]"
         >
           + Add courier
         </button>
       </div>
 
       {formOpen ? (
-        <div className="mt-3 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.03] p-3">
+        <div className="mt-3 rounded-xl border border-brand/20 bg-brand/[0.03] p-3">
           <div className="grid gap-2 sm:grid-cols-2">
             <input
               value={form.name}
@@ -259,7 +259,7 @@ export default function CourierProvidersCard() {
             <button
               onClick={() => void addProvider()}
               disabled={busy || !form.name.trim() || !form.adapter}
-              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
             >
               Save courier
             </button>
@@ -286,7 +286,7 @@ export default function CourierProvidersCard() {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-xs text-slate-100">
+                  <p className="truncate text-xs text-ink">
                     {provider.name}
                     <span className="ml-2 rounded-full border border-line-2 bg-soft px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink-3">
                       {provider.adapter}
@@ -321,7 +321,7 @@ export default function CourierProvidersCard() {
                   <button
                     onClick={() => void testProvider(provider.id)}
                     disabled={busy}
-                    className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-40"
+                    className="rounded-lg border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-40"
                   >
                     Test
                   </button>
@@ -330,9 +330,9 @@ export default function CourierProvidersCard() {
                       { enabled: !provider.enabled })}
                     disabled={busy}
                     className={
-                      "rounded-lg border px-2.5 py-1 text-[11px] disabled:opacity-40 " +
+                      "rounded-lg border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] disabled:opacity-40 " +
                       (provider.enabled
-                        ? "border-line bg-soft text-ink-3 hover:bg-soft"
+                        ? "border-line bg-soft text-ink-3 hover:bg-line/60"
                         : "border-emerald-400/25 bg-emerald-400/[0.07] text-ok hover:bg-emerald-400/[0.15]")
                     }
                   >
@@ -356,7 +356,7 @@ export default function CourierProvidersCard() {
                   <button
                     onClick={() => void removeProvider(provider.id)}
                     disabled={busy}
-                    className="text-[11px] text-danger/80 hover:text-rose-200 disabled:opacity-40"
+                    className="text-[11px] text-danger hover:text-rose-700 disabled:opacity-40"
                   >
                     Remove
                   </button>

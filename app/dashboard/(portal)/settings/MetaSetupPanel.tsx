@@ -10,7 +10,7 @@ import type { MetaSetupFix, MetaSetupReport, MetaSetupStatus } from "../../../..
 
 const ICON: Record<MetaSetupStatus, { icon: IconName; tone: string; label: string }> = {
   ok: { icon: "approvals", tone: "text-ok", label: "Done" },
-  warn: { icon: "alert", tone: "text-warn", label: "Check" },
+  warn: { icon: "alert", tone: "text-amber-700", label: "Check" },
   fail: { icon: "failed", tone: "text-danger", label: "Missing" },
   skip: { icon: "skipped", tone: "text-ink-3", label: "Skipped" },
   manual: { icon: "externalLink", tone: "text-ink-3", label: "In Meta console" },
@@ -64,7 +64,7 @@ export default function MetaSetupPanel({ disabled }: { disabled: boolean }) {
         <button
           onClick={() => void run(null)}
           disabled={disabled || busy !== ""}
-          className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
+          className="rounded-lg border border-line bg-white inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           {busy === "check" ? "Checking..." : report ? "Check again" : "Run setup check"}
         </button>

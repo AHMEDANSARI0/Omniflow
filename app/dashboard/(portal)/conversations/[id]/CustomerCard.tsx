@@ -148,7 +148,7 @@ export default function CustomerCard({ contactId }: { contactId: string | null }
             <Link
               prefetch={false}
               href={`/dashboard/customers/profile?contact=${encodeURIComponent(contactId)}`}
-              className="text-[10px] font-semibold uppercase tracking-wider text-brand/90 transition-colors duration-300 hover:text-brand"
+              className="text-[10px] font-semibold uppercase tracking-wider text-brand transition-colors duration-300 hover:text-brand"
             >
               360
             </Link>)}
@@ -164,7 +164,7 @@ export default function CustomerCard({ contactId }: { contactId: string | null }
           )}
           <Link
             href={"/dashboard/conversations?q=" + encodeURIComponent(contactId)}
-            className="text-[10px] font-medium text-brand transition-colors hover:text-brand"
+            className="text-[10px] font-medium text-brand underline-offset-2 transition-colors hover:underline"
           >
             All chats →
           </Link>
@@ -185,7 +185,7 @@ export default function CustomerCard({ contactId }: { contactId: string | null }
           {notes.map((note) => (
             <li
               key={"ccard-note-" + String(note.id)}
-              className="rounded-xl border border-line bg-white/[0.01] px-3 py-2"
+              className="rounded-xl border border-line bg-white px-3 py-2"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="min-w-0 whitespace-pre-wrap break-words text-xs text-ink-2">
@@ -221,7 +221,7 @@ export default function CustomerCard({ contactId }: { contactId: string | null }
           type="button"
           onClick={() => void addNote()}
           disabled={busy || !draft.trim()}
-          className="rounded-xl border border-brand/25 bg-brand-soft px-3 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+          className="rounded-xl border border-brand/25 bg-brand-soft px-3 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {busy ? "Saving…" : "Add note"}
         </button>

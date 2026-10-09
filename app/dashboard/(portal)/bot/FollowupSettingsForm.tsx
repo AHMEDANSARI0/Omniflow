@@ -77,7 +77,7 @@ export default function FollowupSettingsForm({
           onClick={() => setEnabled((value) => !value)}
           aria-pressed={enabled}
           className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-            enabled ? "bg-cyan-400" : "bg-white/[0.1]"
+            enabled ? "bg-brand" : "bg-line-2"
           }`}
         >
           <span
@@ -89,7 +89,7 @@ export default function FollowupSettingsForm({
       </div>
 
       {initial === null ? (
-        <p className="mt-4 rounded-xl border border-brand/20 bg-cyan-400/[0.05] px-4 py-3 text-xs leading-relaxed text-brand/90">
+        <p className="mt-4 rounded-xl border border-brand/20 bg-brand/[0.05] px-4 py-3 text-xs leading-relaxed text-brand">
           The follow-up module is rolling out on the server — configure it now;
           it syncs automatically after the deploy.
         </p>
@@ -171,7 +171,7 @@ export default function FollowupSettingsForm({
             type="button"
             onClick={() => void save()}
             disabled={saving}
-            className="rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save follow-up settings"}
           </button>

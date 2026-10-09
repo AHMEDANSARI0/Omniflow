@@ -82,7 +82,7 @@ export default function DigestCard() {
     <section className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">
+          <h3 className="text-sm font-semibold text-ink">
             Daily digest
           </h3>
           <p className="mt-0.5 text-xs text-ink-3">
@@ -95,7 +95,7 @@ export default function DigestCard() {
           role="switch"
           aria-checked={enabled}
           onClick={() => setEnabled((prev) => !prev)}
-          className={`rounded-lg border px-2.5 py-1 text-[11px] ${
+          className={`rounded-lg border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] ${
             enabled
               ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
               : "border-line bg-soft text-ink-3"
@@ -115,7 +115,7 @@ export default function DigestCard() {
             value={ownerContact}
             onChange={(event) => setOwnerContact(event.target.value)}
             placeholder="923001234567"
-            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-white/20 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-3 focus:border-brand/50 focus:outline-none"
           />
         </label>
         <label className="block">
@@ -128,7 +128,7 @@ export default function DigestCard() {
             onChange={(event) =>
               setHour(Number(event.target.value) || 0)
             }
-            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none"
           />
         </label>
       </div>
@@ -138,7 +138,7 @@ export default function DigestCard() {
           type="button"
           onClick={() => void save()}
           disabled={saving}
-          className="rounded-lg border border-line bg-soft px-3 py-1.5 text-xs text-ink hover:bg-white/[0.08] disabled:opacity-50"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink hover:bg-line/60 disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save settings"}
         </button>

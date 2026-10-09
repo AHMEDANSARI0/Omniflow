@@ -147,7 +147,7 @@ export default function CustomersImport({
           setFileName("");
           if (fileRef.current) fileRef.current.value = "";
         }}
-        className="ml-auto rounded-lg border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
+        className="ml-auto rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
       >
         Import CSV
       </button>
@@ -176,7 +176,7 @@ export default function CustomersImport({
                 const file = event.target.files?.[0];
                 if (file) void handleFile(file);
               }}
-              className="mt-3 block w-full cursor-pointer rounded-xl border border-line bg-white shadow-card px-3 py-2 text-xs text-ink-2 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cyan-400/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand"
+              className="mt-3 block w-full cursor-pointer rounded-xl border border-line bg-white shadow-card px-3 py-2 text-xs text-ink-2 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand"
             />
             {fileName ? (
               <p className="mt-1.5 text-[11px] text-ink-3">
@@ -204,7 +204,7 @@ export default function CustomersImport({
               <p
                 className={
                   "mt-3 text-xs " +
-                  (noteTone === "emerald" ? "text-ok" : "text-amber-600")
+                  (noteTone === "emerald" ? "text-ok" : "text-amber-700")
                 }
               >
                 {note}
@@ -215,7 +215,7 @@ export default function CustomersImport({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+                className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
               >
                 Close
               </button>
@@ -223,7 +223,7 @@ export default function CustomersImport({
                 type="button"
                 onClick={() => void submit()}
                 disabled={busy || preview.length === 0}
-                className="rounded-lg bg-cyan-400/15 px-4 py-1.5 text-xs font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-40"
+                className="rounded-lg bg-brand/15 px-4 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/25 disabled:opacity-40"
               >
                 {busy ? "Importing\u2026" : "Import " + preview.length}
               </button>

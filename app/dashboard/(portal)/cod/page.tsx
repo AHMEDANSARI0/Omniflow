@@ -22,7 +22,7 @@ interface CodRow {
 const FILTERS = ["all", "pending", "confirmed", "declined"] as const;
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "border-amber-400/25 bg-amber-400/[0.07] text-amber-600",
+  pending: "border-amber-400/25 bg-amber-400/[0.07] text-amber-700",
   confirmed: "border-emerald-400/25 bg-emerald-400/[0.07] text-ok",
   declined: "border-rose-400/25 bg-rose-400/[0.07] text-danger",
 };
@@ -143,7 +143,7 @@ export default function CodPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">COD confirmations</h1>
@@ -157,7 +157,7 @@ export default function CodPage() {
         <AddressCard />
 
         {loadError ? (
-          <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm text-amber-600">
+          <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm text-amber-700">
             COD confirmations are unavailable right now.
           </p>
         ) : null}
@@ -174,7 +174,7 @@ export default function CodPage() {
               type="checkbox"
               checked={enabled}
               onChange={(event) => setEnabled(event.target.checked)}
-              className="h-5 w-5 shrink-0 accent-cyan-400"
+              className="h-5 w-5 shrink-0 accent-brand"
             />
           </label>
 
@@ -195,7 +195,7 @@ export default function CodPage() {
               type="button"
               onClick={() => void save()}
               disabled={busy || loading}
-              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
+              className="rounded-xl bg-brand/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-brand/25 disabled:opacity-50"
             >
               {busy ? "Saving\u2026" : "Save settings"}
             </button>
@@ -211,9 +211,9 @@ export default function CodPage() {
               aria-pressed={filter === option}
               onClick={() => setFilter(option)}
               className={
-                "rounded-full px-3 py-1 text-xs font-medium capitalize transition " +
+                "rounded-full inline-flex min-h-9 items-center px-3 py-1 text-xs font-medium capitalize transition " +
                 (filter === option
-                  ? "bg-cyan-400/15 text-brand"
+                  ? "bg-brand/15 text-brand"
                   : "text-ink-3 hover:text-ink")
               }
             >

@@ -87,7 +87,7 @@ export default function RatingCard({ conversationId }: { conversationId: number 
             type="button"
             onClick={sendRequest}
             disabled={busy}
-            className="w-full shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50 sm:w-auto"
+            className="w-full shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50 sm:w-auto"
           >
             {busy ? "Sending…" : "Ask for rating"}
           </button>
@@ -132,7 +132,7 @@ export default function RatingCard({ conversationId }: { conversationId: number 
           type="button"
           onClick={sendRequest}
           disabled={busy}
-          className="w-full shrink-0 rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
+          className="w-full shrink-0 rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-line/60 disabled:opacity-50 sm:w-auto"
         >
           {busy ? "Sending…" : "Ask again"}
         </button>

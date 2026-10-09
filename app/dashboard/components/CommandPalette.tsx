@@ -51,6 +51,8 @@ export default function CommandPalette() {
   const [results, setResults] = useState<PaletteItem[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const requestRef = useRef(0);
 
   const close = useCallback(() => {
@@ -80,12 +82,24 @@ export default function CommandPalette() {
     };
   }, []);
 
+  // §257: keyboard selection is kept in view inside the result list.
   useEffect(() => {
     if (!open) return;
+    listRef.current
+      ?.querySelector('[data-active="true"]')
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    triggerRef.current = document.activeElement as HTMLElement | null;
     inputRef.current?.focus();
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
+      // §257: focus goes back to whatever opened the palette.
+      triggerRef.current?.focus?.();
+      triggerRef.current = null;
     };
   }, [open]);
 
@@ -185,14 +199,14 @@ export default function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-soft px-4 pt-[10vh]"
+      className="fixed inset-0 z-[60] bg-ink/25 px-3 pb-4 pt-[4.5rem] sm:px-6 sm:pt-20 lg:pt-24"
       onClick={close}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-white shadow-2xl"
+        className="mx-auto flex max-h-[min(70vh,34rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_70px_-24px_rgba(11,18,32,0.45)]"
         onClick={(event) => event.stopPropagation()}
       >
         <input
@@ -214,7 +228,7 @@ export default function CommandPalette() {
           placeholder="Search pages, chats, customers..."
           className="w-full border-b border-line bg-transparent px-4 py-3.5 text-sm text-ink placeholder:text-ink-3 outline-none"
         />
-        <div className="max-h-[50vh] overflow-y-auto py-2">
+        <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto py-1.5">
           {results.length === 0 ? (
             <p className="px-4 py-6 text-center text-xs text-ink-3">
               No matches for &ldquo;{query}&rdquo;
@@ -232,6 +246,7 @@ export default function CommandPalette() {
                   ) : null}
                   <button
                     type="button"
+                    data-active={index === activeIndex ? "true" : undefined}
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => navigate(item)}
                     className={

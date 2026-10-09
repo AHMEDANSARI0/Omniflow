@@ -80,15 +80,15 @@ function when(value: string | null): string {
 }
 
 const LEAD_STYLES: Record<string, string> = {
-  hot: "border-orange-400/25 bg-orange-400/[0.08] text-amber-600",
-  warm: "border-amber-400/20 bg-amber-400/[0.05] text-amber-200/80",
+  hot: "border-orange-400/25 bg-orange-400/[0.08] text-amber-700",
+  warm: "border-amber-400/20 bg-amber-400/[0.05] text-amber-800",
   cold: "border-line bg-soft text-ink-3",
 };
 
 const COD_STYLES: Record<string, string> = {
   confirmed: "text-ok",
   declined: "text-danger",
-  pending: "text-amber-600",
+  pending: "text-amber-700",
 };
 
 export default function ProfileClient({ contact }: { contact: string }) {
@@ -350,7 +350,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                 href={`https://wa.me/${contact.replace(/[^0-9]/g, "")}`}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-ok transition hover:text-ok"
+                className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok transition hover:text-ok"
               >
                 WhatsApp
               </a>
@@ -358,13 +358,13 @@ export default function ProfileClient({ contact }: { contact: string }) {
           </div>
           {profile ? (
             <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+              <div className="rounded-xl border border-line bg-white p-2">
                 <p className="text-lg font-semibold text-ink">{profile.chats}</p>
                 <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   Total chats
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+              <div className="rounded-xl border border-line bg-white p-2">
                 <p className="text-lg font-semibold text-ink">
                   {profile.openChats}
                 </p>
@@ -372,7 +372,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   Open now
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+              <div className="rounded-xl border border-line bg-white p-2">
                 <p className="truncate text-sm font-medium text-ink-2">
                   {when(profile.firstSeen)}
                 </p>
@@ -380,7 +380,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   First seen
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+              <div className="rounded-xl border border-line bg-white p-2">
                 <p className="truncate text-sm font-medium text-ink-2">
                   {when(profile.lastSeen)}
                 </p>
@@ -410,7 +410,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   className={`rounded-md border px-1.5 py-0.5 ${
                     risk === "high"
                       ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
-                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
                   }`}
                 >
                   Risk: {risk}
@@ -422,7 +422,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   className={`rounded-md border px-1.5 py-0.5 ${
                     churn.tier === "at_risk"
                       ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
-                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
                   }`}
                 >
                   Churn: {churn.tier === "at_risk" ? "at risk" : "cooling"} (
@@ -468,7 +468,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                       {suggestion.name}
                     </p>
                     {suggestion.reasons[0] ? (
-                      <p className="truncate text-[10px] text-brand/80">
+                      <p className="truncate text-[10px] text-brand">
                         {suggestion.reasons[0]}
                       </p>
                     ) : null}
@@ -546,7 +546,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                       <Link
                         prefetch={false}
                         href={"/dashboard/conversations/" + conversation.id}
-                        className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-soft"
+                        className="flex items-center justify-between gap-2 rounded-lg min-h-9 px-2 py-1.5 text-xs transition hover:bg-line/60"
                       >
                         <span className="text-ink-2">
                           #{conversation.id} {"\u00b7"} {conversation.channel}
@@ -636,7 +636,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                             ? "shrink-0 text-ok"
                             : action.status === "declined"
                               ? "shrink-0 text-danger"
-                              : "shrink-0 text-amber-600"
+                              : "shrink-0 text-amber-700"
                         }
                       >
                         {action.status} {"\u00b7"} {when(action.createdAt)}
@@ -656,7 +656,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   {profile.notes.map((note, index) => (
                     <li
                       key={index}
-                      className="rounded-lg border border-line bg-white/[0.01] p-2.5"
+                      className="rounded-lg border border-line bg-white p-2.5"
                     >
                       <p className="text-xs text-ink-2">{note.body}</p>
                       <p className="mt-1 text-[10px] text-ink-3">

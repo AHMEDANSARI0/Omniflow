@@ -11,7 +11,7 @@ const statLabel = "text-[10px] uppercase tracking-wider text-ink-3";
 const statValue = "mt-1 text-lg font-semibold text-ink";
 
 const chipBtn =
-  "rounded-xl border px-3.5 py-1.5 text-xs font-medium transition-colors duration-300";
+  "rounded-xl border inline-flex min-h-9 items-center px-3.5 py-1.5 text-xs font-medium transition-colors duration-300";
 
 function intentLabel(intent: string): string {
   return intent.charAt(0).toUpperCase() + intent.slice(1).replace(/_/g, " ");
@@ -86,7 +86,7 @@ export default function AnalyticsClient({
               " " +
               (data.days === days
                 ? "border-brand/25 bg-brand-soft text-brand"
-                : "border-line bg-soft text-ink-3 hover:bg-soft") +
+                : "border-line bg-soft text-ink-3 hover:bg-line/60") +
               (loading ? " opacity-50" : "")
             }
           >
@@ -135,7 +135,7 @@ export default function AnalyticsClient({
               </h2>
               <div className="flex items-center gap-3 text-[10px] text-ink-3">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400" /> In
+                  <span className="h-2 w-2 rounded-full bg-brand" /> In
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400" /> Out
@@ -163,7 +163,7 @@ export default function AnalyticsClient({
                         style={{ height: String(100 - inboundPct) + "%" }}
                       />
                       <div
-                        className="w-full bg-cyan-400/80"
+                        className="w-full bg-brand/80"
                         style={{ height: String(inboundPct) + "%" }}
                       />
                     </div>
@@ -266,7 +266,7 @@ export default function AnalyticsClient({
                     </div>
                     <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-soft">
                       <div
-                        className="h-full rounded-full bg-cyan-400/70"
+                        className="h-full rounded-full bg-brand/70"
                         style={{
                           width: Math.max(4, Math.round((item.count / maxIntent) * 100)) + "%",
                         }}

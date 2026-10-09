@@ -138,7 +138,7 @@ export default function SmsChannelCard() {
           title={ready ? undefined : "Needs the platform Twilio keys and a number assigned to this workspace"}
           onClick={() => state && void save("switch", { enabled: !state.enabled })}
           className={
-            "rounded-lg border px-2.5 py-1 text-[11px] disabled:opacity-60 " +
+            "rounded-lg border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] disabled:opacity-60 " +
             (state?.enabled ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok" : "border-line bg-soft text-ink-3")
           }
         >
@@ -192,7 +192,7 @@ export default function SmsChannelCard() {
                   type="button"
                   disabled={busy !== "" || !limitValid || limitNumber === state.daily_limit}
                   onClick={() => void save("limit", { daily_limit: limitNumber })}
-                  className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+                  className="rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
                 >
                   {busy === "limit" ? "Saving..." : "Save"}
                 </button>

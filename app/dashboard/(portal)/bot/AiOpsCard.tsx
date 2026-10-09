@@ -156,7 +156,7 @@ export default function AiOpsCard() {
               key={option}
               type="button"
               onClick={() => setDays(option)}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
                 days === option
                   ? "border-brand/30 bg-brand-soft text-brand"
                   : "border-line bg-soft text-ink-3 hover:text-ink"
@@ -215,7 +215,7 @@ export default function AiOpsCard() {
                 key={option}
                 type="button"
                 onClick={() => setTab(option)}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
                   tab === option
                     ? "border-brand/30 bg-brand-soft text-brand"
                     : "border-line bg-soft text-ink-3 hover:text-ink"

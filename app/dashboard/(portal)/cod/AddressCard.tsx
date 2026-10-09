@@ -70,7 +70,7 @@ export default function AddressCard() {
         <button
           onClick={() => void normalize()}
           disabled={busy || !address.trim()}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
         >
           Check address
         </button>
@@ -100,7 +100,7 @@ export default function AddressCard() {
                   key={index}
                   className="flex items-center justify-between gap-2 rounded-lg border border-amber-400/20 bg-amber-400/[0.05] px-2.5 py-1.5"
                 >
-                  <span className="min-w-0 text-[11px] text-amber-200">
+                  <span className="min-w-0 text-[11px] text-amber-800">
                     {prompt}
                   </span>
                   <button

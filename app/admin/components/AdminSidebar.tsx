@@ -29,7 +29,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/admin" className="flex items-center gap-2" title="OmniFlow Admin">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-brand/20 bg-brand-soft">
-        <span className="h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-brand shadow-[0_0_12px_rgba(79,70,229,0.45)]" />
       </div>
       {!compact && (
         <>
@@ -95,7 +95,7 @@ function NavLinks({
             } ${
               isActive
                 ? "border-brand/20 bg-brand-soft text-ink"
-                : "border-transparent text-ink-3 hover:bg-soft hover:text-ink"
+                : "border-transparent text-ink-3 hover:bg-line/60 hover:text-ink"
             }`}
           >
             <span className={`text-xs ${isActive ? "text-brand" : ""}`}>
@@ -124,7 +124,7 @@ function SidebarFooter({
           target="_blank"
           rel="noopener noreferrer"
           title="View website"
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink-2"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-line/60 hover:text-ink-2"
         >
           ↗
         </a>
@@ -139,7 +139,7 @@ function SidebarFooter({
         href="/"
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink-2"
+        className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-ink-3 transition-colors duration-200 hover:bg-line/60 hover:text-ink-2"
       >
         <span>↗</span> View website
       </a>
@@ -188,7 +188,7 @@ export default function AdminSidebar({
             onClick={onToggle}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand" : "Collapse"}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-soft text-xs text-ink-3 transition-colors duration-200 hover:border-white/[0.16] hover:text-ink"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-soft text-xs text-ink-3 transition-colors duration-200 hover:border-line-2 hover:text-ink"
           >
             {collapsed ? "»" : "«"}
           </button>

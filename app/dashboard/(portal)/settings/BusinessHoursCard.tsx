@@ -130,7 +130,7 @@ export default function BusinessHoursCard() {
               "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider " +
               (open
                 ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
-                : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600")
+                : "border-amber-400/25 bg-amber-400/[0.08] text-amber-700")
             }
           >
             {open ? "Open now" : "Closed now"}
@@ -144,7 +144,7 @@ export default function BusinessHoursCard() {
           onChange={(event) =>
             setConfig({ ...config, enabled: event.target.checked })
           }
-          className="h-4 w-4 accent-cyan-400"
+          className="h-4 w-4 accent-brand"
         />
         Enabled outside these hours, show an away message to customers
       </label>
@@ -212,7 +212,7 @@ export default function BusinessHoursCard() {
               onChange={(event) =>
                 patchDay(index, { enabled: event.target.checked })
               }
-              className="h-4 w-4 accent-cyan-400"
+              className="h-4 w-4 accent-brand"
             />
             <span className="w-10 font-medium">{DAY_LABELS[index]}</span>
             <input
@@ -233,12 +233,12 @@ export default function BusinessHoursCard() {
           </div>
         ))}
       </div>
-      {notice && <p className="mt-3 text-[11px] text-amber-600">{notice}</p>}
+      {notice && <p className="mt-3 text-[11px] text-amber-700">{notice}</p>}
       <button
         type="button"
         onClick={() => void save()}
         disabled={busy}
-        className="mt-4 rounded-xl bg-cyan-400 px-5 py-2 text-xs font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-4 rounded-xl bg-brand px-5 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {busy ? "Saving…" : "Save business hours"}
       </button>

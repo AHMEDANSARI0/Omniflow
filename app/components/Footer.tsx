@@ -65,7 +65,7 @@ export default async function Footer({ content }: { content: FooterContent }) {
                     key={label}
                     href={href}
                     aria-label={label}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink-2 transition-colors hover:border-brand/40 hover:text-brand"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line text-ink-2 transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
                   >
                     <Icon className="h-4 w-4" />
                   </a>
@@ -81,7 +81,12 @@ export default async function Footer({ content }: { content: FooterContent }) {
                 <ul className="mt-4 space-y-2.5">
                   {column.links.map((link) => (
                     <li key={link.label}>
-                      <a href={link.href} className="rounded text-sm text-ink-2 transition-colors hover:text-brand">
+                      {/* §258: -my-1 py-1 keeps the visual rhythm but gives
+                          every footer link a 24px-tall tap target on phones */}
+                      <a
+                        href={link.href}
+                        className="-my-1 inline-block rounded py-1 text-sm text-ink-2 transition-colors hover:text-brand hover:underline hover:underline-offset-4"
+                      >
                         {link.label}
                       </a>
                     </li>

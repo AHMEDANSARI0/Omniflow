@@ -276,7 +276,7 @@ export default function VoiceVisionCard() {
             type="checkbox"
             checked={voice.enabled}
             onChange={(event) => setVoice({ ...voice, enabled: event.target.checked })}
-            className="h-4 w-4 accent-cyan-400"
+            className="h-4 w-4 accent-brand"
           />
           Let the assistant answer calls
         </label>
@@ -399,7 +399,7 @@ export default function VoiceVisionCard() {
                   onChange={(event) =>
                     void saveMedia({ ...media, [key]: event.target.checked })
                   }
-                  className="h-4 w-4 accent-cyan-400"
+                  className="h-4 w-4 accent-brand"
                 />
                 {key === "voice_notes" ? "Transcribe voice notes" : "Understand images"}
               </span>

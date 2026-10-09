@@ -165,7 +165,7 @@ export default function AdminCustomersPage() {
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 rounded-xl border border-brand/25 bg-cyan-400/[0.05] p-4"
+          className="mb-4 rounded-xl border border-brand/25 bg-brand/[0.05] p-4"
         >
           <p className="text-xs font-medium uppercase tracking-wider text-brand">
             New temporary password — visible only once
@@ -177,7 +177,7 @@ export default function AdminCustomersPage() {
             </code>
             <button
               onClick={() => void copyValue(resetResult.temp_password)}
-              className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-semibold text-[#07111f] transition-opacity hover:opacity-90"
+              className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
             >
               Copy
             </button>
@@ -195,7 +195,7 @@ export default function AdminCustomersPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/[0.04] p-4"
         >
-          <p className="text-xs font-medium uppercase tracking-wider text-amber-600">
+          <p className="text-xs font-medium uppercase tracking-wider text-amber-700">
             Recent password reset codes — test phase
           </p>
           <p className="mt-1 text-[11px] leading-relaxed text-ink-3">
@@ -214,7 +214,7 @@ export default function AdminCustomersPage() {
                 </code>
                 <button
                   onClick={() => void copyValue(entry.code)}
-                  className="rounded-md bg-amber-400/90 px-2 py-1 text-[10px] font-semibold text-[#07111f] transition-opacity hover:opacity-90"
+                  className="rounded-md bg-amber-400/90 px-2 py-1 text-[10px] font-semibold text-white transition-opacity hover:opacity-90"
                 >
                   Copy
                 </button>
@@ -280,7 +280,7 @@ export default function AdminCustomersPage() {
                       <button
                         onClick={() => void resetPassword(u.id, u.email)}
                         disabled={busyId === u.id}
-                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-cyan-400/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {busyId === u.id ? "Resetting…" : "Reset password"}
                       </button>

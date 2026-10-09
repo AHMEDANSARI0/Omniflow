@@ -185,7 +185,7 @@ export default function SavedRepliesPicker({
                     <button
                       type="button"
                       onClick={() => useReply(reply)}
-                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand transition-colors duration-300 hover:bg-brand-soft"
+                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12]"
                     >
                       Use
                     </button>
@@ -231,7 +231,7 @@ export default function SavedRepliesPicker({
                 type="button"
                 onClick={() => void addReply()}
                 disabled={busy || !shortcut.trim() || !body.trim()}
-                className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+                className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
               >
                 {busy ? "Working…" : "Add reply"}
               </button>

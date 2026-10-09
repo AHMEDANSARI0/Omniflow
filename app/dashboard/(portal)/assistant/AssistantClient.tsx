@@ -36,7 +36,7 @@ const TOOL_LABELS: Record<string, string> = {
 
 const RISK_STYLE: Record<AssistantProposal["risk"], string> = {
   low: "bg-ok-soft text-ok",
-  medium: "bg-warn-soft text-warn",
+  medium: "bg-warn-soft text-amber-700",
   high: "bg-danger-soft text-danger",
 };
 
@@ -140,7 +140,7 @@ function ProposalCard({
       )}
       {proposal.note && <p className="mt-2 text-xs text-ink-2">{proposal.note}</p>}
       {proposal.tainted && proposal.status === "pending" && (
-        <p className="mt-2 text-xs text-warn">
+        <p className="mt-2 text-xs text-amber-700">
           This was suggested after reading customer or website text. Check it before confirming.
         </p>
       )}
@@ -165,7 +165,7 @@ function ProposalCard({
               type="button"
               disabled={busy}
               onClick={() => onDecide(proposal.id, "reject")}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-soft disabled:opacity-50"
+              className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
             >
               Dismiss
             </button>
@@ -176,7 +176,7 @@ function ProposalCard({
             type="button"
             disabled={busy}
             onClick={() => onDecide(proposal.id, "undo")}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-soft disabled:opacity-50"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
           >
             Undo
           </button>
@@ -334,7 +334,7 @@ export default function AssistantClient({ variant = "page" }: { variant?: "page"
       >
         <div className={"flex-1 space-y-4 overflow-y-auto " + (panel ? "p-4" : "p-5")}>
           {!overview.available && (
-            <div className="rounded-xl bg-warn-soft px-4 py-3 text-sm text-warn">{overview.reason}</div>
+            <div className="rounded-xl bg-warn-soft px-4 py-3 text-sm text-amber-700">{overview.reason}</div>
           )}
           {messages.length === 0 && !pending && overview.available && (
             <div>
@@ -351,7 +351,7 @@ export default function AssistantClient({ variant = "page" }: { variant?: "page"
                     key={starter}
                     type="button"
                     onClick={() => void send(starter)}
-                    className="rounded-full border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-soft"
+                    className="rounded-full border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60"
                   >
                     {starter}
                   </button>
@@ -384,7 +384,7 @@ export default function AssistantClient({ variant = "page" }: { variant?: "page"
                         <Link
                           key={l.href}
                           href={l.href}
-                          className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft"
+                          className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60"
                         >
                           {l.label} &rarr;
                         </Link>
@@ -481,7 +481,7 @@ export default function AssistantClient({ variant = "page" }: { variant?: "page"
             onClick={startNewChat}
             title="New chat"
             aria-label="New chat"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-2 hover:bg-soft"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-2 hover:bg-line/60"
           >
             <PortalIcon name="plus" />
           </button>
@@ -509,7 +509,7 @@ export default function AssistantClient({ variant = "page" }: { variant?: "page"
                 onClick={() => void openThread(t.id)}
                 className={
                   "min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-left text-sm " +
-                  (thread?.thread.id === t.id ? "bg-brand-soft text-brand" : "text-ink hover:bg-soft")
+                  (thread?.thread.id === t.id ? "bg-brand-soft text-brand" : "text-ink hover:bg-line/60")
                 }
               >
                 {t.title}

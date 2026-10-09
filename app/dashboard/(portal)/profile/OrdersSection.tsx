@@ -7,7 +7,7 @@ const inputClass =
   "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 
 const chipClass =
   "rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-3";
@@ -172,8 +172,8 @@ export default function OrdersSection() {
           className={
             "mt-4 rounded-xl border px-4 py-3 text-xs leading-relaxed " +
             (message.kind === "ok"
-              ? "border-emerald-400/20 bg-emerald-400/[0.05] text-ok/90"
-              : "border-red-400/20 bg-red-400/[0.05] text-red-200/90")
+              ? "border-emerald-400/20 bg-emerald-400/[0.05] text-ok"
+              : "border-red-400/20 bg-red-400/[0.05] text-red-700")
           }
         >
           {message.text}
@@ -192,7 +192,7 @@ export default function OrdersSection() {
           {items.map((order) => (
             <div
               key={order.id}
-              className="flex flex-col gap-2 rounded-xl border border-line bg-white/[0.01] p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-xl border border-line bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -211,7 +211,7 @@ export default function OrdersSection() {
                 type="button"
                 onClick={() => removeOrder(order.id)}
                 disabled={busy}
-                className="w-full shrink-0 rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-2 text-xs font-medium text-danger/80 transition-colors duration-300 hover:bg-red-400/[0.09] disabled:opacity-50 sm:w-auto"
+                className="w-full shrink-0 rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-2 text-xs font-medium text-danger transition-colors duration-300 hover:bg-red-400/[0.09] disabled:opacity-50 sm:w-auto"
               >
                 Remove
               </button>

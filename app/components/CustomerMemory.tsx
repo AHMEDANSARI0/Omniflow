@@ -71,7 +71,7 @@ export default async function CustomerMemory({ content }: { content: CustomerMem
               <div className="mt-5 flex items-center gap-4">
                 <span
                   aria-hidden
-                  className="of-gradient inline-flex h-12 w-12 items-center justify-center rounded-full font-display text-base font-semibold text-white"
+                  className="of-gradient-deep inline-flex h-12 w-12 items-center justify-center rounded-full font-display text-base font-semibold text-white"
                 >
                   {profile.initials}
                 </span>

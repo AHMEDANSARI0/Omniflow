@@ -33,11 +33,11 @@ export default async function BlogPage() {
             <Card className="overflow-hidden">
               <a
                 href={"/blog/" + featured.slug}
-                className="grid gap-0 lg:grid-cols-[1.1fr_1fr]"
+                className="group grid gap-0 rounded-xl3 transition-shadow duration-300 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 lg:grid-cols-[1.1fr_1fr]"
               >
                 <div className="p-8 sm:p-10">
                   <Badge tone="brand">{featured.category}</Badge>
-                  <h2 className="mt-4 font-display text-[26px] font-semibold leading-snug tracking-[-0.02em] text-ink sm:text-[30px]">
+                  <h2 className="mt-4 font-display text-[26px] font-semibold leading-snug tracking-[-0.02em] text-ink transition-colors group-hover:text-brand-2 sm:text-[30px]">
                     {featured.title}
                   </h2>
                   <p className="mt-3 text-[15px] leading-relaxed text-ink-2">
@@ -58,9 +58,9 @@ export default async function BlogPage() {
                       {featured.reading_minutes} min read
                     </span>
                   </div>
-                  <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-2">
+                  <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-2 underline-offset-4 group-hover:underline">
                     {blogCopy.readArticle}
-                    <ArrowRight className="h-4 w-4" aria-hidden />
+                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
                   </span>
                 </div>
                 <div className="relative hidden min-h-[260px] items-center justify-center border-l border-line bg-[linear-gradient(180deg,#F5F4FF_0%,#FFFFFF_100%)] lg:flex">
@@ -80,7 +80,10 @@ export default async function BlogPage() {
               <Card className="flex h-full flex-col p-6">
                 <Badge tone="brand">{post.category}</Badge>
                 <h2 className="mt-4 font-display text-[17px] font-semibold leading-snug text-ink">
-                  <a href={"/blog/" + post.slug} className="hover:text-brand">
+                  <a
+                    href={"/blog/" + post.slug}
+                    className="rounded transition-colors hover:text-brand hover:underline hover:underline-offset-4"
+                  >
                     {post.title}
                   </a>
                 </h2>

@@ -124,7 +124,7 @@ export default function MediaStoreSection() {
           checked={draft.keep_copies}
           disabled={busy}
           onChange={(event) => setDraft({ ...draft, keep_copies: event.target.checked })}
-          className="h-4 w-4 accent-cyan-400"
+          className="h-4 w-4 accent-brand"
         />
         Keep copies of customer images and voice notes
       </label>

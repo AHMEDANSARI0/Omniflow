@@ -349,7 +349,7 @@ export default function WorkflowCanvas({
                 <PortalIcon name="automation" />
               </span>
               <span className="min-w-0">
-                <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-brand/80">Trigger</span>
+                <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-brand">Trigger</span>
                 <span className="block truncate text-sm font-semibold text-ink">{triggerTitle}</span>
                 {triggerSubtitle ? <span className="block truncate text-[11px] text-ink-3">{triggerSubtitle}</span> : null}
               </span>
@@ -461,7 +461,7 @@ export default function WorkflowCanvas({
                           <button
                             key={kind}
                             type="button"
-                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs text-ink-2 hover:bg-soft hover:text-ink"
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs text-ink-2 hover:bg-line/60 hover:text-ink"
                             onClick={() => {
                               setMenuSlot(null);
                               onInsert(slot, kind);

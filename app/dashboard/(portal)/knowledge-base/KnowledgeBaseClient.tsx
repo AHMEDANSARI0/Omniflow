@@ -9,10 +9,10 @@ const inputClass =
 const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 
 const ghostBtn =
-  "rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50";
+  "rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-line/60 disabled:opacity-50";
 
 const chipClass =
   "rounded-md border border-line bg-soft px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-ink-3";
@@ -257,7 +257,7 @@ export default function KnowledgeBaseClient({
             onClick={() => toggleAutoReply(!autoReply)}
             aria-pressed={autoReply}
             className={"relative h-6 w-11 shrink-0 rounded-full transition-colors " +
-              (autoReply ? "bg-cyan-400" : "bg-white/[0.1]")}
+              (autoReply ? "bg-brand" : "bg-line-2")}
           >
             <span
               className={"absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all " +
@@ -312,8 +312,8 @@ export default function KnowledgeBaseClient({
           className={
             "rounded-xl border px-4 py-3 text-xs leading-relaxed " +
             (message.kind === "ok"
-              ? "border-emerald-400/20 bg-emerald-400/[0.05] text-ok/90"
-              : "border-red-400/20 bg-red-400/[0.05] text-red-200/90")
+              ? "border-emerald-400/20 bg-emerald-400/[0.05] text-ok"
+              : "border-red-400/20 bg-red-400/[0.05] text-red-700")
           }
         >
           {message.text}
@@ -321,7 +321,7 @@ export default function KnowledgeBaseClient({
       )}
 
       {form && (
-        <div className="rounded-2xl border border-cyan-400/15 bg-soft p-6">
+        <div className="rounded-2xl border border-brand/20 bg-soft p-6">
           <h3 className="text-sm font-semibold text-ink">
             {form.id === null ? "New entry" : "Edit entry"}
           </h3>
@@ -438,7 +438,7 @@ export default function KnowledgeBaseClient({
                 onChange={(e) =>
                   setForm({ ...form, isActive: e.target.checked })
                 }
-                className="h-4 w-4 rounded border-white/20 bg-soft"
+                className="h-4 w-4 rounded border-line bg-soft"
               />
               Active
             </label>
@@ -490,7 +490,7 @@ export default function KnowledgeBaseClient({
                     <span className={chipClass}>{entry.category}</span>
                     {entry.brandId !== null &&
                       brands.some((b) => b.id === entry.brandId) && (
-                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-sky-300">
+                        <span className="rounded-md border border-sky-400/25 bg-sky-400/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-sky-700">
                           {brands.find((b) => b.id === entry.brandId)?.name}
                         </span>
                       )}
@@ -500,7 +500,7 @@ export default function KnowledgeBaseClient({
                       </span>
                     )}
                     {!entry.isActive && (
-                      <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-amber-600/80">
+                      <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-amber-700">
                         Hidden
                       </span>
                     )}
@@ -542,7 +542,7 @@ export default function KnowledgeBaseClient({
                     type="button"
                     onClick={() => removeEntry(entry.id)}
                     disabled={busy}
-                    className="rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-2 text-xs font-medium text-danger/80 transition-colors duration-300 hover:bg-red-400/[0.09] disabled:opacity-50"
+                    className="rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-2 text-xs font-medium text-danger transition-colors duration-300 hover:bg-red-400/[0.09] disabled:opacity-50"
                   >
                     Delete
                   </button>

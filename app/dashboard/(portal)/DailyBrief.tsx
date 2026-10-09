@@ -127,7 +127,7 @@ export default function DailyBrief() {
           ) : null}
         </li>
         <li>
-          <span className="text-amber-600">
+          <span className="text-amber-700">
             {brief.carts + brief.reorders} to recover
           </span>{" "}
           · {brief.carts} open carts, {brief.reorders} reorders due
@@ -143,7 +143,7 @@ export default function DailyBrief() {
       </ul>
       {brief.deadDeliveries > 0 || brief.unreadAlerts > 0 ? (
         <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2">
-          <p className="text-[11px] font-semibold text-amber-200">
+          <p className="text-[11px] font-semibold text-amber-800">
             Needs attention
           </p>
           <ul className="mt-1 space-y-0.5 text-[11px] text-ink-2">

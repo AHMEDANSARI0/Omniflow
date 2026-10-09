@@ -31,7 +31,7 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       title="OmniFlow Portal"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-brand/20 bg-brand-soft">
-        <span className="h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-brand shadow-[0_0_12px_rgba(79,70,229,0.45)]" />
       </div>
       {!compact && (
         <>
@@ -53,8 +53,8 @@ function UnreadBadge({ count, compact }: { count: number; compact: boolean }) {
     <span
       className={
         compact
-          ? "absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-400 px-1 text-[9px] font-bold text-[#07111f]"
-          : "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-400 px-1.5 text-[10px] font-bold text-[#07111f]"
+          ? "absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-bold text-white"
+          : "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-white"
       }
     >
       {count > 9 ? "9+" : count}
@@ -92,7 +92,7 @@ function NavLinks({
         } ${
           active
             ? "border-brand/20 bg-brand-soft text-ink"
-            : "border-transparent text-ink-3 hover:bg-soft hover:text-ink"
+            : "border-transparent text-ink-3 hover:border-line hover:bg-line/50 hover:text-ink"
         }`}
       >
         <PortalIcon name={item.icon} className={`h-4 w-4 ${active ? "text-brand" : ""}`} />
@@ -122,7 +122,7 @@ function NavLinks({
           className={`relative flex w-full items-center justify-center rounded-xl border py-2.5 transition-colors duration-200 ${
             holdsActive
               ? "border-brand/20 bg-brand-soft text-brand"
-              : "border-transparent text-ink-3 hover:bg-soft hover:text-ink"
+              : "border-transparent text-ink-3 hover:border-line hover:bg-line/50 hover:text-ink"
           }`}
         >
           <PortalIcon name={group.icon} />
@@ -138,7 +138,7 @@ function NavLinks({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpenGroups((current) => ({ ...current, [group.id]: !open }))}
-          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-200 hover:bg-soft ${
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-200 hover:bg-line/50 ${
             holdsActive ? "font-medium text-ink" : "text-ink-2 hover:text-ink"
           }`}
         >
@@ -211,7 +211,7 @@ function SidebarFooter({
           rel="noopener noreferrer"
           title="Visit website"
           aria-label="Visit website"
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink-2"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-line/50 hover:text-ink"
         >
           <PortalIcon name="externalLink" />
         </a>
@@ -226,7 +226,7 @@ function SidebarFooter({
         href="/"
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink-2"
+        className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-ink-3 transition-colors duration-200 hover:bg-line/50 hover:text-ink"
       >
         <PortalIcon name="externalLink" className="h-3.5 w-3.5" /> Visit website
       </a>
@@ -234,7 +234,7 @@ function SidebarFooter({
         <p className="truncate text-[11px] text-ink-3" title={userEmail}>
           {userEmail}
         </p>
-        <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-700">
+        <p className="mt-1 text-[10px] uppercase tracking-wider text-ink-3">
           Workspace {clientId} · {role}
         </p>
       </div>
@@ -285,7 +285,7 @@ export default function DashSidebar({
             onClick={onToggle}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand" : "Collapse"}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-soft text-ink-3 transition-colors duration-200 hover:border-line-2 hover:text-ink"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-soft text-ink-3 transition-colors duration-200 hover:border-line-2 hover:bg-line/50 hover:text-ink"
           >
             <PortalIcon name={collapsed ? "sidebarOpen" : "sidebarClose"} />
           </button>
@@ -326,7 +326,7 @@ export default function DashSidebar({
                   type="button"
                   onClick={onMobileClose}
                   aria-label="Close menu"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-3"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-3 transition-colors duration-200 hover:border-line-2 hover:bg-line/50 hover:text-ink"
                 >
                   <PortalIcon name="close" />
                 </button>

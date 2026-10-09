@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Container from "./Container";
 
-type Tone = "white" | "canvas" | "soft" | "tint" | "night" | "gradient";
+type Tone = "white" | "canvas" | "soft" | "tint";
 
 const TONES: Record<Tone, string> = {
   white: "bg-white",
@@ -9,9 +9,6 @@ const TONES: Record<Tone, string> = {
   soft: "bg-soft",
   // §216: subtle brand-tinted light surface (replaces dark bands)
   tint: "of-tint-glow",
-  // legacy tones, kept for compatibility; the marketing site no longer uses them
-  night: "bg-night text-snow of-night-glow",
-  gradient: "of-cta-gradient text-white",
 };
 
 /**
@@ -57,7 +54,6 @@ export function SectionHead({
   title,
   copy,
   align = "center",
-  dark = false,
   id,
   children,
 }: {
@@ -65,7 +61,6 @@ export function SectionHead({
   title: ReactNode;
   copy?: ReactNode;
   align?: "center" | "left";
-  dark?: boolean;
   id?: string;
   children?: ReactNode;
 }) {
@@ -74,11 +69,7 @@ export function SectionHead({
     <div className={centered ? "mx-auto max-w-3xl text-center" : "max-w-2xl"}>
       {eyebrow ? (
         <p
-          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-            dark
-              ? "border-white/15 bg-white/10 text-indigo-200"
-              : "border-brand/15 bg-white text-brand-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
-          }`}
+          className="inline-flex items-center gap-2 rounded-full border border-brand/15 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
         >
           <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brand" />
           {eyebrow}
@@ -86,9 +77,7 @@ export function SectionHead({
       ) : null}
       <h2
         id={id}
-        className={`mt-4 text-balance font-display text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] sm:text-[42px] lg:text-[50px] ${
-          dark ? "text-snow" : "text-ink"
-        }`}
+        className="mt-4 text-balance font-display text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] sm:text-[42px] lg:text-[50px] text-ink"
       >
         {title}
       </h2>
@@ -96,7 +85,7 @@ export function SectionHead({
         <p
           className={`mt-4 text-pretty text-base leading-relaxed sm:text-lg ${
             centered ? "mx-auto max-w-2xl" : ""
-          } ${dark ? "text-night-muted" : "text-ink-2"}`}
+          } text-ink-2`}
         >
           {copy}
         </p>

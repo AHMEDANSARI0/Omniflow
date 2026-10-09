@@ -12,10 +12,10 @@ import type {
 
 const card = "rounded-2xl border border-line bg-white p-5 shadow-card";
 const ghostBtn =
-  "rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-50";
+  "rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-50";
 const LABEL_TONE: Record<string, string> = {
-  hot: "text-emerald-600",
-  warm: "text-amber-600",
+  hot: "text-emerald-700",
+  warm: "text-amber-700",
   cold: "text-ink-3",
 };
 
@@ -133,7 +133,7 @@ export default function SalesDeskClient({
                     disabled={!canEdit || busy}
                     onClick={() => toggleQualifier(item.key)}
                     className={
-                      "rounded-full border px-3 py-1 text-xs transition-colors duration-300 disabled:opacity-60 " +
+                      "rounded-full border inline-flex min-h-9 items-center px-3 py-1 text-xs transition-colors duration-300 disabled:opacity-60 " +
                       (position >= 0 ? "border-brand bg-brand-soft text-brand" : "border-line text-ink-3 hover:text-ink")
                     }
                   >
@@ -201,7 +201,7 @@ export default function SalesDeskClient({
                 </div>
                 <p className="text-xs">
                   {lead.bought ? (
-                    <span className="text-emerald-600">{"\u2713 bought"}</span>
+                    <span className="text-emerald-700">{"\u2713 bought"}</span>
                   ) : (
                     <>
                       <span className={LABEL_TONE[lead.label]}>{lead.label + " " + lead.score}</span>

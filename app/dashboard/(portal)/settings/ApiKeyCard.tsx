@@ -105,7 +105,7 @@ export default function ApiKeyCard({ keyInfo }: { keyInfo: ApiKeyInfo | null }) 
             <button
               type="submit"
               disabled={genPending}
-              className="rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {genPending
                 ? "Generating…"

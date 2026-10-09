@@ -66,7 +66,7 @@ interface TestResult {
 const inputClass =
   "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 const ghostBtn =
   "rounded-xl border border-line px-3 py-2 text-xs text-ink-3 transition-colors duration-300 hover:text-ink disabled:opacity-50";
 
@@ -349,7 +349,7 @@ export default function NotificationsCard() {
                     <div className="flex items-center justify-between gap-2">
                       <p className="min-w-0 truncate text-xs text-ink">
                         {item.severity === "high" ? (
-                          <span className="mr-1 text-amber-600">&#9679;</span>
+                          <span className="mr-1 text-amber-700">&#9679;</span>
                         ) : null}
                         {item.title}
                       </p>

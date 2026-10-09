@@ -86,7 +86,7 @@ export default function DataSafetyCard() {
   }
 
   const inputClass =
-    "mt-1 w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-white/20 focus:outline-none";
+    "mt-1 w-24 rounded-lg border border-line bg-soft px-2 py-1 text-xs text-ink focus:border-brand/50 focus:outline-none";
 
   return (
     <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
@@ -127,20 +127,20 @@ export default function DataSafetyCard() {
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs text-brand hover:bg-brand-soft disabled:opacity-50"
+          className="rounded-lg border border-brand/30 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-brand hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save retention"}
         </button>
         <button
           onClick={() => void runNow()}
           disabled={busy}
-          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
+          className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           Run cleanup now
         </button>
         <button
           onClick={download}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15]"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15]"
         >
           Download backup (JSON)
         </button>

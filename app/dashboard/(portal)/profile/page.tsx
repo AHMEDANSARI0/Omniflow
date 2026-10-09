@@ -35,7 +35,7 @@ export default async function BusinessProfilePage() {
 
       {!result.configured && (
         <div className="mb-6 rounded-2xl border border-amber-400/15 bg-amber-400/[0.03] px-5 py-4">
-          <p className="text-sm text-amber-200/90">
+          <p className="text-sm text-amber-800">
             The profile module is rolling out on the server — you can fill the
             form now and save in a couple of minutes.
           </p>

@@ -54,7 +54,7 @@ export default function RecoCard({ conversationId }: { conversationId: number })
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:bg-line/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Checking…" : "Refresh"}
         </button>

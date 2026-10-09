@@ -16,7 +16,7 @@ const API = "/api/omniflow/portal/ai-report";
 
 const SEVERITY: Record<AiReportSeverity, { label: string; badge: string }> = {
   critical: { label: "Critical", badge: "border-danger/30 bg-danger-soft text-danger" },
-  warning: { label: "Warning", badge: "border-warn/30 bg-warn-soft text-warn" },
+  warning: { label: "Warning", badge: "border-warn/30 bg-warn-soft text-amber-700" },
   info: { label: "Suggestion", badge: "border-brand/25 bg-brand-soft text-brand" },
 };
 
@@ -44,7 +44,7 @@ function when(value: string | null): string {
 
 function scoreTone(score: number): string {
   if (score >= 85) return "text-ok";
-  if (score >= 60) return "text-warn";
+  if (score >= 60) return "text-amber-700";
   return "text-danger";
 }
 
@@ -120,7 +120,7 @@ function FindingRow({ finding, first }: { finding: AiReportFinding; first: boole
       {finding.fixHref ? (
         <Link
           href={finding.fixHref}
-          className="shrink-0 rounded-xl border border-line px-3 py-1.5 text-xs font-semibold text-brand transition-colors duration-300 hover:border-brand/40"
+          className="shrink-0 rounded-xl border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-semibold text-brand transition-colors duration-300 hover:border-brand/40"
         >
           {finding.fixLabel || "Fix"}
         </Link>
@@ -210,7 +210,7 @@ export default function AiReportClient({
   }
 
   const tabClass = (active: boolean) =>
-    "rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors duration-300 " +
+    "rounded-xl inline-flex min-h-9 items-center px-3.5 py-1.5 text-xs font-semibold transition-colors duration-300 " +
     (active ? "bg-brand text-white" : "text-ink-2 hover:text-ink");
 
   const report = view?.report;
@@ -250,7 +250,7 @@ export default function AiReportClient({
                       <span className="rounded-full border border-danger/30 bg-danger-soft px-2.5 py-0.5 text-danger">
                         {report.counts.critical} critical
                       </span>
-                      <span className="rounded-full border border-warn/30 bg-warn-soft px-2.5 py-0.5 text-warn">
+                      <span className="rounded-full border border-warn/30 bg-warn-soft px-2.5 py-0.5 text-amber-700">
                         {report.counts.warning} warnings
                       </span>
                       <span className="rounded-full border border-brand/25 bg-brand-soft px-2.5 py-0.5 text-brand">
@@ -307,7 +307,7 @@ export default function AiReportClient({
                     <ul className="mt-3 space-y-1 text-xs text-ink-2">
                       {changes.added.map((item) => (
                         <li key={item.key}>
-                          <span className={item.severity === "critical" ? "font-semibold text-danger" : "font-semibold text-warn"}>
+                          <span className={item.severity === "critical" ? "font-semibold text-danger" : "font-semibold text-amber-700"}>
                             New:
                           </span>{" "}
                           {item.title}
@@ -396,7 +396,7 @@ export default function AiReportClient({
                 type="button"
                 onClick={printDocument}
                 disabled={!doc}
-                className="rounded-xl border border-line px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors duration-300 hover:border-brand/40 disabled:opacity-50"
+                className="rounded-xl border border-line inline-flex min-h-9 items-center px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors duration-300 hover:border-brand/40 disabled:opacity-50"
               >
                 Print
               </button>
@@ -404,7 +404,7 @@ export default function AiReportClient({
                 type="button"
                 onClick={downloadDocument}
                 disabled={!doc}
-                className="rounded-xl border border-line px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors duration-300 hover:border-brand/40 disabled:opacity-50"
+                className="rounded-xl border border-line inline-flex min-h-9 items-center px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors duration-300 hover:border-brand/40 disabled:opacity-50"
               >
                 Download .md
               </button>

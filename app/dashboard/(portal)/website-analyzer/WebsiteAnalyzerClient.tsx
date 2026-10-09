@@ -241,7 +241,7 @@ export default function WebsiteAnalyzerClient() {
             </div>
             <button
               onClick={() => void cancel()}
-              className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft"
+              className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60"
             >
               Cancel
             </button>
@@ -320,7 +320,7 @@ export default function WebsiteAnalyzerClient() {
                 {list.canApply && !ACTIVE.has(row.status) ? (
                   <button
                     onClick={() => void remove(row)}
-                    className="shrink-0 rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-3 hover:bg-soft"
+                    className="shrink-0 rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-3 hover:bg-line/60"
                   >
                     Delete
                   </button>

@@ -83,7 +83,7 @@ export default function WeeklyPage() {
   return (
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
           Workspace
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
@@ -138,7 +138,7 @@ export default function WeeklyPage() {
                     <span className="flex-1">
                       <span className="flex h-2 items-center gap-0.5">
                         <span
-                          className="h-2 rounded-l bg-cyan-400/70"
+                          className="h-2 rounded-l bg-brand/70"
                           style={{
                             width: Math.round((day.inbound / peak) * 70) + "%",
                           }}

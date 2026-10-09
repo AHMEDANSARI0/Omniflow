@@ -99,8 +99,8 @@ check("sidebar group labels ink-2 + readable size",
 check("sidebar Portal badge on white",
       "bg-white px-1.5 py-0.5 text-[9px]" in SIDE and "text-ink-2" in SIDE, "-")
 MOB = read("app/dashboard/components/MobileTabBar.tsx")
-check("mobile tab inactive ink-2; badge white on rose",
-      "text-ink-2 active:text-ink" in MOB and "text-white" in MOB and "bg-rose-500" in MOB, "-")
+check("mobile tab inactive ink-2; badge white on rose-600 (AA)",
+      "text-ink-2 active:text-ink" in MOB and "text-white" in MOB and "bg-rose-600" in MOB, "-")
 SHELL = read("app/dashboard/components/DashShell.tsx")
 check("shell main padding widened on large screens",
       "lg:px-10" in SHELL, "-")
