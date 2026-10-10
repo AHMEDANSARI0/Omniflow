@@ -58,6 +58,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Client accounts: password resets and locks.",
     enabled: true,
   },
+  // §263: client billing sits under Customers in the nav.
+  {
+    label: "Client billing",
+    href: "/admin/customers/billing",
+    icon: "credit-card",
+    description: "Plans, fees, commissions and payments per client.",
+    enabled: true,
+  },
   {
     label: "Integrations",
     href: "/admin/integrations",
@@ -87,3 +95,26 @@ export const ADMIN_NAV: AdminNavItem[] = [
     enabled: true,
   },
 ];
+
+/**
+ * §263: the ONE nav item that should be highlighted for a pathname.
+ * A section matches on a full segment (`/admin/customers` matches
+ * `/admin/customers` and `/admin/customers/billing`, never
+ * `/admin/customers-x`), and when sections nest - client billing sits under
+ * Customers - only the deepest match wins, so exactly one link lights up.
+ * Returns null when nothing matches. Pure function: no React, so the sidebar
+ * and the test harness share this rule.
+ */
+export function activeAdminHref(pathname: string): string | null {
+  let best: string | null = null;
+  for (const item of ADMIN_NAV) {
+    const matches =
+      item.href === "/admin"
+        ? pathname === "/admin"
+        : pathname === item.href || pathname.startsWith(item.href + "/");
+    if (matches && (best === null || item.href.length > best.length)) {
+      best = item.href;
+    }
+  }
+  return best;
+}

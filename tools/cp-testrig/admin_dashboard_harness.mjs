@@ -251,12 +251,12 @@ async function main() {
     assert.equal(providerLabel("constructor"), "Constructor");
   });
 
-  // §260: ten sections (Website analytics added after the dashboard).
-  check("admin nav: ten sections, unique links, first is the dashboard", () => {
-    assert.equal(ADMIN_NAV.length, 10);
+  // §260 added Website analytics, §263 adds Client billing: eleven sections now.
+  check("admin nav: eleven sections, unique links, first is the dashboard", () => {
+    assert.equal(ADMIN_NAV.length, 11);
     assert.equal(ADMIN_NAV[0].href, "/admin");
-    assert.equal(new Set(ADMIN_NAV.map((i) => i.href)).size, 10);
-    assert.equal(new Set(ADMIN_NAV.map((i) => i.label)).size, 10);
+    assert.equal(new Set(ADMIN_NAV.map((i) => i.href)).size, 11);
+    assert.equal(new Set(ADMIN_NAV.map((i) => i.label)).size, 11);
     for (const item of ADMIN_NAV) assert.ok(item.href.startsWith("/admin"));
   });
 

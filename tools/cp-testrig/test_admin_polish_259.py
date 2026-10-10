@@ -44,12 +44,13 @@ COPY = read("lib/marketing/copy.ts")
 
 print("== icons: one registry, matched to each section ==")
 nav_icons = re.findall(r'icon: "([a-z\-]+)"', NAV)
-# §260: the nav has ten sections (Website analytics was added).
-check("nav lists ten sections", len(nav_icons) == 10, str(len(nav_icons)))
+# §260 added Website analytics, §263 adds Client billing: eleven sections now.
+check("nav lists eleven sections", len(nav_icons) == 11, str(len(nav_icons)))
 check(
     "nav icons are the planned set",
     sorted(nav_icons) == sorted(["dashboard", "search", "file", "user-plus", "users",
-                                 "plug", "brain", "route", "settings", "chart"]),  # §260 Website
+                                 "plug", "brain", "route", "settings", "chart",
+                                 "credit-card"]),  # §263 Client billing
     "section to icon map",
 )
 check("every nav icon is a registry name", all(('"%s"' % n) in ICON_NAMES for n in nav_icons), "registry")
@@ -65,12 +66,13 @@ check("no emoji or symbol code point left in admin screens",
 
 print("== shared nav: sidebar and dashboard read one list ==")
 check("sidebar reads ADMIN_NAV",
-      'import { ADMIN_NAV } from "../../../lib/omniflow/admin-nav";' in SIDEBAR
-      and "const navItems = ADMIN_NAV;" in SIDEBAR, "one list")
+      'import { ADMIN_NAV, activeAdminHref } from "../../../lib/omniflow/admin-nav";' in SIDEBAR
+      and "const navItems = ADMIN_NAV;" in SIDEBAR
+      and "activeAdminHref(pathname)" in SIDEBAR, "one list")  # §263 one shared active rule
 check("sidebar renders registry icons", "<Icon name={item.icon}" in SIDEBAR, "icons")
 check("sidebar has no string icon type left", "icon: string" not in SIDEBAR, "types")
 check("dashboard sections come from ADMIN_NAV", "ADMIN_NAV.filter" in DASH, "one list")
-check("every nav item has a description", len(re.findall(r'description: "', NAV)) == 10, "copy")
+check("every nav item has a description", len(re.findall(r'description: "', NAV)) == 11, "copy")
 
 print("== dashboard: real sources, each fails on its own ==")
 check("sources load with allSettled", "Promise.allSettled([" in DASH, "fail soft")

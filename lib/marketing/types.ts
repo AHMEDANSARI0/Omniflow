@@ -52,6 +52,8 @@ export const ICON_NAMES = [
   "list",
   "repeat",
   "cart",
+  // §263: icon for the Client billing admin section.
+  "credit-card",
   "globe",
   "file",
   "wand",

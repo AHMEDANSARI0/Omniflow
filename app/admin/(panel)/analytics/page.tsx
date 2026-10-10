@@ -204,7 +204,8 @@ function Report({
           <h2 className="text-sm font-semibold text-ink">Privacy and retention</h2>
         </div>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-ink-2">
-          <li>No cookies or local storage. No IP address is stored: each visitor code is a one-way hash that changes every day.</li>
+          {/* §263: scoped to this measurement - the optional website chat widget keeps its own visitor id for chat continuity. */}
+          <li>This measurement sets no cookies and uses no local storage. No IP address is stored: each visitor code is a one-way hash that changes every day.</li>
           <li>Visit records are kept for up to {retention} days, then deleted. No daily totals or lifetime counts are kept.</li>
           <li>The cleanup runs once a day, around 03:00 ({timezone}), through Vercel Cron.</li>
           <li>Visitors with Do Not Track turned on are not measured.</li>

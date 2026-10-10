@@ -10,6 +10,7 @@ import {
   Clock,
   CodeXml,
   Compass,
+  CreditCard,
   Database,
   Eye,
   FileText,
@@ -113,6 +114,7 @@ const REGISTRY: Record<IconName, LucideIcon> = {
   list: ListChecks,
   repeat: Repeat,
   cart: ShoppingCart,
+  "credit-card": CreditCard, // §263: Client billing admin section
   globe: Globe,
   file: FileText,
   wand: WandSparkles,

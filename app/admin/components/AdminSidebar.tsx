@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import SignOutButton from "./SignOutButton";
 import Icon from "../../components/ui/Icon";
-import { ADMIN_NAV } from "../../../lib/omniflow/admin-nav";
+import { ADMIN_NAV, activeAdminHref } from "../../../lib/omniflow/admin-nav";
 import {
   ArrowUpRight,
   ChevronsLeft,
@@ -46,14 +46,14 @@ function NavLinks({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  // §263: one shared rule picks the single deepest match, so a nested page
+  // (Client billing under Customers) highlights exactly one link.
+  const activeHref = activeAdminHref(pathname);
 
   return (
     <nav className="space-y-1">
       {navItems.map((item) => {
-        const isActive =
-          item.href === "/admin"
-            ? pathname === "/admin"
-            : pathname.startsWith(item.href);
+        const isActive = item.href === activeHref;
 
         if (!item.enabled) {
           return (

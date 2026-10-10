@@ -1,12 +1,16 @@
 /**
  * §260 website analytics, server side: records visits, runs the daily
- * retention job and reads the admin numbers. Uses the service-role client, so
- * it is server only. Every function fails soft: analytics never breaks a page.
+ * retention job and reads the admin numbers. Every function fails soft:
+ * analytics never breaks a page.
  *
- * The IP address is used once, inside the visitor hash, and is never stored.
+ * §265: storage moved from Supabase to the tenant Neon database, reached
+ * through the Control Plane (service key, server to server). The visitor
+ * hashing, bot filter and rate limit stay here; the Control Plane only stores
+ * what it receives. The IP address is used once, inside the visitor hash,
+ * and is never stored.
  */
 import { createHash, timingSafeEqual } from "node:crypto";
-import { createServiceClient } from "../supabase/service";
+import { adminRequest } from "./admin-control-plane";
 import {
   browserOf,
   countryOf,
@@ -21,6 +25,7 @@ import {
 const WINDOW_MS = 60_000;
 const MAX_HITS_PER_WINDOW = 120;
 const hits = new Map<string, { count: number; resetAt: number }>();
+const BASE = "api/v1/admin/site-analytics";
 
 /** Rate limit per visitor hash, kept in memory only. */
 function withinLimit(key: string, now: number): boolean {
@@ -56,34 +61,46 @@ export async function recordSiteEvent(body: Record<string, unknown>, ctx: TrackC
   const day = new Date().toISOString().slice(0, 10);
   const visitor = visitorHash(salt, day, ctx.ip, ctx.userAgent);
   if (!withinLimit(visitor, Date.now())) return;
-  const { error } = await createServiceClient()
-    .from("site_events")
-    .insert({
-      event: event.event,
-      path: event.path,
-      ref_host: event.refHost,
-      utm_source: event.utmSource,
-      utm_medium: event.utmMedium,
-      utm_campaign: event.utmCampaign,
-      device: deviceOf(ctx.userAgent),
-      browser: browserOf(ctx.userAgent),
-      country: countryOf(ctx.country),
-      lang: langOf(ctx.acceptLanguage),
-      meta: event.meta,
-      seconds: event.seconds,
-      visitor,
-    });
-  if (error) console.error("site_events insert failed:", error.code ?? "unknown");
+  const payload = {
+    event: event.event,
+    path: event.path,
+    ref_host: event.refHost,
+    utm_source: event.utmSource,
+    utm_medium: event.utmMedium,
+    utm_campaign: event.utmCampaign,
+    device: deviceOf(ctx.userAgent),
+    browser: browserOf(ctx.userAgent),
+    country: countryOf(ctx.country),
+    lang: langOf(ctx.acceptLanguage),
+    meta: event.meta,
+    seconds: event.seconds,
+    visitor,
+  };
+  try {
+    const response = await adminRequest(
+      `${BASE}/event`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      { timeoutMs: 5000, passStatuses: [400, 403] }
+    );
+    if (!response.ok) {
+      console.error("site analytics event rejected by the Control Plane:", response.status);
+    }
+  } catch (error) {
+    console.error("site analytics event not delivered:", error instanceof Error ? error.message : "unknown");
+  }
 }
 
 export type MaintenanceResult = { ok: true; summary: unknown } | { ok: false; error: string };
 
-/** Daily retention job (site_maintain): deletes visit records older than the window, then logs the run. */
+/** Daily retention job: the Control Plane deletes visit records older than the window, then logs the run. */
 export async function runSiteMaintenance(): Promise<MaintenanceResult> {
   try {
-    const { data, error } = await createServiceClient().rpc("site_maintain");
-    if (error) return { ok: false, error: error.message };
-    return { ok: true, summary: data };
+    const response = await adminRequest(`${BASE}/maintain`, { method: "POST" });
+    return { ok: true, summary: await response.json() };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "maintenance failed" };
   }
@@ -91,8 +108,10 @@ export async function runSiteMaintenance(): Promise<MaintenanceResult> {
 
 export async function loadSiteStats(days: number): Promise<SiteStats | null> {
   try {
-    const { data, error } = await createServiceClient().rpc("site_stats", { days });
-    return error ? null : parseSiteStats(data);
+    const response = await adminRequest(`${BASE}/stats?days=${encodeURIComponent(String(days))}`, {
+      method: "GET",
+    });
+    return parseSiteStats(await response.json());
   } catch {
     return null;
   }
@@ -105,12 +124,8 @@ export interface SiteSettings {
 
 export async function loadSiteSettings(): Promise<SiteSettings | null> {
   try {
-    const { data, error } = await createServiceClient()
-      .from("site_settings")
-      .select("retention_days, tz_name")
-      .eq("id", 1)
-      .maybeSingle();
-    if (error || !data) return null;
+    const response = await adminRequest(`${BASE}/settings`, { method: "GET" });
+    const data = (await response.json()) as Record<string, unknown>;
     return {
       retentionDays: Number(data.retention_days) || 90,
       timezone: String(data.tz_name || "Asia/Karachi"),
@@ -128,13 +143,12 @@ export interface MaintenanceRun {
 
 export async function loadMaintenanceLog(limit = 5): Promise<MaintenanceRun[] | null> {
   try {
-    const { data, error } = await createServiceClient()
-      .from("site_maintenance_log")
-      .select("ran_at, retention_days, raw_deleted")
-      .order("ran_at", { ascending: false })
-      .limit(limit);
-    if (error) return null;
-    return (data ?? []).map((row: Record<string, unknown>) => ({
+    const response = await adminRequest(
+      `${BASE}/maintenance-log?limit=${encodeURIComponent(String(limit))}`,
+      { method: "GET" }
+    );
+    const rows = (await response.json()) as Record<string, unknown>[];
+    return (rows ?? []).map((row) => ({
       ranAt: String(row.ran_at),
       retentionDays: Number(row.retention_days),
       rawDeleted: Number(row.raw_deleted),

@@ -96,14 +96,16 @@ check("SQL: no secret or key literal", not re.search(r"(eyJ|sk_|service_role_key
 
 print("== privacy in the code ==")
 server = read("lib/omniflow/site-analytics.ts")
-insert = re.search(r"\.insert\(\{(.*?)\}\);", server, re.S)
-block = insert.group(1) if insert else ""
-check("server: one insert into site_events", insert is not None and "site_events" in server)
-check("server: the insert stores no ip and no user agent", not re.search(r"\b(ip|user_agent|userAgent|ip_address)\s*:", block))
+payload = re.search(r"const payload = \{(.*?)\};", server, re.S)
+block = payload.group(1) if payload else ""
+check("server: events go to the Control Plane site-analytics endpoint (§265)",
+      "api/v1/admin/site-analytics" in server and "adminRequest" in server)
+check("server: the payload stores no ip and no user agent", not re.search(r"\b(ip|user_agent|userAgent|ip_address)\s*:", block))
 check("server: the visitor code is the only identity field", re.search(r"\bvisitor,", block) is not None)
 check("server: the IP only goes into the hash", "visitorHash(salt, day, ctx.ip, ctx.userAgent)" in server)
 check("server: the day is part of the hash (codes rotate daily)", "const day = new Date().toISOString().slice(0, 10);" in server)
-check("server: only the error code is logged", 'console.error("site_events insert failed:", error.code ?? "unknown")' in server)
+check("server: only the failure status is logged (§265)",
+      'console.error("site analytics event rejected by the Control Plane:", response.status)' in server)
 check("server: nothing recorded without the salt", 'if (!salt) return;' in server and "OF_ANALYTICS_SALT" in server)
 check("server: bots are not recorded", "if (isBot(ctx.userAgent)) return;" in server)
 client = read("app/components/SiteAnalytics.tsx")
@@ -148,8 +150,9 @@ env = read(".env.example")
 check(".env.example: both keys present with placeholders only",
       re.search(r"^OF_ANALYTICS_SALT=replace-with", env, re.M) is not None
       and re.search(r"^CRON_SECRET=replace-with", env, re.M) is not None)
-check("pins: the 259 nav test counts ten sections", "len(nav_icons) == 10" in read("tools/cp-testrig/test_admin_polish_259.py"))
-check("pins: the 259 harness counts ten sections", "assert.equal(ADMIN_NAV.length, 10);" in read("tools/cp-testrig/admin_dashboard_harness.mjs"))
+# §263: the 259 pins now count eleven sections (Client billing added under Customers).
+check("pins: the 259 nav test counts eleven sections", "len(nav_icons) == 11" in read("tools/cp-testrig/test_admin_polish_259.py"))
+check("pins: the 259 harness counts eleven sections", "assert.equal(ADMIN_NAV.length, 11);" in read("tools/cp-testrig/admin_dashboard_harness.mjs"))
 
 print("== rules (node, fixed inputs) ==")
 node = shutil.which("node")

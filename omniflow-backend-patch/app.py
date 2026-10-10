@@ -85,6 +85,7 @@ from portal_perf import bp as portal_perf_bp  # noqa: E402
 from portal_templates import bp as portal_templates_bp  # noqa: E402
 from portal_plans import bp as portal_plans_bp  # noqa: E402
 from portal_billing import bp as portal_billing_bp  # noqa: E402  # §261
+from portal_site_analytics import bp as portal_site_analytics_bp  # noqa: E402  # §265
 from portal_brands import bp as portal_brands_bp  # noqa: E402
 from admin_providers import bp as admin_providers_bp  # noqa: E402
 from portal_voice import bp as portal_voice_bp, public_bp as portal_voice_public_bp  # noqa: E402
@@ -137,6 +138,7 @@ aux_app = Flask("omniflow_extensions")
 aux_app.register_blueprint(auth_password_reset_bp)
 aux_app.register_blueprint(admin_users_bp)
 aux_app.register_blueprint(portal_billing_bp)  # §261
+aux_app.register_blueprint(portal_site_analytics_bp)  # §265
 aux_app.register_blueprint(portal_channels_bp)
 aux_app.register_blueprint(portal_bot_bp)
 aux_app.register_blueprint(portal_profile_bp)
