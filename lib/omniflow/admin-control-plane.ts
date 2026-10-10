@@ -44,7 +44,8 @@ function failureCode(status: number): string {
   return status === 401 || status === 403 ? "service_key_rejected" : "admin_request_failed";
 }
 
-async function adminRequest(
+// §261: exported so admin-billing.ts can call the billing routes with the same guard.
+export async function adminRequest(
   path: string,
   init: RequestInit,
   options: { timeoutMs?: number; passStatuses?: number[] } = {}

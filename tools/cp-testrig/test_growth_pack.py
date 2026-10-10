@@ -9,6 +9,9 @@ import portal_listen
 import portal_negotiation
 import portal_routing
 import test_lib
+import portal_billing  # §261
+from test_lib import neutralize_billing_plan_check  # §261
+neutralize_billing_plan_check(portal_billing)  # §261: scripted SQL slots, see test_lib
 from test_lib import check, install_db_stub, PrincipalStub, status, summary
 
 app = Flask(__name__)

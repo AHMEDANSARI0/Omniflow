@@ -134,6 +134,15 @@ def neutralize_action_ledger(actions_module) -> None:
         lambda cur, spec, client_id, args: (spec["run"](cur, client_id, args), 1))
 
 
+def neutralize_billing_plan_check(portal_billing_module) -> None:
+    """§261: every plan read runs the client billing expiry check. It adds three
+    statements (SAVEPOINT, one SELECT, RELEASE), and FakeCur suites script exact SQL
+    slots, so the check is switched off there, the same way neutralize_action_ledger
+    switches off the §225 ledger. The check is covered against real Postgres in
+    test_billing_261.py (expiry modes, grace days, the savepoint fallback)."""
+    portal_billing_module.plan_after_expiry = lambda cur, client_id, plan: plan
+
+
 def install_db_stub(module, script, client_id=1):
     """Replace module.portal_db with a scripted stub.
 

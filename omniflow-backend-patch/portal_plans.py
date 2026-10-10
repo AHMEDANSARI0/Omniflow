@@ -18,6 +18,7 @@ from portal_auth import (
     PortalAuthUnavailable,
     authenticate_portal_request,
 )
+import portal_billing  # §261: billing expiry can move a client to Free
 import portal_db
 
 bp = Blueprint("portal_plans", __name__, url_prefix="/api/v1/portal")
@@ -130,7 +131,8 @@ def _load_plan(cur, client_id: int) -> str:
     )
     rows = portal_db.rows(cur)
     plan = str(rows[0].get("plan") or "") if rows else ""
-    return plan if plan in PLANS else DEFAULT_PLAN
+    plan = plan if plan in PLANS else DEFAULT_PLAN
+    return portal_billing.plan_after_expiry(cur, client_id, plan)  # §261
 
 
 def _count(cur, sql: str, args: tuple) -> int:

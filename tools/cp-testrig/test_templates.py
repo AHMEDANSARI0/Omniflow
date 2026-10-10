@@ -9,6 +9,9 @@ import portal_plans
 import portal_workflows
 PLANS_FREE_BRANDS = portal_plans.PLANS["free"]["limits"]["brands"]
 from test_lib import check, install_db_stub, summary
+import portal_billing  # §261
+from test_lib import neutralize_billing_plan_check  # §261
+neutralize_billing_plan_check(portal_billing)  # §261: scripted SQL slots, see test_lib
 
 PRINCIPAL = {
     "session_id": "s", "user_id": 11, "client_id": 1, "role": "owner",

@@ -10,6 +10,8 @@ import {
   type AdminAiOverview,
 } from "../../../lib/omniflow/admin-control-plane";
 import { ADMIN_NAV } from "../../../lib/omniflow/admin-nav";
+import { getAdminBilling } from "../../../lib/omniflow/admin-billing"; // §261
+import { formatMoney } from "../../../lib/omniflow/admin-billing-core"; // §261
 import {
   aiRates,
   humanize,
@@ -65,12 +67,14 @@ export default async function AdminDashboardPage({
   const now = Date.now();
 
   // Each source fails on its own: one broken feed never blanks the whole page.
-  const [leadsResult, aiResult, providersResult, usersResult] = await Promise.allSettled([
+  const [leadsResult, aiResult, providersResult, usersResult, billingResult] = await Promise.allSettled([
     loadLeads(),
     getAdminAiOverview(range),
     getAdminProviders(),
     listAdminUsers(),
+    getAdminBilling(),
   ]);
+  const billing = billingResult.status === "fulfilled" ? billingResult.value.overview : null; // §261
   const leads = leadsResult.status === "fulfilled" ? leadsResult.value : null;
   const ai: AdminAiOverview | null = aiResult.status === "fulfilled" ? aiResult.value : null;
   const providers = providersResult.status === "fulfilled" ? providersResult.value.groups : null;
@@ -172,6 +176,41 @@ export default async function AdminDashboardPage({
           }
         />
       </div>
+
+      {/* §261: client billing - what is still owed and which plans are running out */}
+      <section aria-labelledby="billing-card" className="mb-6 rounded-2xl border border-line bg-white p-5 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 id="billing-card" className="text-sm font-semibold text-ink">Client billing</h2>
+            <p className="mt-1 text-xs text-ink-3">Payments still due, plans expiring, and plans moved to Free.</p>
+          </div>
+          <Link href="/admin/customers/billing" className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-2 hover:text-ink">
+            Open client billing
+          </Link>
+        </div>
+        {billing ? (
+          <dl className="mt-4 grid gap-4 sm:grid-cols-4">
+            <div>
+              <dt className="text-xs text-ink-3">Payment pending</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink">{formatMoney(billing.totals.payment_pending, billing.settings.currency)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-ink-3">Expiring soon</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink">{billing.totals.expiring_soon}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-ink-3">In grace or expired</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink">{billing.totals.grace + billing.totals.expired}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-ink-3">Moved to Free</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink">{billing.totals.dropped_to_free}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="mt-4 text-sm text-ink-3">Client billing is unavailable right now.</p>
+        )}
+      </section>
 
       {/* Who has a problem, and whether each provider key is set */}
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
