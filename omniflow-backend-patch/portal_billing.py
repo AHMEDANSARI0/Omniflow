@@ -31,6 +31,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 from flask import Blueprint, jsonify, request
 
+import psycopg2
+
 import portal_auth
 import portal_db
 
@@ -174,12 +176,18 @@ def _run(work: Callable[[Any], Any]) -> Any:
     """Run work(cur) in one transaction, with the billing tables ready.
 
     The DDL runs once per instance, and the flag is set only after a commit: a failed
-    transaction rolls the DDL back, so the next request runs it again."""
+    transaction rolls the DDL back, so the next request runs it again. §266: when two
+    fresh instances create the tables at the same time, the loser of that DDL race
+    hits a duplicate-type error; that is a lost race, not a failure - roll it back
+    and go on, because the winner's tables are already there."""
     conn = portal_db._conn()
     try:
         with conn.cursor() as cur:
             if not _READY["done"]:
-                _ensure(cur)
+                try:
+                    _ensure(cur)
+                except psycopg2.Error:
+                    conn.rollback()  # §266 lost the DDL race to another instance
             result = work(cur)
         conn.commit()
         _READY["done"] = True
