@@ -1,15 +1,27 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { from } from "@/lib/db/neon";
 
 /**
- * Service-role client — SERVER ONLY. Bypasses RLS.
- * Used exclusively by the Bot API routes, where access is scoped
- * manually by the authenticated API key's user_id.
+ * §276 — Server-only "service" client, now backed by NEON (was Supabase
+ * service-role). Full access (no cookie/RLS); used by server routes/actions
+ * that scope access manually. Keeps the same `.from(table)` surface.
+ *
+ * Supabase's `auth.admin.createUser` has no Neon equivalent here: website
+ * admin accounts are created by the migration/bootstrap tooling, and client
+ * portal accounts are created by the Control Plane. It is intentionally a
+ * disabled stub so any leftover caller fails loudly instead of silently.
  * NEVER import this in client components.
  */
 export function createServiceClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
+  return {
+    from: (table: string) => from(table),
+    auth: {
+      admin: {
+        async createUser() {
+          throw new Error(
+            "auth.admin.createUser is not available on Neon. Create website admins via the migration/bootstrap tool, and portal clients via the Control Plane."
+          );
+        },
+      },
+    },
+  };
 }

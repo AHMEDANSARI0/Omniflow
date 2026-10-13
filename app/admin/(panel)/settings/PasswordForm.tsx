@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { createClient } from "../../../../lib/supabase/client";
+import { adminChangePassword } from "../../../../lib/admin-actions";
 
 const inputClass =
   "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
@@ -34,24 +34,20 @@ export default function PasswordForm() {
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
+    const result = await adminChangePassword(password);
     setLoading(false);
 
-    if (error) {
-      setMessage({
-        success: false,
-        text:
-          error.message === "New password should be different from the old password."
-            ? "New password must be different from the current one."
-            : "Failed to update password. Please try again.",
-      });
+    if (!result.success) {
+      setMessage({ success: false, text: result.message });
       return;
     }
 
     setPassword("");
     setConfirm("");
-    setMessage({ success: true, text: "Password updated successfully." });
+    setMessage({
+      success: true,
+      text: result.message || "Password updated successfully.",
+    });
   }
 
   return (
