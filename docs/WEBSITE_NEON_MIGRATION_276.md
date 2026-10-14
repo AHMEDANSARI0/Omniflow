@@ -222,3 +222,32 @@ karein** — 3-4 din backup ke taur par rakhein, phir hata dein.
 - Session cookie httpOnly + secure (production) + sameSite=lax, TTL 30 din
   (`OF_WEB_SESSION_TTL_DAYS` se badal sakte hain). Password change karne par
   purane sessions revoke + naya session turant mil jata hai (signed in rahte hain).
+
+---
+
+## §276r4 — Option B: Neon-only admin bootstrap (Supabase ka koi zikr nahi)
+
+Agar Supabase se purana data copy karne ki zaroorat nahi (ya Supabase project band ho
+chuka hai), to migration script bilkul skip karein. Sirf admin user banane ke liye ye
+Neon-only bootstrap kafi hai — isme Supabase ke ZERO variables lagte hain:
+
+PowerShell / CMD (repo root, ek ek line):
+
+    set DATABASE_URL=postgresql://<neon-pooled-url>?sslmode=require
+    set MIGRATE_ADMIN_EMAIL=apna-admin-email
+    set MIGRATE_ADMIN_PASSWORD=apna-strong-password-8+
+    npx tsx tools/website-migrate/bootstrap-admin.ts
+
+Expected output:
+
+    + admin: apna-admin-email ready (role=admin)
+      Sign in at /admin/login with these credentials.
+
+Idempotent: dobara chalane par usi email ka password reset ho jata hai.
+Pehle `db/website_neon.sql` RUN ho chuka hona zaroori hai (6 tables verify).
+
+Note: migration script (`migrate-supabase-to-neon.ts`) me SUPABASE_URL /
+SUPABASE_SERVICE_ROLE_KEY sirf EK DAFE purana data PARHNE ke liye hote hain
+(leads/content/blog copy). Website ya app code Supabase ko kabhi touch nahi karta.
+Data copy na chahiye to wo script optional hai; bootstrap ke baad site poori tarah
+Neon par chalti hai.
