@@ -166,7 +166,12 @@ def sentiment_endpoint():
     if not text:
         return jsonify({"error": {"code": "bad_request",
                                   "message": "text is required."}}), 400
-    return jsonify(analyze_sentiment_smart(text[:2000])), 200
+    import portal_llm
+
+    with portal_llm.usage_scope("sentiment",
+                                int(principal.get("client_id") or 0)):
+        verdict = analyze_sentiment_smart(text[:2000])
+    return jsonify(verdict), 200
 
 
 @bp.get("/insights/churn")

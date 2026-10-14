@@ -39,6 +39,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from flask import Blueprint, jsonify, request
 
 import portal_db
+import portal_vault
 import portal_plans
 from portal_auth import (
     PortalAuthUnavailable,
@@ -52,6 +53,7 @@ bp = Blueprint("portal_courier", __name__, url_prefix="/api/v1/portal")
 
 SETTINGS_TABLE = "portal_courier_settings"
 PROVIDERS_TABLE = "portal_courier_providers"
+PROVIDER_SECRETS = ("api_key", "api_secret")  # §223 sealed at rest
 BOOKINGS_TABLE = "portal_courier_bookings"
 
 HTTP_TIMEOUT = 25
@@ -448,8 +450,8 @@ def _load_settings(cur, client_id: int) -> Dict[str, Any]:
     row = rows[0]
     return {"provider": str(row.get("provider") or "leopards"),
             "base_url": str(row.get("base_url") or ""),
-            "api_key": str(row.get("api_key") or ""),
-            "api_password": str(row.get("api_password") or ""),
+            "api_key": portal_vault.unseal(row.get("api_key")),
+            "api_password": portal_vault.unseal(row.get("api_password")),
             "enabled": bool(row.get("enabled"))}
 
 
@@ -574,8 +576,9 @@ def put_courier_settings():
                 " enabled = EXCLUDED.enabled,"
                 " updated_at = NOW()",
                 (client_id, next_settings["provider"],
-                 next_settings["base_url"], next_settings["api_key"],
-                 next_settings["api_password"],
+                 next_settings["base_url"],
+                 portal_vault.seal(next_settings["api_key"]),
+                 portal_vault.seal(next_settings["api_password"]),
                  next_settings["enabled"]),
             )
             portal_db.log_action(
@@ -922,7 +925,8 @@ def _load_provider(cur, client_id: int, provider_id: int) \
         (client_id, provider_id),
     )
     rows = portal_db.rows(cur)
-    return rows[0] if rows else None
+    return portal_vault.unseal_fields(rows[0], PROVIDER_SECRETS) \
+        if rows else None
 
 
 def _default_provider(cur, client_id: int) -> Optional[Dict[str, Any]]:
@@ -937,7 +941,8 @@ def _default_provider(cur, client_id: int) -> Optional[Dict[str, Any]]:
         (client_id,),
     )
     rows = portal_db.rows(cur)
-    return rows[0] if rows else None
+    return portal_vault.unseal_fields(rows[0], PROVIDER_SECRETS) \
+        if rows else None
 
 
 def _validate_provider_payload(payload: Dict[str, Any],
@@ -962,11 +967,13 @@ def _validate_provider_payload(payload: Dict[str, Any],
     if "base_url" in payload or not partial:
         data["base_url"] = str(payload.get("base_url")
                                or "").strip()[:300]
+    # §223: credentials are sealed here - data only ever goes to the DB.
     if "api_key" in payload:
-        data["api_key"] = str(payload.get("api_key") or "").strip()[:200]
+        data["api_key"] = portal_vault.seal(
+            str(payload.get("api_key") or "").strip()[:200])
     if "api_secret" in payload:
-        data["api_secret"] = str(payload.get("api_secret")
-                                 or "").strip()[:200]
+        data["api_secret"] = portal_vault.seal(
+            str(payload.get("api_secret") or "").strip()[:200])
     if "booking_mode" in payload or not partial:
         mode = str(payload.get("booking_mode")
                    or "draft").strip().lower()
@@ -1001,7 +1008,8 @@ def list_courier_providers():
                 " WHERE client_id = %s ORDER BY id DESC LIMIT 100",
                 (int(principal["client_id"]),),
             )
-            rows = portal_db.rows(cur)
+            rows = [portal_vault.unseal_fields(r, PROVIDER_SECRETS)
+                    for r in portal_db.rows(cur)]
         conn.commit()
     finally:
         conn.close()

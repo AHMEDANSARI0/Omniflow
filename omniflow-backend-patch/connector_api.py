@@ -1,10 +1,11 @@
 """
-OmniFlow Control Plane — CONNECTOR endpoints (WhatsApp connector bridge).
+OmniFlow Control Plane — CONNECTOR endpoints (shared channel queue).
 
 Ye endpoints customer ke apne device (home laptop) par chalne wale connector
-ke liye hain — server par WhatsApp session KABHI nahi chalta. Auth:
-X-Omniflow-Key header = OMNIFLOW_SERVICE_KEY ya OMNIFLOW_ADMIN_API_KEY
-(wahi proven pattern jo admin endpoints use karte hain).
+ke liye hain — server par WhatsApp session KABHI nahi chalta. Instagram
+commands use the same queue and a server-side Meta Graph dispatch adapter.
+Auth: X-Omniflow-Key header = OMNIFLOW_SERVICE_KEY ya
+OMNIFLOW_ADMIN_API_KEY (wahi proven pattern jo admin endpoints use karte hain).
 
 Connector ka tenant resolve hota hai (pehla match jeeta):
   1. Request body/query me explicit `client_id`
@@ -21,7 +22,6 @@ Endpoints:
 
 import logging
 import os
-import secrets
 import threading
 import time
 from datetime import datetime, timezone
@@ -29,10 +29,12 @@ from typing import Any, Dict, Optional
 
 from flask import Blueprint, jsonify, request
 
+import portal_auth
 import portal_db
 import portal_cod
 import portal_contacts
 import portal_sequences
+import portal_txn
 
 
 logger = logging.getLogger("omniflow.connector-api")
@@ -46,14 +48,7 @@ _tenant_cache: Dict[str, Any] = {"email": None, "value": None, "at": 0.0}
 
 
 def _authorized() -> bool:
-    key = request.headers.get("X-Omniflow-Key", "")
-    if not key:
-        return False
-    accepted = [
-        os.environ.get("OMNIFLOW_SERVICE_KEY"),
-        os.environ.get("OMNIFLOW_ADMIN_API_KEY"),
-    ]
-    return any(k for k in accepted if k and secrets.compare_digest(key, k))
+    return portal_auth.service_key_ok()
 
 
 @bp.before_request
@@ -189,55 +184,176 @@ def list_commands():
         return error
     limit = _query_int("limit", 20, 1, 50)
     channel = (args.get("channel") or "").strip()
-    if channel and channel not in ALLOWED_CHANNELS:
+    if channel and (channel not in ALLOWED_CHANNELS or channel in CP_DISPATCHED_CHANNELS):
+        bridge_channels = [c for c in ALLOWED_CHANNELS if c not in CP_DISPATCHED_CHANNELS]
         return jsonify({"error": {"code": "bad_request",
-                                  "message": "channel whatsapp|telegram hon."}}), 400
+                                  "message": "channel " + "|".join(bridge_channels) + " hon."}}), 400
 
     try:
         portal_db.ensure_tables()
         conn = portal_db._conn()
         try:
             with conn.cursor() as cur:
+                # §236: every tick step runs in its own savepoint - one that
+                # fails (or swallows an SQL error) no longer aborts the
+                # command read below, which used to answer 503 for the poll.
                 try:
                     import portal_growth
 
-                    portal_growth.materialize_due_broadcasts(cur, tenant["client_id"], conn)
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_growth.materialize_due_broadcasts(cur, tenant["client_id"], conn)
+                except Exception:
+                    pass
+                try:
                     import portal_digest
 
-                    portal_digest.materialize_due_digest(
-                        cur, tenant["client_id"], conn
-                    )
-
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_digest.materialize_due_digest(
+                            cur, tenant["client_id"], conn
+                        )
+                except Exception:
+                    pass
+                try:
                     import portal_checkout
 
-                    portal_checkout.materialize_cart_reminders(
-                        cur, tenant["client_id"], conn
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_checkout.materialize_cart_reminders(
+                            cur, tenant["client_id"], conn
+                        )
+                except Exception:
+                    pass
+                try:
+                    import portal_bi
 
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_bi.materialize_weekly_problems(
+                            cur, tenant["client_id"], conn
+                        )
                 except Exception:
                     pass
                 try:
                     import portal_webhooks
 
-                    portal_webhooks.deliver_pending_webhooks(
-                        cur, tenant["client_id"], conn
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_webhooks.deliver_pending_webhooks(
+                            cur, tenant["client_id"], conn
+                        )
                 except Exception:
                     pass
                 try:
                     import portal_sequences
 
-                    portal_sequences.deliver_due_sequence_steps(
-                        cur, tenant["client_id"], conn
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_sequences.deliver_due_sequence_steps(
+                            cur, tenant["client_id"], conn
+                        )
+                except Exception:
+                    pass
+                try:
+                    import portal_workflows
+
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_workflows.run_due_workflows(
+                            cur, tenant["client_id"], conn
+                        )
+                except Exception:
+                    pass
+                try:
+                    import portal_retention
+
+                    # §238: opt-in reorder / win-back messages (throttled,
+                    # send window + daily cap; commits its own work).
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_retention.kick(cur, tenant["client_id"], conn)
+                except Exception:
+                    pass
+                try:
+                    import portal_kb_semantic
+
+                    # D1: throttled background top-up of the knowledge
+                    # semantic index (no-op when off or up to date).
+                    portal_kb_semantic.kick(tenant["client_id"], "tick")
+                except Exception:
+                    pass
+                try:
+                    import portal_knowledge
+
+                    # §219: scheduled re-fetch of opted-in knowledge web
+                    # pages (background, throttled per tenant; a changed
+                    # page becomes a new version, never auto-published).
+                    portal_knowledge.kick_refresh(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_ai_report
+
+                    # §235: automatic AI setup check (background thread,
+                    # own connection, at most every OF_AI_REPORT_EVERY_HOURS;
+                    # notifies the owner only when it got worse).
+                    portal_ai_report.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_proactive
+
+                    # §242: proactive business alerts (background thread,
+                    # own connection, at most every OF_PROACTIVE_EVERY_MINUTES).
+                    portal_proactive.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_email_channel
+
+                    # §243: email channel - send queued replies over SMTP and
+                    # import new mail (background thread, own connection, at
+                    # most every OF_EMAIL_POLL_SECONDS).
+                    portal_email_channel.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_sms
+
+                    # §244: SMS channel - send queued SMS replies through
+                    # Twilio (background thread, at most every
+                    # OF_SMS_POLL_SECONDS; inbound SMS and teammate replies
+                    # are sent right away without waiting for this).
+                    portal_sms.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_social
+
+                    # §255: social channels in API mode - poll comments and
+                    # send queued replies / posts (background thread, at
+                    # most every OF_SOCIAL_POLL_SECONDS).
+                    portal_social.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_instagram
+
+                    # §256: Instagram / Messenger replies leave from the
+                    # Control Plane (background thread, at most every
+                    # OF_META_POLL_SECONDS; webhook events and teammate
+                    # replies are sent right away without waiting for this).
+                    portal_instagram.kick(tenant["client_id"])
+                except Exception:
+                    pass
+                try:
+                    import portal_inbound_media
+
+                    # §214: retention sweep for stored customer files
+                    # (own connection, throttled per process).
+                    portal_inbound_media.maybe_purge(tenant["client_id"])
                 except Exception:
                     pass
                 try:
                     import portal_events
 
-                    portal_events.requeue_due_commands(
-                        cur, tenant["client_id"]
-                    )
+                    with portal_txn.savepoint(cur, conn, "of_tick"):
+                        portal_events.requeue_due_commands(
+                            cur, tenant["client_id"]
+                        )
                 except Exception:
                     pass
                 cmd_sql = (
@@ -250,10 +366,19 @@ def list_commands():
                 if channel:
                     cmd_sql += " AND channel = %s"
                     cmd_params.append(channel)
+                else:
+                    cmd_sql += " AND channel <> ALL(%s)"
+                    cmd_params.append(list(CP_DISPATCHED_CHANNELS + SOCIAL_CHANNELS))
                 cmd_sql += " ORDER BY id ASC LIMIT %s"
                 cmd_params.append(limit)
                 cur.execute(cmd_sql, tuple(cmd_params))
                 found = portal_db.rows(cur)
+                if channel in SOCIAL_CHANNELS:
+                    import portal_social
+
+                    # §255: login mode only; policy refusals are final
+                    found = portal_social.filter_bridge_commands(
+                        cur, conn, tenant["client_id"], channel, found)
         finally:
             conn.close()
     except Exception as error:
@@ -299,6 +424,9 @@ def ack_command():
                     "WHERE id = %s AND client_id = %s RETURNING id",
                     ("done" if ok_flag else "failed", note, command_id, tenant["client_id"]),
                 )
+                # §255: read the RETURNING row before the bookkeeping below runs
+                # its own UPDATE on this cursor (that left a saved ack answering 404).
+                updated = portal_db.rows(cur)
                 try:
                     import portal_events
 
@@ -312,7 +440,6 @@ def ack_command():
                     )
                 except Exception:
                     pass
-                updated = portal_db.rows(cur)
             conn.commit()
         finally:
             conn.close()
@@ -382,7 +509,22 @@ def connector_bot_config():
 
 MAX_INGEST_MESSAGES = 100
 ALLOWED_DIRECTIONS = ("in", "out")
-ALLOWED_CHANNELS = ("whatsapp", "telegram")
+ALLOWED_CHANNELS = ("whatsapp", "telegram", "instagram", "messenger", "email", "sms",
+                    "tiktok", "x", "linkedin", "youtube", "telegram_user")
+# §243 / §244: channels the Control Plane delivers itself (portal_email_channel,
+# portal_sms via portal_cp_outbox) - laptop bridges never receive their
+# commands or away replies. §256: Instagram + Messenger too (portal_instagram
+# sends through the Graph API itself); OF_META_CP_SEND=0 hands them back to
+# the laptop instagram_bridge.py.
+META_CP_SEND = os.environ.get("OF_META_CP_SEND", "1").strip() != "0"
+CP_DISPATCHED_CHANNELS = ("email", "sms") + (("instagram", "messenger") if META_CP_SEND else ())
+#: away-reply contact prefixes of those channels (the laptop away poll skips them)
+CP_AWAY_PREFIXES = ("em:", "sms:") + (("ig:", "igc:", "fb:", "fbc:") if META_CP_SEND else ())
+# §255: social channels (portal_social) - sent by the Control Plane in API
+# mode; in login mode only the social login bridge receives them (polled
+# with ?channel=<name>), never the WhatsApp bridge's unfiltered poll.
+SOCIAL_CHANNELS = ("tiktok", "x", "linkedin", "youtube", "telegram_user")
+SOCIAL_AWAY_PREFIXES = ("tt:", "x:", "li:", "tgu:", "ttc:", "xc:", "lic:", "ytc:")
 
 
 _AWAY_TABLE_READY = False
@@ -423,6 +565,12 @@ def _ensure_away_table() -> None:
                 portal_db._q("portal_away_replies") +
                 " (client_id, status, id)"
             )
+            # §243: the away-reply poll filters on next_attempt_at, which the
+            # original table never had (the poll answered 503 on a real DB)
+            cur.execute(
+                "ALTER TABLE " + portal_db._q("portal_away_replies") +
+                " ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ"
+            )
         conn.commit()
     finally:
         conn.close()
@@ -431,13 +579,16 @@ def _ensure_away_table() -> None:
 
 def _load_business_hours(cur, client_id):
     try:
-        cur.execute(
-            "SELECT settings -> 'business_hours' AS business_hours FROM " +
-            portal_db._q("client_settings") +
-            " WHERE client_id = %s",
-            (client_id,),
-        )
-        rows = portal_db.rows(cur)
+        # §236: a missing settings table must not abort the caller's
+        # transaction (this runs inside ingest and the workflow runner)
+        with portal_txn.savepoint(cur, None, "of_hours"):
+            cur.execute(
+                "SELECT settings -> 'business_hours' AS business_hours FROM " +
+                portal_db._q("client_settings") +
+                " WHERE client_id = %s",
+                (client_id,),
+            )
+            rows = portal_db.rows(cur)
     except Exception:
         return _AWAY_DEFAULTS
     stored = rows[0].get("business_hours") if rows and rows[0] else None
@@ -524,20 +675,39 @@ def list_due_away_replies():
     if error:
         return error
     limit = _query_int("limit", 5, 1, 20)
+    social = (args.get("social") or "").strip()
+    if social and social not in SOCIAL_CHANNELS:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "social " + "|".join(SOCIAL_CHANNELS) + " hon."}}), 400
 
     try:
         _ensure_away_table()
         conn = portal_db._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute(
+                away_sql = (
                     "SELECT id, contact_id, body, created_at FROM " +
                     portal_db._q("portal_away_replies") +
                     " WHERE client_id = %s AND status = 'pending'"
                     " AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())"
-                    " ORDER BY id ASC LIMIT %s",
-                    (tenant["client_id"], limit),
                 )
+                away_params: list = [tenant["client_id"]]
+                if social:
+                    # §255: the social login bridge - DM away replies of a
+                    # login-mode channel only (never public comments)
+                    import portal_social
+
+                    prefix = portal_social.away_prefix(cur, tenant["client_id"], social)
+                    conn.commit()
+                    if not prefix:
+                        return jsonify({"away_replies": []}), 200
+                    away_sql += " AND contact_id LIKE %s"
+                    away_params.append(prefix + "%")
+                else:
+                    away_sql += " AND contact_id NOT LIKE ALL(%s)"
+                    away_params.append([p + "%" for p in CP_AWAY_PREFIXES + SOCIAL_AWAY_PREFIXES])
+                cur.execute(away_sql + " ORDER BY id ASC LIMIT %s",
+                            tuple(away_params + [limit]))
                 found = portal_db.rows(cur)
         finally:
             conn.close()
@@ -597,42 +767,51 @@ def ack_away_reply():
     return jsonify({"ok": True}), 200
 
 
-@bp.post("/whatsapp/messages")
-def ingest_whatsapp_messages():
-    """Store messages delivered by the customer's laptop connector.
+class MessageValidationError(ValueError):
+    """A connector payload failed the shared message contract."""
 
-    Body: {client_id?, messages: [{from, body?, name?, direction?}]}
-      - from    (required, non-empty string) = WhatsApp chat id (contact)
-      - body    (optional string)
-      - name    (optional string) = contact display name
-      - direction ("in" | "out", default "in")
-    Conversations are upserted per (client_id, channel, contact_id) —
-    UNIQUE constraint in portal_conversations.
+
+class IngestRateLimited(Exception):
+    """The tenant exceeded the shared inbound ingest limit."""
+
+
+class IngestFailure(Exception):
+    """Wrap a persistence/automation failure for route-level JSON errors."""
+
+    def __init__(self, original: Exception, operation: str):
+        super().__init__(str(original))
+        self.original = original
+        self.operation = operation
+
+
+def normalize_messages(messages: Any, default_channel: str = "whatsapp",
+                        require_nonempty: bool = True):
+    """Normalize provider-neutral messages for every channel adapter.
+
+    The returned records are deliberately the same records consumed by the
+    existing conversation, event, automation, compliance and audit engine.
+    Provider adapters may retain ``id``, ``media`` and ``postback`` metadata;
+    the core still uses the normalized ``from/body/name/direction/channel``
+    contract for conversation work.
     """
-    payload = _json_body()
-    tenant, error = _tenant_or_error(payload.get("client_id"))
-    if error:
-        return error
-
-    messages = payload.get("messages")
-    if not isinstance(messages, list) or not messages:
-        return jsonify({"error": {"code": "bad_request",
-                                  "message": "messages (non-empty list) zaroori hai."}}), 400
+    if not isinstance(messages, list) or (require_nonempty and not messages):
+        raise MessageValidationError(
+            "messages (non-empty list) zaroori hai."
+            if require_nonempty else "messages list zaroori hai."
+        )
     if len(messages) > MAX_INGEST_MESSAGES:
-        return jsonify({"error": {"code": "bad_request",
-                                  "message": "Aik request me max "
-                                             + str(MAX_INGEST_MESSAGES)
-                                             + " messages bhejein."}}), 400
+        raise MessageValidationError(
+            "Aik request me max " + str(MAX_INGEST_MESSAGES)
+            + " messages bhejein."
+        )
 
     normalized = []
     for item in messages:
         if not isinstance(item, dict):
-            return jsonify({"error": {"code": "bad_request",
-                                      "message": "Har message aik object ho."}}), 400
+            raise MessageValidationError("Har message aik object ho.")
         sender = item.get("from")
         if not isinstance(sender, str) or not sender.strip():
-            return jsonify({"error": {"code": "bad_request",
-                                      "message": "Har message me 'from' zaroori hai."}}), 400
+            raise MessageValidationError("Har message me 'from' zaroori hai.")
         body = item.get("body")
         if body is None:
             body = ""
@@ -650,22 +829,40 @@ def ingest_whatsapp_messages():
             pass
         direction = item.get("direction", "in")
         if direction not in ALLOWED_DIRECTIONS:
-            return jsonify({"error": {"code": "bad_request",
-                                      "message": "direction in|out hon."}}), 400
-        channel = item.get("channel", "whatsapp")
+            raise MessageValidationError("direction in|out hon.")
+        channel = item.get("channel", default_channel)
         if channel not in ALLOWED_CHANNELS:
-            return jsonify({"error": {"code": "bad_request",
-                                      "message": "channel whatsapp|telegram hon."}}), 400
+            raise MessageValidationError(
+                "channel " + "|".join(ALLOWED_CHANNELS) + " hon."
+            )
         name = item.get("name")
         name = name.strip() if isinstance(name, str) else None
-        normalized.append({
+        record = {
             "from": sender.strip(),
             "body": body,
             "name": name,
             "direction": direction,
             "channel": channel,
-        })
+        }
+        provider_id = item.get("id")
+        if isinstance(provider_id, (str, int)) and str(provider_id).strip():
+            record["id"] = str(provider_id).strip()
+        # Keep adapter metadata in the event/audit payload without making it
+        # part of the core conversation contract.
+        for key in ("media", "postback", "timestamp", "provider"):
+            if key in item and item[key] is not None:
+                record[key] = item[key]
+        normalized.append(record)
+    return normalized
 
+
+def ingest_messages_for_tenant(tenant: Dict[str, Any], normalized) -> int:
+    """Run the existing message engine for any normalized channel.
+
+    Instagram calls this function rather than creating a second conversation
+    or automation pipeline. One-reply, approvals, compliance, sequences,
+    workflows, intelligence and event idempotency all remain in this path.
+    """
     inserted = 0
     try:
         portal_db.ensure_tables()
@@ -675,29 +872,91 @@ def ingest_whatsapp_messages():
                 try:
                     import portal_ratelimit
 
-                    if not portal_ratelimit.allow(
-                        cur,
-                        "ingest:" + str(tenant["client_id"]),
-                        portal_ratelimit.ingest_limit(),
-                        60,
-                    ):
+                    # §236: allow() fails open by swallowing SQL errors - the
+                    # savepoint keeps that from aborting the whole ingest
+                    with portal_txn.savepoint(cur, conn, "of_ingest_rl"):
+                        allowed = portal_ratelimit.allow(
+                            cur,
+                            "ingest:" + str(tenant["client_id"]),
+                            portal_ratelimit.ingest_limit(),
+                            60,
+                        )
+                    if not allowed:
                         conn.commit()
-                        return jsonify({"error": {
-                            "code": "rate_limited",
-                            "message": "Too many messages; slow down.",
-                        }}), 429
+                        raise IngestRateLimited()
+                except IngestRateLimited:
+                    raise
                 except Exception:
                     pass
+                # D5: inline media bytes leave the records before the
+                # idempotency row is written (never stored in events).
+                media_blobs: Dict[int, Any] = {}
+                media_budget = None
+                store_budget = None
+                try:
+                    import portal_media_ai
+
+                    media_blobs = portal_media_ai.detach_blobs(normalized)
+                    media_budget = portal_media_ai.Budget()
+                except Exception:
+                    media_blobs, media_budget = {}, None
+                try:
+                    import portal_inbound_media
+
+                    store_budget = portal_inbound_media.Budget()
+                except Exception:
+                    store_budget = None
                 for item in normalized:
                     try:
-                        import portal_events
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            import portal_events
 
-                        if not portal_events.record_inbound(
-                            cur, tenant["client_id"], item
-                        ):
-                            continue
+                            if not portal_events.record_inbound(
+                                cur, tenant["client_id"], item
+                            ):
+                                continue
                     except Exception:
                         pass
+                    if item.get("media") and media_budget is not None:
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                # D5: voice notes / images -> text before the
+                                # one ingest path runs (deduped above, so a
+                                # replayed delivery never spends twice).
+                                portal_media_ai.enrich(
+                                    cur, tenant["client_id"], item,
+                                    media_blobs.get(id(item)), media_budget)
+                        except Exception:
+                            pass
+                    # §228: DM senders only (ig: / fb:) - comment authors
+                    # (igc: / fbc:) use a different id and are not linked.
+                    # §243: email senders (em:) link as email handles.
+                    # §244: SMS senders (sms:+<e164>) link as phone handles -
+                    # the same number on WhatsApp is the same person.
+                    identity_prefix, _, identity_handle = item["from"].partition(":")
+                    identity_kind = {"ig:": "instagram", "fb:": "facebook",
+                                     "em:": "email", "sms:": "phone"}.get(
+                        identity_prefix.lower() + ":") if item["channel"] in (
+                        "instagram", "messenger", "email", "sms") else None
+                    if identity_kind:
+                        # savepoint: a missing identity table must not abort
+                        # the message itself (fail-soft)
+                        cur.execute("SAVEPOINT of_meta_identity")
+                        try:
+                            import portal_identity
+
+                            portal_identity.resolve(
+                                cur,
+                                tenant["client_id"],
+                                identity_kind,
+                                identity_handle,
+                                item["name"] or "",
+                                create=True,
+                                source="meta_webhook",
+                            )
+                            cur.execute("RELEASE SAVEPOINT of_meta_identity")
+                        except Exception:
+                            cur.execute("ROLLBACK TO SAVEPOINT of_meta_identity")
                     cur.execute(
                         "INSERT INTO " + portal_db._q(portal_db.CONV_TABLE) +
                         " (client_id, channel, contact_id, contact_name,"
@@ -716,15 +975,42 @@ def ingest_whatsapp_messages():
                     )
                     conv = portal_db.rows(cur)
                     conversation_id = conv[0]["id"] if conv else None
+                    # §215: inbound media needs the message id (chat-bubble
+                    # previews); every other message keeps the plain INSERT.
+                    keep_media = bool(item.get("media")) \
+                        and item["direction"] == "in" \
+                        and store_budget is not None
                     cur.execute(
                         "INSERT INTO " + portal_db._q(portal_db.MSGS_TABLE) +
                         " (conversation_id, client_id, direction, body,"
                         " sender_name, status, created_at) "
-                        "VALUES (%s, %s, %s, %s, %s, %s, NOW())",
+                        "VALUES (%s, %s, %s, %s, %s, %s, NOW())"
+                        + (" RETURNING id" if keep_media else ""),
                         (conversation_id, tenant["client_id"], item["direction"],
                          item["body"], item["name"],
                          "received" if item["direction"] == "in" else "sent"),
                     )
+                    message_id = None
+                    if keep_media:
+                        try:
+                            returned = portal_db.rows(cur)
+                            message_id = returned[0].get("id") \
+                                if returned else None
+                        except Exception:
+                            message_id = None
+                    if keep_media:
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                # §214: keep customer images / voice notes so
+                                # the inbox can show them after provider links
+                                # expire (savepoint-guarded, never raises).
+                                portal_inbound_media.capture(
+                                    cur, tenant["client_id"], conversation_id,
+                                    item, media_blobs.get(id(item)),
+                                    store_budget, message_id)
+                        except Exception:
+                            pass
+                    item.pop("_media_fetched", None)
                     # One-reply law (B2): the first automation that sends a
                     # customer-visible reply claims the message; the other
                     # reply hooks stay quiet. Side-effect hooks (language
@@ -733,161 +1019,283 @@ def ingest_whatsapp_messages():
                     claimed_by = None
                     if claimed_by is None:
                         try:
-                            if _maybe_enqueue_away_reply(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["direction"],
-                                conn,
-                            ):
-                                claimed_by = "away"
-                        except Exception:
-                            pass
-                    if claimed_by is None:
-                        try:
-                            if portal_cod.maybe_cod_flow(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["name"],
-                                item["body"],
-                                item["direction"],
-                                conn,
-                            ):
-                                claimed_by = "cod"
-                        except Exception:
-                            pass
-                    if claimed_by is None:
-                        try:
-                            import portal_brain
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_approvals
 
-                            if portal_brain.maybe_answer(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["name"],
-                                item["body"],
-                                conn,
-                            ):
-                                claimed_by = "brain"
+                                if portal_approvals.maybe_decide(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["body"],
+                                    item["direction"],
+                                    conn,
+                                ):
+                                    claimed_by = "approvals"
                         except Exception:
                             pass
                     if claimed_by is None:
                         try:
-                            import portal_kb
-                            import portal_intents
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                if _maybe_enqueue_away_reply(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["direction"],
+                                    conn,
+                                ):
+                                    claimed_by = "away"
+                        except Exception:
+                            pass
+                    if claimed_by is None:
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                if portal_cod.maybe_cod_flow(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["name"],
+                                    item["body"],
+                                    item["direction"],
+                                    conn,
+                                ):
+                                    claimed_by = "cod"
+                        except Exception:
+                            pass
+                    # §243: the brain answers customers only - never the
+                    # business's own sent messages that adapters record
+                    # as direction "out" (that would answer itself).
+                    if claimed_by is None and item["direction"] == "in":
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_brain
 
-                            intent = portal_intents.classify(item["body"])
-                            if portal_kb.maybe_auto_reply(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["name"],
-                                item["body"],
-                                intent,
-                                conn,
-                            ):
-                                claimed_by = "kb"
+                                if portal_brain.maybe_answer(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["name"],
+                                    item["body"],
+                                    conn,
+                                ):
+                                    claimed_by = "brain"
+                        except Exception:
+                            pass
+                    if claimed_by is None:
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_kb
+                                import portal_intents
+
+                                import portal_llm
+
+                                with portal_llm.usage_scope(
+                                        "intent", tenant["client_id"]):
+                                    intent = portal_intents.classify(item["body"])
+                                if portal_kb.maybe_auto_reply(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["name"],
+                                    item["body"],
+                                    intent,
+                                    conn,
+                                ):
+                                    claimed_by = "kb"
                         except Exception:
                             pass
                     if claimed_by:
                         try:
-                            import portal_events
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_events
 
-                            portal_events.note_claim(
-                                cur, tenant["client_id"], item, claimed_by
-                            )
+                                portal_events.note_claim(
+                                    cur, tenant["client_id"], item, claimed_by
+                                )
                         except Exception:
                             pass
                     try:
-                        portal_contacts.maybe_detect_language(
-                            tenant["client_id"],
-                            item["from"],
-                            item["body"],
-                            conn,
-                        )
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            portal_contacts.maybe_detect_language(
+                                tenant["client_id"],
+                                item["from"],
+                                item["body"],
+                                conn,
+                            )
                     except Exception:
                         pass
                     if item["direction"] == "in":
                         try:
-                            import portal_compliance
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_compliance
 
-                            portal_compliance.maybe_opt_out(
-                                tenant["client_id"],
-                                item["from"],
-                                item["body"],
-                                conn,
-                            )
+                                portal_compliance.maybe_opt_out(
+                                    tenant["client_id"],
+                                    item["from"],
+                                    item["body"],
+                                    conn,
+                                )
                         except Exception:
                             pass
                         try:
-                            import portal_listen
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_listen
 
-                            portal_listen.maybe_listen(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["body"],
-                                conn,
-                            )
+                                portal_listen.maybe_listen(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["body"],
+                                    conn,
+                                )
                         except Exception:
                             pass
                         try:
-                            import portal_routing
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_routing
 
-                            portal_routing.maybe_route(
-                                tenant["client_id"],
-                                conversation_id,
-                                item["from"],
-                                item["body"],
-                                conn,
-                            )
+                                portal_routing.maybe_route(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["body"],
+                                    conn,
+                                )
+                        except Exception:
+                            pass
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_intelligence
+
+                                portal_intelligence.maybe_analyze(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["body"],
+                                    item["direction"],
+                                    conn,
+                                )
+                        except Exception:
+                            pass
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                # §237: refresh the sales lead (qualifiers,
+                                # concerns, score) after intelligence ran.
+                                import portal_sales
+
+                                portal_sales.on_inbound(
+                                    cur, tenant["client_id"], conversation_id,
+                                    item["from"])
+                        except Exception:
+                            pass
+                        try:
+                            with portal_txn.savepoint(cur, conn, "of_hook"):
+                                import portal_approvals
+
+                                portal_approvals.maybe_request(
+                                    tenant["client_id"],
+                                    conversation_id,
+                                    item["from"],
+                                    item["name"],
+                                    item["body"],
+                                    item["direction"],
+                                    conn,
+                                )
                         except Exception:
                             pass
                     try:
-                        portal_sequences.maybe_enroll_new_contact(
-                            tenant["client_id"],
-                            conversation_id,
-                            item["from"],
-                            item["name"],
-                            conn,
-                        )
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            portal_sequences.maybe_enroll_new_contact(
+                                tenant["client_id"],
+                                conversation_id,
+                                item["from"],
+                                item["name"],
+                                conn,
+                            )
                     except Exception:
                         pass
                     try:
-                        portal_sequences.maybe_enroll_keyword(
-                            tenant["client_id"],
-                            conversation_id,
-                            item["from"],
-                            item["name"],
-                            item["body"],
-                            conn,
-                        )
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            portal_sequences.maybe_enroll_keyword(
+                                tenant["client_id"],
+                                conversation_id,
+                                item["from"],
+                                item["name"],
+                                item["body"],
+                                conn,
+                            )
                     except Exception:
                         pass
                     try:
-                        portal_sequences.maybe_auto_pause_replies(
-                            tenant["client_id"],
-                            conversation_id,
-                            conn,
-                        )
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            portal_sequences.maybe_auto_pause_replies(
+                                tenant["client_id"],
+                                conversation_id,
+                                conn,
+                            )
                     except Exception:
                         pass
                     try:
-                        import portal_events
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            import portal_workflows
 
-                        portal_events.mark_inbound_done(
-                            cur, tenant["client_id"], item
-                        )
+                            portal_workflows.maybe_trigger_message(
+                                tenant["client_id"],
+                                conversation_id,
+                                item["from"],
+                                item["name"],
+                                item["body"],
+                                item["direction"],
+                                conn,
+                            )
+                    except Exception:
+                        pass
+                    try:
+                        with portal_txn.savepoint(cur, conn, "of_hook"):
+                            import portal_events
+
+                            portal_events.mark_inbound_done(
+                                cur, tenant["client_id"], item
+                            )
                     except Exception:
                         pass
                     inserted += 1
             conn.commit()
         finally:
             conn.close()
+    except IngestRateLimited:
+        raise
     except Exception as error:
-        return jsonify(portal_db.portal_unavailable(error, "wa messages ingest")[0]), 503
+        raise IngestFailure(error, "messages ingest") from error
+    return inserted
+
+
+@bp.post("/whatsapp/messages")
+def ingest_whatsapp_messages():
+    """Store connector-delivered messages through the shared channel engine."""
+    payload = _json_body()
+    tenant, error = _tenant_or_error(payload.get("client_id"))
+    if error:
+        return error
+    try:
+        normalized = normalize_messages(
+            payload.get("messages"), default_channel="whatsapp"
+        )
+    except MessageValidationError as error:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": str(error)}}), 400
+
+    try:
+        inserted = ingest_messages_for_tenant(tenant, normalized)
+    except IngestRateLimited:
+        return jsonify({"error": {
+            "code": "rate_limited",
+            "message": "Too many messages; slow down.",
+        }}), 429
+    except IngestFailure as failure:
+        return jsonify(portal_db.portal_unavailable(
+            failure.original, failure.operation)[0]), 503
 
     logger.info("whatsapp messages ingested client_id=%s count=%s",
                 tenant["client_id"], inserted)
     return jsonify({"ok": True, "inserted": inserted}), 200
+

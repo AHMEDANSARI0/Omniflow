@@ -23,6 +23,7 @@ from portal_auth import (
     ensure_human_principal,
 )
 import portal_db
+import portal_vault
 
 bp = Blueprint("portal_wati", __name__, url_prefix="/api/v1/portal")
 
@@ -129,7 +130,7 @@ def _load_settings(cur, client_id) -> Optional[Dict[str, Any]]:
         (client_id,),
     )
     found = portal_db.rows(cur)
-    return found[0] if found else None
+    return portal_vault.unseal_fields(found[0], ("api_token",)) if found else None
 
 
 def _fetch_wati_templates(base_url: str, token: str) -> List[Dict[str, Any]]:
@@ -237,7 +238,7 @@ def save_wati_settings():
                     " api_token = EXCLUDED.api_token,"
                     " enabled = EXCLUDED.enabled, updated_at = NOW()",
                     (principal["client_id"], clean["base_url"],
-                     clean["api_token"], clean["enabled"]),
+                     portal_vault.seal(clean["api_token"]), clean["enabled"]),
                 )
                 portal_db.log_action(
                     cur,

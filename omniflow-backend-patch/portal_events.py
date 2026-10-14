@@ -119,9 +119,15 @@ def _ensure_ddl(cur) -> None:
 # ---------------------------------------------------------------------------
 
 def _content_fingerprint(client_id: int, item: Dict[str, Any]) -> str:
-    """Stable fingerprint of an inbound message's business content."""
+    """Stable fingerprint of an inbound message's business content.
+
+    D5: media understanding rewrites ``body`` after the event is recorded;
+    ``_orig_body`` keeps the delivered text so the key never drifts."""
+    source = dict(item)
+    if "_orig_body" in item:
+        source["body"] = item.get("_orig_body")
     raw = "|".join(
-        str(item.get(field) or "")
+        str(source.get(field) or "")
         for field in ("channel", "from", "direction", "body")
     )
     digest = hashlib.sha256(
@@ -456,3 +462,18 @@ def replay_delivery():
             "message": "No replayable delivery found.",
         }}), 404
     return jsonify({"ok": True}), 200
+
+
+# ---------------------------------------------------------------------------
+# Event catalog (§225): the typed list of outbox events (webhook
+# categories + which workflow triggers fire on each)
+# ---------------------------------------------------------------------------
+
+@bp.get("/events/catalog")
+def event_catalog():
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    import portal_event_catalog
+
+    return jsonify(portal_event_catalog.public_catalog()), 200

@@ -64,6 +64,9 @@ MAX_LIST_ENTRIES = 200
 
 
 _LANG_DDL_READY = False
+# §230 fix: the flag was declared global but never defined, so the first
+# KB list/create call raised NameError (shown as "unavailable").
+_BRAND_DDL_READY = False
 
 
 def _ensure_lang_column(conn) -> None:
@@ -339,14 +342,17 @@ def maybe_auto_reply(client_id, conversation_id, contact_id, contact_name,
         }
         if display_name:
             payload["target_display_name"] = display_name
+        import portal_channels
+
+        channel = portal_channels.channel_for_contact(external_user_id)
         cur.execute(
             "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
             " (client_id, channel, action, payload, status, requested_by,"
             " created_at, updated_at) "
-            "VALUES (%s, 'whatsapp', 'send_message', CAST(%s AS JSONB),"
+            "VALUES (%s, %s, 'send_message', CAST(%s AS JSONB),"
             " 'pending', NULL, NOW(), NOW()) "
             "RETURNING id",
-            (client_id, json.dumps(payload)),
+            (client_id, channel, json.dumps(payload)),
         )
         cur.execute(
             "UPDATE " + portal_db._q(KB_TABLE) +
@@ -558,3 +564,16 @@ def delete_kb_entry(entry_id):
         return jsonify({"error": {"code": "not_found",
                                   "message": "Knowledge base entry not found."}}), 404
     return jsonify({"ok": True}), 200
+
+
+@bp.after_request
+def _kb_semantic_after(response):
+    """D1: a successful answer create/edit/delete schedules a semantic-index
+    sync (portal_kb_semantic); never alters the response."""
+    try:
+        import portal_kb_semantic
+
+        return portal_kb_semantic.kick_after_mutation(response)
+    except Exception:
+        return response
+

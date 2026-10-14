@@ -280,6 +280,15 @@ def maybe_listen(client_id, conversation_id, contact, text, conn) -> None:
                 (client_id, rule.get("id"), conversation_id,
                  str(contact or "")[:100], snippet),
             )
+            try:
+                import portal_policy
+
+                portal_policy.rule_fired(
+                    cur, client_id, "listen", rule.get("id"),
+                    "Listening: " + keyword,
+                    {"conversation_id": conversation_id})
+            except Exception:
+                pass
             portal_db.log_action(
                 cur,
                 client_id,

@@ -15,6 +15,7 @@ deploying this module needs NO manual migration step. The SQL file remains
 available for explicit application in the Neon SQL editor.
 """
 
+import contextvars
 import logging
 import os
 import threading
@@ -170,6 +171,16 @@ CREATE TABLE IF NOT EXISTS portal_csat_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_portal_csat_requests
   ON portal_csat_requests (client_id, requested_at DESC);
+-- opt-outs (same shape as portal_compliance): every send filters on this
+-- table, and a send inside a transaction cannot fall back once it failed
+CREATE TABLE IF NOT EXISTS portal_optouts (
+  id BIGSERIAL PRIMARY KEY,
+  client_id BIGINT NOT NULL,
+  contact_id TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT 'customer',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (client_id, contact_id)
+);
 """
 
 
@@ -178,7 +189,17 @@ def _q(ident: str) -> str:
     return '"' + ident.replace('"', '""') + '"'
 
 
+# §230 AI Sandbox: while a sandbox run is active in THIS request context,
+# _conn() returns a savepoint-scoped view of the sandbox transaction (always
+# rolled back, never committed). Unset - the normal path - everywhere else.
+SANDBOX_CONN: "contextvars.ContextVar" = contextvars.ContextVar(
+    "omniflow_sandbox_conn", default=None)
+
+
 def _conn():
+    factory = SANDBOX_CONN.get()
+    if factory is not None:
+        return factory()
     import psycopg2
 
     return psycopg2.connect(

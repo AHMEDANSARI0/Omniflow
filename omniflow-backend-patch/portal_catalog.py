@@ -20,6 +20,7 @@ from portal_auth import (
     ensure_human_principal,
 )
 import portal_db
+import portal_vault
 import portal_brands
 
 bp = Blueprint("portal_catalog", __name__, url_prefix="/api/v1/portal")
@@ -491,8 +492,8 @@ def _load_sync_settings(cur, client_id: int) -> Dict[str, Any]:
     row = rows[0]
     return {"source": str(row.get("source") or ""),
             "base_url": str(row.get("base_url") or ""),
-            "api_key": str(row.get("api_key") or ""),
-            "api_secret": str(row.get("api_secret") or ""),
+            "api_key": portal_vault.unseal(row.get("api_key")),
+            "api_secret": portal_vault.unseal(row.get("api_secret")),
             "last_sync_at": row.get("last_sync_at"),
             "last_sync_count": int(row.get("last_sync_count") or 0)}
 
@@ -548,8 +549,9 @@ def put_catalog_sync_settings():
         return jsonify({"error": {"code": "bad_request",
                                   "message": "base_url must start with"
                                              " http."}}), 400
-    api_key = str(payload.get("api_key") or "").strip()[:200]
-    api_secret = str(payload.get("api_secret") or "").strip()[:200]
+    api_key = portal_vault.seal(str(payload.get("api_key") or "").strip()[:200])
+    api_secret = portal_vault.seal(
+        str(payload.get("api_secret") or "").strip()[:200])
     try:
         portal_db.ensure_tables()
         conn = portal_db._conn()

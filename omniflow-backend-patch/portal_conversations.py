@@ -11,9 +11,12 @@ import csv
 import io
 import re
 
+import json
+
 from flask import Blueprint, jsonify, request, Response
 
 import portal_db
+import portal_retention
 from portal_auth import authenticate_portal_request, ensure_human_principal
 
 bp = Blueprint("portal_conversations", __name__, url_prefix="/api/v1/portal")
@@ -22,6 +25,9 @@ MESSAGE_PAGE_SIZE = 200
 BULK_MAX_IDS = 50
 EXPORT_LIMIT = 500
 ALLOWED_STATUS = ("all", "open", "closed")
+# Inbox channel filter (§243 adds telegram and email to the list).
+INBOX_CHANNELS = ("whatsapp", "website", "instagram", "messenger", "telegram", "email", "sms",
+                  "tiktok", "x", "linkedin", "youtube", "telegram_user")  # §255 social
 MAX_TAGS_PER_CONVERSATION = 6
 MAX_TAG_LENGTH = 24
 MAX_TAG_SUMMARY = 30
@@ -109,7 +115,8 @@ VIP_THRESHOLD = 3  # paid orders that turn a contact into a VIP
 
 
 def _paid_order_counts(cur, client_id, contact_ids):
-    """contact_id -> paid order count ({} when the links table is absent)."""
+    """contact_id -> purchase count ({} when the links table is absent).
+    §238: shipped / delivered orders count (portal_retention)."""
     ids = sorted({str(cid).strip() for cid in contact_ids
                   if cid and str(cid).strip()})
     if not ids:
@@ -122,7 +129,8 @@ def _paid_order_counts(cur, client_id, contact_ids):
             return {}
         cur.execute(
             "SELECT contact_id, COUNT(*) AS orders FROM portal_checkout_links"
-            " WHERE client_id = %s AND status = 'paid'"
+            " WHERE client_id = %s AND status IN "
+            + portal_retention.PURCHASED_SQL +
             " AND contact_id = ANY(%s)"
             " GROUP BY contact_id",
             (client_id, ids),
@@ -156,6 +164,37 @@ def list_conversations():
     principal, error = _principal_or_error()
     if error:
         return error
+    try:
+        import portal_email_channel
+
+        # §243: while the inbox is open, new email arrives without a
+        # connector (background thread, throttled per workspace)
+        portal_email_channel.kick(principal.get("client_id"))
+    except Exception:
+        pass
+    try:
+        import portal_sms
+
+        # §244: queued SMS replies go out while the inbox is open
+        portal_sms.kick(principal.get("client_id"))
+    except Exception:
+        pass
+    try:
+        import portal_social
+
+        # §255: API-mode social channels poll comments and send queued
+        # replies while the inbox is open (background, throttled)
+        portal_social.kick(principal.get("client_id"))
+    except Exception:
+        pass
+    try:
+        import portal_instagram
+
+        # §256: queued Instagram / Messenger replies go out while the inbox
+        # is open (background, throttled)
+        portal_instagram.kick(principal.get("client_id"))
+    except Exception:
+        pass
 
     status = (request.args.get("status") or "all").strip().lower()
     if status not in ALLOWED_STATUS:
@@ -225,7 +264,7 @@ def list_conversations():
         sql += " AND c.last_intent = %s"
         params.append(intent_filter[:40])
     channel_filter = (request.args.get("channel") or "").strip().lower()
-    if channel_filter in ("whatsapp", "website"):
+    if channel_filter in INBOX_CHANNELS:
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     tag_filter = (request.args.get("tag") or "").strip()[:MAX_TAG_LENGTH]
@@ -454,7 +493,97 @@ def conversation_detail(conversation_id: int):
     }), 200
 
 
-@bp.get("/conversations/<int:conversation_id>/messages")
+def send_conversation_message(conversation_id: int):
+    """Queue a human reply and auto-resolve open escalations for the chat."""
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    forbidden = ensure_human_principal(principal)
+    if forbidden:
+        return forbidden
+
+    payload = request.get_json(silent=True) or {}
+    body = payload.get("body")
+    body = body.strip() if isinstance(body, str) else ""
+    if not body:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "Message body is required."}}), 400
+    if len(body) > 1000:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "Message must be 1000 characters or fewer."}}), 400
+
+    client_id = principal["client_id"]
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, contact_id, contact_name, channel FROM "
+                    + portal_db._q(portal_db.CONV_TABLE) +
+                    " WHERE id = %s AND client_id = %s LIMIT 1",
+                    (conversation_id, client_id),
+                )
+                rows = portal_db.rows(cur)
+                if not rows:
+                    return jsonify({"error": {"code": "not_found",
+                                              "message": "Conversation not found."}}), 404
+                conv = rows[0]
+                contact_id = str(conv.get("contact_id") or "")
+                display = str(conv.get("contact_name") or "").strip()
+                import portal_channels
+                channel = str(conv.get("channel") or "") or portal_channels.channel_for_contact(contact_id)
+                message_payload = {
+                    "external_user_id": contact_id,
+                    "body": body[:1000],
+                    "conversation_id": conversation_id,
+                    "source": "manual",
+                }
+                if display:
+                    message_payload["target_display_name"] = display
+                cur.execute(
+                    "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
+                    " (client_id, channel, action, payload, status, requested_by,"
+                    " created_at, updated_at) "
+                    "VALUES (%s, %s, 'send_message', CAST(%s AS JSONB),"
+                    " 'pending', %s, NOW(), NOW()) "
+                    "RETURNING id",
+                    (client_id, channel, json.dumps(message_payload),
+                     principal.get("user_id")),
+                )
+                inserted = portal_db.rows(cur)
+                command_id = int(inserted[0].get("id") or 0) if inserted else 0
+                resolved = 0
+                try:
+                    import portal_escalation
+                    resolved = portal_escalation.resolve_for_conversation(
+                        cur, client_id, conversation_id,
+                        user_id=principal.get("user_id"),
+                        note="Auto-resolved when a teammate replied.",
+                    )
+                except Exception:
+                    resolved = 0
+                portal_db.log_action(
+                    cur,
+                    client_id,
+                    "message.manual_queued",
+                    "customer_user",
+                    principal.get("user_id"),
+                    conversation_id,
+                    ("Human reply queued"
+                     + (("; closed " + str(resolved) + " handoff(s)")
+                        if resolved else "") + ".")[:200],
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(error, "conversation reply")[0]), 503
+    # §244: SMS replies are sent by the Control Plane right away
+    portal_channels.dispatch_now(client_id, channel)
+    return jsonify({"ok": True, "queued": True, "command_id": command_id,
+                    "resolved_escalations": resolved}), 200
+
 def conversation_messages(conversation_id: int):
     principal, error = _principal_or_error()
     if error:
@@ -507,6 +636,15 @@ def conversation_messages(conversation_id: int):
         "messages": [_message_public(m) for m in reversed(msgs)],
         "has_more": has_more,
     }), 200
+
+
+@bp.route("/conversations/<int:conversation_id>/messages", methods=["GET", "POST"])
+def conversation_messages_route(conversation_id: int):
+    """GET pages the thread; POST queues a human reply (and auto-resolves handoffs)."""
+    if request.method == "POST":
+        return send_conversation_message(conversation_id)
+    return conversation_messages(conversation_id)
+
 
 
 @bp.post("/conversations/<int:conversation_id>/star")
@@ -871,7 +1009,7 @@ def export_conversations():
     if intent_filter and intent_filter != "all":
         sql += " AND c.last_intent = %s"
         params.append(intent_filter[:40])
-    if channel_filter in ("whatsapp", "website"):
+    if channel_filter in INBOX_CHANNELS:
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     if tag_filter:
@@ -1130,7 +1268,7 @@ def list_customers():
         " WHERE c.client_id = %s"
     )
     params = [principal["client_id"]]
-    if channel_filter in ("whatsapp", "website"):
+    if channel_filter in INBOX_CHANNELS:
         sql += " AND c.channel = %s"
         params.append(channel_filter)
     if search:
@@ -1943,3 +2081,101 @@ def merge_customers():
     except Exception as error:
         return jsonify(portal_db.portal_unavailable(error, "customer merge")[0]), 503
     return jsonify({"ok": True, "moved": merge_chats}), 200
+
+@bp.post("/customers/message")
+def send_customer_message():
+    """Queue one outbound message to a contact from the customers page."""
+    principal, error = _principal_or_error()
+    if error:
+        return error
+    forbidden = ensure_human_principal(principal)
+    if forbidden:
+        return forbidden
+    payload = request.get_json(silent=True) or {}
+    contact_id = payload.get("contact_id")
+    contact_id = contact_id.strip()[:120] if isinstance(contact_id, str) else ""
+    body = payload.get("body")
+    body = body.strip() if isinstance(body, str) else ""
+    if not contact_id:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "contact_id is required."}}), 400
+    if not body:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "Write the message first."}}), 400
+    if len(body) > 1000:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "Message must be 1000 characters or fewer."}}), 400
+    client_id = principal["client_id"]
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, contact_name, channel FROM "
+                    + portal_db._q(portal_db.CONV_TABLE) +
+                    " WHERE client_id = %s AND contact_id = %s"
+                    " ORDER BY id DESC LIMIT 1",
+                    (client_id, contact_id),
+                )
+                rows = portal_db.rows(cur)
+                if not rows:
+                    return jsonify({"error": {"code": "contact_not_found",
+                                              "message": "No chat exists for this contact."}}), 404
+                conv = rows[0]
+                conversation_id = int(conv.get("id") or 0)
+                display = str(conv.get("contact_name") or "").strip()
+                import portal_channels
+                channel = str(conv.get("channel") or "") or portal_channels.channel_for_contact(contact_id)
+                message_payload = {
+                    "external_user_id": contact_id,
+                    "body": body[:1000],
+                    "conversation_id": conversation_id,
+                    "source": "manual",
+                }
+                if display:
+                    message_payload["target_display_name"] = display
+                cur.execute(
+                    "INSERT INTO " + portal_db._q(portal_db.CMD_TABLE) +
+                    " (client_id, channel, action, payload, status, requested_by,"
+                    " created_at, updated_at) "
+                    "VALUES (%s, %s, 'send_message', CAST(%s AS JSONB),"
+                    " 'pending', %s, NOW(), NOW()) "
+                    "RETURNING id",
+                    (client_id, channel, json.dumps(message_payload),
+                     principal.get("user_id")),
+                )
+                inserted = portal_db.rows(cur)
+                command_id = int(inserted[0].get("id") or 0) if inserted else 0
+                resolved = 0
+                if conversation_id > 0:
+                    try:
+                        import portal_escalation
+                        resolved = portal_escalation.resolve_for_conversation(
+                            cur, client_id, conversation_id,
+                            user_id=principal.get("user_id"),
+                            note="Auto-resolved when a teammate replied.",
+                        )
+                    except Exception:
+                        resolved = 0
+                portal_db.log_action(
+                    cur,
+                    client_id,
+                    "message.manual_queued",
+                    "customer_user",
+                    principal.get("user_id"),
+                    conversation_id if conversation_id else None,
+                    ("Manual message queued for " + contact_id
+                     + (("; closed " + str(resolved) + " handoff(s)")
+                        if resolved else "") + ".")[:200],
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(error, "manual message")[0]), 503
+    # §244: SMS replies are sent by the Control Plane right away
+    portal_channels.dispatch_now(client_id, channel)
+    return jsonify({"ok": True, "command_id": command_id,
+                    "resolved_escalations": resolved}), 200
+

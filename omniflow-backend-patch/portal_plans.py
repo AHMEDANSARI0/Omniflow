@@ -18,6 +18,7 @@ from portal_auth import (
     PortalAuthUnavailable,
     authenticate_portal_request,
 )
+import portal_billing  # §261: billing expiry can move a client to Free
 import portal_db
 
 bp = Blueprint("portal_plans", __name__, url_prefix="/api/v1/portal")
@@ -130,7 +131,8 @@ def _load_plan(cur, client_id: int) -> str:
     )
     rows = portal_db.rows(cur)
     plan = str(rows[0].get("plan") or "") if rows else ""
-    return plan if plan in PLANS else DEFAULT_PLAN
+    plan = plan if plan in PLANS else DEFAULT_PLAN
+    return portal_billing.plan_after_expiry(cur, client_id, plan)  # §261
 
 
 def _count(cur, sql: str, args: tuple) -> int:
@@ -180,14 +182,21 @@ def check(cur, client_id: int, limit_key: str) -> Dict[str, Any]:
     missing tables (a failed COUNT reads as unlimited, fail-open).
     """
     try:
-        plan = _load_plan(cur, client_id)
-        limits = PLANS[plan]["limits"]
-        limit = limits.get(limit_key)
-        if limit is None:
+        import portal_txn
+
+        # §236: savepoint - a missing counted table fails open WITHOUT
+        # aborting the caller's transaction (the action still has to run)
+        with portal_txn.savepoint(cur, None, "of_plan_check") as guard:
+            plan = _load_plan(cur, client_id)
+            limits = PLANS[plan]["limits"]
+            limit = limits.get(limit_key)
+            used = 0
+            if limit is not None:
+                usage = _usage(cur, client_id)
+                used = int(usage.get(limit_key) or 0)
+        if limit is None or guard.failed:
             return {"ok": True, "used": None, "limit": None,
                     "plan": plan}
-        usage = _usage(cur, client_id)
-        used = int(usage.get(limit_key) or 0)
         return {"ok": used < limit, "used": used, "limit": limit,
                 "plan": plan}
     except Exception as error:  # fail-open by design

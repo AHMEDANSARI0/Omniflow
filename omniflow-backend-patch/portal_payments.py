@@ -22,6 +22,7 @@ from portal_auth import (
 )
 import portal_checkout
 import portal_db
+import portal_vault
 
 bp = Blueprint("portal_payments", __name__, url_prefix="/api/v1/portal")
 public_bp = Blueprint("portal_payments_public", __name__,
@@ -91,7 +92,8 @@ def _load_settings(cur, client_id):
         (client_id,),
     )
     rows = portal_db.rows(cur)
-    return rows[0] if rows else None
+    return portal_vault.unseal_fields(rows[0], ("password", "salt")) \
+        if rows else None
 
 
 def _stripe_secret() -> str:
@@ -218,7 +220,8 @@ def save_payment_settings():
                     (principal["client_id"], provider,
                      bool(payload.get("enabled")),
                      bool(payload.get("sandbox")), merchant_id,
-                     password, salt, store_id),
+                     portal_vault.seal(password), portal_vault.seal(salt),
+                     store_id),
                 )
                 portal_db.log_action(
                     cur, principal["client_id"], "payments.settings",

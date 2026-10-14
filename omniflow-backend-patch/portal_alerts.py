@@ -163,16 +163,30 @@ def alert_dead_command(cur, client_id: int, command_id: int,
             return None
         action = str(row.get("action") or "")
         critical = action.startswith(REVENUE_ACTIONS)
-        return raise_alert(
+        title = ("Delivery failed: " + (action or "message")
+                 + " #" + str(command_id))
+        detail = str(note or row.get("error_message") or "")[:500]
+        alert_id = raise_alert(
             cur,
             client_id,
             "delivery_dead",
-            ("Delivery failed: " + (action or "message")
-             + " #" + str(command_id)),
-            str(note or row.get("error_message") or "")[:500],
+            title,
+            detail,
             "revenue" if critical else "normal",
             dedupe_key="cmd:" + str(command_id),
         )
+        if alert_id:
+            try:
+                import portal_notify
+
+                portal_notify.notify(
+                    client_id, "delivery", title, detail,
+                    severity="high" if critical else "normal",
+                    dedupe_key="cmd:" + str(command_id), in_app=False,
+                    alert_id=alert_id)
+            except Exception:
+                pass
+        return alert_id
     except Exception as error:
         logger.warning("alert_dead_command failed: %s", error)
         return None

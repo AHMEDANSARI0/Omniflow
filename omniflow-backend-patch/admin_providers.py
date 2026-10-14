@@ -16,8 +16,7 @@ a blank value on PUT keeps the stored secret (the catalog-sync rule).
 
 import json
 import logging
-import os
-import secrets as _secrets
+import re
 import smtplib
 from email.message import EmailMessage
 
@@ -26,6 +25,7 @@ import urllib.request
 from flask import Blueprint, jsonify, request
 
 import platform_settings
+import portal_auth
 import portal_db
 
 logger = logging.getLogger("omniflow.admin-providers")
@@ -41,18 +41,31 @@ PROVIDER_WHITELISTS = {
     "voice.provider": ("twilio",),
     "video.provider": ("whereby", "daily", "zoom"),
     "payments.provider": ("stripe",),
+    "ai.kill_switch": ("on", "off"),
+    "ai.autonomy_cap": ("off", "suggest", "auto"),
+    "ai.guard_mode": ("off", "standard", "strict"),
+    "embeddings.mode": ("on", "off"),
+    # D5 voice + vision switches
+    "vision.mode": ("on", "off"),
+    "assistant.mode": ("on", "off"),
+    "stt.mode": ("on", "off"),
+    "voice.ai_loop": ("on", "off"),
+    "voice.signature_check": ("enforce", "log", "off"),
 }
+
+#: Groups whose whitelisted values are case-insensitive switches.
+LOWERCASE_SWITCH_GROUPS = ("ai", "embeddings", "vision", "stt", "voice",
+                           "assistant")
+
+# Numeric settings (blank = unset).
+NUMERIC_KEYS = {"ai.daily_call_cap": (0, 1000000),
+                "embeddings.dimensions": (0, 4096),
+                "embeddings.min_similarity": (0, 100),
+                "assistant.daily_limit": (0, 100000)}
 
 
 def _authorized() -> bool:
-    key = request.headers.get("X-Omniflow-Key", "")
-    if not key:
-        return False
-    accepted = [
-        os.environ.get("OMNIFLOW_SERVICE_KEY"),
-        os.environ.get("OMNIFLOW_ADMIN_API_KEY"),
-    ]
-    return any(k for k in accepted if k and _secrets.compare_digest(key, k))
+    return portal_auth.service_key_ok()
 
 
 @bp.before_request
@@ -98,6 +111,18 @@ def _configured(group: str, values: dict) -> bool:
         return any(v == "on" for v in values.values())
     if group == "whatsapp_e2e":
         return bool(values.get("live_number"))
+    if group == "ai":
+        return any(str(v or "").strip() for v in values.values())
+    if group == "embeddings":
+        return any(str(v or "").strip() for v in values.values())
+    if group == "vision":
+        return any(str(v or "").strip() for v in values.values())
+    if group == "assistant":
+        return any(str(v or "").strip() for v in values.values())
+    if group == "stt":
+        return bool(values.get("api_key"))
+    if group == "router":
+        return any(str(v or "").strip() for v in values.values())
     return False
 
 
@@ -129,10 +154,36 @@ def _clean_group(group: str, raw: dict):
             continue
         text = "" if value is None else str(value).strip()
         full = group + "." + name
+        if group == "router":
+            import portal_model_router
+
+            text, router_error = portal_model_router.clean_value(name, text)
+            if router_error:
+                return None, router_error
         if full in PROVIDER_WHITELISTS:
+            text = text.lower() if group in LOWERCASE_SWITCH_GROUPS \
+                and full != "voice.provider" else text
             if text and text not in PROVIDER_WHITELISTS[full]:
                 return None, (full + " must be one of: "
                               + ", ".join(PROVIDER_WHITELISTS[full]) + ".")
+        if full in NUMERIC_KEYS and text:
+            low, high = NUMERIC_KEYS[full]
+            if not text.isdigit() or not low <= int(text) <= high:
+                return None, (full + " must be a whole number between "
+                              + str(low) + " and " + str(high) + ".")
+        if name == "base_url" and text:
+            # §236: a wrong base URL silently broke every AI call
+            text, base_error = platform_settings.clean_api_base(text)
+            if base_error:
+                return None, full + ": " + base_error
+        if full == "voice.greeting" and len(text) > 200:
+            return None, "voice.greeting must be 200 characters or fewer."
+        if full == "voice.webhook_base" and text:
+            text = text.rstrip("/")
+            if platform_settings.clean_webhook_base(text) != text:
+                return None, ("voice.webhook_base must be the public https"
+                              " address of the Control Plane, e.g."
+                              " https://cp.example.com (no query).")
         if full == "email.smtp_port":
             if text and (not text.isdigit() or not 1 <= int(text) <= 65535):
                 return None, "email.smtp_port must be a port number."
@@ -372,3 +423,276 @@ def _render_weekly(rows: list) -> str:
     lines.append("")
     lines.append("Sent by the OmniFlow admin panel.")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# D5: phone numbers -> workspaces (the Twilio account is platform-owned, so
+# only the platform admin decides which number answers for which workspace)
+# ---------------------------------------------------------------------------
+
+@bp.get("/voice/numbers")
+def list_voice_numbers():
+    import portal_voice
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                numbers = portal_voice.list_number_assignments(cur)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(
+            error, "voice numbers")[0]), 503
+    return jsonify({"numbers": numbers}), 200
+
+
+@bp.put("/voice/numbers")
+def put_voice_number():
+    import portal_voice
+    payload = request.get_json(silent=True) or {}
+    try:
+        client_id = int(payload.get("client_id") or 0)
+    except (TypeError, ValueError):
+        client_id = 0
+    if client_id <= 0:
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "client_id is required."}}), 400
+    number = str(payload.get("number") or "").strip()
+    if number and not portal_voice.valid_e164(number):
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "Use the full international"
+                                             " format, e.g. +14155550100."}}), 400
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                result = portal_voice.assign_number(cur, client_id, number)
+                if result.get("error"):
+                    conn.rollback()
+                    return jsonify({"error": {"code": "conflict",
+                                              "message": result["error"]}}), 409
+                portal_db.log_action(
+                    cur, client_id, "voice.number_assigned",
+                    "platform_admin", None, None,
+                    ("Phone number " + (number[-4:] if number else "removed")
+                     )[:200],
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(
+            error, "voice numbers")[0]), 503
+    return jsonify({"ok": True, "client_id": client_id,
+                    "number": result.get("number", "")}), 200
+
+
+
+# ---------------------------------------------------------------------------
+# §214: Twilio number setup from the panel (no manual console step)
+# ---------------------------------------------------------------------------
+
+_PN_SID = re.compile(r"^PN[0-9a-fA-F]{32}$")
+
+
+def _twilio_keys_or_error():
+    import portal_voice
+
+    keys = portal_voice._voice_keys()
+    if not (keys.get("account_sid") and keys.get("auth_token")):
+        return None, (jsonify({"error": {
+            "code": "not_configured",
+            "message": "Save the Twilio Account SID and auth token in the"
+                       " Voice channel group first."}}), 409)
+    return keys, None
+
+
+def _assigned_by_digits() -> dict:
+    import portal_voice
+
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                rows = portal_voice.list_number_assignments(cur)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        return {}
+    return {portal_voice._digits(r["number"]): r["client_id"]
+            for r in rows if r.get("number")}
+
+
+@bp.get("/voice/twilio")
+def list_twilio_numbers_route():
+    import portal_sms
+    import portal_voice
+
+    keys, error = _twilio_keys_or_error()
+    if error:
+        return error
+    base, source = portal_voice.webhook_base()
+    try:
+        raw, truncated = portal_voice.list_twilio_numbers(keys)
+    except portal_voice.TwilioApiError as failure:
+        return jsonify({"error": {"code": "twilio_error",
+                                  "message": "Twilio: " + failure.message}}), \
+            502
+    assigned = _assigned_by_digits()
+    numbers = []
+    for item in raw:
+        public = portal_voice.twilio_number_state(item, base)
+        public["assigned_client_id"] = assigned.get(
+            portal_voice._digits(public["phone_number"]))
+        numbers.append(public)
+    return jsonify({
+        "base_url": base, "base_source": source,
+        "voice_url": (base + portal_voice.INCOMING_PATH) if base else "",
+        "status_url": (base + portal_voice.STATUS_PATH) if base else "",
+        "sms_url": (base + portal_sms.INCOMING_PATH) if base else "",
+        "numbers": numbers, "truncated": truncated,
+    }), 200
+
+
+@bp.post("/voice/twilio/connect")
+def connect_twilio_number_route():
+    import portal_voice
+
+    payload = request.get_json(silent=True) or {}
+    sid = str(payload.get("sid") or "").strip()
+    if not _PN_SID.match(sid):
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "Pick a number from the"
+                                             " Twilio list."}}), 400
+    # §244: "sms" points only the number's SMS webhook at portal_sms
+    what = str(payload.get("what") or "voice").strip().lower()
+    if what not in ("voice", "sms"):
+        return jsonify({"error": {"code": "bad_request",
+                                  "message": "what must be voice or sms."}}), 400
+    keys, error = _twilio_keys_or_error()
+    if error:
+        return error
+    base, source = portal_voice.webhook_base()
+    if not base:
+        return jsonify({"error": {
+            "code": "no_webhook_base",
+            "message": "Set the Control Plane address (Voice channel >"
+                       " Webhook address) first."}}), 409
+    try:
+        current = portal_voice.get_twilio_number(keys, sid)
+        state = portal_voice.twilio_number_state(current, base)
+        if what == "sms" and not state["sms_capable"]:
+            return jsonify({"error": {
+                "code": "not_sms_capable",
+                "message": "This number cannot send or receive SMS."}}), 409
+        if what == "sms" and state["sms_state"] == "app":
+            return jsonify({"error": {
+                "code": "number_in_use",
+                "message": "SMS on this number is handled by a TwiML app"
+                           " in Twilio, so Twilio ignores the SMS webhook."
+                           " Remove it from the number in the Twilio"
+                           " console, then connect again."}}), 409
+        if what == "sms":
+            updated = portal_voice.connect_twilio_sms(keys, sid, base)
+        elif state["state"] in ("app", "trunk"):
+            holder = "a TwiML app" if state["state"] == "app" else "a SIP trunk"
+            return jsonify({"error": {
+                "code": "number_in_use",
+                "message": "This number is handled by " + holder + " in"
+                           " Twilio, so Twilio ignores webhook URLs. Remove"
+                           " it from the number in the Twilio console, then"
+                           " connect again."}}), 409
+        else:
+            updated = portal_voice.connect_twilio_number(keys, sid, base)
+    except portal_voice.TwilioApiError as failure:
+        status = 404 if failure.status == 404 else 502
+        return jsonify({"error": {"code": "twilio_error",
+                                  "message": "Twilio: " + failure.message}}), \
+            status
+    public = portal_voice.twilio_number_state(updated or current, base)
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                portal_db.log_action(
+                    cur, 0, "voice.twilio_sms_connected" if what == "sms"
+                    else "voice.twilio_connected", "platform_admin",
+                    None, None,
+                    ("Twilio number ..." + public["phone_number"][-4:]
+                     + " -> " + (portal_voice._host_of(base) or "?")
+                     + " (" + source + ")")[:200])
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    return jsonify({"ok": True, "number": public, "base_url": base}), 200
+
+
+# ---------------------------------------------------------------------------
+# §223 Secrets vault - status + "Encrypt stored secrets" (service key only)
+# ---------------------------------------------------------------------------
+
+@bp.get("/security/vault")
+def vault_status_route():
+    import portal_vault
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                report = portal_vault.scan(cur, migrate=False)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(
+            error, "secrets vault")[0]), 503
+    return jsonify(report), 200
+
+
+@bp.post("/security/vault/migrate")
+def vault_migrate_route():
+    import portal_vault
+    state = portal_vault.status()
+    if not state["configured"]:
+        return jsonify({"error": {
+            "code": "vault_not_configured",
+            "message": {
+                "library_missing": "The Control Plane is missing the"
+                                   " cryptography package - redeploy"
+                                   " with the updated requirements.txt.",
+                "key_too_short": "OF_SECRETS_KEY must be at least "
+                                 + str(state["min_key_chars"])
+                                 + " characters.",
+            }.get(state["problem"], "Set OF_SECRETS_KEY in the Control"
+                                    " Plane environment, redeploy, then"
+                                    " try again."),
+        }, "status": state}), 409
+    try:
+        portal_db.ensure_tables()
+        conn = portal_db._conn()
+        try:
+            with conn.cursor() as cur:
+                report = portal_vault.scan(cur, migrate=True)
+                portal_db.log_action(
+                    cur, 0, "security.vault_migrated", "platform_admin",
+                    None, None,
+                    ("resealed=" + str(report["totals"]["resealed"])
+                     + " remaining=" + str(report["remaining"])
+                     + " unreadable=" + str(report["totals"]["unreadable"])
+                     + " key=" + state["key_id"])[:200])
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as error:
+        return jsonify(portal_db.portal_unavailable(
+            error, "secrets vault")[0]), 503
+    platform_settings.invalidate_cache()
+    return jsonify(report), 200

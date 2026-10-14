@@ -118,32 +118,32 @@ def refresh_recent(cur, client_id: int, days: int = 30) -> None:
     )
     try:
         import portal_checkout
+        import portal_retention
 
         links_table = portal_db._q(portal_checkout.LINKS_TABLE)
+        purchased_sql = portal_retention.PURCHASED_SQL
     except Exception:
         return
+    # §240: revenue / orders = purchases (paid, shipped, delivered) by order
+    # day at order value. It used to be status 'paid' only by updated_at, so
+    # a COD order vanished from the trend once it shipped. Recent days are
+    # cleared first: a day whose orders were all cancelled keeps no value.
     cur.execute(
-        "INSERT INTO " + portal_db._q(ROLLUPS_TABLE) +
-        " (client_id, day, kind, key, value)"
-        " SELECT client_id, updated_at::date, 'revenue',"
-        " '', SUM(COALESCE(paid_amount, 0))::BIGINT"
-        " FROM " + links_table +
-        " WHERE client_id = %s AND status = 'paid'"
-        " AND updated_at::date >= %s"
-        " GROUP BY client_id, updated_at::date"
-        " ON CONFLICT (client_id, day, kind, key)"
-        " DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()",
+        "DELETE FROM " + portal_db._q(ROLLUPS_TABLE) +
+        " WHERE client_id = %s AND day >= %s AND kind IN ('revenue', 'orders')",
         (client_id, since),
     )
     cur.execute(
         "INSERT INTO " + portal_db._q(ROLLUPS_TABLE) +
         " (client_id, day, kind, key, value)"
-        " SELECT client_id, updated_at::date, 'orders',"
-        " '', COUNT(*)"
+        " SELECT client_id, created_at::date, kinds.kind, '',"
+        " CASE WHEN kinds.kind = 'revenue'"
+        " THEN SUM(COALESCE(total, 0))::BIGINT ELSE COUNT(*) END"
         " FROM " + links_table +
-        " WHERE client_id = %s AND status = 'paid'"
-        " AND updated_at::date >= %s"
-        " GROUP BY client_id, updated_at::date"
+        " CROSS JOIN (VALUES ('revenue'), ('orders')) AS kinds (kind)"
+        " WHERE client_id = %s AND status IN " + purchased_sql +
+        " AND created_at::date >= %s"
+        " GROUP BY client_id, created_at::date, kinds.kind"
         " ON CONFLICT (client_id, day, kind, key)"
         " DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()",
         (client_id, since),

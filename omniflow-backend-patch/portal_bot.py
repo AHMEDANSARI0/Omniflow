@@ -204,6 +204,14 @@ def put_bot_config():
         conn = portal_db._conn()
         try:
             with conn.cursor() as cur:
+                try:
+                    import portal_snapshots
+
+                    portal_snapshots.before_change(
+                        cur, principal["client_id"], "bot",
+                        str(principal.get("email") or principal.get("user_id") or ""))
+                except Exception:
+                    pass
                 cur.execute(
                     "INSERT INTO " + portal_db._q(portal_db.BOT_TABLE) +
                     " (client_id, agent_name, tone, greeting, fallback,"
