@@ -1,166 +1,224 @@
-# §276 — Website: Supabase → Neon (poora migration guide)
+# §276 — Website: Supabase → Neon (poora migration guide, rev §276r2)
 
 Ye batch website ko **Supabase se hata kar sirf NEON** par le aata hai — admin
 login, marketing CMS (`site_content`), blog (`blog_posts`), SEO settings
 (`site_settings`) aur leads (`leads`). Ab website, Control Plane aur mobile —
 teeno ek hi Neon database use karte hain. **Koi Supabase nahi bachta.**
 
-> Order follow karein. Har step ka output/error mujhe bhej dein agar atke.
+> Commands **Windows PowerShell** ke liye hain (office PC). Har step ka poora
+> output/error mujhe bhej dein agar atkein. Order skip na karein.
 
 ---
 
-## Pehle samajh lein — kya badla
+## Kya badla (ek nazar me)
 
-- **Admin login** ab Supabase Auth ki jagah Neon `admin_users` + ek httpOnly
-  session cookie (`of_admin_session`) use karta hai. Password scrypt se hash
-  hota hai. Purane Supabase passwords **portable nahi** (bcrypt ≠ scrypt), is
-  liye ek **naya admin** bootstrap karna hota hai (Step 2 me).
-- **CMS/blog/SEO/leads** wahi tables, ab Neon me. Data Supabase se copy hota
-  hai (Step 2).
-- **`/api/bot/*`** (purane website-hosted bot ke endpoints) ab **410 Gone**
-  dete hain — bot ab Control Plane ke `/api/v1/connector/whatsapp/*` use karta
-  hai. Website ke bot routes dead legacy the.
-- **Lead "invite"** (client portal account banana) ab disabled hai — portal
-  accounts Control Plane banata hai, website DB nahi. Button gracefully message
-  dega.
-
-Files jo badli (patcher in sab ko likh dega): `lib/db/neon.ts`,
-`lib/db/auth.ts`, `lib/admin-actions.ts`, `lib/supabase/{server,service,client}.ts`,
-`lib/{content,settings,blog}.ts`, `lib/bot-api.ts`, `app/actions/early-access.ts`,
-`app/admin/login/page.tsx`, `app/admin/components/SignOutButton.tsx`,
-`app/admin/(panel)/settings/PasswordForm.tsx`, `app/admin/(panel)/leads/actions.ts`,
-`app/api/bot/{config,messages}/route.ts`, `proxy.ts`,
-`lib/omniflow/session-constants.ts`, `package.json`, `.env.example`,
-`db/website_neon.sql`.
+- **Admin login** ab Neon `admin_users` + httpOnly session cookie
+  (`of_admin_session`) se hota hai; password scrypt hash. Purane Supabase
+  passwords **portable nahi** — is liye Step 2 me **naya admin** banta hai.
+- **CMS/blog/SEO/leads** wahi tables, ab Neon me. Purana data Step 2 copy karta hai.
+- **`/api/bot/config` + `/api/bot/messages`** ab **410 Gone** (bot Control
+  Plane ka `/api/v1/connector/whatsapp/*` use karta hai).
+- **Lead "invite"** disabled — client portal accounts Control Plane banata hai.
+- Jo files badli: `lib/db/{neon,auth}.ts`, `lib/admin-actions.ts`,
+  `lib/supabase/{server,service,client}.ts`, `lib/{content,settings,blog}.ts`,
+  `lib/bot-api.ts`, `app/actions/early-access.ts`, `app/admin/login/page.tsx`,
+  `app/admin/components/SignOutButton.tsx`,
+  `app/admin/(panel)/settings/PasswordForm.tsx`,
+  `app/admin/(panel)/leads/actions.ts`, `app/api/bot/{config,messages}/route.ts`,
+  `proxy.ts`, `lib/omniflow/session-constants.ts`, `package.json` + lock,
+  `.env.example`, `db/website_neon.sql`.
 
 ---
 
-## Step 0 — Patcher chalayein (code + SQL + docs website repo me laata hai)
+## Step 0 — Patcher + npm install
 
-Website repo root se (jis folder me `package.json` + `OmniFlow-Control-Plane/`
-ho):
+Website repo root se (jis folder me `package.json` + `OmniFlow-Control-Plane/` ho):
 
-```
-node PATCHERS_TO_RUN/website_neon_276.mjs
-```
-
-Ye har file backup ke saath likhta hai (`.pre_276.bak`), sha verify karta hai,
-aur dobara chalane par "already correct" kehta hai. Output me
-`applied / already / warnings` dekhein. `warnings: 0` hona chahiye.
-
-Phir dependencies install karein (package.json se `@supabase/*` gaya, `pg`
-aaya):
-
-```
+```powershell
+node PATCHERS_TO_RUN/website_neon_276r2.mjs
 npm install
+git add -A
+git commit -m "website: Supabase -> Neon (§276r2)"
+git push
 ```
+
+- Patcher idempotent hai: pehle wala patcher chala tha to sirf badli files
+  (SQL + ye doc) REPAIR hongi, baqi `already correct`. `warnings: 0` hona chahiye.
+- `npm install` se `pg` install aur `@supabase/*` remove hota hai (package.json
+  + lock patcher me synced hain). **Push se Vercel auto-deploy chalega** — lekin
+  env abhi purana hai, is liye site abhi bhi Supabase-free code ke sath
+  fail-soft chalegi (defaults dikhayegi) jab tak Step 3 na ho.
 
 ---
 
-## Step 1 — Neon database me SQL apply karein
+## Step 1 — Neon me schema apply karein (SQL)
 
-`db/website_neon.sql` idempotent hai (baar baar chalane par safe). Neon console
-→ aap ka project → **SQL Editor** me poori file paste karke **Run**. Ya local
-psql se:
+**⚠️ Sabse ahem: Neon SQL Editor me `Run` dabana hai, `Explain` NAHI.**
+`EXPLAIN` sirf SELECT/INSERT/UPDATE/DELETE ke liye hota hai — `CREATE TABLE`
+ko EXPLAIN me wrap karne se wahi error aata hai:
+`syntax error at or near "UUID" (SQLSTATE 42601)`. SQL file bilkul theek hai;
+bas Run karna hai.
 
+1. Neon console → aap ka project → **SQL Editor**.
+2. `db/website_neon.sql` ki **poori** contents paste karein (repo me file hai;
+   editor me khol → Ctrl+A → Ctrl+C → Neon me Ctrl+V).
+3. **Run** (ya Ctrl/Cmd+Enter). "Success / no results" aayega.
+4. File idempotent hai — dobara Run karna bhi safe hai (agar pehle partial
+   apply hua tha to ye sab complete kar dega).
+
+**Verify (usi SQL Editor me RUN karein):**
+
+```sql
+SELECT table_name FROM information_schema.tables
+ WHERE table_schema = 'public'
+   AND table_name IN ('admin_users','admin_sessions','site_content',
+                      'blog_posts','site_settings','leads')
+ ORDER BY table_name;
+/* 6 rows chahiye */
+
+SELECT count(*) FROM site_settings;
+/* 1 chahiye (seed row) */
+
+SELECT count(*) FROM profiles;
+/* view hai - error ke baghair chalna chahiye (0 ok) */
 ```
-psql "postgresql://USER:PASS@ep-<name>-pooler.<region>.aws.neon.tech/<db>?sslmode=require" -f db/website_neon.sql
+
+Alternative (agar console tang kare): repo root se
+
+```powershell
+psql "postgresql://USER:PASS@ep-NAME-pooler.REGION.aws.neon.tech/DBNAME?sslmode=require" -f db/website_neon.sql
 ```
 
-Ye banata hai: `admin_users`, `admin_sessions`, `profiles` (VIEW),
-`site_content`, `blog_posts`, `site_settings` (1 seed row), `leads`.
-
-> **Note:** Ye wahi Neon project ho sakta hai jo Control Plane use karta hai
-> (tables alag hain, koi takraav nahi) — ya ek alag Neon project. Dono chalega.
-> Region wahi rakhein jo CP ka hai (speed ke liye).
+> Note: `gen_random_uuid()` Neon (PG 13+) me built-in hai — kisi extension ki
+> zaroorat nahi. Region wahi rakhein jo Control Plane ke Neon ka hai.
 
 ---
 
-## Step 2 — Purana data copy karein + naya admin banayein (EK dafa)
+## Step 2 — Purana data copy + naya admin bootstrap (EK dafa)
 
-Ye script Supabase se CMS/blog/SEO/leads parh kar Neon me upsert karti hai, aur
-ek naya website admin bootstrap karti hai. Repo root se:
+Ye command Supabase se CMS/blog/SEO/leads parh kar Neon me upsert karti hai
+aur website admin banati hai. **Pehle values jama karein:**
+
+| Value | Kahan se |
+|---|---|
+| `SUPABASE_URL` | Supabase dashboard → project → Settings → API Keys → **Project URL** (`https://<ref>.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | usi page par **service_role** (secret) key |
+| `DATABASE_URL` | Neon console → project → **Connection string (pooled)** — host me `-pooler` ho aur `sslmode=require` |
+| `MIGRATE_ADMIN_EMAIL` | jo email aap `/admin/login` par use karna chahte hain |
+| `MIGRATE_ADMIN_PASSWORD` | aap ka chuna **8+ character** password |
+
+**PowerShell me (repo root se):**
+
+```powershell
+$env:SUPABASE_URL="https://<ref>.supabase.co"
+$env:SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"
+$env:DATABASE_URL="postgresql://USER:PASS@ep-NAME-pooler.REGION.aws.neon.tech/DBNAME?sslmode=require"
+$env:MIGRATE_ADMIN_EMAIL="owner@omniflow.pk"
+$env:MIGRATE_ADMIN_PASSWORD="AapKaMazboot8+Password"
+npx tsx tools/website-migrate/migrate-supabase-to-neon.ts
+```
+
+(`npx tsx` pehli dafa tsx download karega — `Ok to proceed? (y)` dabayein.)
+
+**Expected output:**
 
 ```
-SUPABASE_URL="https://<project>.supabase.co" \
-SUPABASE_SERVICE_ROLE_KEY="<service-role-key>" \
-DATABASE_URL="postgresql://USER:PASS@ep-<name>-pooler.<region>.aws.neon.tech/<db>?sslmode=require" \
-MIGRATE_ADMIN_EMAIL="owner@omniflow.pk" \
-MIGRATE_ADMIN_PASSWORD="AapKaMazbootPassword!" \
-node_modules/.bin/tsx tools/website-migrate/migrate-supabase-to-neon.ts
+§276 Supabase → Neon website migration
++ site_content: N/N rows upserted into Neon.
++ blog_posts: N/N rows upserted into Neon.
++ site_settings: 1/1 rows upserted into Neon.
++ leads: N/N rows upserted into Neon.
++ admin: owner@omniflow.pk ready — sign in at /admin/login.
 ```
 
-- `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`: Supabase dashboard → Settings →
-  API se (ye **sirf migration ke liye** hain; live site ko nahi chahiye).
-- `MIGRATE_ADMIN_PASSWORD`: **8+ characters**. Yehi email/password Step 5 me
-  `/admin/login` par use hoga.
-- Script idempotent hai — dobara chalayein to same data upsert ho jata hai, admin
-  password refresh ho jata hai.
+- `X <table>: skipped …` = wo table Supabase me tha hi nahi — **theek hai**,
+  baqi tables chalti rehti hain.
+- `= <table>: 0 rows` = table khali tha — theek hai.
+- Script **idempotent** hai: dobara chalane se duplicate nahi bante; admin ka
+  password dobara set ho jata hai (bhool jayein to yehi command phir chalein).
 
-Output me har table ki line dekhein (`+ site_content: N/N rows…`, `+ admin:
-… ready`). Koi table Supabase me na ho to `X … skipped` aayega — baqi tables
-chalti rehti hain.
+**Baad me:** terminal window **band kar dein** — `SUPABASE_*` vars sirf us
+window me the, band hote hi khatam. (Live site ko ye kabhi nahi chahiye.)
 
 ---
 
-## Step 3 — Vercel website env badlein (Supabase → Neon)
+## Step 3 — Vercel website env (Supabase vars hatao, Neon add karo)
 
 Vercel → **website** project → Settings → Environment Variables:
 
-**HATA dein (Supabase):**
+**REMOVE karein (har environment se — Production/Preview/Development):**
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-**ADD karein (Neon):**
-| Name | Value |
-|---|---|
-| `DATABASE_URL` | Neon **pooled** connection string (`...-pooler...?sslmode=require`) |
+**ADD karein:**
 
-**Pehle se maujood (confirm, chherna nahi):**
+| Name | Value | Environment |
+|---|---|---|
+| `DATABASE_URL` | Neon **pooled** string (`...-pooler...?sslmode=require`) — wahi jo Step 2 me thi | Production (+ Preview agar use hota hai) |
+
+**CONFIRM karein (pehle se hone chahiye):**
 `OMNIFLOW_CONTROL_PLANE_URL`, `OMNIFLOW_SERVICE_KEY`, `OF_ANALYTICS_SALT`,
 `CRON_SECRET`. Optional: `OF_WEB_SESSION_TTL_DAYS` (default 30).
 
-> Region: website project ka Function Region **wahi** rakhein jo Neon/CP ka hai.
+**Settings → General → Function Region** = wahi region jo Neon project ka hai.
+
+**Phir redeploy:** Deployments → latest → **••• → Redeploy** →
+**"Use existing Build Cache" UNCHECK** karein → Redeploy. `Ready` hone dein.
+
+> Pooled string hi use karein (direct nahi): Vercel serverless par direct
+> connections jaldi exhaust hoti hain. Neon me **Scale to zero OFF** rakhein
+> (Settings → Compute) taake portal/website fast rahe.
 
 ---
 
-## Step 4 — Website redeploy karein
+## Step 4 — Verify (poori checklist)
 
-Env badalne ke baad Vercel me website project → Deployments → latest → **••• →
-Redeploy** (env changes sirf redeploy ke baad apply hote hain). Deploy complete
-hone dein.
+1. `https://<website>/admin/login` → Step-2 wale **email + password** se
+   sign in → admin panel khule.
+2. Admin → **Content** → Hero (ya koi section) → ek word badal → **Save** →
+   public homepage khol → change dikhe. (Turant dikhe; cache tag refresh hota hai.)
+3. `https://<website>/blog` → migrated posts list hon; ek post khol → poori
+   render ho. (Supabase me blog khali tha to 3 seed articles dikhenge — normal.)
+4. Public site → **early-access form** → apna naam/email submit → Admin →
+   **Leads** → entry aaye (status `new`) → status change karein → delete karein.
+   Wahi email dobara submit karein → "already on the list" message aaye.
+5. Admin → **Settings** → password change → "Password updated successfully" →
+   aap **signed in rahein** → Sign out → `/admin/login` par jaye → **naye**
+   password se login ho.
+6. SEO: homepage par right-click → View Page Source → `<title>` me aap ki
+   settings/migration wali meta title ho.
+7. `https://<website>/api/bot/config` → `{"error":"gone",...}` (410) — ye
+   **expected** hai (bot ab CP use karta hai).
+
+Sab green = website poori tarah Neon par. **Supabase project abhi delete na
+karein** — 3-4 din backup ke taur par rakhein, phir hata dein.
 
 ---
 
-## Step 5 — Verify karein
+## Troubleshooting
 
-1. `https://<website>/admin/login` → Step 2 wale **email + password** se sign in.
-   Panel khulna chahiye.
-2. Admin → Content → koi section (Hero/Footer) edit karke Save → public page par
-   change dikhe (cache tag refresh hota hai).
-3. `https://<website>/blog` → posts render hon (Neon se; na hon to seed fallback).
-4. Public site par early-access form bharein → Admin → Leads me entry aaye.
-5. Sign out → wapas `/admin/login`.
-
-Sab chal gaya to **Supabase ke vars poori tarah hata chuke** hain — website ab
-sirf Neon par hai.
+| Masla | Wajah / hal |
+|---|---|
+| `syntax error at or near "UUID"` (SQL Editor) | Aap ne **Explain** dabaya — **Run** dabayein. DDL EXPLAIN nahi hota. |
+| Admin login: "Invalid email or password" | Admin bana nahi ya password galat. Step 2 command dobara chalein (output me `+ admin: ... ready` dekhein). Purane Supabase password se login **nahi** hoga — naya Neon admin use karein. |
+| Site chal rahi hai magar admin edits public par nahi dikhte / content defaults hain | Vercel me `DATABASE_URL` set nahi ya redeploy nahi hua. Env confirm → Redeploy (cache unchecked). Vercel → Functions logs me `pg` error ho to connection string check karein (`-pooler`, `sslmode=require`). |
+| Vercel build fail: `Cannot find module 'pg'` | `npm install` ke baad `git add -A` (lock file bhi) commit/push nahi hua. Local me `npm install` → `git add -A` → push. |
+| Migration: `DATABASE_URL (Neon) is not set` | Ussi PowerShell window me `$env:DATABASE_URL=...` set karein (Step 2) — doosri window me vars nahi hote. |
+| Migration: `SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are required` | Step 2 ke pehle do vars usi window me set karein; URL me trailing `/` na ho. |
+| Migration: `X <table>: skipped — 404/401 …` | 404 = wo table Supabase me nahi (ignore). 401/403 = service_role key galat — Settings → API Keys se **secret** service_role copy karein (anon nahi). |
+| Patcher: `Run this from the website repo root…` | Aap galat folder me hain — us folder se chalein jahan `package.json` + `OmniFlow-Control-Plane/` ho. |
+| Kuch bhi ulta ho jaye | Har file ka backup `.pre_276.bak` / `.pre_276r2.bak` me hai; env switch tak purani Supabase deployment chalti rehti hai; Supabase project abhi delete na karein. |
 
 ---
-
-## Rollback / safety
-
-- Patcher ne har badli file ka `.pre_276.bak` backup rakha hai. Kuch galat lage
-  to backup se wapas la sakte hain.
-- Jab tak Step 3 me env switch nahi karte, purani Supabase deployment chalti
-  rehti hai. Switch ek hi redeploy me hota hai.
-- Migration script fail-soft hai: ek table na chale to baqi copy ho jati hain;
-  dobara chalana safe hai.
 
 ## Chhote notes
 
-- `profiles` ek **VIEW** hai `admin_users` par (purane code ko `role` milta
-  rahe). Isme direct insert nahi hota.
-- `site_settings` single-row table hai (`id = 1`, CHECK se guarded).
-- Leads ka `email` UNIQUE hai — duplicate signup par friendly "already on the
-  list" message aata hai (code 23505 handle hota hai).
+- `profiles` ek **VIEW** hai `admin_users` par (purani code ke role checks
+  unchanged chalte hain); is me direct insert nahi hota.
+- `site_settings` single-row (`id = 1`, CHECK guarded); khali values par code
+  apne defaults merge karta hai.
+- `leads.email` UNIQUE hai — duplicate signup par friendly message (23505 handle).
+- Session cookie httpOnly + secure (production) + sameSite=lax, TTL 30 din
+  (`OF_WEB_SESSION_TTL_DAYS` se badal sakte hain). Password change karne par
+  purane sessions revoke + naya session turant mil jata hai (signed in rahte hain).
