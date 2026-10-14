@@ -77,6 +77,7 @@ from portal_setup import bp as portal_setup_bp  # noqa: E402
 from portal_webhooks import bp as portal_webhooks_bp  # noqa: E402
 from portal_sequences import bp as portal_sequences_bp  # noqa: E402
 from connector_api import bp as connector_api_bp  # noqa: E402
+from portal_mobile_admin import bp as portal_mobile_admin_bp  # noqa: E402  # §272
 from portal_auth import bind_root_application  # noqa: E402
 
 
@@ -147,6 +148,7 @@ aux_app.register_blueprint(portal_setup_bp)
 aux_app.register_blueprint(portal_webhooks_bp)
 aux_app.register_blueprint(portal_sequences_bp)
 aux_app.register_blueprint(connector_api_bp)
+aux_app.register_blueprint(portal_mobile_admin_bp)  # §272 mobile admin
 
 _EXTENSION_PREFIXES = (
     "/api/v1/auth/forgot-password",
