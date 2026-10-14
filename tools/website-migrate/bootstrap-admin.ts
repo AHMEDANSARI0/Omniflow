@@ -1,5 +1,5 @@
 /**
- * §276r4b — Neon-only admin bootstrap (no Supabase anywhere).
+ * §276r4c — Neon-only admin bootstrap (no Supabase anywhere).
  *
  * Creates (or resets) the website admin user directly in Neon.
  *
@@ -41,6 +41,7 @@ if (password.length < 8) {
 async function main() {
   const { upsertAdminUser, verifyLogin } = await import("../../lib/db/auth");
   const user = await upsertAdminUser(email, password, "admin");
+  if (!user) fail("upsertAdminUser returned no row - send this output.");
   const check = await verifyLogin(email, password);
   if (!check) fail("admin row written but login verification failed - send this output.");
   console.log(`+ admin: ${user.email} ready (role=${user.role})`);
