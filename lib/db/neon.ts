@@ -1,4 +1,5 @@
 import { Pool, types } from "pg";
+import { IS_PRODUCTION_BUILD } from "../omniflow/session-constants";
 
 /**
  * §276 — Neon data layer for the website (replaces Supabase PostgREST).
@@ -28,6 +29,7 @@ types.setTypeParser(types.builtins.INT8, (v) => (v === null ? null : Number(v)))
 let pool: Pool | null = null;
 
 export function neonEnabled(): boolean {
+  if (IS_PRODUCTION_BUILD) return false; // §276r4e build never touches Neon
   return Boolean((process.env.DATABASE_URL || "").trim());
 }
 
@@ -41,6 +43,8 @@ export function getPool(): Pool {
   pool = new Pool({
     connectionString: url,
     max: 5,
+    // §276r4e: fail fast (10s) on unreachable hosts instead of hanging forever.
+    connectionTimeoutMillis: 10_000,
     // Neon presents a valid cert; rejectUnauthorized:false avoids serverless
     // CA-store issues. Local pgserver has no SSL (needsSsl false).
     ssl: needsSsl ? { rejectUnauthorized: false } : undefined,

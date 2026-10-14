@@ -1,3 +1,4 @@
+import { IS_PRODUCTION_BUILD } from "./session-constants";
 import "server-only";
 
 import { createHash, randomUUID } from "crypto";
@@ -50,6 +51,7 @@ export class ControlPlaneRequestError extends Error {
 }
 
 function controlPlaneBaseUrl(): URL {
+  if (IS_PRODUCTION_BUILD) throw new ControlPlaneRequestError(503, "control_plane_not_configured"); // §276r4e
   const raw = process.env.OMNIFLOW_CONTROL_PLANE_URL?.trim();
 
   if (!raw) {
