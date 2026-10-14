@@ -4,16 +4,28 @@ import { redirect } from "next/navigation";
 import ApiKeyCard from "./ApiKeyCard";
 import BrandsCard from "./BrandsCard";
 import BusinessHoursCard from "./BusinessHoursCard";
+import BiThresholdsCard from "./BiThresholdsCard";
+import WeeklyProblemsCard from "./WeeklyProblemsCard";
+import ProactiveAlertsCard from "./ProactiveAlertsCard";
 import WidgetSettingsCard from "./WidgetSettingsCard";
 import PaymentsCard from "./PaymentsCard";
 import DataSafetyCard from "./DataSafetyCard";
+import ConfigHistoryCard from "./ConfigHistoryCard";
 import WatiCard from "./WatiCard";
+import InstagramCard from "./InstagramCard";
+import EmailChannelCard from "./EmailChannelCard";
+import SmsChannelCard from "./SmsChannelCard";
+import SocialChannelsCard from "./SocialChannelsCard";
 import CatalogCard from "./CatalogCard";
 import CouponsCard from "./CouponsCard";
 import DeliveriesCard from "./DeliveriesCard";
+import ActionRunsCard from "./ActionRunsCard";
 import NegotiationCard from "./NegotiationCard";
 import PerfCard from "./PerfCard";
 import PlanCard from "./PlanCard";
+import NotificationsCard from "./NotificationsCard";
+import NotificationTemplatesCard from "./NotificationTemplatesCard";
+import VoiceVisionCard from "./VoiceVisionCard";
 import {
   getApiKeyInfo,
   requirePortalAccessToken,
@@ -50,28 +62,42 @@ export default async function ClientSettingsPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-ink-2">
           Workspace security and integration controls for your tenant.
         </p>
       </div>
 
       <ApiKeyCard keyInfo={keyInfo} />
       <BusinessHoursCard />
+      <BiThresholdsCard />
+      <WeeklyProblemsCard />
+      <ProactiveAlertsCard />
       <div className="mt-6">
         <WidgetSettingsCard />
       </div>
       <PaymentsCard />
       <DataSafetyCard />
+      <ConfigHistoryCard />
       <WatiCard />
+      <InstagramCard />
+      <EmailChannelCard />
+      <SmsChannelCard />
+      <SocialChannelsCard />
+      <div className="mt-6">
+        <VoiceVisionCard />
+      </div>
       <CatalogCard />
       <CouponsCard />
       <DeliveriesCard />
+      <ActionRunsCard />
       <NegotiationCard />
       <PerfCard />
       <PlanCard />
+      <NotificationsCard />
+      <NotificationTemplatesCard />
       <BrandsCard />
     </div>
   );

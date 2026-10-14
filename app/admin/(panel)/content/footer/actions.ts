@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { FooterContent } from "../../../../../lib/content-defaults";
+import { FOOTER_DEFAULTS, type FooterContent } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -59,7 +60,8 @@ export async function updateFooterContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "footer",
-    data: values,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, FOOTER_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

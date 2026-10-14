@@ -1,6 +1,7 @@
 import { createClient } from "../../../../../../lib/supabase/server";
 import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
 import { sendAdminTestEmail } from "../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../lib/omniflow/admin-bridge-error";
 import {
   safeJson,
   sameOrigin,
@@ -46,6 +47,8 @@ export async function POST(request: Request) {
     const result = await sendAdminTestEmail(to);
     return safeJson(result, 200);
   } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
     if (error instanceof ControlPlaneRequestError && error.status === 400) {
       return safeJson(
         {

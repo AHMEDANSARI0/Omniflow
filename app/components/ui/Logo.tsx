@@ -1,12 +1,12 @@
 /**
  * The OmniFlow wordmark: a gradient flow glyph (message becoming a
- * workflow) plus the name. Used by the navbar, footer and auth pages.
+ * workflow) plus the name. Used by the navbar and footer.
+ * §258: the `dark` prop is gone - no page rendered it (the site is
+ * light-first), and its indigo-300 wordmark only read on dark canvases.
  */
 export default function Logo({
-  dark = false,
   size = "md",
 }: {
-  dark?: boolean;
   size?: "sm" | "md";
 }) {
   const box = size === "sm" ? "h-7 w-7 rounded-[9px]" : "h-8 w-8 rounded-[10px]";
@@ -39,11 +39,9 @@ export default function Logo({
         </svg>
       </span>
       <span
-        className={`${text} font-display font-semibold tracking-[-0.02em] ${
-          dark ? "text-snow" : "text-ink"
-        }`}
+        className={`${text} font-display font-semibold tracking-[-0.02em] text-ink`}
       >
-        Omni<span className={dark ? "text-indigo-300" : "text-brand"}>Flow</span>
+        Omni<span className="text-brand">Flow</span>
       </span>
     </span>
   );

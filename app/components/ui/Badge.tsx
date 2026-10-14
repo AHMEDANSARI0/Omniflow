@@ -7,18 +7,16 @@ type Tone =
   | "success"
   | "warning"
   | "danger"
-  | "neutral"
-  | "night";
+  | "neutral";
 
 const TONES: Record<Tone, string> = {
   brand: "border-brand/20 bg-brand-soft text-brand-2",
   ai: "border-ai/20 bg-ai-soft text-ai",
   flow: "border-flow/25 bg-flow-soft text-cyan-700",
   success: "border-ok/20 bg-ok-soft text-ok",
-  warning: "border-warn/25 bg-warn-soft text-amber-600",
+  warning: "border-warn/25 bg-warn-soft text-amber-700",
   danger: "border-danger/20 bg-danger-soft text-danger",
   neutral: "border-line-2 bg-soft text-ink-2",
-  night: "border-white/15 bg-white/10 text-snow",
 };
 
 /**

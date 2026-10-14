@@ -53,7 +53,7 @@ export default function AddressCard() {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <p className="text-xs font-semibold text-ink">Address check</p>
       <p className="mt-0.5 text-[11px] text-ink-3">
         Paste an address - it is cleaned, the city and phone are
@@ -70,14 +70,14 @@ export default function AddressCard() {
         <button
           onClick={() => void normalize()}
           disabled={busy || !address.trim()}
-          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+          className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
         >
           Check address
         </button>
       </div>
 
       {intel ? (
-        <div className="mt-3 space-y-2 rounded-xl border border-line bg-soft p-3">
+        <div className="mt-3 space-y-2 rounded-xl border border-line bg-white shadow-card p-3">
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 break-words text-xs text-ink">
               {intel.normalized}
@@ -100,7 +100,7 @@ export default function AddressCard() {
                   key={index}
                   className="flex items-center justify-between gap-2 rounded-lg border border-amber-400/20 bg-amber-400/[0.05] px-2.5 py-1.5"
                 >
-                  <span className="min-w-0 text-[11px] text-amber-200">
+                  <span className="min-w-0 text-[11px] text-amber-800">
                     {prompt}
                   </span>
                   <button

@@ -1,0 +1,57 @@
+import { createClient } from "../../../../../../lib/supabase/server";
+import { getAdminAiOverview } from "../../../../../../lib/omniflow/admin-control-plane";
+import { adminBridgeError } from "../../../../../../lib/omniflow/admin-bridge-error";
+import {
+  noStoreHeaders,
+  safeJson,
+  sameOrigin,
+} from "../../../../../../lib/omniflow/request-security";
+
+
+async function requireAdminSession() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) {
+    return null;
+  }
+  return data.user;
+}
+
+export async function GET(request: Request) {
+  if (!sameOrigin(request)) {
+    return safeJson(
+      { error: { code: "forbidden", message: "Request origin was rejected." } },
+      403
+    );
+  }
+  const admin = await requireAdminSession();
+  if (!admin) {
+    return safeJson(
+      { error: { code: "unauthorized", message: "Admin sign in required." } },
+      401
+    );
+  }
+  const url = new URL(request.url);
+  const days = Number.parseInt(url.searchParams.get("days") ?? "7", 10);
+
+  try {
+    const payload = await getAdminAiOverview(Number.isFinite(days) ? days : 7);
+    return safeJson(payload, 200);
+  } catch (error) {
+    const bridge = adminBridgeError(error);
+    if (bridge) return bridge;
+    return safeJson(
+      {
+        error: {
+          code: "ai_overview_unavailable",
+          message: "Could not load the AI overview. Please try again.",
+        },
+      },
+      503
+    );
+  }
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: noStoreHeaders() });
+}

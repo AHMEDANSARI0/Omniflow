@@ -10,7 +10,7 @@ import type { AiIntelligenceContent } from "../../../../../lib/content-defaults"
 const initialState: ContentActionState = { success: false, message: "" };
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
@@ -34,7 +34,7 @@ export default function AiIntelligenceForm({
   return (
     <form action={formAction} className="space-y-6">
       {/* Section heading card */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Section heading</h2>
         <p className="mb-5 text-xs text-ink-3">
           Line 2 is shown with the gradient color.
@@ -97,7 +97,7 @@ export default function AiIntelligenceForm({
       </div>
 
       {/* Pillars */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">
           Intelligence pillars
         </h2>
@@ -109,7 +109,7 @@ export default function AiIntelligenceForm({
           {pillars.map((p) => (
             <div
               key={p.i}
-              className="rounded-xl border border-line bg-soft p-4"
+              className="rounded-xl border border-line bg-white shadow-card p-4"
             >
               <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-ink-3">
                 Pillar 0{p.i}
@@ -166,7 +166,7 @@ export default function AiIntelligenceForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-cyan-400 px-6 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

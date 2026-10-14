@@ -107,13 +107,13 @@ export default function BroadcastCalendarPage() {
             <h1 className="text-2xl font-semibold tracking-tight text-ink">
               Broadcast calendar
             </h1>
-            <p className="mt-1 text-sm text-ink-3">
+            <p className="mt-1 text-sm text-ink-2">
               Sent and scheduled broadcasts by day.
             </p>
           </div>
           <a
             href="/dashboard/broadcasts"
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
           >
             Back
           </a>
@@ -123,17 +123,17 @@ export default function BroadcastCalendarPage() {
           <button
             type="button"
             onClick={() => setMonth((current) => shiftMonth(current, -1))}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
-            \\u2190 Prev
+            {"\u2190"} Prev
           </button>
           <p className="text-sm font-medium text-ink">{monthTitle(month)}</p>
           <button
             type="button"
             onClick={() => setMonth((current) => shiftMonth(current, 1))}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
-            Next \\u2192
+            Next {"\u2192"}
           </button>
         </div>
 
@@ -142,7 +142,7 @@ export default function BroadcastCalendarPage() {
             The calendar is unavailable right now.
           </p>
         ) : data === null ? (
-          <p className="mt-6 text-sm text-ink-3">Loading\\u2026</p>
+          <p className="mt-6 text-sm text-ink-3">Loading{"\u2026"}</p>
         ) : (
           <>
             <div className="mt-4 grid grid-cols-7 gap-1 text-center">
@@ -160,7 +160,7 @@ export default function BroadcastCalendarPage() {
                 return (
                   <div
                     key={date}
-                    className="min-h-16 rounded-lg border border-line bg-white/[0.01] p-1"
+                    className="min-h-16 rounded-lg border border-line bg-white p-1"
                   >
                     <p className="text-[10px] text-ink-3">{dayNumber}</p>
                     {entry && entry.sent > 0 ? (
@@ -169,7 +169,7 @@ export default function BroadcastCalendarPage() {
                       </p>
                     ) : null}
                     {entry && entry.scheduled > 0 ? (
-                      <p className="mt-0.5 rounded bg-amber-400/10 px-0.5 text-[9px] text-amber-600">
+                      <p className="mt-0.5 rounded bg-amber-400/10 px-0.5 text-[9px] text-amber-700">
                         {entry.scheduled} queued
                       </p>
                     ) : null}
@@ -179,7 +179,7 @@ export default function BroadcastCalendarPage() {
             </div>
 
             {data.items.length > 0 ? (
-              <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+              <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
                 <p className="text-xs font-semibold text-ink">This month</p>
                 <ul className="mt-2 space-y-1.5">
                   {data.items.map((item) => (
@@ -195,10 +195,10 @@ export default function BroadcastCalendarPage() {
                       <span
                         className={
                           "shrink-0 " +
-                          (item.scheduled ? "text-amber-600" : "text-ok")
+                          (item.scheduled ? "text-amber-700" : "text-ok")
                         }
                       >
-                        {item.scheduled ? "queued" : "sent"} \\u00b7 {item.recipients}
+                        {item.scheduled ? "queued" : "sent"} {"\u00b7"} {item.recipients}
                       </span>
                     </li>
                   ))}

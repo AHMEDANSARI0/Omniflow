@@ -3,6 +3,7 @@
 import Link from "next/link";
 import CustomerMemoryCard from "./CustomerMemoryCard";
 import CustomerJourneyCard from "./CustomerJourneyCard";
+import CustomerIdentityCard from "./CustomerIdentityCard";
 import { useCallback, useEffect, useState } from "react";
 
 interface CustomerValueData {
@@ -79,15 +80,15 @@ function when(value: string | null): string {
 }
 
 const LEAD_STYLES: Record<string, string> = {
-  hot: "border-orange-400/25 bg-orange-400/[0.08] text-amber-600",
-  warm: "border-amber-400/20 bg-amber-400/[0.05] text-amber-200/80",
+  hot: "border-orange-400/25 bg-orange-400/[0.08] text-amber-700",
+  warm: "border-amber-400/20 bg-amber-400/[0.05] text-amber-800",
   cold: "border-line bg-soft text-ink-3",
 };
 
 const COD_STYLES: Record<string, string> = {
   confirmed: "text-ok",
   declined: "text-danger",
-  pending: "text-amber-600",
+  pending: "text-amber-700",
 };
 
 export default function ProfileClient({ contact }: { contact: string }) {
@@ -322,9 +323,9 @@ export default function ProfileClient({ contact }: { contact: string }) {
           href="/dashboard/customers"
           className="text-xs text-ink-3 transition hover:text-ink"
         >
-          \\u2190 Customers
+          {"\u2190"} Customers
         </Link>
-        <div className="mt-3 rounded-2xl border border-line bg-soft p-5">
+        <div className="mt-3 rounded-2xl border border-line bg-white shadow-card p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h1 className="truncate text-xl font-semibold text-ink">
@@ -349,7 +350,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                 href={`https://wa.me/${contact.replace(/[^0-9]/g, "")}`}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-ok transition hover:text-ok"
+                className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok transition hover:text-ok"
               >
                 WhatsApp
               </a>
@@ -357,13 +358,13 @@ export default function ProfileClient({ contact }: { contact: string }) {
           </div>
           {profile ? (
             <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+              <div className="rounded-xl border border-line bg-white p-2">
                 <p className="text-lg font-semibold text-ink">{profile.chats}</p>
                 <p className="text-[10px] uppercase tracking-wider text-ink-3">
                   Total chats
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+              <div className="rounded-xl border border-line bg-white p-2">
                 <p className="text-lg font-semibold text-ink">
                   {profile.openChats}
                 </p>
@@ -371,7 +372,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   Open now
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+              <div className="rounded-xl border border-line bg-white p-2">
                 <p className="truncate text-sm font-medium text-ink-2">
                   {when(profile.firstSeen)}
                 </p>
@@ -379,7 +380,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   First seen
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-white/[0.01] p-2">
+              <div className="rounded-xl border border-line bg-white p-2">
                 <p className="truncate text-sm font-medium text-ink-2">
                   {when(profile.lastSeen)}
                 </p>
@@ -409,7 +410,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   className={`rounded-md border px-1.5 py-0.5 ${
                     risk === "high"
                       ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
-                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
                   }`}
                 >
                   Risk: {risk}
@@ -421,7 +422,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   className={`rounded-md border px-1.5 py-0.5 ${
                     churn.tier === "at_risk"
                       ? "border-rose-400/25 bg-rose-400/[0.08] text-danger"
-                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
                   }`}
                 >
                   Churn: {churn.tier === "at_risk" ? "at risk" : "cooling"} (
@@ -446,9 +447,10 @@ export default function ProfileClient({ contact }: { contact: string }) {
 
         {contact ? <CustomerMemoryCard contact={contact} /> : null}
         {contact ? <CustomerJourneyCard contact={contact} /> : null}
+        {contact ? <CustomerIdentityCard contact={contact} /> : null}
 
         {profile && recos.length > 0 ? (
-          <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+          <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
             <p className="text-xs font-semibold text-ink">
               Recommended next
             </p>
@@ -459,14 +461,14 @@ export default function ProfileClient({ contact }: { contact: string }) {
               {recos.slice(0, 3).map((suggestion) => (
                 <li
                   key={suggestion.name}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm text-ink">
                       {suggestion.name}
                     </p>
                     {suggestion.reasons[0] ? (
-                      <p className="truncate text-[10px] text-brand/80">
+                      <p className="truncate text-[10px] text-brand">
                         {suggestion.reasons[0]}
                       </p>
                     ) : null}
@@ -483,7 +485,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
         ) : null}
 
         {profile && value ? (
-          <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+          <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-ink">
                 Lifetime value
@@ -533,7 +535,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
 
         {profile ? (
           <>
-            <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Conversations</p>
               {profile.conversations.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">No chats yet.</p>
@@ -544,10 +546,10 @@ export default function ProfileClient({ contact }: { contact: string }) {
                       <Link
                         prefetch={false}
                         href={"/dashboard/conversations/" + conversation.id}
-                        className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-soft"
+                        className="flex items-center justify-between gap-2 rounded-lg min-h-9 px-2 py-1.5 text-xs transition hover:bg-line/60"
                       >
                         <span className="text-ink-2">
-                          #{conversation.id} \\u00b7 {conversation.channel}
+                          #{conversation.id} {"\u00b7"} {conversation.channel}
                         </span>
                         <span
                           className={
@@ -556,7 +558,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                               : "text-ink-3"
                           }
                         >
-                          {conversation.status} \\u00b7{" "}
+                          {conversation.status} {"\u00b7"}{" "}
                           {when(conversation.lastMessageAt)}
                         </span>
                       </Link>
@@ -566,7 +568,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">COD orders</p>
               {profile.codRequests.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">No COD asks yet.</p>
@@ -579,7 +581,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                     >
                       <span className="text-ink-2">Order #{order.id}</span>
                       <span className={COD_STYLES[order.status] ?? "text-ink-3"}>
-                        {order.status} \\u00b7 {when(order.createdAt)}
+                        {order.status} {"\u00b7"} {when(order.createdAt)}
                       </span>
                     </li>
                   ))}
@@ -587,7 +589,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Series</p>
               {profile.sequences.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">
@@ -602,7 +604,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
                     >
                       <span className="truncate text-ink-2">{series.name}</span>
                       <span className="shrink-0 text-ink-3">
-                        {series.status} \\u00b7 step {series.currentStep + 1} \\u00b7{" "}
+                        {series.status} {"\u00b7"} step {series.currentStep + 1} {"\u00b7"}{" "}
                         {when(series.enrolledAt)}
                       </span>
                     </li>
@@ -611,7 +613,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Action requests</p>
               {profile.actions.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">
@@ -634,10 +636,10 @@ export default function ProfileClient({ contact }: { contact: string }) {
                             ? "shrink-0 text-ok"
                             : action.status === "declined"
                               ? "shrink-0 text-danger"
-                              : "shrink-0 text-amber-600"
+                              : "shrink-0 text-amber-700"
                         }
                       >
-                        {action.status} \u00b7 {when(action.createdAt)}
+                        {action.status} {"\u00b7"} {when(action.createdAt)}
                       </span>
                     </li>
                   ))}
@@ -645,7 +647,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
               )}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Notes</p>
               {profile.notes.length === 0 ? (
                 <p className="mt-2 text-xs text-ink-3">No notes yet.</p>
@@ -654,11 +656,11 @@ export default function ProfileClient({ contact }: { contact: string }) {
                   {profile.notes.map((note, index) => (
                     <li
                       key={index}
-                      className="rounded-lg border border-line bg-white/[0.01] p-2.5"
+                      className="rounded-lg border border-line bg-white p-2.5"
                     >
                       <p className="text-xs text-ink-2">{note.body}</p>
                       <p className="mt-1 text-[10px] text-ink-3">
-                        {note.authorEmail} \\u00b7 {when(note.createdAt)}
+                        {note.authorEmail} {"\u00b7"} {when(note.createdAt)}
                       </p>
                     </li>
                   ))}
@@ -667,7 +669,7 @@ export default function ProfileClient({ contact }: { contact: string }) {
             </section>
           </>
         ) : (
-          <p className="mt-4 text-sm text-ink-3">Loading\\u2026</p>
+          <p className="mt-4 text-sm text-ink-3">Loading{"\u2026"}</p>
         )}
       </div>
     </main>

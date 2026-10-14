@@ -1,3 +1,4 @@
+import { Image as ImageIcon } from "lucide-react";
 import {
   getPublicStore,
 } from "../../../lib/omniflow/portal";
@@ -26,7 +27,7 @@ export default async function PublicStorePage({
 
   return (
     <main className="mx-auto max-w-md px-6 py-12">
-      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
         {store.brand.name} · store
       </p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
@@ -52,8 +53,8 @@ export default async function PublicStorePage({
                     className="h-16 w-16 shrink-0 rounded-xl border border-line object-cover"
                   />
                 ) : (
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-line bg-soft text-lg text-ink-3">
-                    ◇
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-line bg-soft text-ink-3">
+                    <ImageIcon className="h-6 w-6" aria-hidden />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">

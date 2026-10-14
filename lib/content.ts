@@ -1,46 +1,38 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import "server-only";
+import { unstable_cache } from "next/cache";
+import { from } from "@/lib/db/neon";
 
 /**
- * Generic, cached content reader for the marketing site.
- * Each website section stores its editable text as a JSON row in
- * `site_content` (keyed by section name).
- *
- * - Values from the DB are merged over code-level fallbacks, so the
- *   website never breaks if the DB is unreachable or a field is missing.
- * - Reads are cached and tagged; admin save actions revalidate the tag
- *   so edits go live instantly.
+ * §276 — Section content reader, now backed by NEON (was Supabase).
+ * Reads editable marketing sections from `site_content` (JSONB `data`),
+ * merged over the in-file fallback. Cached (tag `site-content`) and
+ * fail-soft: any error returns the fallback so the public site never breaks.
  */
-export async function getSectionContent<T extends Record<string, unknown>>(
+
+export function defaultSectionContent<T extends object>(fallback: T): T {
+  return fallback;
+}
+
+export async function getSectionContent<T extends object>(
   section: string,
   fallback: T
 ): Promise<T> {
   try {
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: { persistSession: false },
-        global: {
-          fetch: (url, init) =>
-            fetch(url, {
-              ...init,
-              next: { revalidate: 300, tags: ["site-content"] },
-            }),
-        },
-      }
+    // `section` is part of the cache key so each section caches independently.
+    const load = unstable_cache(
+      async (sec: string) => {
+        const { data, error } = await from("site_content")
+          .select("data")
+          .eq("section", sec)
+          .maybeSingle();
+        if (error || !data) return null;
+        return (data.data as Record<string, unknown> | null) ?? null;
+      },
+      ["site-content", section],
+      { tags: ["site-content"], revalidate: 300 }
     );
-
-    const { data, error } = await supabase
-      .from("site_content")
-      .select("data")
-      .eq("section", section)
-      .single();
-
-    if (error || !data?.data) {
-      return fallback;
-    }
-
-    return { ...fallback, ...(data.data as Partial<T>) };
+    const dbData = await load(section);
+    return dbData ? { ...fallback, ...(dbData as Partial<T>) } : fallback;
   } catch {
     return fallback;
   }

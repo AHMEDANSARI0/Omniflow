@@ -54,7 +54,7 @@ export default function PerfCard() {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold text-ink">Performance</p>
         <div className="flex items-center gap-2">
@@ -64,7 +64,7 @@ export default function PerfCard() {
                 "rounded-full border px-2.5 py-1 text-[11px] " +
                 (report.ok
                   ? "border-emerald-400/30 bg-emerald-400/[0.08] text-ok"
-                  : "border-amber-400/30 bg-amber-400/[0.08] text-amber-200")
+                  : "border-amber-400/30 bg-amber-400/[0.08] text-amber-800")
               }
             >
               {report.ok ? "Indexes healthy" : "Index missing"}
@@ -86,7 +86,7 @@ export default function PerfCard() {
 
       {report ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-line bg-soft p-2.5">
+          <div className="rounded-xl border border-line bg-white shadow-card p-2.5">
             <p className="text-[11px] text-ink-3">Conversations</p>
             <p className="text-sm text-ink">
               {report.counts.conversations}
@@ -95,7 +95,7 @@ export default function PerfCard() {
               recent 10: {ms(report.timings_ms.recent_conversations)}
             </p>
           </div>
-          <div className="rounded-xl border border-line bg-soft p-2.5">
+          <div className="rounded-xl border border-line bg-white shadow-card p-2.5">
             <p className="text-[11px] text-ink-3">Messages</p>
             <p className="text-sm text-ink">
               {report.counts.messages}
@@ -104,7 +104,7 @@ export default function PerfCard() {
               recent 20: {ms(report.timings_ms.recent_messages)}
             </p>
           </div>
-          <div className="rounded-xl border border-line bg-soft p-2.5">
+          <div className="rounded-xl border border-line bg-white shadow-card p-2.5">
             <p className="text-[11px] text-ink-3">Open orders</p>
             <p className="text-sm text-ink">
               {report.counts.checkout_links}
@@ -118,7 +118,7 @@ export default function PerfCard() {
         <p className="mt-2 text-[11px] text-ink-3">Loading...</p>
       )}
       {report && !report.ok ? (
-        <p className="mt-2 text-[11px] text-amber-600">
+        <p className="mt-2 text-[11px] text-amber-700">
           Missing: {report.missing_hot_indexes.join(", ")} - the CP
           creates them automatically; try Refresh after a restart.
         </p>

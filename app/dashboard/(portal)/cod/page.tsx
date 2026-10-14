@@ -22,7 +22,7 @@ interface CodRow {
 const FILTERS = ["all", "pending", "confirmed", "declined"] as const;
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "border-amber-400/25 bg-amber-400/[0.07] text-amber-600",
+  pending: "border-amber-400/25 bg-amber-400/[0.07] text-amber-700",
   confirmed: "border-emerald-400/25 bg-emerald-400/[0.07] text-ok",
   declined: "border-rose-400/25 bg-rose-400/[0.07] text-danger",
 };
@@ -143,11 +143,11 @@ export default function CodPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">COD confirmations</h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Hot leads get one confirmation ask automatically; their YES or NO reply is
             recorded here so delivered orders (and returns) stay visible.
           </p>
@@ -157,12 +157,12 @@ export default function CodPage() {
         <AddressCard />
 
         {loadError ? (
-          <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm text-amber-600">
+          <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm text-amber-700">
             COD confirmations are unavailable right now.
           </p>
         ) : null}
 
-        <div className="mb-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="mb-6 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
           <label className="flex cursor-pointer items-center justify-between gap-3">
             <span>
               <span className="block text-sm font-medium text-ink">Ask for confirmation</span>
@@ -174,7 +174,7 @@ export default function CodPage() {
               type="checkbox"
               checked={enabled}
               onChange={(event) => setEnabled(event.target.checked)}
-              className="h-5 w-5 shrink-0 accent-cyan-400"
+              className="h-5 w-5 shrink-0 accent-brand"
             />
           </label>
 
@@ -195,7 +195,7 @@ export default function CodPage() {
               type="button"
               onClick={() => void save()}
               disabled={busy || loading}
-              className="rounded-xl bg-cyan-400/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-cyan-400/25 disabled:opacity-50"
+              className="rounded-xl bg-brand/15 px-4 py-2 text-sm font-medium text-brand transition hover:bg-brand/25 disabled:opacity-50"
             >
               {busy ? "Saving\u2026" : "Save settings"}
             </button>
@@ -211,9 +211,9 @@ export default function CodPage() {
               aria-pressed={filter === option}
               onClick={() => setFilter(option)}
               className={
-                "rounded-full px-3 py-1 text-xs font-medium capitalize transition " +
+                "rounded-full inline-flex min-h-9 items-center px-3 py-1 text-xs font-medium capitalize transition " +
                 (filter === option
-                  ? "bg-cyan-400/15 text-brand"
+                  ? "bg-brand/15 text-brand"
                   : "text-ink-3 hover:text-ink")
               }
             >
@@ -223,7 +223,7 @@ export default function CodPage() {
         </div>
 
         {requests.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-soft px-5 py-8 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-8 text-center">
             <p className="text-sm text-ink-3">No COD requests in this view yet.</p>
             <p className="mt-1 text-xs text-ink-3">
               Turn the ask on above; hot leads will be asked on their next message.
@@ -234,7 +234,7 @@ export default function CodPage() {
             {requests.map((row) => (
               <li
                 key={row.id}
-                className="flex flex-col gap-2 rounded-2xl border border-line bg-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-2xl border border-line bg-white shadow-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-ink">

@@ -22,10 +22,10 @@ const ACCENT_PRESETS = [
 ];
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 
 export default function WidgetSettingsCard() {
   const [settings, setSettings] = useState<WidgetSettings | null>(null);
@@ -121,7 +121,7 @@ export default function WidgetSettingsCard() {
 
   if (!loaded && !loadError) {
     return (
-      <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
         <div className="h-4 w-40 animate-pulse rounded bg-soft" />
         <div className="mt-3 h-10 animate-pulse rounded bg-soft" />
       </div>
@@ -130,7 +130,7 @@ export default function WidgetSettingsCard() {
 
   if (loadError || !settings) {
     return (
-      <div className="rounded-2xl border border-line bg-soft px-5 py-6 text-center">
+      <div className="rounded-2xl border border-line bg-white shadow-card px-5 py-6 text-center">
         <p className="text-sm text-ink-2">
           The widget control is rolling out on the server — try again in a
           couple of minutes.
@@ -140,7 +140,7 @@ export default function WidgetSettingsCard() {
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export default function WidgetSettingsCard() {
                     "h-8 w-8 rounded-full border-2 transition-transform duration-150 " +
                     (settings.accent.toLowerCase() === preset
                       ? "scale-110 border-white"
-                      : "border-white/20 hover:scale-105")
+                      : "border-line hover:scale-105")
                   }
                   style={{ backgroundColor: preset }}
                 />

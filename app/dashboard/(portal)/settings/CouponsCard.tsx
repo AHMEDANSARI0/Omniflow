@@ -150,7 +150,7 @@ export default function CouponsCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-5">
       <h2 className="text-sm font-semibold text-ink">Coupon codes</h2>
       <p className="mt-1 text-xs text-ink-3">
         Discount codes your customers apply on the order page. Percent codes
@@ -210,13 +210,13 @@ export default function CouponsCard() {
           type="button"
           onClick={() => void create()}
           disabled={busy}
-          className="rounded-xl bg-cyan-400 px-4 py-2 text-xs font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           Create coupon
         </button>
       </div>
 
-      {note ? <p className="mt-2 text-[11px] text-amber-600">{note}</p> : null}
+      {note ? <p className="mt-2 text-[11px] text-amber-700">{note}</p> : null}
 
       <div className="mt-4">
         {loaded && rows.length === 0 ? (
@@ -229,7 +229,7 @@ export default function CouponsCard() {
             {rows.map((row) => (
               <li
                 key={row.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <div className="min-w-0">
                   <p className="truncate text-xs text-ink">
@@ -257,7 +257,7 @@ export default function CouponsCard() {
                     type="button"
                     onClick={() => void setActive(row, !row.isActive)}
                     disabled={busy}
-                    className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-2 hover:bg-white/[0.06] disabled:opacity-50"
+                    className="rounded-lg border border-line px-2 py-1 text-[10px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
                   >
                     {row.isActive ? "Pause" : "Resume"}
                   </button>

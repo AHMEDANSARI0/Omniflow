@@ -28,7 +28,7 @@ export default function PortalError({
         ) : null}
         <button
           onClick={reset}
-          className="mt-4 rounded-lg border border-brand/25 bg-brand-soft px-4 py-2 text-xs text-brand hover:bg-brand-soft"
+          className="mt-4 rounded-lg border border-brand/25 bg-brand-soft px-4 py-2 text-xs text-brand hover:bg-brand/[0.12]"
         >
           Try again
         </button>

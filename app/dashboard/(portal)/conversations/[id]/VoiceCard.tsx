@@ -12,8 +12,30 @@ interface VoiceCall {
   direction: "inbound" | "outbound";
   hasRecording: boolean;
   durationSeconds: number;
+  aiTurns?: number;
+  outcome?: string;
   createdAt: string | null;
 }
+
+interface TranscriptTurn {
+  role: string;
+  text: string;
+}
+
+const OUTCOME_LABELS: Record<string, string> = {
+  ai: "Answered by assistant",
+  handoff: "Handed to team",
+  turn_limit: "Reply limit reached",
+  no_speech: "Caller silent",
+  voicemail: "Voicemail",
+  transfer_missed: "Transfer missed",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  caller: "Caller",
+  assistant: "Assistant",
+  system: "Note",
+};
 
 function durationLabel(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -27,6 +49,29 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null);
   const [calls, setCalls] = useState<VoiceCall[]>([]);
+  const [openSid, setOpenSid] = useState("");
+  const [transcript, setTranscript] = useState<TranscriptTurn[] | null>(null);
+
+  async function toggleTranscript(sid: string) {
+    if (openSid === sid) {
+      setOpenSid("");
+      return;
+    }
+    setOpenSid(sid);
+    setTranscript(null);
+    try {
+      const response = await fetch(
+        "/api/omniflow/portal/voice/calls/" + encodeURIComponent(sid) + "/transcript",
+        { cache: "no-store" }
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        turns?: TranscriptTurn[];
+      } | null;
+      setTranscript(response.ok && payload?.turns ? payload.turns : []);
+    } catch {
+      setTranscript([]);
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -96,10 +141,10 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
   }
 
   return (
-    <section className="of-fade-up rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+    <section className="of-fade-up rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-white">Call the customer</p>
-        <span className="text-[10px] text-slate-500">Twilio voice</span>
+        <p className="text-xs font-semibold text-ink">Call the customer</p>
+        <span className="text-[10px] text-ink-3">Twilio voice</span>
       </div>
       <div className="mt-3 space-y-2">
         <input
@@ -107,7 +152,7 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
           onChange={(event) => setPhone(event.target.value)}
           placeholder="+923001234567"
           autoComplete="off"
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40 focus:outline-none"
+          className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
         />
         <textarea
           value={message}
@@ -115,20 +160,20 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
           placeholder="What should the call say? (reads aloud, max 300 chars)"
           rows={2}
           maxLength={300}
-          className="w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40 focus:outline-none"
+          className="w-full resize-none rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
         />
         <div className="flex items-center gap-2">
           <button
             onClick={() => void call()}
             disabled={busy}
-            className="rounded-xl border border-cyan-400/30 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-400/[0.14] disabled:opacity-50"
+            className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
           >
             {busy ? "Dialling…" : "Place call"}
           </button>
           {note ? (
             <span
               className={
-                "text-[11px] " + (note.ok ? "text-emerald-300" : "text-rose-300")
+                "text-[11px] " + (note.ok ? "text-ok" : "text-danger")
               }
             >
               {note.text}
@@ -141,26 +186,63 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
           {calls.map((entry) => (
             <li
               key={entry.id}
-              className="rounded-lg border border-white/[0.05] bg-white/[0.015] px-2.5 py-1.5 text-[11px]"
+              className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-[11px]"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-slate-300">{entry.phone}</span>
+                <span className="truncate text-ink-2">{entry.phone}</span>
                 <span className="flex shrink-0 items-center gap-1">
                   <span
                     className={
                       "rounded-md border px-1.5 py-0.5 text-[10px] " +
                       (entry.direction === "inbound"
-                        ? "border-cyan-400/25 bg-cyan-400/[0.06] text-cyan-200"
-                        : "border-white/[0.08] bg-white/[0.02] text-slate-400")
+                        ? "border-brand/25 bg-brand-soft text-brand"
+                        : "border-line bg-soft text-ink-3")
                     }
                   >
                     {entry.direction === "inbound" ? "In" : "Out"}
                   </span>
-                  <span className="rounded-md border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[10px] text-slate-400">
+                  {entry.aiTurns ? (
+                    <span className="rounded-md border border-brand/25 bg-brand-soft px-1.5 py-0.5 text-[10px] text-brand">
+                      AI
+                    </span>
+                  ) : null}
+                  <span className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-3">
                     {entry.status}
                   </span>
                 </span>
               </div>
+              {entry.direction === "inbound" && (entry.aiTurns || entry.outcome) ? (
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-ink-3">
+                    {OUTCOME_LABELS[entry.outcome || ""] || "Phone assistant"}
+                    {entry.aiTurns ? " · " + entry.aiTurns + " replies" : ""}
+                  </span>
+                  <button
+                    onClick={() => void toggleTranscript(entry.sid)}
+                    className="text-[10px] font-medium text-brand"
+                  >
+                    {openSid === entry.sid ? "Hide transcript" : "Transcript"}
+                  </button>
+                </div>
+              ) : null}
+              {openSid === entry.sid ? (
+                <div className="mt-1.5 space-y-1 rounded-md border border-line bg-white p-2">
+                  {transcript === null ? (
+                    <p className="text-[10px] text-ink-3">Loading…</p>
+                  ) : transcript.length === 0 ? (
+                    <p className="text-[10px] text-ink-3">No transcript for this call.</p>
+                  ) : (
+                    transcript.map((turn, index) => (
+                      <p key={index} className="text-[10px] text-ink-2">
+                        <span className="font-medium text-ink">
+                          {ROLE_LABELS[turn.role] || turn.role}:
+                        </span>{" "}
+                        {turn.text}
+                      </p>
+                    ))
+                  )}
+                </div>
+              ) : null}
               {entry.hasRecording ? (
                 <div className="mt-1.5 flex items-center gap-2">
                   <audio
@@ -169,7 +251,7 @@ export default function VoiceCard({ conversationId }: { conversationId: number }
                     className="h-7 w-full"
                     src={"/api/omniflow/portal/voice/recordings/" + entry.sid}
                   />
-                  <span className="shrink-0 text-[10px] text-slate-500">
+                  <span className="shrink-0 text-[10px] text-ink-3">
                     {durationLabel(entry.durationSeconds)}
                   </span>
                 </div>

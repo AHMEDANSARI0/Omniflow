@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import PortalIcon from "./PortalIcon";
 
 interface PortalAlert {
   id: number;
@@ -35,6 +36,24 @@ export default function AlertsBell() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [alertsOn, setAlertsOn] = useState(true);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // §257: the dropdown closes on outside click and Escape, like the palette.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   const load = useCallback(async () => {
     try {
@@ -93,21 +112,23 @@ export default function AlertsBell() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         onClick={() => setOpen(!open)}
         aria-label="Alerts"
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-soft hover:text-ink"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-ink-3 transition-colors duration-200 hover:bg-line/50 hover:text-ink"
       >
-        <span aria-hidden>(&#8977;)</span>
+        <PortalIcon name="bell" className="h-[18px] w-[18px]" />
         {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold text-ink">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-semibold text-white">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
       </button>
       {open ? (
-        <div className="absolute bottom-10 right-0 z-50 w-80 rounded-2xl border border-line bg-white p-3 shadow-2xl">
+        <div className="absolute right-0 top-11 z-50 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-line bg-white p-3 shadow-2xl">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-ink">Alerts</p>
             <div className="flex gap-2 text-[10px]">
@@ -130,7 +151,7 @@ export default function AlertsBell() {
           <div className="mt-2 max-h-72 space-y-1.5 overflow-y-auto">
             {alerts.length === 0 ? (
               <p className="rounded-xl border border-line px-3 py-4 text-center text-[11px] text-ink-3">
-                All clear — no failure alerts.
+                All clear — nothing needs you right now.
               </p>
             ) : (
               alerts.map((alert) => (
@@ -147,6 +168,8 @@ export default function AlertsBell() {
                     <p className="min-w-0 truncate text-xs text-ink">
                       {alert.severity === "revenue" ? (
                         <span className="mr-1 text-danger">&#9679;</span>
+                      ) : alert.severity === "high" ? (
+                        <span className="mr-1 text-amber-700">&#9679;</span>
                       ) : null}
                       {alert.title}
                     </p>

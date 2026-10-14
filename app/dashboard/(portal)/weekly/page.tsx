@@ -83,13 +83,13 @@ export default function WeeklyPage() {
   return (
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
           Workspace
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Weekly summary
         </h1>
-        <p className="mt-1.5 text-sm text-ink-3">
+        <p className="mt-1.5 text-sm text-ink-2">
           The last 7 days at a glance — chats, messages, orders and ratings.
         </p>
 
@@ -98,7 +98,7 @@ export default function WeeklyPage() {
             The summary is unavailable right now.
           </p>
         ) : summary === null ? (
-          <p className="mt-6 text-sm text-ink-3">Loading\\u2026</p>
+          <p className="mt-6 text-sm text-ink-3">Loading{"\u2026"}</p>
         ) : (
           <>
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -117,7 +117,7 @@ export default function WeeklyPage() {
               ].map((tile) => (
                 <div
                   key={tile.label}
-                  className="rounded-2xl border border-line bg-soft p-3 text-center"
+                  className="rounded-2xl border border-line bg-white shadow-card p-3 text-center"
                 >
                   <p className="text-xl font-semibold text-ink">{tile.value}</p>
                   <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-3">
@@ -127,7 +127,7 @@ export default function WeeklyPage() {
               ))}
             </div>
 
-            <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+            <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
               <p className="text-xs font-semibold text-ink">Day by day</p>
               <ul className="mt-3 space-y-2">
                 {summary.days.map((day) => (
@@ -138,7 +138,7 @@ export default function WeeklyPage() {
                     <span className="flex-1">
                       <span className="flex h-2 items-center gap-0.5">
                         <span
-                          className="h-2 rounded-l bg-cyan-400/70"
+                          className="h-2 rounded-l bg-brand/70"
                           style={{
                             width: Math.round((day.inbound / peak) * 70) + "%",
                           }}
@@ -152,7 +152,7 @@ export default function WeeklyPage() {
                       </span>
                     </span>
                     <span className="w-24 shrink-0 text-right text-[11px] text-ink-3">
-                      {day.inbound} in \\u00b7 {day.chats} chats
+                      {day.inbound} in {"\u00b7"} {day.chats} chats
                     </span>
                   </li>
                 ))}

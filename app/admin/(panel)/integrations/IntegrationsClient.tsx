@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import VoiceNumbersPanel from "./VoiceNumbersPanel";
 
 type GroupKey =
   | "email"
@@ -9,7 +10,11 @@ type GroupKey =
   | "voice"
   | "video"
   | "payments"
-  | "whatsapp_e2e";
+  | "whatsapp_e2e"
+  | "stt"
+  | "embeddings"
+  | "vision"
+  | "assistant";
 
 type Field = {
   key: string;
@@ -70,7 +75,152 @@ const GROUPS: GroupDef[] = [
       { key: "base_url", label: "Base URL", placeholder: "https://api.openai.com/v1" },
       { key: "api_key", label: "API key", secret: true },
       { key: "model", label: "Model", placeholder: "gpt-4o-mini" },
+      {
+        key: "prices_json",
+        label: "Model prices (JSON, USD per 1M tokens)",
+        placeholder: '{"gpt-4o-mini": {"input": 0.15, "output": 0.6}, "default": {"input": 1, "output": 2}}',
+        hint: "Used by the AI operations card to estimate spend. Leave blank to show tokens only.",
+      },
     ],
+  },
+  {
+    id: "stt",
+    title: "Speech-to-Text (voice notes)",
+    description:
+      "Transcribes customer voice notes (Telegram and any bridge that forwards audio) before the assistant reads them, and powers the media library transcribe button. Works with any OpenAI-compatible endpoint (OpenAI Whisper, Groq). Saving takes effect immediately - no redeploy needed.",
+    fields: [
+      {
+        key: "mode",
+        label: "Customer voice notes",
+        placeholder: "on",
+        hint: "on or off. Off stops automatic transcription of customer voice notes (the media library button keeps working).",
+      },
+      { key: "api_key", label: "API key", secret: true },
+      { key: "base_url", label: "Base URL", placeholder: "https://api.openai.com/v1" },
+      { key: "model", label: "Model", placeholder: "whisper-1" },
+    ],
+    note:
+      "Workspaces can switch this off for themselves under Settings > Voice and images. Every transcription goes through the AI kill switch and daily cap and is billed to the Voice note transcription line in AI usage.",
+  },
+  {
+    id: "vision",
+    title: "Image understanding (customer photos)",
+    description:
+      "Describes pictures customers send (product photos, payment screenshots, damage) so the assistant can answer them. Uses any OpenAI-compatible model that reads images. Leave the key, base URL and model blank to reuse the AI engine above (Gemini Flash and GPT-4o-mini both read images).",
+    fields: [
+      {
+        key: "mode",
+        label: "Mode",
+        placeholder: "on",
+        hint: "on or off.",
+      },
+      {
+        key: "api_key",
+        label: "API key",
+        secret: true,
+        hint: "Blank = reuse the AI engine key.",
+      },
+      {
+        key: "base_url",
+        label: "Base URL",
+        placeholder: "https://api.openai.com/v1",
+        hint: "Set this together with a separate key. Blank = the AI engine base URL.",
+      },
+      {
+        key: "model",
+        label: "Model",
+        placeholder: "gpt-4o-mini",
+        hint: "Blank = the AI engine model.",
+      },
+    ],
+    note:
+      "Text inside images is treated as customer data, never as instructions. Every call goes through the AI kill switch and daily cap and is billed to the Image understanding line in AI usage.",
+  },
+  {
+    id: "assistant",
+    title: "Ask OmniFlow AI (owner assistant)",
+    description:
+      "The chat assistant inside every workspace dashboard: owners ask about their business and ask for setup changes. Platform-billed. Use any OpenAI-compatible chat model with JSON output. Leave the key, base URL and model blank to reuse the AI engine above.",
+    fields: [
+      {
+        key: "mode",
+        label: "Mode",
+        placeholder: "on",
+        hint: "on or off. Off hides answers for every workspace (the page shows that it is switched off).",
+      },
+      {
+        key: "api_key",
+        label: "API key",
+        secret: true,
+        hint: "Blank = reuse the AI engine key.",
+      },
+      {
+        key: "base_url",
+        label: "Base URL",
+        placeholder: "https://api.openai.com/v1",
+        hint: "Set this together with a separate key. Blank = the AI engine base URL.",
+      },
+      {
+        key: "model",
+        label: "Model",
+        placeholder: "gpt-4o-mini",
+        hint: "Blank = the AI engine model.",
+      },
+      {
+        key: "daily_limit",
+        label: "Questions per workspace per day",
+        placeholder: "100",
+        hint: "Whole number. 0 = unlimited. Blank = 100.",
+      },
+    ],
+    note:
+      "One question can make a few model calls (lookups first, then the answer). Every call goes through the AI kill switch and daily cap and is billed to the Ask OmniFlow AI line in AI usage. Customer and website text is treated as data, never as instructions.",
+  },
+  {
+    id: "embeddings",
+    title: "Knowledge semantic search (embeddings)",
+    description:
+      "Lets the assistant find knowledge by meaning, not only by exact words. Works with any OpenAI-compatible /embeddings endpoint. Leave the key and base URL blank to reuse the AI engine above. Saving takes effect immediately - no redeploy needed.",
+    fields: [
+      {
+        key: "mode",
+        label: "Mode",
+        placeholder: "on",
+        hint: "on or off. Off keeps keyword-only retrieval.",
+      },
+      {
+        key: "api_key",
+        label: "API key",
+        secret: true,
+        hint: "Blank = reuse the AI engine key.",
+      },
+      {
+        key: "base_url",
+        label: "Base URL",
+        placeholder: "https://api.openai.com/v1",
+        hint: "Blank = reuse the AI engine base URL.",
+      },
+      {
+        key: "model",
+        label: "Model",
+        placeholder: "text-embedding-3-small",
+        hint: "Blank = gemini-embedding-001 on Gemini, text-embedding-3-small elsewhere.",
+      },
+      {
+        key: "dimensions",
+        label: "Dimensions",
+        placeholder: "256",
+        hint: "0 = provider default. Changing model or dimensions rebuilds the index automatically.",
+      },
+      {
+        key: "min_similarity",
+        label: "Minimum similarity (%)",
+        placeholder: "30",
+        hint: "Blank = 60 for Gemini models, 30 for others. Raise it if unrelated sections show up.",
+      },
+    ],
+    note:
+      "Workspaces see index progress under Knowledge base. Every embedding call goes through the AI kill switch and daily cap, and is billed to the Knowledge semantic index line in AI usage.",
   },
   {
     id: "flags",
@@ -104,9 +254,33 @@ const GROUPS: GroupDef[] = [
       { key: "account_sid", label: "Account SID" },
       { key: "auth_token", label: "Auth token", secret: true },
       { key: "from_number", label: "From number", placeholder: "+92300..." },
+      {
+        key: "greeting",
+        label: "Voicemail greeting",
+        placeholder: "Thanks for calling. Please leave your message after the tone.",
+        hint: "Played to callers when no workspace assistant answers. 200 characters max.",
+      },
+      {
+        key: "ai_loop",
+        label: "Phone assistant",
+        placeholder: "on",
+        hint: "on or off. Off sends every call to voicemail (platform-wide pause).",
+      },
+      {
+        key: "signature_check",
+        label: "Twilio signature check",
+        placeholder: "enforce",
+        hint: "enforce, log or off. Enforce rejects webhook calls not signed with the auth token above.",
+      },
+      {
+        key: "webhook_base",
+        label: "Webhook address",
+        placeholder: "https://control-plane.example.com",
+        hint: "Public https address of the Control Plane that Twilio calls. Used by Connect below and by the signature check. Leave empty to use the server setting.",
+      },
     ],
     note:
-      "The conversation Call button dials through Twilio with these keys.",
+      "The conversation Call button dials through Twilio with these keys. For inbound calls, press Connect on a number under Phone numbers below (it sets the number's Voice URL and status callback in Twilio), then assign the number to a workspace.",
   },
   {
     id: "video",
@@ -159,6 +333,7 @@ export default function IntegrationsClient() {
   const [values, setValues] = useState<Values>({});
   const [configured, setConfigured] = useState<Configured>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [busyGroup, setBusyGroup] = useState<string>("");
   const [notice, setNotice] = useState<{ group: string; text: string; ok: boolean } | null>(
     null
@@ -166,11 +341,18 @@ export default function IntegrationsClient() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const response = await fetch("/api/omniflow/admin/providers", {
         cache: "no-store",
       });
       const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || !payload.groups) {
+        // §245: say why (e.g. a rejected service key) instead of showing empty forms.
+        setLoadError(
+          payload?.error?.message || "Could not load the saved integration settings."
+        );
+      }
       if (response.ok && payload && payload.groups) {
         const next: Values = {};
         const nextConfigured: Configured = {};
@@ -187,7 +369,7 @@ export default function IntegrationsClient() {
         setConfigured(nextConfigured);
       }
     } catch {
-      // keep whatever is on screen
+      setLoadError("Could not reach the server - check your connection and retry.");
     } finally {
       setLoading(false);
     }
@@ -281,8 +463,23 @@ export default function IntegrationsClient() {
   return (
     <div className="space-y-6">
       {loading ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 text-sm text-slate-400">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6 text-sm text-ink-3">
           Loading integration settings…
+        </div>
+      ) : null}
+      {loadError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-400/20 bg-red-400/[0.06] p-4 text-sm text-danger"
+        >
+          <span>{loadError} Saved values are not shown, so saving now may fail.</span>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-line/60"
+          >
+            Retry
+          </button>
         </div>
       ) : null}
       {GROUPS.map((def) => {
@@ -291,28 +488,28 @@ export default function IntegrationsClient() {
         return (
           <div
             key={def.id}
-            className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6"
+            className="rounded-2xl border border-line bg-white shadow-card p-6"
           >
             <div className="mb-1 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-white">{def.title}</h2>
+              <h2 className="text-sm font-semibold text-ink">{def.title}</h2>
               <span
                 className={
                   "rounded-md border px-2 py-0.5 text-[10px] " +
                   (isOn
-                    ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
-                    : "border-white/[0.08] bg-white/[0.02] text-slate-400")
+                    ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                    : "border-line bg-soft text-ink-3")
                 }
               >
                 {isOn ? "Saved" : "Not set"}
               </span>
             </div>
-            <p className="mb-5 text-xs text-slate-500">{def.description}</p>
+            <p className="mb-5 text-xs text-ink-3">{def.description}</p>
 
             {(def.fields || []).length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {(def.fields || []).map((field) => (
                   <label key={field.key} className="block">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-300">
+                    <span className="mb-1 block text-[11px] font-medium text-ink-2">
                       {field.label}
                     </span>
                     <input
@@ -323,10 +520,10 @@ export default function IntegrationsClient() {
                       }
                       placeholder={field.placeholder}
                       autoComplete="off"
-                      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40 focus:outline-none"
+                      className="w-full rounded-xl border border-line bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-brand/40 focus:outline-none"
                     />
                     {field.hint ? (
-                      <span className="mt-1 block text-[10px] text-slate-500">
+                      <span className="mt-1 block text-[10px] text-ink-3">
                         {field.hint}
                       </span>
                     ) : null}
@@ -340,7 +537,7 @@ export default function IntegrationsClient() {
                 {def.toggles.map((toggle) => (
                   <label
                     key={toggle.key}
-                    className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3"
+                    className="flex items-start gap-3 rounded-xl border border-line bg-white shadow-card px-4 py-3"
                   >
                     <input
                       type="checkbox"
@@ -352,13 +549,13 @@ export default function IntegrationsClient() {
                           event.target.checked ? "on" : "off"
                         )
                       }
-                      className="mt-0.5 h-4 w-4 accent-cyan-400"
+                      className="mt-0.5 h-4 w-4 accent-brand"
                     />
                     <span>
-                      <span className="block text-sm text-slate-200">
+                      <span className="block text-sm text-ink">
                         {toggle.label}
                       </span>
-                      <span className="block text-[11px] text-slate-500">
+                      <span className="block text-[11px] text-ink-3">
                         {toggle.hint}
                       </span>
                     </span>
@@ -368,14 +565,14 @@ export default function IntegrationsClient() {
             ) : null}
 
             {def.note ? (
-              <p className="mt-4 text-[11px] text-slate-500">{def.note}</p>
+              <p className="mt-4 text-[11px] text-ink-3">{def.note}</p>
             ) : null}
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <button
                 onClick={() => void save(def)}
                 disabled={busyGroup === def.id}
-                className="rounded-xl border border-cyan-400/30 bg-cyan-400/[0.08] px-4 py-2 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-400/[0.14] disabled:opacity-50"
+                className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
               >
                 {busyGroup === def.id ? "Saving…" : "Save"}
               </button>
@@ -383,7 +580,7 @@ export default function IntegrationsClient() {
                 <button
                   onClick={() => void action(def, "test")}
                   disabled={busyGroup === def.id + ":test"}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs text-slate-300 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                  className="rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs text-ink-2 transition-colors hover:bg-line/60 disabled:opacity-50"
                 >
                   {busyGroup === def.id + ":test" ? "Sending…" : "Send test email"}
                 </button>
@@ -392,7 +589,7 @@ export default function IntegrationsClient() {
                 <button
                   onClick={() => void action(def, "weekly")}
                   disabled={busyGroup === def.id + ":weekly"}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2 text-xs text-slate-300 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                  className="rounded-xl border border-line bg-white shadow-card px-4 py-2 text-xs text-ink-2 transition-colors hover:bg-line/60 disabled:opacity-50"
                 >
                   {busyGroup === def.id + ":weekly"
                     ? "Sending…"
@@ -402,7 +599,7 @@ export default function IntegrationsClient() {
               {notice && notice.group === def.id ? (
                 <span
                   className={
-                    "text-[11px] " + (notice.ok ? "text-emerald-300" : "text-rose-300")
+                    "text-[11px] " + (notice.ok ? "text-ok" : "text-danger")
                   }
                 >
                   {notice.text}
@@ -412,6 +609,7 @@ export default function IntegrationsClient() {
           </div>
         );
       })}
+      <VoiceNumbersPanel />
     </div>
   );
 }

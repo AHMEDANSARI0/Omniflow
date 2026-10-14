@@ -8,6 +8,7 @@ export const viewport: Viewport = {
 };
 import { getSiteSettings } from "../lib/settings";
 import WebsiteChatWidget from "./components/WebsiteChatWidget";
+import SiteAnalytics from "./components/SiteAnalytics"; // §260 website analytics
 
 const inter = Inter({
   variable: "--font-inter",
@@ -72,7 +73,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={`${inter.variable} ${sora.variable}`}>
         <script
           dangerouslySetInnerHTML={{
@@ -81,6 +82,8 @@ export default function RootLayout({
         />
         {children}
         <WebsiteChatWidget />
+        {/* §260: anonymous website analytics (no cookies, no IP stored) */}
+        <SiteAnalytics />
       </body>
     </html>
   );

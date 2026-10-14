@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { createClient } from "../../../../lib/supabase/client";
+import { adminChangePassword } from "../../../../lib/admin-actions";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
@@ -34,28 +34,24 @@ export default function PasswordForm() {
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
+    const result = await adminChangePassword(password);
     setLoading(false);
 
-    if (error) {
-      setMessage({
-        success: false,
-        text:
-          error.message === "New password should be different from the old password."
-            ? "New password must be different from the current one."
-            : "Failed to update password. Please try again.",
-      });
+    if (!result.success) {
+      setMessage({ success: false, text: result.message });
       return;
     }
 
     setPassword("");
     setConfirm("");
-    setMessage({ success: true, text: "Password updated successfully." });
+    setMessage({
+      success: true,
+      text: result.message || "Password updated successfully.",
+    });
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-soft p-6">
+    <div className="rounded-2xl border border-line bg-white shadow-card p-6">
       <h2 className="mb-1 text-sm font-semibold text-ink">Change password</h2>
       <p className="mb-5 text-xs text-ink-3">
         Use a strong password of at least 8 characters. You stay signed in
@@ -100,7 +96,7 @@ export default function PasswordForm() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-xl bg-cyan-400 px-6 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Updating…" : "Update password"}
           </button>

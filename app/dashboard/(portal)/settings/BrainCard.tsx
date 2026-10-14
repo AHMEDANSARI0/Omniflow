@@ -26,12 +26,49 @@ const LEVELS: { value: Autonomy; label: string; hint: string }[] = [
  * Settings -> AI Brain: autonomy level + tone. The brain answers with
  * tools (orders, KB, conversation), policy checks and full traces.
  */
+interface PlatformControls {
+  paused: boolean;
+  autonomy_cap: Autonomy;
+  daily_call_cap: number;
+  guard_mode?: "off" | "standard" | "strict";
+  effective_autonomy: Autonomy;
+}
+
+const GUARD_NOTE: Record<string, string> = {
+  off: "Prompt-injection guard: off (attempts are recorded only).",
+  standard:
+    "Prompt-injection guard: on. Messages that try to rewrite the assistant's instructions are handed to you instead of answered.",
+  strict:
+    "Prompt-injection guard: strict. Borderline messages are handed to you as well.",
+};
+
+function platformNotice(
+  platform: PlatformControls | null,
+  autonomy: Autonomy
+): string | null {
+  if (!platform) return null;
+  if (platform.paused) {
+    return "AI answering is paused platform-wide by the OmniFlow team. Your setting is kept and resumes automatically.";
+  }
+  if (platform.effective_autonomy !== autonomy) {
+    return (
+      "The platform currently caps autonomy at \"" +
+      platform.autonomy_cap +
+      "\", so the brain runs at \"" +
+      platform.effective_autonomy +
+      "\" until the cap is lifted."
+    );
+  }
+  return null;
+}
+
 export default function BrainCard() {
   const [autonomy, setAutonomy] = useState<Autonomy>("suggest");
   const [tone, setTone] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<PlatformControls | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -41,10 +78,15 @@ export default function BrainCard() {
       });
       if (response.ok) {
         const payload = (await response.json()) as {
-          settings?: { autonomy?: Autonomy; tone?: string };
+          settings?: {
+            autonomy?: Autonomy;
+            tone?: string;
+            platform?: PlatformControls;
+          };
         };
         if (payload.settings?.autonomy) setAutonomy(payload.settings.autonomy);
         setTone(payload.settings?.tone ?? "");
+        setPlatform(payload.settings?.platform ?? null);
         setLoaded(true);
       }
     } catch {
@@ -82,10 +124,10 @@ export default function BrainCard() {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+    <section className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">AI Brain</h3>
+          <h3 className="text-sm font-semibold text-ink">AI Brain</h3>
           <p className="mt-0.5 text-xs text-ink-3">
             Answers from your orders, knowledge base and the conversation —
             policy-checked, with provenance traces. Never invents facts.
@@ -94,11 +136,23 @@ export default function BrainCard() {
         <button
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg border border-line px-2.5 py-1 text-[11px] text-ink-2 hover:bg-soft disabled:opacity-50"
+          className="rounded-lg border border-line inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
           {busy ? "Loading..." : "Refresh"}
         </button>
       </div>
+
+      {loaded && platformNotice(platform, autonomy) ? (
+        <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2 text-[11px] text-amber-700">
+          {platformNotice(platform, autonomy)}
+        </p>
+      ) : null}
+
+      {loaded && platform?.guard_mode ? (
+        <p className="mt-3 text-[11px] text-ink-3">
+          {GUARD_NOTE[platform.guard_mode] ?? GUARD_NOTE.standard}
+        </p>
+      ) : null}
 
       {loaded ? (
         <div className="mt-3 space-y-2">
@@ -111,7 +165,7 @@ export default function BrainCard() {
                 "block w-full rounded-xl border px-3 py-2 text-left transition-colors " +
                 (autonomy === level.value
                   ? "border-emerald-400/30 bg-emerald-400/[0.07]"
-                  : "border-line bg-soft hover:bg-soft")
+                  : "border-line bg-soft hover:bg-line/60")
               }
             >
               <span className="text-xs font-semibold text-ink">
@@ -131,12 +185,12 @@ export default function BrainCard() {
                 value={tone}
                 onChange={(event) => setTone(event.target.value)}
                 placeholder="e.g. warm, concise, friendly"
-                className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-white/[0.2]"
+                className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink-3 focus:border-brand/50"
               />
               <button
                 onClick={() => void save(autonomy, tone)}
                 disabled={busy}
-                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
+                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-50"
               >
                 Save tone
               </button>

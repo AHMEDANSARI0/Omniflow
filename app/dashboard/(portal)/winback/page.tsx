@@ -58,7 +58,12 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
       if (response.ok) {
         setSent(true);
       } else if (response.status === 409) {
-        setNote("Recently sent or no longer in the queue.");
+        const payload = (await response.json().catch(() => null)) as { error?: { code?: string } } | null;
+        setNote(
+          payload?.error?.code === "opted_out"
+            ? "This customer opted out of messages."
+            : "Recently sent or no longer in the queue."
+        );
       } else if (response.status === 404) {
         setNote("Contact no longer exists.");
       } else {
@@ -79,7 +84,7 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
         : "quiet " + (entry.days ?? 0) + "d";
 
   return (
-    <li className="rounded-xl border border-line bg-soft px-3 py-2.5">
+    <li className="rounded-xl border border-line bg-white shadow-card px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-sm font-medium text-ink">
           {entry.name || entry.contactId}
@@ -87,7 +92,7 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
         <span
           className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] ${
             entry.kind === "cart"
-              ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-600"
+              ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-700"
               : entry.kind === "reorder"
                 ? "border-brand/25 bg-brand-soft text-brand"
                 : "border-rose-400/25 bg-rose-400/[0.08] text-danger"
@@ -109,7 +114,7 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
       <div className="mt-2 flex items-center gap-2">
         <button
           onClick={() => void copyMessage()}
-          className="rounded-lg border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:bg-white/[0.06]"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:bg-line/60"
         >
           {copied ? "Copied" : "Copy message"}
         </button>
@@ -118,7 +123,7 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
             href={entry.waLink}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-ok transition-colors hover:bg-emerald-400/[0.14]"
+            className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-ok transition-colors hover:bg-emerald-400/[0.14]"
           >
             Open WhatsApp
           </a>
@@ -126,12 +131,12 @@ function EntryCard({ entry }: { entry: WinbackEntry }) {
         <button
           onClick={() => void sendNow()}
           disabled={busy || sent}
-          className="rounded-lg border border-brand/25 bg-brand-soft px-2.5 py-1 text-[11px] text-brand transition-colors hover:bg-brand-soft disabled:opacity-50"
+          className="rounded-lg border border-brand/25 bg-brand-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] text-brand transition-colors hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {sent ? "Sent" : busy ? "Sending\u2026" : "Send via WhatsApp"}
         </button>
       </div>
-      {note ? <p className="mt-1 text-[10px] text-amber-600">{note}</p> : null}
+      {note ? <p className="mt-1 text-[10px] text-amber-700">{note}</p> : null}
     </li>
   );
 }
@@ -178,7 +183,7 @@ export default function WinbackPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Win-back
         </h1>
-        <p className="mt-1 text-sm text-ink-3">
+        <p className="mt-1 text-sm text-ink-2">
           Ready-to-send recovery messages built from open carts, reorder gaps
           and quiet customers. Copy one, open WhatsApp, or send it through
           your connected number - nothing is ever sent automatically.
@@ -186,7 +191,7 @@ export default function WinbackPage() {
       </div>
 
       {failed ? (
-        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-600">
+        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-700">
           The queue is temporarily unavailable. Try again shortly.
         </p>
       ) : null}
@@ -198,7 +203,7 @@ export default function WinbackPage() {
       </p>
 
       <div className="space-y-4">
-        <section className="rounded-2xl border border-line bg-soft p-4">
+        <section className="rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Carts to recover</p>
           <p className="mt-0.5 text-[11px] text-ink-3">
             Open checkout links waiting on a confirmation.
@@ -216,7 +221,7 @@ export default function WinbackPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-line bg-soft p-4">
+        <section className="rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Reorder due</p>
           <p className="mt-0.5 text-[11px] text-ink-3">
             Repeat buyers past their usual time-between-orders.
@@ -234,7 +239,7 @@ export default function WinbackPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-line bg-soft p-4">
+        <section className="rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Win-back</p>
           <p className="mt-0.5 text-[11px] text-ink-3">
             Paying customers who have gone quiet for 45+ days.

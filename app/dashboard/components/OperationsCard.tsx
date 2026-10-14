@@ -21,7 +21,7 @@ function Tile({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-white/[0.01] px-3.5 py-3">
+    <div className="rounded-xl border border-line bg-white px-3.5 py-3">
       <p className="text-[10px] uppercase tracking-wider text-ink-3">
         {label}
       </p>
@@ -71,7 +71,7 @@ export default function OperationsCard() {
   if (failed) return null;
 
   return (
-    <div className="mb-8 rounded-2xl border border-line bg-soft p-5">
+    <div className="mb-8 rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold text-ink">
           Operations &mdash; last 30 days
@@ -90,7 +90,7 @@ export default function OperationsCard() {
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={String(index)}
-              className="h-[76px] animate-pulse rounded-xl bg-white/5"
+              className="h-[76px] animate-pulse rounded-xl bg-line/60"
             />
           ))}
         </div>

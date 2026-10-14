@@ -4,6 +4,7 @@ import {
   requirePortalAccessToken,
   type TeamMember,
 } from "../../../../lib/omniflow/portal";
+import AgentsAndRouting from "./AgentsAndRouting";
 import TeamClient from "./TeamClient";
 
 
@@ -23,5 +24,10 @@ export default async function TeamPage() {
     }
   }
 
-  return <TeamClient initialMembers={initialMembers} initialRole={initialRole} />;
+  return (
+    <div className="mx-auto max-w-3xl">
+      <TeamClient initialMembers={initialMembers} initialRole={initialRole} />
+      <AgentsAndRouting />
+    </div>
+  );
 }

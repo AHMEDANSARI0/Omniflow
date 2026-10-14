@@ -95,10 +95,10 @@ export default function PaymentsCard() {
   }
 
   const inputClass =
-    "mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-white/20 focus:outline-none";
+    "mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none";
 
   return (
-    <section className="mt-6 rounded-2xl border border-line bg-soft p-5">
+    <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-medium text-ink">
@@ -150,7 +150,7 @@ export default function PaymentsCard() {
           />
           Sandbox (test mode)
         </label>
-        <p className="col-span-2 rounded-xl border border-line bg-soft px-3 py-2 text-[11px] text-ink-3">
+        <p className="col-span-2 rounded-xl border border-line bg-white shadow-card px-3 py-2 text-[11px] text-ink-3">
           Pakistan gateways — the workspace uses its OWN merchant keys:
           JazzCash (Merchant ID + password + integrity salt) or Easypaisa
           (Store ID + hash key in the salt field). Sandbox tick stays on
@@ -209,7 +209,7 @@ export default function PaymentsCard() {
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs text-brand hover:bg-brand-soft disabled:opacity-50"
+          className="rounded-lg border border-brand/30 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-brand hover:bg-brand/[0.12] disabled:opacity-50"
         >
           {busy ? "Saving..." : "Save payment settings"}
         </button>

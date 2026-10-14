@@ -96,7 +96,7 @@ export default function RecoveryCard() {
   const open = items.filter((item) => item.status === "open");
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+    <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-ink">
@@ -110,10 +110,10 @@ export default function RecoveryCard() {
         <button
           onClick={() => void toggleAuto()}
           className={
-            "rounded-full border px-3 py-1 text-[11px] transition-colors " +
+            "rounded-full border inline-flex min-h-8 items-center px-3 py-1 text-[11px] transition-colors " +
             (auto
               ? "border-emerald-400/40 bg-emerald-400/[0.12] text-ok"
-              : "border-line bg-soft text-ink-3 hover:bg-soft")
+              : "border-line bg-soft text-ink-3 hover:bg-line/60")
           }
         >
           Auto: {auto ? "on" : "off"}
@@ -126,7 +126,7 @@ export default function RecoveryCard() {
             {open.slice(0, 5).map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-2"
               >
                 <div className="min-w-0">
                   <p className="truncate text-xs text-ink">

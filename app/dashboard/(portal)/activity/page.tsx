@@ -64,11 +64,11 @@ export default function ActivityPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Activity</h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Everything your team and automations did, newest first.
           </p>
         </div>
@@ -80,7 +80,7 @@ export default function ActivityPage() {
               type="button"
               onClick={() => setFamily(entry.key)}
               className={
-                "rounded-lg border px-3 py-1.5 text-xs transition " +
+                "rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs transition " +
                 (family === entry.key
                   ? "border-brand/30 bg-brand-soft text-brand"
                   : "border-line text-ink-3 hover:text-ink")
@@ -92,37 +92,37 @@ export default function ActivityPage() {
           <button
             type="button"
             onClick={() => void load()}
-            className="ml-auto rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+            className="ml-auto rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
           >
             Refresh
           </button>
           <a
             href="/api/omniflow/portal/activity/export"
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
           >
             Export CSV
           </a>
         </div>
 
         {items === null ? (
-          <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
             <p className="text-sm text-ink-3">Loading activity...</p>
           </div>
         ) : failed ? (
-          <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
             <p className="text-sm text-ink-3">
               Activity is unavailable right now.
             </p>
             <button
               type="button"
               onClick={() => void load()}
-              className="mt-3 rounded-lg border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand-soft"
+              className="mt-3 rounded-lg border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand/[0.12]"
             >
               Try again
             </button>
           </div>
         ) : visible.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+          <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
             <p className="text-sm text-ink-3">Nothing here yet.</p>
           </div>
         ) : (
@@ -130,7 +130,7 @@ export default function ActivityPage() {
             {visible.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-soft px-4 py-3"
+                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white shadow-card px-4 py-3"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-ink">{item.label}</p>

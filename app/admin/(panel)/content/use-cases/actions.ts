@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { UseCasesContent } from "../../../../../lib/content-defaults";
+import { USE_CASES_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -57,7 +58,8 @@ export async function updateUseCasesContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "use_cases",
-    data: values as unknown as UseCasesContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, USE_CASES_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

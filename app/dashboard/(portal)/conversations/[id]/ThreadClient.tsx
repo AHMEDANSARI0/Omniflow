@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 const CodCard = dynamic(() => import("./CodCard"));
 const VoiceCard = dynamic(() => import("./VoiceCard"));
+const MediaCard = dynamic(() => import("./MediaCard"));
+const MessageMedia = dynamic(() => import("./MessageMedia"));
 const VideoCard = dynamic(() => import("./VideoCard"));
 const InteractiveCard = dynamic(() => import("./InteractiveCard"));
 const TeamCard = dynamic(() => import("./TeamCard"));
@@ -16,6 +18,9 @@ const CustomerCard = dynamic(() => import("./CustomerCard"));
 const AddToSequenceCard = dynamic(() => import("./AddToSequenceCard"));
 const AssistCard = dynamic(() => import("./AssistCard"));
 const RecoCard = dynamic(() => import("./RecoCard"));
+const HandoffBriefCard = dynamic(() => import("./HandoffBriefCard"));
+const SalesCard = dynamic(() => import("./SalesCard"));
+const LoyaltyCard = dynamic(() => import("./LoyaltyCard"));
 const SavedRepliesPicker = dynamic(() => import("./SavedRepliesPicker"));
 import {
   Fragment,
@@ -25,6 +30,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  MEDIA_CHANGED_EVENT,
+  fetchConversationMedia,
+  groupByMessage,
+  type InboundMediaItem,
+} from "./inbound-media-shared";
 const MESSAGE_URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
 function linkifyText(text: string, keyPrefix: string): ReactNode[] {
@@ -36,7 +47,7 @@ function linkifyText(text: string, keyPrefix: string): ReactNode[] {
         href={part}
         target="_blank"
         rel="noreferrer"
-        className="underline decoration-slate-500 underline-offset-2 transition-colors hover:text-cyan-200"
+        className="underline decoration-slate-500 underline-offset-2 transition-colors hover:text-brand"
       >
         {part}
       </a>
@@ -64,7 +75,7 @@ function renderMessageBody(body: string, query: string): ReactNode {
     pieces.push(
       <mark
         key={"hit-" + found}
-        className="rounded bg-amber-300/25 px-0.5 text-amber-100"
+        className="rounded bg-amber-300/25 px-0.5 text-amber-800"
       >
         {body.slice(found, found + needle.length)}
       </mark>
@@ -163,6 +174,32 @@ export default function ThreadClient({
       // Transient network issue — next poll retries.
     }
   }, [id]);
+
+  // §215: customer files inside their chat bubbles. Reloaded when a newer
+  // customer message arrives (the poll above) or a file is deleted.
+  const [mediaByMessage, setMediaByMessage] = useState<
+    Record<number, InboundMediaItem[]>
+  >({});
+  const latestInboundId = (messages ?? []).reduce(
+    (latest, message) =>
+      message.direction === "in" && message.id > latest ? message.id : latest,
+    0
+  );
+  useEffect(() => {
+    if (!id || !latestInboundId) return;
+    let cancelled = false;
+    const load = async () => {
+      const media = await fetchConversationMedia(id);
+      if (!cancelled && media) setMediaByMessage(groupByMessage(media));
+    };
+    void load();
+    const onChanged = () => void load();
+    window.addEventListener(MEDIA_CHANGED_EVENT, onChanged);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(MEDIA_CHANGED_EVENT, onChanged);
+    };
+  }, [id, latestInboundId]);
 
   function copyNumber() {
     const value = conversation?.contactId || "";
@@ -489,23 +526,23 @@ export default function ThreadClient({
       <div className="mb-6">
         <Link
           href="/dashboard/conversations"
-          className="-ml-2 inline-block rounded-lg px-2 py-1.5 text-sm text-slate-500 transition-colors hover:bg-white/[0.03] hover:text-cyan-300"
+          className="-ml-2 inline-flex min-h-9 items-center rounded-lg px-2 py-1.5 text-sm text-ink-3 transition-colors hover:bg-line/60 hover:text-brand"
         >
           ← Conversations
         </Link>
         <div className="mt-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-white">
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">
               {title}
             </h1>
-            <p className="mt-0.5 truncate text-xs text-slate-500">
+            <p className="mt-0.5 truncate text-xs text-ink-3">
               {conversation?.contactId ?? (id ? `#${id}` : "")}
             </p>
-            <p className="mt-0.5 text-[10px] text-slate-600">
+            <p className="mt-0.5 text-[10px] text-ink-3">
               Press Esc to return to the inbox
             </p>
             {awayActive && (
-              <p className="mt-0.5 text-[10px] font-medium text-amber-300">
+              <p className="mt-0.5 text-[10px] font-medium text-amber-700">
                 Away message is active. Customers get an automatic reply until
                 business hours.
               </p>
@@ -516,8 +553,8 @@ export default function ThreadClient({
               <span
                 className={`rounded-md border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
                   conversation.status === "open"
-                    ? "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-300"
-                    : "border-white/[0.06] bg-white/[0.02] text-slate-500"
+                    ? "border-emerald-400/20 bg-emerald-400/[0.06] text-ok"
+                    : "border-line bg-soft text-ink-3"
                 }`}
               >
                 {conversation.status}
@@ -525,10 +562,10 @@ export default function ThreadClient({
               <button
                 onClick={() => void toggleStatus()}
                 disabled={statusBusy}
-                className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`rounded-md border inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   conversation.status === "open"
-                    ? "border-red-400/25 bg-red-400/[0.06] text-red-300 hover:bg-red-400/[0.12]"
-                    : "border-cyan-400/25 bg-cyan-400/[0.06] text-cyan-300 hover:bg-cyan-400/[0.12]"
+                    ? "border-red-400/25 bg-red-400/[0.06] text-danger hover:bg-red-400/[0.12]"
+                    : "border-brand/25 bg-brand-soft text-brand hover:bg-brand/[0.12]"
                 }`}
               >
                 {statusBusy
@@ -543,7 +580,7 @@ export default function ThreadClient({
                     href={`https://wa.me/${conversation.contactId.replace(/[^0-9]/g, "")}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-md border border-emerald-400/25 bg-emerald-400/[0.06] px-2.5 py-1 text-[11px] font-medium text-emerald-300 transition-colors hover:bg-emerald-400/[0.12]"
+                    className="rounded-md border border-emerald-400/25 bg-emerald-400/[0.06] inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ok transition-colors hover:bg-emerald-400/[0.12]"
                   >
                     WhatsApp
                   </a>
@@ -551,7 +588,7 @@ export default function ThreadClient({
                     type="button"
                     onClick={() => copyNumber()}
                     title="Copy number"
-                    className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
+                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
                   >
                     Copy
                   </button>
@@ -561,7 +598,7 @@ export default function ThreadClient({
                       void navigator.clipboard.writeText(window.location.href)
                     }
                     title="Copy a link to this conversation"
-                    className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
+                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
                   >
                     Link
                   </button>
@@ -569,7 +606,7 @@ export default function ThreadClient({
                     type="button"
                     onClick={() => downloadTranscript()}
                     title="Download the loaded messages as a text file"
-                    className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
+                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
                   >
                     Transcript
                   </button>
@@ -577,7 +614,7 @@ export default function ThreadClient({
                     type="button"
                     onClick={() => exportThreadCsv()}
                     title="Download the loaded messages as a CSV file"
-                    className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:text-white"
+                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
                   >
                     CSV
                   </button>
@@ -588,8 +625,14 @@ export default function ThreadClient({
         </div>
       </div>
 
+      {!expired && !notFound && <HandoffBriefCard conversationId={Number(id)} />}
+      {!expired && !notFound && <SalesCard conversationId={Number(id)} />}
+      {!expired && !notFound && <LoyaltyCard contactId={conversation?.contactId ?? null} />}
       {!expired && !notFound && conversation?.channel !== "website" && (
         <CodCard conversationId={Number(id)} />
+      )}
+      {!expired && !notFound && (
+        <MediaCard conversationId={Number(id)} />
       )}
       {!expired && !notFound && (
         <VoiceCard conversationId={Number(id)} />
@@ -627,49 +670,49 @@ export default function ThreadClient({
       )}
 
       {expired ? (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">Your session expired.</p>
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-cyan-300 transition-colors hover:text-cyan-200"
+            className="mt-3 inline-block text-xs text-brand underline-offset-2 transition-colors hover:underline"
           >
             Re-authenticate →
           </a>
         </div>
       ) : notFound ? (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">Conversation not found.</p>
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">Conversation not found.</p>
         </div>
       ) : !messages ? (
         <div className="animate-pulse space-y-3">
           {[0, 1, 2, 3].map((index) => (
             <div
               key={index}
-              className="h-10 w-2/3 rounded-2xl border border-white/[0.06] bg-white/[0.015]"
+              className="h-10 w-2/3 rounded-2xl border border-line bg-white shadow-card"
             />
           ))}
         </div>
       ) : messages.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">No messages in this conversation yet.</p>
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">No messages in this conversation yet.</p>
         </div>
       ) : visibleMessages && visibleMessages.length === 0 ? (
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-slate-300">No messages match your search.</p>
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
+          <p className="text-sm text-ink-2">No messages match your search.</p>
         </div>
       ) : (
         <div className="of-fade-up space-y-3">
           {messages.length > 3 && (
-            <div className="sticky top-0 z-10 -mx-1 bg-[#06101d]/90 px-1 py-2 backdrop-blur">
+            <div className="sticky top-0 z-10 -mx-1 bg-canvas/90 px-1 py-2 backdrop-blur">
               <input
                 type="search"
                 value={threadQuery}
                 onChange={(event) => setThreadQuery(event.target.value)}
                 placeholder="Search in this conversation"
-                className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-xs text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
               />
               {threadQuery.trim() && (
-                <p className="mt-1 text-right text-[10px] text-slate-600">
+                <p className="mt-1 text-right text-[10px] text-ink-3">
                   {threadMessages.length}{" "}
                   {threadMessages.length === 1 ? "match" : "matches"}
                 </p>
@@ -682,7 +725,7 @@ export default function ThreadClient({
                 type="button"
                 onClick={() => void loadOlder()}
                 disabled={loadingOlder}
-                className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-300 hover:text-white disabled:opacity-40"
+                className="rounded-lg border border-line bg-soft px-4 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
               >
                 {loadingOlder ? "Loading..." : "Load older messages"}
               </button>
@@ -692,7 +735,7 @@ export default function ThreadClient({
             <Fragment key={message.id}>
             {threadDayLabel(index) && (
               <div className="sticky top-[4.25rem] z-10 flex justify-center">
-                <span className="rounded-full border border-white/[0.06] bg-[#06101d] px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-500 shadow-sm">
+                <span className="rounded-full border border-line bg-canvas px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-ink-3 shadow-sm">
                   {threadDayLabel(index)}
                 </span>
               </div>
@@ -714,14 +757,17 @@ export default function ThreadClient({
                 title="Double-click to quote this message in your reply"
                 className={`max-w-[85%] rounded-2xl border px-4 py-2.5 sm:max-w-[70%] ${
                   message.direction === "out"
-                    ? "border-cyan-400/20 bg-cyan-400/[0.08]"
-                    : "border-white/[0.06] bg-white/[0.03]"
+                    ? "border-brand/20 bg-brand-soft"
+                    : "border-line bg-soft"
                 }`}
               >
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-100">
+                {message.direction === "in" && mediaByMessage[message.id] ? (
+                  <MessageMedia items={mediaByMessage[message.id]} />
+                ) : null}
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">
                   {renderMessageBody(message.body, threadQuery)}
                 </p>
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-ink-3">
                   {message.direction === "out" ? "Bot / you" : "Customer"}
                   {formatTime(message.createdAt) ? ` · ${formatTime(message.createdAt)}` : ""}
                   {message.direction === "in" &&
@@ -734,7 +780,7 @@ export default function ThreadClient({
                   type="button"
                   onClick={() => void navigator.clipboard.writeText(message.body)}
                   title="Copy this message"
-                  className="text-[10px] font-medium uppercase tracking-wider text-slate-500 transition-colors hover:text-slate-300"
+                  className="text-[10px] font-medium uppercase tracking-wider text-ink-3 transition-colors hover:text-ink-2"
                 >
                   Copy
                 </button>
@@ -758,13 +804,13 @@ export default function ThreadClient({
                 block: "end",
               })
             }
-            className="fixed bottom-28 right-6 z-20 rounded-full border border-white/[0.1] bg-[#0b1829] px-4 py-2 text-xs font-medium text-slate-200 shadow-lg transition-colors hover:text-white"
+            className="fixed bottom-28 right-6 z-20 rounded-full border border-line-2 bg-white px-4 py-2 text-xs font-medium text-ink shadow-lg transition-colors hover:text-ink"
           >
             Jump to latest
           </button>
         )}
         {sendError && (
-          <p className="mb-2 text-[11px] font-medium text-amber-300">
+          <p className="mb-2 text-[11px] font-medium text-amber-700">
             {sendError}
           </p>
         )}
@@ -774,7 +820,7 @@ export default function ThreadClient({
             event.preventDefault();
             void sendReply();
           }}
-          className="sticky bottom-0 z-10 -mx-2 mt-6 flex items-end gap-3 border-t border-white/[0.06] bg-[#06101d]/95 px-2 py-3 backdrop-blur"
+          className="sticky bottom-0 z-10 -mx-2 mt-6 flex items-end gap-3 border-t border-line bg-canvas/95 px-2 py-3 backdrop-blur"
         >
           <div className="hidden max-w-[176px] flex-wrap items-end gap-0.5 sm:flex">
             {["\u{1F44D}", "\u{1F64F}", "\u{1F600}", "\u{1F622}", "\u{1F621}", "\u{1F44C}", "\u{1F91D}", "\u{1F4B0}", "\u{1F4E6}", "\u{1F69A}", "\u2705", "\u274C", "\u23F0", "\u{1F4DE}", "\u{1F60A}", "\u{1F44B}"].map(
@@ -783,7 +829,7 @@ export default function ThreadClient({
                   key={emoji}
                   type="button"
                   onClick={() => setDraft((current) => current + emoji)}
-                  className="rounded px-1 text-base leading-6 transition-colors hover:bg-white/[0.06]"
+                  className="rounded px-1 text-base leading-6 transition-colors hover:bg-line/60"
                 >
                   {emoji}
                 </button>
@@ -804,15 +850,15 @@ export default function ThreadClient({
             rows={2}
             maxLength={4096}
             placeholder="Reply as a human agent"
-            className="flex-1 resize-none rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-cyan-400/40"
+            className="flex-1 resize-none rounded-xl border border-line bg-soft px-4 py-3 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
           />
-          <div className="hidden shrink-0 flex-col items-end text-[10px] text-slate-600 sm:flex">
+          <div className="hidden shrink-0 flex-col items-end text-[10px] text-ink-3 sm:flex">
             {draft.length} / 4096
           </div>
           <button
             type="submit"
             disabled={sending || !draft.trim()}
-            className="shrink-0 rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sending ? "Sending…" : "Send"}
           </button>

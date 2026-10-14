@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import PortalIcon from "../../../components/PortalIcon";
 
 interface SavedReply {
   id: number;
@@ -146,9 +147,9 @@ export default function SavedRepliesPicker({
           setOpen((value) => !value);
           if (!open && !loaded) void load();
         }}
-        className="inline-flex items-center gap-2 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
+        className="inline-flex items-center gap-2 rounded-xl border border-line bg-white shadow-card px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
       >
-        <span aria-hidden>⚡</span>
+        <PortalIcon name="quickReplies" className="h-3.5 w-3.5" />
         Saved replies
         <span className="rounded-md border border-line bg-soft px-1.5 py-0.5 text-[10px] text-ink-3">
           {replies.length}
@@ -159,13 +160,13 @@ export default function SavedRepliesPicker({
       </button>
 
       {open && (
-        <div className="mt-3 rounded-2xl border border-line bg-soft p-4">
+        <div className="mt-3 rounded-2xl border border-line bg-white shadow-card p-4">
           {replies.length > 0 && (
             <ul className="space-y-2">
               {replies.map((reply) => (
                 <li
                   key={reply.id}
-                  className="flex flex-col gap-2 rounded-xl border border-line bg-soft p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 rounded-xl border border-line bg-white shadow-card p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <span className="rounded-md border border-brand/20 bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold text-brand">
@@ -173,7 +174,7 @@ export default function SavedRepliesPicker({
                     </span>
                     {(reply.useCount ?? 0) > 0 ? (
                       <span className="ml-1.5 text-[10px] text-ink-3">
-                        used {reply.useCount}\u00d7
+                        used {reply.useCount}{"\u00d7"}
                       </span>
                     ) : null}
                     <p className="mt-1 line-clamp-2 text-xs text-ink-3">
@@ -184,7 +185,7 @@ export default function SavedRepliesPicker({
                     <button
                       type="button"
                       onClick={() => useReply(reply)}
-                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand transition-colors duration-300 hover:bg-brand-soft"
+                      className="rounded-lg border border-brand/25 bg-brand-soft px-3 py-1.5 text-[11px] font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12]"
                     >
                       Use
                     </button>
@@ -217,20 +218,20 @@ export default function SavedRepliesPicker({
                 onChange={(event) => setShortcut(event.target.value)}
                 maxLength={24}
                 placeholder="shortcut, e.g. thanks"
-                className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full sm:w-56 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
               />
               <input
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
                 maxLength={1000}
                 placeholder="Message text — what gets inserted"
-                className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
               />
               <button
                 type="button"
                 onClick={() => void addReply()}
                 disabled={busy || !shortcut.trim() || !body.trim()}
-                className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50"
+                className="shrink-0 rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50"
               >
                 {busy ? "Working…" : "Add reply"}
               </button>

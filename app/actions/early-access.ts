@@ -1,6 +1,12 @@
 "use server";
 
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { from } from "@/lib/db/neon";
+
+/**
+ * §276 — Early-access / lead capture, now backed by NEON (was Supabase).
+ * Inserts into `leads`; a unique-email violation (code 23505) is treated as
+ * "already subscribed" so the visitor still sees a friendly success message.
+ */
 
 export interface EarlyAccessState {
   success: boolean;
@@ -29,13 +35,7 @@ export async function submitEarlyAccess(
     return { success: false, message: "Please enter a valid email address." };
   }
 
-  const supabase = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } }
-  );
-
-  const { error } = await supabase.from("leads").insert({
+  const { error } = await from("leads").insert({
     name,
     email,
     company: company || null,

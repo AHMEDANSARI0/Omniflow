@@ -2,15 +2,16 @@
 
 import { useCallback, useState } from "react";
 import type { AnalyticsData } from "../../../../lib/omniflow/portal";
+import AiAutomationCard from "./AiAutomationCard";
 
 const statClass =
-  "rounded-2xl border border-line bg-soft px-5 py-4";
+  "rounded-2xl border border-line bg-white shadow-card px-5 py-4";
 
 const statLabel = "text-[10px] uppercase tracking-wider text-ink-3";
 const statValue = "mt-1 text-lg font-semibold text-ink";
 
 const chipBtn =
-  "rounded-xl border px-3.5 py-1.5 text-xs font-medium transition-colors duration-300";
+  "rounded-xl border inline-flex min-h-9 items-center px-3.5 py-1.5 text-xs font-medium transition-colors duration-300";
 
 function intentLabel(intent: string): string {
   return intent.charAt(0).toUpperCase() + intent.slice(1).replace(/_/g, " ");
@@ -85,7 +86,7 @@ export default function AnalyticsClient({
               " " +
               (data.days === days
                 ? "border-brand/25 bg-brand-soft text-brand"
-                : "border-line bg-soft text-ink-3 hover:bg-soft") +
+                : "border-line bg-soft text-ink-3 hover:bg-line/60") +
               (loading ? " opacity-50" : "")
             }
           >
@@ -96,7 +97,7 @@ export default function AnalyticsClient({
       </div>
 
       {isEmpty ? (
-        <div className="rounded-2xl border border-line bg-soft p-8 text-center">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-8 text-center">
           <p className="text-sm text-ink-3">No data yet</p>
           <p className="mt-1 text-xs leading-relaxed text-ink-3">
             Numbers appear here automatically as customers start chatting on
@@ -127,14 +128,14 @@ export default function AnalyticsClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-6">
+          <div className="rounded-2xl border border-line bg-white shadow-card p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-ink">
                 Messages per day
               </h2>
               <div className="flex items-center gap-3 text-[10px] text-ink-3">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400" /> In
+                  <span className="h-2 w-2 rounded-full bg-brand" /> In
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400" /> Out
@@ -162,7 +163,7 @@ export default function AnalyticsClient({
                         style={{ height: String(100 - inboundPct) + "%" }}
                       />
                       <div
-                        className="w-full bg-cyan-400/80"
+                        className="w-full bg-brand/80"
                         style={{ height: String(inboundPct) + "%" }}
                       />
                     </div>
@@ -205,7 +206,7 @@ export default function AnalyticsClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-6">
+          <div className="rounded-2xl border border-line bg-white shadow-card p-6">
             <h2 className="text-sm font-semibold text-ink">Service level</h2>
             <p className="mt-0.5 text-xs text-ink-3">
               How fast the team responds and how many chats get resolved.
@@ -245,7 +246,7 @@ export default function AnalyticsClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-6">
+          <div className="rounded-2xl border border-line bg-white shadow-card p-6">
             <h2 className="text-sm font-semibold text-ink">
               What customers ask about
             </h2>
@@ -265,7 +266,7 @@ export default function AnalyticsClient({
                     </div>
                     <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-soft">
                       <div
-                        className="h-full rounded-full bg-cyan-400/70"
+                        className="h-full rounded-full bg-brand/70"
                         style={{
                           width: Math.max(4, Math.round((item.count / maxIntent) * 100)) + "%",
                         }}
@@ -277,7 +278,7 @@ export default function AnalyticsClient({
             )}
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-6">
+          <div className="rounded-2xl border border-line bg-white shadow-card p-6">
             <h2 className="text-sm font-semibold text-ink">
               Most-used answers
             </h2>
@@ -306,6 +307,8 @@ export default function AnalyticsClient({
           </div>
         </>
       )}
+
+      <AiAutomationCard days={data.days} />
     </div>
   );
 }

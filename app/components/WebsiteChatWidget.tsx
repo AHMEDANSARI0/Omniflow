@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { MessageCircle, X } from "lucide-react";
+import { readableInk } from "../../lib/marketing/color";
 
 interface WidgetConfig {
   enabled: boolean;
@@ -71,6 +73,27 @@ function WebsiteChatWidgetSurface() {
   const [busy, setBusy] = useState(false);
   const [visitorId, setVisitorId] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
+
+  /* §258: Escape closes the panel and focus returns to the launcher, the
+     same keyboard contract the portal's dropdowns follow. */
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        launcherRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  /* §258: opening the chat puts the caret in the composer immediately. */
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
 
   const hidden =
     pathname === null ||
@@ -204,7 +227,10 @@ function WebsiteChatWidgetSurface() {
       {open && (
         <div
           className={
-            "fixed inset-x-3 bottom-3 top-20 z-50 flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060f1b] shadow-2xl shadow-black/40 sm:inset-x-auto sm:bottom-20 sm:top-auto sm:h-[540px] sm:w-96 " +
+            /* §258: on phones the panel is a sheet that clears the navbar
+               above and the launcher below (it used to cover the page and
+               cut the composer off behind the launcher). */
+            "fixed inset-x-3 top-20 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060f1b] shadow-2xl shadow-black/40 sm:inset-x-auto sm:bottom-20 sm:top-auto sm:h-[540px] sm:w-96 " +
             (config.position === "left" ? "sm:left-5" : "sm:right-5")
           }
           role="dialog"
@@ -238,11 +264,14 @@ function WebsiteChatWidgetSurface() {
             </div>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                launcherRef.current?.focus();
+              }}
               aria-label="Close chat"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] text-slate-400 transition-colors duration-200 hover:text-white"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] text-slate-400 transition-colors duration-200 hover:bg-white/10 hover:text-white"
             >
-              ✕
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
 
@@ -279,7 +308,7 @@ function WebsiteChatWidgetSurface() {
                   >
                     {message.body}
                     {message.created_at ? (
-                      <span className="mt-1 block text-[9px] text-slate-500">
+                      <span className="mt-1 block text-[9px] text-slate-400">
                         {formatWhen(message.created_at)}
                       </span>
                     ) : null}
@@ -296,20 +325,23 @@ function WebsiteChatWidgetSurface() {
             className="flex items-center gap-2 border-t border-white/[0.06] bg-white/[0.02] p-3"
           >
             <input
+              ref={inputRef}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               maxLength={1000}
               placeholder="Type your message…"
-              className="min-w-0 flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors duration-300 focus:border-white/30"
+              className="min-h-10 min-w-0 flex-1 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-colors duration-300 hover:border-white/15 focus:border-white/30"
             />
+            {/* §258: solid accent with the readable ink - the raw accent as
+                text on the dark panel measured 3.6:1. */}
             <button
               type="submit"
               disabled={busy || !draft.trim()}
-              className="shrink-0 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-colors duration-300 disabled:opacity-50"
+              className="min-h-10 shrink-0 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all duration-300 hover:brightness-110 disabled:opacity-50"
               style={{
-                borderColor: config.accent + "40",
-                backgroundColor: config.accent + "1A",
-                color: config.accent,
+                borderColor: config.accent,
+                backgroundColor: config.accent,
+                color: readableInk(config.accent),
               }}
             >
               {busy ? "…" : "Send"}
@@ -318,12 +350,16 @@ function WebsiteChatWidgetSurface() {
         </div>
       )}
 
+      {/* §258: lucide glyphs (no text symbols) and the ink is chosen from
+          the tenant accent, so a light accent no longer hides the icon. */}
       <button
+        ref={launcherRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label={open ? "Close chat" : "Open chat"}
+        aria-expanded={open}
         className={
-          "fixed bottom-5 z-50 flex items-center justify-center gap-2 border text-lg text-[#07111f] shadow-xl transition-transform duration-200 hover:scale-105 " +
+          "fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-50 flex items-center justify-center gap-2 border shadow-xl transition-transform duration-200 hover:scale-105 " +
           (config.position === "left" ? "left-5" : "right-5") +
           (!open && config.launcherLabel
             ? " h-12 rounded-full px-4 text-sm font-semibold"
@@ -332,10 +368,15 @@ function WebsiteChatWidgetSurface() {
         style={{
           borderColor: config.accent + "4D",
           backgroundColor: config.accent,
+          color: readableInk(config.accent),
           boxShadow: "0 10px 30px " + config.accent + "33",
         }}
       >
-        <span aria-hidden>{open ? "✕" : "❖"}</span>
+        {open ? (
+          <X className="h-5 w-5" aria-hidden />
+        ) : (
+          <MessageCircle className="h-5 w-5" aria-hidden />
+        )}
         {!open && config.launcherLabel ? (
           <span>{config.launcherLabel}</span>
         ) : null}

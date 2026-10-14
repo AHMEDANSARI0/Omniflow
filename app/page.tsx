@@ -1,55 +1,70 @@
+import type { Metadata } from "next";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
-import ProblemSolution from "./components/ProblemSolution";
 import AIIntelligence from "./components/AIIntelligence";
-import CustomerMemory from "./components/CustomerMemory";
+import ProblemSolution from "./components/ProblemSolution";
+import AutomationTemplates from "./components/home/AutomationTemplates";
 import HowItWorks from "./components/HowItWorks";
-import DashboardShowcase from "./components/DashboardShowcase";
+import Integrations from "./components/home/Integrations";
 import Features from "./components/Features";
-import MultiChannel from "./components/MultiChannel";
-import UseCases from "./components/UseCases";
-import WhyOmniFlow from "./components/WhyOmniFlow";
+import CustomerMemory from "./components/CustomerMemory";
+import LiveDemo from "./components/home/LiveDemo";
+import DashboardShowcase from "./components/DashboardShowcase";
 import Trust from "./components/Trust";
-import FinalCTA from "./components/FinalCTA";
 import FAQ from "./components/FAQ";
+import FinalCTA from "./components/FinalCTA";
 import Footer from "./components/Footer";
 import { getSectionContent } from "../lib/content";
+import { getCopy, getMarketingList } from "../lib/marketing/cms";
 import { getSiteSettings } from "../lib/settings";
 import {
-  HERO_DEFAULTS, FINAL_CTA_DEFAULTS, FOOTER_DEFAULTS, FEATURES_DEFAULTS, USE_CASES_DEFAULTS, WHY_OMNIFLOW_DEFAULTS, TRUST_DEFAULTS,
-  PROBLEM_SOLUTION_DEFAULTS, AI_INTELLIGENCE_DEFAULTS, MULTI_CHANNEL_DEFAULTS,
+  HERO_DEFAULTS, FINAL_CTA_DEFAULTS, FOOTER_DEFAULTS, FEATURES_DEFAULTS, TRUST_DEFAULTS,
+  PROBLEM_SOLUTION_DEFAULTS, AI_INTELLIGENCE_DEFAULTS,
   CUSTOMER_MEMORY_DEFAULTS, HOW_IT_WORKS_DEFAULTS, FAQ_DEFAULTS
 } from "../lib/content-defaults";
 
+/* Title / description / OG come from the root layout (site settings). */
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+/*
+ * Homepage story (§216): hero -> core story -> problem/solution ->
+ * templates -> how it works -> integrations -> capabilities -> customer
+ * context -> live demo -> dashboard -> trust -> FAQ -> final CTA.
+ * Use cases, multi-channel and "why OmniFlow" live on their own pages.
+ */
 export default async function Home() {
   const [
     heroContent,
     aiIntelligenceContent,
     howItWorksContent,
     finalCtaContent,
-    useCasesContent,
     featuresContent,
     trustContent,
-    whyOmniFlowContent,
-    multiChannelContent,
     problemSolutionContent,
     customerMemoryContent,
     faqContent,
     footerContent,
+    navItems,
+    templates,
+    demoScenarios,
+    homeCopy,
   ] = await Promise.all([
     getSectionContent("hero", HERO_DEFAULTS),
     getSectionContent("ai_intelligence", AI_INTELLIGENCE_DEFAULTS),
     getSectionContent("how_it_works", HOW_IT_WORKS_DEFAULTS),
     getSectionContent("final_cta", FINAL_CTA_DEFAULTS),
-    getSectionContent("use_cases", USE_CASES_DEFAULTS),
     getSectionContent("features", FEATURES_DEFAULTS),
     getSectionContent("trust", TRUST_DEFAULTS),
-    getSectionContent("why_omniflow", WHY_OMNIFLOW_DEFAULTS),
-    getSectionContent("multi_channel", MULTI_CHANNEL_DEFAULTS),
     getSectionContent("problem_solution", PROBLEM_SOLUTION_DEFAULTS),
     getSectionContent("customer_memory", CUSTOMER_MEMORY_DEFAULTS),
     getSectionContent("faq", FAQ_DEFAULTS),
     getSectionContent("footer", FOOTER_DEFAULTS),
+    getMarketingList("nav"),
+    getMarketingList("templates"),
+    getMarketingList("demo"),
+    getCopy("home_sections"),
   ]);
 
   const siteSettings = await getSiteSettings();
@@ -84,7 +99,7 @@ export default async function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="of-site min-h-screen bg-canvas">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }}
@@ -93,18 +108,24 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
-      <Navbar />
-      <main>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:text-brand focus:shadow-card"
+      >
+        Skip to content
+      </a>
+      <Navbar items={navItems} />
+      <main id="main">
         <Hero content={heroContent} />
-        <ProblemSolution content={problemSolutionContent} />
         <AIIntelligence content={aiIntelligenceContent} />
-        <CustomerMemory content={customerMemoryContent} />
+        <ProblemSolution content={problemSolutionContent} />
+        <AutomationTemplates templates={templates} copy={homeCopy.templates} />
         <HowItWorks content={howItWorksContent} />
+        <Integrations />
         <Features content={featuresContent} />
+        <CustomerMemory content={customerMemoryContent} />
+        <LiveDemo scenarios={demoScenarios} copy={homeCopy.liveDemo} />
         <DashboardShowcase />
-        <MultiChannel content={multiChannelContent} />
-        <UseCases content={useCasesContent} />
-        <WhyOmniFlow content={whyOmniFlowContent} />
         <Trust content={trustContent} />
         <FAQ content={faqContent} />
         <FinalCTA content={finalCtaContent} />

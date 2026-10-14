@@ -89,7 +89,7 @@ export default function SetupChecklist() {
   const percent = Math.round((doneCount / total) * 100);
 
   return (
-    <div className="mb-8 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.03] p-4 sm:p-5">
+    <div className="mb-8 rounded-2xl border border-brand/20 bg-brand/[0.03] p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-ink">Setup progress</h2>
@@ -102,7 +102,7 @@ export default function SetupChecklist() {
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
+          className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 transition hover:text-ink"
         >
           Recheck
         </button>
@@ -112,7 +112,7 @@ export default function SetupChecklist() {
         <div
           className={
             "h-full rounded-full transition-all duration-500 " +
-            (doneCount === total ? "bg-emerald-400/70" : "bg-cyan-400/70")
+            (doneCount === total ? "bg-emerald-400/70" : "bg-brand/70")
           }
           style={{ width: String(percent) + "%" }}
         />
@@ -129,7 +129,7 @@ export default function SetupChecklist() {
                   "flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 transition-colors duration-300 " +
                   (done
                     ? "border-emerald-400/15 bg-emerald-400/[0.04]"
-                    : "border-line bg-white/[0.01] hover:border-brand/25")
+                    : "border-line bg-white hover:border-brand/25")
                 }
               >
                 <span
@@ -137,7 +137,7 @@ export default function SetupChecklist() {
                     "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] " +
                     (done
                       ? "border-emerald-400/40 bg-emerald-400/15 text-ok"
-                      : "border-white/15 text-ink-3")
+                      : "border-line text-ink-3")
                   }
                   aria-hidden
                 >

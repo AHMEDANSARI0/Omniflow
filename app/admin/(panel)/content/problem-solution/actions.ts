@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "../../../../../lib/supabase/server";
-import type { ProblemSolutionContent } from "../../../../../lib/content-defaults";
+import { PROBLEM_SOLUTION_DEFAULTS } from "../../../../../lib/content-defaults";
+import { sectionOverrides } from "../../../../../lib/marketing/overrides";
 
 export interface ContentActionState {
   success: boolean;
@@ -59,7 +60,8 @@ export async function updateProblemSolutionContent(
 
   const { error } = await supabase.from("site_content").upsert({
     section: "problem_solution",
-    data: values as unknown as ProblemSolutionContent,
+    // §256: only what differs from the defaults - later copy updates still reach the site
+    data: sectionOverrides(values as Record<string, unknown>, PROBLEM_SOLUTION_DEFAULTS),
     updated_at: new Date().toISOString(),
   });
 

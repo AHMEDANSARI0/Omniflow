@@ -22,9 +22,9 @@ interface CourierBooking {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  booked: "border-sky-400/25 bg-sky-400/[0.07] text-sky-300",
+  booked: "border-sky-400/25 bg-sky-400/[0.07] text-sky-700",
   draft: "border-violet-400/25 bg-violet-400/[0.07] text-ai",
-  in_transit: "border-amber-400/25 bg-amber-400/[0.07] text-amber-600",
+  in_transit: "border-amber-400/25 bg-amber-400/[0.07] text-amber-700",
   delivered: "border-emerald-400/25 bg-emerald-400/[0.07] text-ok",
   returned: "border-rose-400/25 bg-rose-400/[0.07] text-danger",
   undelivered: "border-rose-400/25 bg-rose-400/[0.07] text-danger",
@@ -182,13 +182,13 @@ export default function CourierPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Courier
           </h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Connect your courier accounts, then book or track parcels
             right from this page - with as much automation as you
             allow.
@@ -197,7 +197,7 @@ export default function CourierPage() {
 
         <CourierProvidersCard />
 
-        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+        <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Book parcel</p>
           <p className="mt-0.5 text-[11px] text-ink-3">
             {providers.length === 0
@@ -265,7 +265,7 @@ export default function CourierPage() {
             onClick={() => void bookParcel()}
             disabled={busy || providers.length === 0
               || !bookForm.city.trim() || !bookForm.address.trim()}
-            className="mt-2 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+            className="mt-2 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
           >
             Book parcel
           </button>
@@ -274,7 +274,7 @@ export default function CourierPage() {
           ) : null}
         </section>
 
-        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+        <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Bookings</p>
           {bookings.length === 0 ? (
             <p className="mt-1 text-[11px] text-ink-3">
@@ -285,7 +285,7 @@ export default function CourierPage() {
               {bookings.map((booking) => (
                 <li
                   key={booking.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3 py-1.5"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-white shadow-card px-3 py-1.5"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-xs text-ink">
@@ -312,7 +312,7 @@ export default function CourierPage() {
                       <button
                         onClick={() => void confirmDraft(booking.id)}
                         disabled={busy}
-                        className="text-[11px] text-violet-200 hover:underline disabled:opacity-40"
+                        className="text-[11px] text-violet-700 hover:underline disabled:opacity-40"
                       >
                         Confirm
                       </button>

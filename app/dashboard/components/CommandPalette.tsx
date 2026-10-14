@@ -3,33 +3,27 @@
 // b17: the AI Brain page entry moved into Configure AI (/dashboard/bot).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import PortalIcon, { type IconName } from "./PortalIcon";
+import { ASSISTANT_LINK, DASHBOARD_LINK, NAV_GROUPS, SETTINGS_LINK } from "./portalNav";
 
 interface PaletteItem {
   group: string;
   label: string;
   href: string;
+  icon: IconName;
   sub?: string;
 }
 
 const OPEN_EVENT = "omniflow-command-open";
 
+// §246: every portal page is searchable - built from the sidebar config.
 const PAGES: PaletteItem[] = [
-  { group: "Pages", label: "Overview", href: "/dashboard" },
-  { group: "Pages", label: "Conversations", href: "/dashboard/conversations" },
-  { group: "Pages", label: "Customers", href: "/dashboard/customers" },
-  { group: "Pages", label: "Broadcasts", href: "/dashboard/broadcasts" },
-  { group: "Pages", label: "Automations", href: "/dashboard/automations" },
-  { group: "Pages", label: "Analytics", href: "/dashboard/analytics" },
-  { group: "Pages", label: "Setup wizard", href: "/dashboard/onboarding" },
-  { group: "Pages", label: "Team", href: "/dashboard/team" },
-  { group: "Pages", label: "Knowledge base", href: "/dashboard/knowledge-base" },
-  { group: "Pages", label: "COD confirmations", href: "/dashboard/cod" },
-  { group: "Pages", label: "Courier", href: "/dashboard/courier" },
-  { group: "Pages", label: "Media", href: "/dashboard/media" },
-  { group: "Pages", label: "Integrations", href: "/dashboard/integrations" },
-  { group: "Pages", label: "Sequences", href: "/dashboard/sequences" },
-  { group: "Pages", label: "Activity", href: "/dashboard/activity" },
-  { group: "Pages", label: "Business profile", href: "/dashboard/profile" },
+  { ...DASHBOARD_LINK, group: "Pages" },
+  { ...ASSISTANT_LINK, group: "Pages" },
+  ...NAV_GROUPS.flatMap((navGroup) =>
+    navGroup.items.map((item) => ({ ...item, group: "Pages", sub: navGroup.title }))
+  ),
+  { ...SETTINGS_LINK, group: "Pages" },
 ];
 
 export function openCommandPalette() {
@@ -57,6 +51,8 @@ export default function CommandPalette() {
   const [results, setResults] = useState<PaletteItem[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const requestRef = useRef(0);
 
   const close = useCallback(() => {
@@ -86,12 +82,24 @@ export default function CommandPalette() {
     };
   }, []);
 
+  // §257: keyboard selection is kept in view inside the result list.
   useEffect(() => {
     if (!open) return;
+    listRef.current
+      ?.querySelector('[data-active="true"]')
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    triggerRef.current = document.activeElement as HTMLElement | null;
     inputRef.current?.focus();
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
+      // §257: focus goes back to whatever opened the palette.
+      triggerRef.current?.focus?.();
+      triggerRef.current = null;
     };
   }, [open]);
 
@@ -101,7 +109,8 @@ export default function CommandPalette() {
       (page) =>
         !needle ||
         page.label.toLowerCase().includes(needle) ||
-        page.href.includes(needle)
+        page.href.includes(needle) ||
+        (page.sub ?? "").toLowerCase().includes(needle)
     );
     setActiveIndex(0);
 
@@ -141,6 +150,7 @@ export default function CommandPalette() {
           .slice(0, 5)
           .map((hit) => ({
             group: "Conversations",
+            icon: "conversations" as const,
             label: hit.contactName || hit.contactId || "Conversation " + hit.id,
             href: "/dashboard/conversations/" + String(hit.id),
             sub: hit.lastMessagePreview || undefined,
@@ -153,6 +163,7 @@ export default function CommandPalette() {
           .slice(0, 5)
           .map((hit) => ({
             group: "Customers",
+            icon: "customers" as const,
             label: hit.name || hit.contactId,
             href:
               "/dashboard/customers?q=" + encodeURIComponent(hit.name || hit.contactId),
@@ -188,14 +199,14 @@ export default function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-soft px-4 pt-[10vh]"
+      className="fixed inset-0 z-[60] bg-ink/25 px-3 pb-4 pt-[4.5rem] sm:px-6 sm:pt-20 lg:pt-24"
       onClick={close}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-white shadow-2xl"
+        className="mx-auto flex max-h-[min(70vh,34rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_70px_-24px_rgba(11,18,32,0.45)]"
         onClick={(event) => event.stopPropagation()}
       >
         <input
@@ -217,7 +228,7 @@ export default function CommandPalette() {
           placeholder="Search pages, chats, customers..."
           className="w-full border-b border-line bg-transparent px-4 py-3.5 text-sm text-ink placeholder:text-ink-3 outline-none"
         />
-        <div className="max-h-[50vh] overflow-y-auto py-2">
+        <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto py-1.5">
           {results.length === 0 ? (
             <p className="px-4 py-6 text-center text-xs text-ink-3">
               No matches for &ldquo;{query}&rdquo;
@@ -235,6 +246,7 @@ export default function CommandPalette() {
                   ) : null}
                   <button
                     type="button"
+                    data-active={index === activeIndex ? "true" : undefined}
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => navigate(item)}
                     className={
@@ -244,7 +256,13 @@ export default function CommandPalette() {
                         : "text-ink-2")
                     }
                   >
-                    <span className="truncate">{item.label}</span>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <PortalIcon
+                        name={item.icon}
+                        className={"h-4 w-4 " + (index === activeIndex ? "text-brand" : "text-ink-3")}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </span>
                     {item.sub ? (
                       <span className="hidden max-w-[45%] truncate text-[11px] text-ink-3 sm:block">
                         {item.sub}

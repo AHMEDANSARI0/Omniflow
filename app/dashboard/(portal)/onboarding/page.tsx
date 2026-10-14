@@ -20,13 +20,17 @@ interface Pack {
   keywords: { keyword: string; note: string }[];
   saved_replies: { shortcut: string; body: string }[];
   journey: string[];
+  /** Workflow drafts seeded on activation (older control planes omit this). */
+  workflows?: { key: string; name: string; description: string;
+                trigger_type: string }[];
 }
 
 /**
  * Setup wizard: pick a vertical, see exactly what will be created
  * (persona, knowledge-base entries, saved replies, keyword alerts,
- * journey stages), then activate with one click. Everything the
- * template seeds can be edited or deleted normally afterwards.
+ * journey stages, workflow drafts), then activate with one click.
+ * Everything the template seeds can be edited or deleted normally
+ * afterwards - workflow drafts stay off until activated in Workflows.
  */
 export default function OnboardingPage() {
   const [packs, setPacks] = useState<Pack[] | null>(null);
@@ -81,6 +85,9 @@ export default function OnboardingPage() {
           + " saved replies, " + (payload.created.keywords ?? 0)
           + " keyword alerts, " + (payload.created.journey ?? 0)
           + " journey stages"
+          + (payload.created.workflows
+            ? ", " + payload.created.workflows + " workflow drafts"
+            : "")
           + (payload.created.persona
             ? ", assistant persona"
             : " (persona untouched)"));
@@ -101,7 +108,7 @@ export default function OnboardingPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-4xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
@@ -110,8 +117,8 @@ export default function OnboardingPage() {
           <p className="mt-1.5 text-sm text-ink-3">
             Pick your business type - the wizard seeds a matching
             assistant persona, starter knowledge-base entries, saved
-            replies, keyword alerts and journey stages. Everything is
-            editable afterwards.
+            replies, keyword alerts, journey stages and workflow drafts.
+            Everything is editable afterwards.
           </p>
           {applied ? (
             <p className="mt-2 text-[11px] text-ok">
@@ -126,7 +133,7 @@ export default function OnboardingPage() {
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={String(index)}
-                className="h-28 animate-pulse rounded-2xl bg-white/5"
+                className="h-28 animate-pulse rounded-2xl bg-line/60"
               />
             ))}
           </div>
@@ -139,8 +146,8 @@ export default function OnboardingPage() {
                 className={
                   "rounded-2xl border p-4 text-left transition-colors duration-300 " +
                   (selected === pack.key
-                    ? "border-brand/40 bg-cyan-400/[0.07]"
-                    : "border-line bg-soft hover:border-brand/25 hover:bg-cyan-400/[0.04]")
+                    ? "border-brand/40 bg-brand/[0.07]"
+                    : "border-line bg-soft hover:border-brand/25 hover:bg-brand/[0.04]")
                 }
               >
                 <div className="flex items-center justify-between gap-2">
@@ -162,7 +169,7 @@ export default function OnboardingPage() {
         )}
 
         {active ? (
-          <section className="mt-4 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.03] p-4">
+          <section className="mt-4 rounded-2xl border border-brand/20 bg-brand/[0.03] p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold text-ink">
                 Preview: {active.label}
@@ -170,7 +177,7 @@ export default function OnboardingPage() {
               <button
                 onClick={() => void applyTemplate(active.key)}
                 disabled={busy}
-                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+                className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
               >
                 {applied === active.key
                   ? "Re-apply (fills gaps only)"
@@ -218,7 +225,7 @@ export default function OnboardingPage() {
                 <ul className="mt-1 space-y-1">
                   {active.kb.map((entry) => (
                     <li key={entry.title}
-                      className="rounded-lg border border-line bg-white/[0.01] px-2.5 py-1.5">
+                      className="rounded-lg border border-line bg-white px-2.5 py-1.5">
                       <p className="text-[11px] text-ink">
                         {entry.title}
                         <span className="ml-2 text-[10px] text-ink-3">
@@ -245,6 +252,29 @@ export default function OnboardingPage() {
                     </li>
                   ))}
                 </ul>
+                {active.workflows && active.workflows.length ? (
+                  <>
+                    <p className="mt-3 text-[10px] uppercase tracking-wider text-ink-3">
+                      Workflow drafts ({active.workflows.length})
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {active.workflows.map((flow) => (
+                        <li key={flow.key}
+                          className="text-[11px] text-ink-3">
+                          <span className="text-ink-2">{flow.name}</span>
+                          <span className="ml-1.5 text-[10px]">
+                            on {flow.trigger_type.replace(/_/g, " ")}
+                          </span>
+                          {" "}&mdash; {flow.description}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1 text-[10px] text-ink-3">
+                      Created as drafts - review and activate them in
+                      Workflows.
+                    </p>
+                  </>
+                ) : null}
               </div>
             </div>
           </section>
@@ -270,6 +300,11 @@ export default function OnboardingPage() {
             <Link href="/dashboard/saved-replies"
               className="text-brand hover:underline">
               adjust saved replies
+            </Link>
+            {" \u00b7 "}
+            <Link href="/dashboard/workflows"
+              className="text-brand hover:underline">
+              activate workflow drafts
             </Link>
           </p>
         ) : null}

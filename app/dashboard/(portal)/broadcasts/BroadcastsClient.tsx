@@ -21,12 +21,15 @@ interface BroadcastRow {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 
 function audienceLabel(audience: string): string {
+  if (audience.startsWith("ab:")) {
+    return audience.endsWith(":win") ? "A/B winner" : "A/B version " + audience.split(":")[2];
+  }
   if (audience === "open") return "Open chats";
   if (audience === "hot") return "Hot leads";
   return "All customers";
@@ -160,11 +163,11 @@ export default function BroadcastsClient({
   if (expired) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
           <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
+            className="mt-3 inline-block text-xs text-brand underline-offset-2 transition-colors hover:underline"
           >
             Re-authenticate →
           </a>
@@ -184,7 +187,7 @@ export default function BroadcastsClient({
           </h1>
           <a
             href="/dashboard/broadcasts/calendar"
-            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
+            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
           >
             Calendar
           </a>
@@ -200,7 +203,7 @@ export default function BroadcastsClient({
 
       <ScheduleCard />
 
-      <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <select
             value={audience}
@@ -235,14 +238,14 @@ export default function BroadcastsClient({
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
           {confirming ? (
             <>
-              <span className="text-xs text-amber-600">
+              <span className="text-xs text-amber-700">
                 Send to {preview?.count ?? 0} customers on WhatsApp?
               </span>
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={busy}
-                className="w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
+                className="w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-line/60 disabled:opacity-50 sm:w-auto"
               >
                 Cancel
               </button>
@@ -294,11 +297,11 @@ export default function BroadcastsClient({
             {history.map((row) => (
               <li
                 key={row.id}
-                className="rounded-2xl border border-line bg-soft p-4"
+                className="rounded-2xl border border-line bg-white shadow-card p-4"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-brand/70">
+                    <span className="rounded-md border border-brand/20 bg-brand/[0.04] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-brand">
                       {audienceLabel(row.audience)}
                     </span>
                     <span className="text-[10px] text-ink-3">

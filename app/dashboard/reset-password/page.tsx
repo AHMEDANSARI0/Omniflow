@@ -67,7 +67,7 @@ export default function ResetPasswordPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-5 py-10">
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[640px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.07)_0%,transparent_70%)]" />
+      <div className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[640px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(79,70,229,0.08)_0%,transparent_70%)]" />
       <div className="pointer-events-none absolute -bottom-40 left-1/4 h-72 w-96 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.06)_0%,transparent_70%)]" />
 
       <motion.div
@@ -78,7 +78,7 @@ export default function ResetPasswordPage() {
       >
         <div className="mb-8 flex flex-col items-center">
           <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-brand-soft">
-            <span className="of-pulse h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]" />
+            <span className="of-pulse h-3 w-3 rounded-full bg-brand shadow-[0_0_12px_rgba(79,70,229,0.45)]" />
           </div>
           <h1 className="text-xl font-semibold tracking-[-0.03em] text-ink">
             Omni<span className="text-brand">Flow</span>
@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-line bg-soft p-6 sm:p-7">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6 sm:p-7">
           {done ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-ink-2">
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
               </p>
               <Link
                 href="/dashboard/login"
-                className="inline-block rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity hover:opacity-90"
+                className="inline-block rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
               >
                 Go to sign in
               </Link>
@@ -123,7 +123,7 @@ export default function ResetPasswordPage() {
                   onChange={(event) =>
                     setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
                   }
-                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-center text-lg tracking-[0.4em] text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-center text-lg tracking-[0.4em] text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                   placeholder="••••••"
                 />
               </div>
@@ -145,7 +145,7 @@ export default function ResetPasswordPage() {
                   autoComplete="new-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                   placeholder="At least 8 characters"
                 />
               </div>
@@ -167,7 +167,7 @@ export default function ResetPasswordPage() {
                   autoComplete="new-password"
                   value={confirm}
                   onChange={(event) => setConfirm(event.target.value)}
-                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                  className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                   placeholder="Repeat password"
                 />
               </div>
@@ -189,7 +189,7 @@ export default function ResetPasswordPage() {
                 disabled={loading}
                 whileHover={{ y: loading ? 0 : -1 }}
                 whileTap={{ scale: loading ? 1 : 0.98 }}
-                className="w-full rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity duration-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-opacity duration-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Updating…" : "Set new password"}
               </motion.button>
@@ -200,7 +200,7 @@ export default function ResetPasswordPage() {
         <p className="mt-5 text-center text-xs text-ink-3">
           <Link
             href="/dashboard/login"
-            className="text-brand/80 transition-colors hover:text-brand"
+            className="text-brand underline-offset-2 transition-colors hover:underline"
           >
             Back to sign in
           </Link>

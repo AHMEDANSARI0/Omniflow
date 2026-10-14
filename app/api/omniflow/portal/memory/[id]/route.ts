@@ -11,6 +11,9 @@ function parseId(raw: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+const MTYPES = ["short", "long", "business", "journey"];
+const MAX_EXPIRY_HOURS = 8760;
+
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> }
@@ -33,6 +36,8 @@ export async function PUT(
 
   const payload = (await request.json().catch(() => null)) as {
     content?: unknown;
+    mtype?: unknown;
+    expires_hours?: unknown;
   } | null;
   const content =
     payload && typeof payload.content === "string"
@@ -44,9 +49,51 @@ export async function PUT(
       400
     );
   }
+  if (
+    payload?.mtype !== undefined &&
+    (typeof payload.mtype !== "string" || !MTYPES.includes(payload.mtype))
+  ) {
+    return safeJson(
+      {
+        error: {
+          code: "bad_request",
+          message:
+            "mtype must be one of short|long|business|journey.",
+        },
+      },
+      400
+    );
+  }
+  let expiresHours: number | undefined;
+  if (payload?.expires_hours !== undefined) {
+    if (
+      typeof payload.expires_hours !== "number" ||
+      !Number.isFinite(payload.expires_hours) ||
+      payload.expires_hours < 0 ||
+      payload.expires_hours > MAX_EXPIRY_HOURS
+    ) {
+      return safeJson(
+        {
+          error: {
+            code: "bad_request",
+            message: "expires_hours must be between 0 and " +
+              MAX_EXPIRY_HOURS + ".",
+          },
+        },
+        400
+      );
+    }
+    expiresHours = Math.round(payload.expires_hours);
+  }
 
   try {
-    const ok = await updateCustomerMemory(accessToken, id, content);
+    const ok = await updateCustomerMemory(
+      accessToken,
+      id,
+      content,
+      payload?.mtype as "short" | "long" | "business" | "journey" | undefined,
+      expiresHours
+    );
     if (!ok) {
       return safeJson(
         { error: { code: "not_found", message: "No such entry." } },

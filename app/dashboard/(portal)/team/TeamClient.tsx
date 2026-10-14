@@ -41,10 +41,10 @@ function perfStatClass(value: number): string {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const primaryBtn =
-  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand-soft disabled:opacity-50";
+  "rounded-xl border border-brand/25 bg-brand-soft px-4 py-2 text-xs font-medium text-brand transition-colors duration-300 hover:bg-brand/[0.12] disabled:opacity-50";
 
 function roleChipClass(role: string): string {
   if (role === "owner") {
@@ -235,11 +235,11 @@ export default function TeamClient({
   if (expired) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="rounded-2xl border border-line bg-soft px-6 py-12 text-center">
+        <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
           <p className="text-sm text-ink-2">Your session expired.</p>
           <a
             href="/dashboard/reauth"
-            className="mt-3 inline-block text-xs text-brand transition-colors hover:text-brand"
+            className="mt-3 inline-block text-xs text-brand underline-offset-2 transition-colors hover:underline"
           >
             Re-authenticate →
           </a>
@@ -259,7 +259,7 @@ export default function TeamClient({
       </div>
 
       {perf && (
-        <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">
               Performance
@@ -269,7 +269,7 @@ export default function TeamClient({
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+            <div className="rounded-xl border border-line bg-white px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Open chats
               </p>
@@ -277,7 +277,7 @@ export default function TeamClient({
                 {perf.board.openConversations}
               </p>
             </div>
-            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+            <div className="rounded-xl border border-line bg-white px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Unassigned
               </p>
@@ -285,7 +285,7 @@ export default function TeamClient({
                 {perf.board.unassignedOpen}
               </p>
             </div>
-            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+            <div className="rounded-xl border border-line bg-white px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 Team replies
               </p>
@@ -293,7 +293,7 @@ export default function TeamClient({
                 {perf.board.repliesSent}
               </p>
             </div>
-            <div className="rounded-xl border border-line bg-white/[0.01] px-3 py-2.5">
+            <div className="rounded-xl border border-line bg-white px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-ink-3">
                 CSAT avg
               </p>
@@ -362,7 +362,7 @@ export default function TeamClient({
               {perf.members.map((member) => (
                 <li
                   key={"perf-" + String(member.id)}
-                  className="rounded-xl border border-line bg-white/[0.01] p-3"
+                  className="rounded-xl border border-line bg-white p-3"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -418,7 +418,7 @@ export default function TeamClient({
       )}
 
       {canManage && (
-        <div className="rounded-2xl border border-line bg-soft p-4 sm:p-5">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
           <h2 className="text-xs font-semibold text-ink">Add teammate</h2>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
@@ -473,11 +473,11 @@ export default function TeamClient({
         </h2>
         {loading ? (
           <div className="mt-3 animate-pulse space-y-3">
-            <div className="h-16 rounded-2xl border border-line bg-soft" />
-            <div className="h-16 rounded-2xl border border-line bg-soft" />
+            <div className="h-16 rounded-2xl border border-line bg-white shadow-card" />
+            <div className="h-16 rounded-2xl border border-line bg-white shadow-card" />
           </div>
         ) : loadError ? (
-          <div className="mt-3 rounded-2xl border border-line bg-soft px-5 py-6 text-center">
+          <div className="mt-3 rounded-2xl border border-line bg-white shadow-card px-5 py-6 text-center">
             <p className="text-sm text-ink-2">
               The team module is rolling out on the server — try again in a
               couple of minutes.
@@ -490,7 +490,7 @@ export default function TeamClient({
               return (
                 <li
                   key={member.id}
-                  className="rounded-2xl border border-line bg-soft p-4"
+                  className="rounded-2xl border border-line bg-white shadow-card p-4"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-3">
@@ -546,7 +546,7 @@ export default function TeamClient({
                           })
                         }
                         disabled={busy}
-                        className="w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-soft disabled:opacity-50 sm:w-auto"
+                        className="w-full rounded-xl border border-line bg-soft px-4 py-2 text-xs font-medium text-ink-2 transition-colors duration-300 hover:bg-line/60 disabled:opacity-50 sm:w-auto"
                       >
                         {member.status === "active" ? "Disable" : "Enable"}
                       </button>
@@ -578,7 +578,7 @@ export default function TeamClient({
         )}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-line bg-soft p-4 sm:p-5">
+      <div className="mt-6 rounded-2xl border border-line bg-white shadow-card p-4 sm:p-5">
         <h2 className="text-xs font-semibold text-ink">How roles work</h2>
         <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-ink-3">
           <li>

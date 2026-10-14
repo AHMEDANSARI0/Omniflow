@@ -53,7 +53,7 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-soft px-4 py-3 text-left transition-colors hover:border-line-2"
+      className="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-white shadow-card px-4 py-3 text-left transition-colors hover:border-line-2"
       aria-pressed={checked}
     >
       <span>
@@ -62,7 +62,7 @@ function Toggle({
       </span>
       <span
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-          checked ? "bg-cyan-400" : "bg-white/[0.1]"
+          checked ? "bg-brand" : "bg-line-2"
         }`}
       >
         <span
@@ -157,7 +157,7 @@ export default function BotForm({
   }
 
   const inputClass =
-    "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-200 focus:border-brand/40";
+    "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-200 focus:border-brand/40";
   const labelClass = "mb-1.5 block text-xs font-medium text-ink-3";
 
   return (
@@ -169,13 +169,13 @@ export default function BotForm({
       className="space-y-5"
     >
       {!serverConfigured && (
-        <p className="rounded-xl border border-brand/20 bg-cyan-400/[0.05] px-4 py-3 text-xs leading-relaxed text-brand/90">
+        <p className="rounded-xl border border-brand/20 bg-brand/[0.05] px-4 py-3 text-xs leading-relaxed text-brand">
           Backend module pending — you can configure everything now; settings are
           kept as a local draft and sync to the server automatically later.
         </p>
       )}
 
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="agentName" className={labelClass}>
@@ -255,7 +255,7 @@ export default function BotForm({
         </div>
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-line bg-soft p-6">
+      <div className="space-y-3 rounded-2xl border border-line bg-white shadow-card p-6">
         <Toggle
           checked={config.workingHoursEnabled}
           onChange={(v) => update("workingHoursEnabled", v)}
@@ -311,7 +311,7 @@ export default function BotForm({
             message.kind === "ok"
               ? "border-emerald-400/20 bg-emerald-400/[0.06] text-ok"
               : message.kind === "info"
-                ? "border-brand/20 bg-cyan-400/[0.05] text-brand/90"
+                ? "border-brand/20 bg-brand/[0.05] text-brand"
                 : "border-red-400/20 bg-red-400/[0.06] text-danger"
           }`}
         >
@@ -323,7 +323,7 @@ export default function BotForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>

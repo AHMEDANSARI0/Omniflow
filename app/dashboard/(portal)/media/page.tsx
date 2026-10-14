@@ -13,8 +13,8 @@ interface MediaAsset {
 }
 
 const KIND_STYLES: Record<string, string> = {
-  image: "border-sky-400/25 bg-sky-400/[0.07] text-sky-300",
-  document: "border-amber-400/25 bg-amber-400/[0.07] text-amber-600",
+  image: "border-sky-400/25 bg-sky-400/[0.07] text-sky-700",
+  document: "border-amber-400/25 bg-amber-400/[0.07] text-amber-700",
   audio: "border-violet-400/25 bg-violet-400/[0.07] text-ai",
 };
 
@@ -173,13 +173,13 @@ export default function MediaPage() {
     <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand/70">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Workspace
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Media &amp; voice
           </h1>
-          <p className="mt-1.5 text-sm text-ink-3">
+          <p className="mt-1.5 text-sm text-ink-2">
             Store images, PDFs and audio - send them to customers on
             WhatsApp or turn voice notes into text. Uploads and the
             library always work; sending needs OMNIFLOW_WA_CLOUD_URL
@@ -188,14 +188,14 @@ export default function MediaPage() {
           </p>
         </div>
 
-        <section className="rounded-2xl border border-line bg-soft p-4">
+        <section className="rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Upload</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input
               ref={fileInput}
               type="file"
               accept="image/png,image/jpeg,image/webp,application/pdf,audio/*"
-              className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink-2 file:mr-2 file:rounded file:border-0 file:bg-white/[0.06] file:px-2 file:py-0.5 file:text-xs file:text-ink"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink-2 file:mr-2 file:rounded file:border-0 file:bg-soft file:px-2 file:py-0.5 file:text-xs file:text-ink"
             />
             <input
               value={caption}
@@ -206,7 +206,7 @@ export default function MediaPage() {
             <button
               onClick={() => void upload()}
               disabled={busy}
-              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
+              className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok hover:bg-emerald-400/[0.15] disabled:opacity-40"
             >
               Upload
             </button>
@@ -219,7 +219,7 @@ export default function MediaPage() {
           ) : null}
         </section>
 
-        <section className="mt-4 rounded-2xl border border-line bg-soft p-4">
+        <section className="mt-4 rounded-2xl border border-line bg-white shadow-card p-4">
           <p className="text-xs font-semibold text-ink">Library</p>
           {assets.length === 0 ? (
             <p className="mt-1 text-[11px] text-ink-3">
@@ -230,7 +230,7 @@ export default function MediaPage() {
               {assets.map((asset) => (
                 <li
                   key={asset.id}
-                  className="rounded-xl border border-line bg-soft p-3"
+                  className="rounded-xl border border-line bg-white shadow-card p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
@@ -307,7 +307,7 @@ export default function MediaPage() {
                       <button
                         onClick={() => void send(asset.id)}
                         disabled={busy || !contactId.trim()}
-                        className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-1.5 text-xs text-ok disabled:opacity-40"
+                        className="rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ok disabled:opacity-40"
                       >
                         Send now
                       </button>
@@ -321,7 +321,7 @@ export default function MediaPage() {
 
                   {transcripts[asset.id] ? (
                     <div className="mt-2 flex items-start justify-between gap-2 rounded-lg border border-violet-400/20 bg-violet-400/[0.05] p-2">
-                      <p className="min-w-0 break-words text-[11px] text-violet-100">
+                      <p className="min-w-0 break-words text-[11px] text-violet-700">
                         {transcripts[asset.id]}
                       </p>
                       <button

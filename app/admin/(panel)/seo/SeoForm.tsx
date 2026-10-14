@@ -9,14 +9,14 @@ const initialState: SeoActionState = { success: false, message: "" };
 function Counter({ value, max }: { value: number; max: number }) {
   const over = value > max;
   return (
-    <span className={`text-[10px] ${over ? "text-amber-600" : "text-ink-3"}`}>
+    <span className={`text-[10px] ${over ? "text-amber-700" : "text-ink-3"}`}>
       {value}/{max}
     </span>
   );
 }
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40";
+  "w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40";
 
 const labelClass =
   "mb-1.5 flex items-center justify-between text-xs font-medium text-ink-3";
@@ -35,7 +35,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
   return (
     <form action={formAction} className="space-y-6">
       {/* Search engine section */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">
           Search engine listing
         </h2>
@@ -93,7 +93,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
       </div>
 
       {/* Social sharing section */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">
           Social sharing (Open Graph)
         </h2>
@@ -131,7 +131,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
       </div>
 
       {/* Site section */}
-      <div className="rounded-2xl border border-line bg-soft p-6">
+      <div className="rounded-2xl border border-line bg-white shadow-card p-6">
         <h2 className="mb-1 text-sm font-semibold text-ink">Site</h2>
         <p className="mb-5 text-xs text-ink-3">
           The canonical URL of the website (used in metadata).
@@ -158,7 +158,7 @@ export default function SeoForm({ settings }: { settings: SiteSettings }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-cyan-400 px-6 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

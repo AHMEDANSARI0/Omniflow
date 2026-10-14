@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { createClient } from "../../../lib/supabase/client";
+import { adminSignIn } from "../../../lib/admin-actions";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -17,14 +17,10 @@ export default function AdminLoginPage() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const result = await adminSignIn(email, password);
 
-    if (signInError) {
-      setError("Invalid email or password.");
+    if (!result.success) {
+      setError(result.message || "Invalid email or password.");
       setLoading(false);
       return;
     }
@@ -51,7 +47,7 @@ export default function AdminLoginPage() {
             <motion.span
               animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1, 0.9] }}
               transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-              className="h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]"
+              className="h-3 w-3 rounded-full bg-brand shadow-[0_0_12px_rgba(79,70,229,0.45)]"
             />
           </div>
           <h1 className="text-xl font-semibold tracking-[-0.03em] text-ink">
@@ -63,7 +59,7 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-line bg-soft p-6 backdrop-blur-sm sm:p-7">
+        <div className="rounded-2xl border border-line bg-white shadow-card p-6 backdrop-blur-sm sm:p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label
@@ -79,7 +75,7 @@ export default function AdminLoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="you@example.com"
               />
             </div>
@@ -98,7 +94,7 @@ export default function AdminLoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder-slate-400 outline-none transition-colors duration-300 focus:border-brand/40"
+                className="w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
                 placeholder="••••••••"
               />
             </div>
@@ -118,7 +114,7 @@ export default function AdminLoginPage() {
               disabled={loading}
               whileHover={{ y: loading ? 0 : -1 }}
               whileTap={{ scale: loading ? 1 : 0.98 }}
-              className="w-full rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-[#07111f] transition-opacity duration-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-opacity duration-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Signing in…" : "Sign in"}
             </motion.button>

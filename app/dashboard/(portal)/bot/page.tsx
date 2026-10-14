@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
 import BrainCard from "../settings/BrainCard";
+import FactsCard from "../settings/FactsCard";
+import AiOpsCard from "./AiOpsCard";
+import AiQualityCard from "./AiQualityCard";
+import EscalationsCard from "./EscalationsCard";
 import { getBotConfig, getFollowupSettings } from "../../../../lib/omniflow/portal";
 import { readSessionCookies } from "../../../../lib/omniflow/session-cookies";
 import BotForm from "./BotForm";
@@ -24,7 +28,7 @@ export default async function MyBotPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Configure AI
         </h1>
-        <p className="mt-1 text-sm text-ink-3">
+        <p className="mt-1 text-sm text-ink-2">
           Everything about how the assistant talks and takes decisions:
           behaviour, follow-ups, and the autonomy level that decides whether
           it only suggests, drafts, or answers on its own. Business details
@@ -43,6 +47,22 @@ export default async function MyBotPage() {
 
       <div className="mt-6">
         <BrainCard />
+      </div>
+
+      <div className="mt-6">
+        <FactsCard />
+      </div>
+
+      <div className="mt-6">
+        <EscalationsCard />
+      </div>
+
+      <div className="mt-6">
+        <AiOpsCard />
+      </div>
+
+      <div className="mt-6">
+        <AiQualityCard />
       </div>
     </div>
   );
