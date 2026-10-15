@@ -1,6 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/omniflow/cron/site-analytics", "schedule": "0 22 * * *" }
+    {
+      "path": "/api/omniflow/cron/site-analytics",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/omniflow/cron/cp-warm",
+      "schedule": "*/10 * * * *"
+    }
   ]
 }

@@ -4,7 +4,7 @@ import "server-only";
 import { ControlPlaneRequestError } from "./control-plane";
 
 
-const REQUEST_TIMEOUT_MS = 8_000;
+const REQUEST_TIMEOUT_MS = 15_000; // §276r4g: survive CP cold starts
 
 function serviceKey(): string {
   const key = process.env.OMNIFLOW_SERVICE_KEY?.trim();
