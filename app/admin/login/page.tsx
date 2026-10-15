@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { createClient } from "../../../lib/supabase/client";
+import { adminSignIn } from "../../../lib/admin-actions";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -17,14 +17,10 @@ export default function AdminLoginPage() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const result = await adminSignIn(email, password);
 
-    if (signInError) {
-      setError("Invalid email or password.");
+    if (!result.success) {
+      setError(result.message || "Invalid email or password.");
       setLoading(false);
       return;
     }

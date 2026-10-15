@@ -1,0 +1,92 @@
+{
+  "markers": [
+    "A6",
+    "B6",
+    "C6"
+  ],
+  "unread_reported_count": 2,
+  "raw_markers_seen": [
+    "A6",
+    "B6",
+    "C6"
+  ],
+  "parsed_markers_seen": [
+    "A6",
+    "B6",
+    "C6"
+  ],
+  "snapshots": [
+    {
+      "elapsed_seconds": 0.0,
+      "dom_message_containers": 3,
+      "parsed_message_count": 3,
+      "raw_marker_counts": {
+        "A6": 1,
+        "B6": 1,
+        "C6": 0
+      },
+      "parsed_markers": [
+        {
+          "position": 2,
+          "marker": "A6",
+          "direction": "inbound",
+          "message_id_hash": "42ea54b96f0e",
+          "chat_identifier_hash": "8d8286128d3a"
+        },
+        {
+          "position": 3,
+          "marker": "B6",
+          "direction": "inbound",
+          "message_id_hash": "7ce9208ddc39",
+          "chat_identifier_hash": "8d8286128d3a"
+        }
+      ],
+      "direction_counts": {
+        "inbound": 3,
+        "outbound": 0,
+        "unknown": 0
+      },
+      "last_outbound_position": null
+    },
+    {
+      "elapsed_seconds": 0.79,
+      "dom_message_containers": 4,
+      "parsed_message_count": 4,
+      "raw_marker_counts": {
+        "A6": 1,
+        "B6": 1,
+        "C6": 1
+      },
+      "parsed_markers": [
+        {
+          "position": 2,
+          "marker": "A6",
+          "direction": "inbound",
+          "message_id_hash": "42ea54b96f0e",
+          "chat_identifier_hash": "8d8286128d3a"
+        },
+        {
+          "position": 3,
+          "marker": "B6",
+          "direction": "inbound",
+          "message_id_hash": "7ce9208ddc39",
+          "chat_identifier_hash": "8d8286128d3a"
+        },
+        {
+          "position": 4,
+          "marker": "C6",
+          "direction": "inbound",
+          "message_id_hash": "7bb309ea4c3a",
+          "chat_identifier_hash": "8d8286128d3a"
+        }
+      ],
+      "direction_counts": {
+        "inbound": 4,
+        "outbound": 0,
+        "unknown": 0
+      },
+      "last_outbound_position": null
+    }
+  ],
+  "privacy_note": "Non-marker chat text is excluded. Message and chat IDs are represented only by 12-character SHA-256 hashes."
+}

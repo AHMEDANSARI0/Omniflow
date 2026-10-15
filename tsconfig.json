@@ -30,5 +30,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // §276r4d: mobile/ is a separate Expo project with its own tsconfig and
+  // jest types - the website type-check (and Vercel build) must skip it.
+  "exclude": ["node_modules", "mobile"]
 }

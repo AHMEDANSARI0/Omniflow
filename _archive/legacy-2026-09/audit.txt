@@ -1,0 +1,104 @@
+=== ROOT FILES ===
+      227  .connector_node.env
+      338  .env
+<dir>     .git/
+       67  .gitignore
+<dir>     OmniFlow-Control-Plane/
+<dir>     Omniflow/
+<dir>     Omniflow-website-auth/
+<dir>     __pycache__/
+<dir>     _archive/
+    15137  account_lease.py
+        0  audit.txt
+<dir>     backups/
+    50354  batch_m_refresh_rotation_logout.ps1
+    38318  batch_n_website_auth_integration.ps1
+    19977  batch_o_migrate_local_postgres_to_neon.ps1
+    20213  batch_p_switch_local_runtime_to_neon.ps1
+     4736  bootstrap_connector_node.py
+     9503  check_managed_control_plane_readiness.py
+     2205  cleanup_audit.py
+<dir>     config/
+<dir>     data/
+     8567  diagnose_whatsapp_dom_burst.py
+     2446  dry_run_managed_connector_migration.py
+<dir>     launch_audit_reports/
+    15843  live_due_reply_recovery_test.py
+<dir>     logs/
+    13990  managed_control_plane_readiness.json
+    16639  memory.json
+<dir>     migrations/
+       70  oflow_service_key.txt
+     6881  omniflow_reset_customer.py
+    14145  repair_legacy_reply_jobs.py
+     7074  repair_migration_003_preamble.py
+      141  run_account.py
+      154  run_all_accounts.py
+    18539  run_all_channels.py
+    21539  run_channel.py
+     2719  run_control_plane_api.py
+<dir>     runtime_locks/
+<dir>     session/
+<dir>     src/
+  1099996  structure.txt
+<dir>     temp_audio/
+     1172  test.py
+    12086  test_dynamic_onboarding_foundation.py.before_whitespace_fix
+   114798  tree.txt
+<dir>     venv/
+     5610  verify_pre_migration_004_backup.py
+     5342  verify_pre_migration_005_backup.py
+     3997  verify_pre_migration_006_backup.py
+    12241  voice_dom_debug.json
+     2188  whatsapp_dom_burst_diagnostic.json
+<dir>     whatsapp_sessions/
+
+=== src/ REACHABILITY (from run_channel.py) ===
+KEEP    run_channel
+KEEP    src.account_lease
+KEEP    src.ai
+ORPHAN  src.app
+ORPHAN  src.background_listener
+ORPHAN  src.channels.__init__
+ORPHAN  src.channels.contracts
+ORPHAN  src.channels.registry
+ORPHAN  src.channels.whatsapp_web
+KEEP    src.config
+ORPHAN  src.connector_node.__init__
+ORPHAN  src.connector_node.bootstrap
+ORPHAN  src.connector_node.contracts
+ORPHAN  src.connector_node.postgres_gateway
+ORPHAN  src.connector_node.runtime
+ORPHAN  src.constants
+ORPHAN  src.control_plane.__init__
+ORPHAN  src.control_plane.auth
+ORPHAN  src.control_plane.contracts
+ORPHAN  src.control_plane.http_api
+ORPHAN  src.control_plane.onboarding
+ORPHAN  src.control_plane.passwords
+ORPHAN  src.control_plane.repository
+ORPHAN  src.control_plane.scheduler
+ORPHAN  src.control_plane.security
+KEEP    src.control_plane_bridge
+KEEP    src.conversation
+KEEP    src.gemini_ai
+ORPHAN  src.listener
+ORPHAN  src.logger
+ORPHAN  src.main
+KEEP    src.memory
+ORPHAN  src.message_tracker
+ORPHAN  src.ollama_ai
+KEEP    src.portal_agent_config
+KEEP    src.portal_business_profile
+ORPHAN  src.prompt_builder
+ORPHAN  src.prompts
+ORPHAN  src.providers.__init__
+ORPHAN  src.providers.base_provider
+ORPHAN  src.providers.mock_provider
+ORPHAN  src.system_prompt
+ORPHAN  src.test_qwen
+ORPHAN  src.typing_engine
+ORPHAN  src.utils
+ORPHAN  src.whatsapp
+
+reachable: 10 / 46

@@ -12,10 +12,6 @@ Env (from .env, loaded by run_channel.py):
   OMNIFLOW_CLIENT_ID            (optional, default: 1)
   OMNIFLOW_COMMAND_POLL_SECONDS (optional, default: 15)
   OMNIFLOW_PHONE                (optional — shown as the connected WhatsApp number in the portal)
-  OMNIFLOW_CP_MEDIA_TIMEOUT_SECONDS (optional, default: 30 — upload time for one voice note / photo)
-  OMNIFLOW_CP_MEDIA_RETRIES     (optional, default: 2 — failed uploads before the file is dropped
-                                 and only the message text is sent)
-  OMNIFLOW_CP_MEDIA_BACKLOG     (optional, default: 3 — files kept in memory while the CP is offline)
 """
 
 import json
@@ -27,13 +23,6 @@ import urllib.request
 
 
 DEFAULT_BASE_URL = "https://omniflow-control-plane-rho.vercel.app"
-
-
-def _env_float(name, default):
-    try:
-        return float(str(os.getenv(name, default)).strip())
-    except ValueError:
-        return float(default)
 
 
 class ControlPlaneBridge:
@@ -84,17 +73,6 @@ class ControlPlaneBridge:
 
         self.max_batch = 100
 
-        self.media_timeout_seconds = max(
-            self.timeout_seconds,
-            _env_float("OMNIFLOW_CP_MEDIA_TIMEOUT_SECONDS", 30.0),
-        )
-        self.media_retries = max(
-            1, int(_env_float("OMNIFLOW_CP_MEDIA_RETRIES", 2))
-        )
-        self.media_backlog = max(
-            1, int(_env_float("OMNIFLOW_CP_MEDIA_BACKLOG", 3))
-        )
-
         self.account_name = (
             str(account_name).strip()
             if account_name
@@ -115,7 +93,7 @@ class ControlPlaneBridge:
 
     # ---------- low level ----------
 
-    def _request(self, method, path, payload=None, timeout=None):
+    def _request(self, method, path, payload=None):
         data = None
         headers = {
             "X-Omniflow-Key": self.service_key,
@@ -135,7 +113,7 @@ class ControlPlaneBridge:
         try:
             with urllib.request.urlopen(
                 request,
-                timeout=timeout or self.timeout_seconds,
+                timeout=self.timeout_seconds,
             ) as response:
                 body = response.read().decode(
                     "utf-8",
@@ -221,18 +199,7 @@ class ControlPlaneBridge:
         body,
         direction="in",
         display_name=None,
-        media=None,
-        message_id=None,
     ):
-        """Queue one message for the CP and flush.
-
-        ``media`` (optional, inbound only): up to 3 items of
-        {"type": "audio"|"image", "mime", "data_b64", "transcribed"?} - the
-        CP keeps a copy for the inbox and, unless already transcribed here,
-        runs its speech-to-text / vision. ``message_id`` (the WhatsApp
-        message id) makes the CP dedupe exact, so two photos with the same
-        placeholder text are never merged.
-        """
         item = {
             "from": str(external_user_id or "").strip(),
             "body": "" if body is None else str(body),
@@ -250,26 +217,6 @@ class ControlPlaneBridge:
         ):
             item["name"] = str(display_name)
 
-        if message_id and item["direction"] == "in":
-            item["id"] = "waweb:" + str(message_id).strip()[:250]
-
-        if (
-            isinstance(media, list)
-            and media
-            and item["direction"] == "in"
-        ):
-            item["media"] = [
-                entry for entry in media[:3]
-                if isinstance(entry, dict)
-            ]
-
-            if item["media"] and not item["body"].strip():
-                item["body"] = (
-                    "[Voice note]"
-                    if item["media"][0].get("type") == "audio"
-                    else "[Image]"
-                )
-
         with self._lock:
             if len(self._pending) >= self.max_batch:
                 dropped = self._pending.pop(0)
@@ -281,9 +228,6 @@ class ControlPlaneBridge:
 
             self._pending.append(item)
 
-            if item.get("media"):
-                self._trim_media_backlog()
-
         try:
             self.flush()
         except Exception as flush_error:
@@ -292,89 +236,31 @@ class ControlPlaneBridge:
                 f"{flush_error}"
             )
 
-    @staticmethod
-    def _drop_media(item, reason):
-        item.pop("media", None)
-        item.pop("_media_failures", None)
-        print(
-            "CP bridge: media dropped (" + reason + "), "
-            "message text kept: " + str(item.get("from"))
-        )
-
-    def _trim_media_backlog(self):
-        """Caller holds the lock. Bound the files held in memory."""
-        with_media = [
-            item for item in self._pending if item.get("media")
-        ]
-
-        for item in with_media[: max(0, len(with_media) - self.media_backlog)]:
-            self._drop_media(item, "backlog full")
-
-    def _next_group(self):
-        """Caller holds the lock. A message with media travels alone (own
-        timeout, bounded body size); plain messages travel together."""
-        if not self._pending:
-            return []
-
-        if self._pending[0].get("media"):
-            return [self._pending[0]]
-
-        group = []
-
-        for item in self._pending[: self.max_batch]:
-            if item.get("media"):
-                break
-
-            group.append(item)
-
-        return group
-
     def flush(self):
-        for _ in range(10):
-            with self._lock:
-                group = self._next_group()
+        with self._lock:
+            batch = list(self._pending[: self.max_batch])
 
-            if not group:
-                return True
+        if not batch:
+            return True
 
-            if not self._send_group(group):
-                return False
-
-        return True
-
-    def _send_group(self, group):
-        has_media = any(item.get("media") for item in group)
         status, data = self._request(
             "POST",
             "/api/v1/connector/whatsapp/messages",
             {
                 "client_id": self.client_id,
-                "messages": [
-                    {
-                        key: value
-                        for key, value in item.items()
-                        if not key.startswith("_")
-                    }
-                    for item in group
-                ],
+                "messages": batch,
             },
-            timeout=(
-                self.media_timeout_seconds if has_media else None
-            ),
         )
 
         if status == 200:
             inserted = data.get("inserted")
 
             with self._lock:
-                self._pending = [
-                    item for item in self._pending
-                    if not any(item is sent for sent in group)
-                ]
+                del self._pending[: len(batch)]
 
             print(
                 "CP bridge ingest: "
-                f"{inserted if inserted is not None else len(group)}"
+                f"{inserted if inserted is not None else len(batch)}"
                 " message(s) stored"
             )
 
@@ -384,23 +270,6 @@ class ControlPlaneBridge:
             "CP bridge ingest deferred (HTTP "
             f"{status})"
         )
-
-        if has_media:
-            with self._lock:
-                for item in group:
-                    if not item.get("media"):
-                        continue
-
-                    item["_media_failures"] = (
-                        item.get("_media_failures", 0) + 1
-                    )
-
-                    if item["_media_failures"] >= self.media_retries:
-                        self._drop_media(
-                            item,
-                            "upload failed " + str(self.media_retries)
-                            + "x",
-                        )
 
         return False
 
@@ -661,135 +530,6 @@ class ControlPlaneBridge:
             " buttons)."
         )
 
-    # §256 bridge drift: Cloud API templates (§212 send_template + the
-    # template list sync) lived only in connector-bridge/ - now here too.
-    def send_template_message(self, payload, adapter):
-        """Deliver a send_template command: POST a Cloud API template
-        message. No text fallback - an unapproved or mis-parameterized
-        template is rejected by the API and the command fails with the
-        reason (raised, so the command is never acked as done)."""
-        to = str(payload.get("external_user_id") or "").strip()
-        template_name = str(payload.get("template_name") or "").strip()
-        language_code = (
-            str(payload.get("language_code") or "").strip() or "en"
-        )
-        raw_parameters = payload.get("parameters")
-        if not isinstance(raw_parameters, list):
-            raw_parameters = []
-        parameters = [
-            {"type": "text", "text": str(item)[:500]}
-            for item in raw_parameters[:10]
-            if str(item).strip()
-        ]
-        if not to or not template_name:
-            raise ValueError("Invalid template payload.")
-
-        cloud_url = os.environ.get("OMNIFLOW_WA_CLOUD_URL", "").strip()
-        token = os.environ.get("OMNIFLOW_WA_TOKEN", "").strip()
-        if not cloud_url or not token:
-            raise ValueError(
-                "Cloud API not configured - set OMNIFLOW_WA_CLOUD_URL"
-                " + OMNIFLOW_WA_TOKEN to send templates."
-            )
-        header_name = (
-            os.environ.get("OMNIFLOW_WA_AUTH_HEADER", "").strip()
-            or "Authorization"
-        )
-        header_value = (
-            os.environ.get("OMNIFLOW_WA_AUTH_VALUE", "").strip()
-            or ("Bearer " + token)
-        )
-        endpoint = cloud_url
-        if not endpoint.endswith("/"):
-            endpoint = endpoint + "/"
-        request = urllib.request.Request(
-            endpoint,
-            data=json.dumps(
-                {
-                    "messaging_product": "whatsapp",
-                    "recipient_type": "individual",
-                    "to": to,
-                    "type": "template",
-                    "template": {
-                        "name": template_name,
-                        "language": {"code": language_code},
-                        "components": [
-                            {"type": "body", "parameters": parameters}
-                        ],
-                    },
-                }
-            ).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                header_name: header_value,
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(request, timeout=20) as response:
-            response.read()
-        return "Template sent via Cloud API."
-
-    def sync_message_templates(self):
-        """Push the Meta template list into the portal snapshot (best
-        effort - the portal's Cloud templates card reads this list)."""
-        cloud_url = os.environ.get("OMNIFLOW_WA_CLOUD_URL", "").strip()
-        token = os.environ.get("OMNIFLOW_WA_TOKEN", "").strip()
-        if not cloud_url or not token:
-            return
-        base = cloud_url
-        if base.endswith("/"):
-            base = base[:-1]
-        if not base.endswith("/messages"):
-            return
-        list_url = base[: -len("/messages")] + "/message_templates?limit=200"
-        header_name = (
-            os.environ.get("OMNIFLOW_WA_AUTH_HEADER", "").strip()
-            or "Authorization"
-        )
-        header_value = (
-            os.environ.get("OMNIFLOW_WA_AUTH_VALUE", "").strip()
-            or ("Bearer " + token)
-        )
-        request = urllib.request.Request(
-            list_url,
-            headers={
-                "Accept": "application/json",
-                header_name: header_value,
-            },
-            method="GET",
-        )
-        with urllib.request.urlopen(request, timeout=20) as response:
-            payload = json.loads(
-                response.read().decode("utf-8", "replace")
-            )
-        templates = []
-        for row in (payload.get("data") or [])[:200]:
-            if not isinstance(row, dict) or not str(row.get("name") or "").strip():
-                continue
-            language = row.get("language")
-            if isinstance(language, dict):
-                language = language.get("code")
-            templates.append(
-                {
-                    "name": str(row.get("name")).strip()[:120],
-                    "language": str(language or "").strip()[:20],
-                    "status": str(row.get("status") or "").strip()[:20],
-                    "category": str(row.get("category") or "").strip()[:60],
-                }
-            )
-        status, _body = self._request(
-            "POST",
-            "/api/v1/connector/cloud-templates/sync",
-            {"client_id": self.client_id, "templates": templates},
-        )
-        print(
-            "CP bridge template sync: HTTP "
-            + str(status)
-            + " ("
-            + str(len(templates))
-            + " templates)"
-        )
-
     def run_due_commands(
         self,
         adapter,
@@ -804,15 +544,6 @@ class ControlPlaneBridge:
             self.process_due_away(adapter)
         except Exception as away_error:
             print(f"CP bridge away warning: {away_error}")
-
-        # §256: keep the portal's Cloud template list fresh (every 10 min)
-        now = time.time()
-        if now - getattr(self, "_last_template_sync", 0.0) > 600:
-            self._last_template_sync = now
-            try:
-                self.sync_message_templates()
-            except Exception as error:
-                print("CP bridge template sync failed: " + str(error))
 
         commands = self.fetch_commands()
 
@@ -917,12 +648,6 @@ class ControlPlaneBridge:
 
                 elif action == "send_media":
                     note = self.send_media_message(
-                        command.get("payload") or {}, adapter
-                    )
-
-                elif action == "send_template":
-                    # §256: Cloud API template (raises on failure)
-                    note = self.send_template_message(
                         command.get("payload") or {}, adapter
                     )
                 else:

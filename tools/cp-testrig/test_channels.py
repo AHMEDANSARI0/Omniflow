@@ -76,7 +76,6 @@ platform_settings.get_group = lambda group: (
      "from_number": "+15550001"} if group == "voice" else {})
 
 portal_voice._DDL_READY = True
-portal_voice._signature_mode = lambda: "off"  # D5: unsigned legacy fixture
 calls = {}
 portal_voice._twilio_create_call = lambda keys, to, message: (
     calls.update({"to": to, "message": message,

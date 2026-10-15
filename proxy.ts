@@ -1,20 +1,25 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   ACCESS_COOKIE,
+  ADMIN_SESSION_COOKIE,
   REFRESH_COOKIE,
 } from "./lib/omniflow/session-constants";
 
-
 /**
- * Next.js 16 Proxy performs optimistic cookie-presence redirects only.
- * Secure authorization remains in each portal's server-side data layer.
- * Marketing-admin authentication stays on Supabase; customer-dashboard
- * authentication is owned by the OmniFlow Control Plane.
+ * §276 — Next.js 16 Proxy (middleware): optimistic cookie-presence redirects
+ * only. Runs in the Edge runtime, so it never touches the database, `pg`, or
+ * Node `crypto`. Secure authorization stays in each portal's server-side data
+ * layer:
+ *   • Marketing admin — real check is `requireSiteAdmin()` against Neon
+ *     `admin_sessions`; here we only look for the `of_admin_session` cookie.
+ *   • Customer dashboard — authentication is owned by the OmniFlow Control
+ *     Plane (`of_access_token` / `of_refresh_token` cookies).
+ * There is no Supabase anywhere.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ---- Customer dashboard (Control Plane–owned auth) ----------------------
   if (pathname.startsWith("/dashboard")) {
     const isPublicDashboardRoute =
       pathname === "/dashboard/login" ||
@@ -42,47 +47,26 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  let supabaseResponse = NextResponse.next({ request });
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
+  // ---- Marketing admin (Neon session cookie) ------------------------------
+  const isAdminLogin = pathname === "/admin/login";
+  const hasAdminSession = Boolean(
+    request.cookies.get(ADMIN_SESSION_COOKIE)?.value
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const isAdminLogin = pathname === "/admin/login";
-  if (!user && !isAdminLogin) {
+  if (!hasAdminSession && !isAdminLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     url.search = "";
     return NextResponse.redirect(url);
   }
-  if (user && isAdminLogin) {
+  if (hasAdminSession && isAdminLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
     url.search = "";
     return NextResponse.redirect(url);
   }
 
-  return supabaseResponse;
+  return NextResponse.next({ request });
 }
 
 export const config = {

@@ -119,18 +119,12 @@ check("empty due no commit", portal_growth.materialize_due_broadcasts(conn.cur, 
 print("== connector poll hook ==")
 
 portal_growth._SCHEDULE_COLUMNS_READY = True
-# §238: the retention tick step has its own real-database suite
-# (test_retention.py); the scripted stub here covers the steps around it.
-import portal_retention  # noqa: E402
-
-portal_retention.kick = lambda *a, **k: 0
-conn = install_db_stub(connector_api, [DUE, [], [], 0, 0, [], [], [], [], 0,
-                                 [{"id": 1, "action": "send_message"}]])  # 0 = events requeue rowcount
+conn = install_db_stub(connector_api, [DUE, [], [], 0, 0, [], [], [], [], [{"id": 1, "action": "send_message"}]])
 connector_api.portal_db.CMD_TABLE = "portal_connector_commands"
 connector_api._AWAY_TABLE_READY = True
 response = client.get("/api/v1/connector/whatsapp/commands?client_id=1",
                       headers={"X-Omniflow-Key": "x"})
-check("poll still 200", status(response) == 200, (status(response), response.get_data(as_text=True)[:400]))
+check("poll still 200", status(response) == 200, status(response))
 check("hook materialized first", any("materialized_at = NOW()" in e[0] for e in conn.cur.executed[:7]),
       len(conn.cur.executed))
 

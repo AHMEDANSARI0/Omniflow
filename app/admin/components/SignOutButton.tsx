@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from "../../../lib/supabase/client";
+import { adminSignOut } from "../../../lib/admin-actions";
 
 export default function SignOutButton({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
@@ -11,8 +11,7 @@ export default function SignOutButton({ compact = false }: { compact?: boolean }
 
   async function handleSignOut() {
     setLoading(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await adminSignOut();
     router.push("/admin/login");
     router.refresh();
   }

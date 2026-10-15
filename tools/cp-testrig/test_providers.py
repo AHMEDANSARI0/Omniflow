@@ -62,9 +62,7 @@ platform_settings.get_group = lambda group: {
     "video": {"provider": "daily", "api_key": "vk1"},
     "payments": {"provider": "stripe", "secret_key": "sk_live_9"},
     "whatsapp_e2e": {"live_number": "+923001234567"},
-    "stt": {},
-    "ai": {"kill_switch": "off", "autonomy_cap": "auto"},
-}.get(group, {})
+}[group]
 
 r = client.get("/api/v1/admin/providers", headers=KEY)
 body = r.get_json()
@@ -87,7 +85,6 @@ check("flags not configured", body["groups"]["flags"]["configured"] is False,
       "not")
 check("flags value visible", body["groups"]["flags"]["true_sentiment"]
       == "off", "off")
-check("stt group listed", "stt" in body["groups"], "stt")
 
 print("== providers PUT: whitelist + blank-keep + audit ==")
 
@@ -434,9 +431,9 @@ def read(path):
     return open(P13 + path, encoding="utf8").read()
 
 
-ADMIN_NAV_SRC = read("lib/omniflow/admin-nav.ts")  # §259: the nav list moved here
-check("sidebar integrations (plug icon, §259)", "/admin/integrations" in ADMIN_NAV_SRC
-      and "Integrations" in ADMIN_NAV_SRC and 'icon: "plug"' in ADMIN_NAV_SRC, "nav")
+SIDEBAR = read("app/admin/components/AdminSidebar.tsx")
+check("sidebar integrations", "/admin/integrations" in SIDEBAR
+      and "Integrations" in SIDEBAR, "nav")
 PAGE = read("app/admin/(panel)/integrations/page.tsx")
 check("admin page guards session", "supabase.auth.getUser" in PAGE
       and "/admin/login" in PAGE, "guard")

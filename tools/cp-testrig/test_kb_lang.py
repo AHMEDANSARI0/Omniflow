@@ -6,9 +6,6 @@ from flask import Flask
 
 import portal_kb
 import test_lib
-import portal_billing  # §261
-from test_lib import neutralize_billing_plan_check  # §261
-neutralize_billing_plan_check(portal_billing)  # §261: scripted SQL slots, see test_lib
 from test_lib import FakeConn, check, install_db_stub, PrincipalStub, status, summary
 
 app = Flask(__name__)
@@ -116,8 +113,7 @@ check("lang-aware select", any("lang FROM" in sql and "portal_kb_entries"
                                in sql for sql, _ in executed), "-")
 queued = [params for sql, params in executed
           if "INSERT INTO" in sql and "portal_connector_commands" in sql]
-# commands now carry a channel column (Instagram adapter): payload position moved.
-check("answer queued", queued and any("Hi Ali" in str(p) for p in queued[0]), queued)
+check("answer queued", queued and "Hi Ali" in queued[0][1], queued)
 
 
 print("== endpoints ==")

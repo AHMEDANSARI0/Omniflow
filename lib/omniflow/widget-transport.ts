@@ -1,3 +1,4 @@
+import { IS_PRODUCTION_BUILD } from "./session-constants";
 /**
  * Server-side transport for the public website chat widget. The widget has
  * no portal session, so these calls carry no bearer token — the Control
@@ -6,6 +7,7 @@
  */
 
 export function widgetControlPlaneUrl(path: string): string {
+  if (IS_PRODUCTION_BUILD) throw new Error("control_plane_not_configured"); // §276r4e
   const raw = process.env.OMNIFLOW_CONTROL_PLANE_URL?.trim();
   if (!raw) throw new Error("control_plane_not_configured");
 

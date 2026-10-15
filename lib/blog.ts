@@ -1,11 +1,15 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import "server-only";
+import { unstable_cache } from "next/cache";
+
+import { from } from "@/lib/db/neon";
 
 /**
- * The OmniFlow blog. Posts live in the `blog_posts` table (managed in
- * Admin > Content > Blog); the three seed articles below double as the
- * code-level fallback, so the blog renders even before the SQL is
- * applied or if the database is unreachable — the same contract as
- * getSectionContent.
+ * §276 — The OmniFlow blog, now backed by NEON (was Supabase). Posts live in
+ * the `blog_posts` table (managed in Admin > Content > Blog); the three seed
+ * articles below double as the code-level fallback, so the blog renders even
+ * before the SQL is applied or if the database is unreachable — the same
+ * fail-soft contract as getSectionContent. Reads are cached (tag
+ * `blog-posts`) and invalidated by the admin editor's revalidateTag.
  */
 
 export interface BlogPost {
@@ -139,67 +143,51 @@ export function formatDate(value: string | null): string {
   }
 }
 
-async function supabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  try {
-    return createSupabaseClient(url, key, {
-      auth: { persistSession: false },
-      global: {
-        fetch: (input, init) =>
-          fetch(input, {
-            ...init,
-            next: { revalidate: 300, tags: ["blog-posts"] },
-          }),
-      },
-    });
-  } catch {
-    return null;
-  }
-}
-
-/** Published posts: database first (newest first), seed fallback. */
+/** Published posts: Neon first (newest first), seed fallback. Cached, fail-soft. */
 export async function listPosts(): Promise<BlogPost[]> {
-  const client = await supabase();
-  if (client) {
-    try {
-      const { data, error } = await client
-        .from("blog_posts")
+  const load = unstable_cache(
+    async (): Promise<BlogPost[] | null> => {
+      const { data, error } = await from("blog_posts")
         .select(
           "slug,title,excerpt,category,author,reading_minutes,content,published_at"
         )
         .eq("status", "published")
         .order("published_at", { ascending: false })
         .limit(50);
-      if (!error && data && data.length > 0) {
-        return data as unknown as BlogPost[];
-      }
-    } catch {
-      // fall through to seeds
-    }
+      if (error || !data) return null;
+      return data as unknown as BlogPost[];
+    },
+    ["blog-posts-list"],
+    { tags: ["blog-posts"], revalidate: 300 }
+  );
+  try {
+    const posts = await load();
+    return posts && posts.length > 0 ? posts : SEED_POSTS;
+  } catch {
+    return SEED_POSTS;
   }
-  return SEED_POSTS;
 }
 
 export async function getPost(slug: string): Promise<BlogPost | null> {
-  const client = await supabase();
-  if (client) {
-    try {
-      const { data, error } = await client
-        .from("blog_posts")
+  const load = unstable_cache(
+    async (s: string): Promise<BlogPost | null> => {
+      const { data, error } = await from("blog_posts")
         .select(
           "slug,title,excerpt,category,author,reading_minutes,content,published_at"
         )
-        .eq("slug", slug)
+        .eq("slug", s)
         .eq("status", "published")
         .limit(1);
-      if (!error && data && data.length > 0) {
-        return data[0] as unknown as BlogPost;
-      }
-    } catch {
-      // fall through to seeds
-    }
+      if (error || !data || data.length === 0) return null;
+      return data[0] as unknown as BlogPost;
+    },
+    ["blog-post", slug],
+    { tags: ["blog-posts"], revalidate: 300 }
+  );
+  try {
+    const post = await load(slug);
+    return post ?? SEED_POSTS.find((p) => p.slug === slug) ?? null;
+  } catch {
+    return SEED_POSTS.find((p) => p.slug === slug) ?? null;
   }
-  return SEED_POSTS.find((post) => post.slug === slug) ?? null;
 }

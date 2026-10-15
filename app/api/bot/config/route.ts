@@ -1,51 +1,19 @@
 import { NextResponse } from "next/server";
-import { authenticateApiKey } from "../../../../lib/bot-api";
-import { createServiceClient } from "../../../../lib/supabase/service";
 
 /**
- * GET /api/bot/config
- * Auth: Authorization: Bearer ofk_...
- * Returns the client's bot settings + business profile.
- * Any external bot (Python, Node, n8n, ...) reads its config from here.
+ * §276 — DEPRECATED / removed. This endpoint served the legacy website-hosted
+ * bot from Supabase tables (`bot_settings`, `business_profiles`) that no longer
+ * exist. Bots now read configuration and exchange messages through the
+ * OmniFlow Control Plane (`/api/v1/connector/whatsapp/*`). Kept as 410 Gone so
+ * an old client gets a clear, honest signal instead of a hang or a 500.
  */
-export async function GET(request: Request) {
-  const userId = await authenticateApiKey(request);
-  if (!userId) {
-    return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
-  }
-
-  const supabase = createServiceClient();
-
-  const [botResult, businessResult] = await Promise.all([
-    supabase.from("bot_settings").select("*").eq("id", userId).single(),
-    supabase.from("business_profiles").select("*").eq("id", userId).single(),
-  ]);
-
-  const bot = botResult.data ?? null;
-  const business = businessResult.data ?? null;
-
-  return NextResponse.json({
-    bot: bot
-      ? {
-          name: bot.bot_name,
-          is_active: bot.is_active,
-          welcome_message: bot.welcome_message,
-          instructions: bot.instructions,
-          tone: bot.tone,
-          fallback_message: bot.fallback_message,
-        }
-      : null,
-    business: business
-      ? {
-          name: business.business_name,
-          industry: business.industry,
-          phone: business.phone,
-          website: business.website,
-          address: business.address,
-          timezone: business.timezone,
-          business_hours: business.business_hours,
-          default_language: business.default_language,
-        }
-      : null,
-  });
+export async function GET() {
+  return NextResponse.json(
+    {
+      error: "gone",
+      message:
+        "This endpoint has been removed. Use the OmniFlow Control Plane connector API (/api/v1/connector/whatsapp/*).",
+    },
+    { status: 410 }
+  );
 }

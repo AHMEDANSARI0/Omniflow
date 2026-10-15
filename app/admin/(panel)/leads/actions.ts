@@ -1,9 +1,7 @@
 "use server";
 
-import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "../../../../lib/supabase/server";
-import { createServiceClient } from "../../../../lib/supabase/service";
 import type { LeadStatus } from "./types";
 
 async function requireAdmin(): Promise<string | null> {
@@ -57,53 +55,22 @@ export interface InviteResult {
 }
 
 export async function inviteLead(
-  leadId: string,
-  email: string
+  _leadId: string,
+  _email: string
 ): Promise<InviteResult> {
   const adminId = await requireAdmin();
   if (!adminId) {
     return { success: false, message: "Not authorized." };
   }
 
-  const cleanEmail = email.trim().toLowerCase();
-  if (!cleanEmail) {
-    return { success: false, message: "Lead has no email." };
-  }
-
-  const tempPassword = `Om${randomBytes(8).toString("hex")}!`;
-
-  const service = createServiceClient();
-  const { error: createError } = await service.auth.admin.createUser({
-    email: cleanEmail,
-    password: tempPassword,
-    email_confirm: true,
-  });
-
-  if (createError) {
-    const alreadyExists =
-      createError.message.toLowerCase().includes("already") ||
-      createError.code === "email_exists";
-    return {
-      success: false,
-      message: alreadyExists
-        ? "This email already has an account."
-        : "Failed to create account. Try again.",
-    };
-  }
-
-  // Mark the lead as contacted
-  const supabase = await createClient();
-  await supabase
-    .from("leads")
-    .update({ status: "contacted" })
-    .eq("id", leadId);
-
-  revalidatePath("/admin/leads");
-
+  // §276 — Supabase Auth is retired. Client portal accounts are provisioned by
+  // the Control Plane (Neon), not the website database, so a website-side
+  // invite can no longer create a login. The signature is kept so existing
+  // callers compile and degrade gracefully until the flow is re-pointed at the
+  // Control Plane.
   return {
-    success: true,
-    message: "Client account created. Share these credentials securely:",
-    email: cleanEmail,
-    tempPassword,
+    success: false,
+    message:
+      "Invites are not available right now. Client portal accounts are managed from the Control Plane.",
   };
 }

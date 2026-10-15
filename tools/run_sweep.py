@@ -1,7 +1,6 @@
 """Full rig sweep: refresh smoke971 snapshots + shared CP modules, run
 every tools/cp-testrig/test_*.py suite. Lives IN the repo so sandbox
-rebuilds cannot wipe it. Usage: python3 tools/run_sweep.py
-(``--mirror-only`` refreshes the smoke971 snapshots and exits)."""
+rebuilds cannot wipe it. Usage: python3 tools/run_sweep.py"""
 import os, subprocess, sys, shutil, glob, re
 
 ROOT = "/home/user/Omniflow"
@@ -33,7 +32,6 @@ SMOKE_MAP = {
     "perf_card.tsx": D + "settings/PerfCard.tsx",
     "settings_page.tsx": D + "settings/page.tsx",
     "sidebar.tsx": "app/dashboard/components/DashSidebar.tsx",
-    "nav.ts": "app/dashboard/components/portalNav.ts",
     "recovery_card.tsx": "app/dashboard/components/RecoveryCard.tsx",
     "address_card.tsx": D + "cod/AddressCard.tsx",
     "negotiation_card.tsx": D + "settings/NegotiationCard.tsx",
@@ -71,34 +69,11 @@ SMOKE_MAP = {
     "bff_courier_bookings.ts": P + "courier/bookings/route.ts",
     "bff_courier_track.ts": P + "courier/track/route.ts",
     "bff_perf.ts": P + "perf/route.ts",
-    "bff_routing_rules.ts": P + "routing/rules/route.ts",
-    "bff_agents.ts": P + "agents/route.ts",
-    "bff_id_agent_id.ts": P + "agents/[id]/route.ts",
-    "agents_routing.tsx": D + "team/AgentsAndRouting.tsx",
-    "team_page.tsx": D + "team/page.tsx",
-    "bff_workflows.ts": P + "workflows/route.ts",
-    "bff_workflows_catalog.ts": P + "workflows/catalog/route.ts",
-    "bff_workflows_id.ts": P + "workflows/[id]/route.ts",
-    "bff_workflows_status.ts": P + "workflows/[id]/status/route.ts",
-    "bff_workflows_runs.ts": P + "workflows/[id]/runs/route.ts",
-    "bff_workflows_run.ts": P + "workflows/[id]/run/route.ts",
-    "workflow_payload.ts": "lib/omniflow/workflow-payload.ts",
-    "workflows_page.tsx": D + "workflows/page.tsx",
-    "workflows_client.tsx": D + "workflows/WorkflowsClient.tsx",
-    "workflow_canvas.tsx": D + "workflows/WorkflowCanvas.tsx",
-    "step_inspector.tsx": D + "workflows/StepInspector.tsx",
-    "workflow_model.ts": D + "workflows/workflow-model.ts",
-    "onboarding_page.tsx": D + "onboarding/page.tsx",
 }
 for name, rel in SMOKE_MAP.items():
     src = os.path.join(ROOT, rel)
     if os.path.exists(src):
         shutil.copy2(src, os.path.join(SMOKE, name))
-
-if "--mirror-only" in sys.argv:
-    # Snapshot refresh only (single-suite runs need the same smoke971 files).
-    print("smoke971 snapshots refreshed")
-    sys.exit(0)
 
 suites = sorted(glob.glob(RIG + "/test_*.py"))
 env = dict(os.environ)

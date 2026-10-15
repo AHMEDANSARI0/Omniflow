@@ -43,8 +43,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 *.pre_*.bak
-
-# bot runtime + local accident backups (never commit)
 /whatsapp_sessions/
 /src/whatsapp_session/
 /logs/
@@ -52,22 +50,5 @@ next-env.d.ts
 /hide/
 /Omniflow/
 *.dir_conflict.bak/
-
-# Nested CP repo lives on the laptop bot root; never track it in the website repo.
-OmniFlow-Control-Plane/
-/patchers
-/hide
-/.connector_node.env
-.connector_node.env
-
-# §264 GitHub cleanup: local-only junk that must never be committed.
-# These were swept into git by a bulk commit once; they are untracked again
-# (git rm --cached) and stay out with these rules.
-/venv/
-/whatsapp_session/
-/_archive/
-/backups/
-/runtime_locks/
-/data/
-/.agents/
-/verify-script/
+.hide
+hide/

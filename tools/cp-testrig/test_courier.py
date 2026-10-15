@@ -8,9 +8,6 @@ from flask import Flask
 import portal_courier
 from test_lib import install_db_stub
 from test_lib import check, summary
-import portal_billing  # §261
-from test_lib import neutralize_billing_plan_check  # §261
-neutralize_billing_plan_check(portal_billing)  # §261: scripted SQL slots, see test_lib
 
 PRINCIPAL = {
     "session_id": "s", "user_id": 11, "client_id": 1, "role": "owner",
@@ -336,10 +333,8 @@ PAGE = open(BASE + "courier_page.tsx", encoding="utf8").read()
 check("courier page", "CourierProvidersCard" in PAGE
       and "Book parcel" in PAGE and "courier/bookings" in PAGE, "page")
 SIDEBAR = open(BASE + "sidebar.tsx", encoding="utf8").read()
-SIDEBAR += "\n" + open(BASE + "nav.ts", encoding="utf8").read()  # §246 nav entries live in portalNav.ts
 check("sidebar nav", "/dashboard/courier" in SIDEBAR, "nav")
 PALETTE = open(BASE + "palette.tsx", encoding="utf8").read()
-PALETTE += "\n" + open(BASE + "nav.ts", encoding="utf8").read()  # §246 nav entries live in portalNav.ts
 check("palette entry", 'label: "Courier"' in PALETTE, "palette")
 
 summary("courier")

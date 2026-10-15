@@ -28,7 +28,7 @@ for token, value in [
     ("--color-ai", "#7c3aed"),
     ("--color-flow", "#06b6d4"),
     ("--color-night", "#080d18"),
-    ("--color-ok", "#15803d"),
+    ("--color-ok", "#16a34a"),
 ]:
     check("token " + token, token + ": " + value in GLOBALS, token)
 
@@ -66,105 +66,72 @@ for path, needle in [
     check("primitive " + path.rsplit("/", 1)[-1] + " " + needle[:20],
           needle in read(path), "pin")
 
-print("== navbar (redesign v2) ==")
+print("== navbar ==")
 
 NAV = read("app/components/Navbar.tsx")
-NAVCFG = read("lib/marketing/navigation.ts")
-SITE = read("lib/marketing/site.ts")
-CSS = read("app/globals.css")
-for needle in ("useScrolled(NAVBAR_SCROLL_THRESHOLD)", "{items.map((item) => {",
-               "NAV_ACTIONS.primary", "aria-expanded={open}",
-               "aria-controls={panelId}", '"Escape"', "inert={!open}"):
-    check("navbar " + needle[:28], needle in NAV, "pin")
-check("navbar no animation lib", "motion/react" not in NAV
-      and "AnimatePresence" not in NAV, "css only")
-check("navbar threshold constant", "NAVBAR_SCROLL_THRESHOLD = 40" in SITE, "config")
-for needle in ('"Platform"', '"Solutions"', '"Integrations"', '"How it works"',
-               '"Pricing"', '"Resources"', '"Log in"', '"Start Building"',
-               '"/dashboard/login"'):
-    check("nav config " + needle, needle in NAVCFG + SITE, "config")
-for needle in (".of-nav-bar {", 'data-scrolled="true"', "@keyframes of-nav-enter",
-               "backdrop-filter: blur(", ".of-nav-panel[data-open"):
-    check("navbar css " + needle[:24], needle in CSS, "css")
-check("navbar glassmorphism", "backdrop-filter: blur(20px) saturate(180%);" in CSS
-      and "inset 0 1px 0 rgba(255, 255, 255, 0.75)" in CSS, "glass")
-check("site clips edge glows", "overflow-x: clip;" in CSS, "mobile overflow")
-check("load bounce-up", "@keyframes of-enter" in CSS and "transform: translateY(-8px);" in CSS, "bounce")
-check("card scroll rise", "@keyframes of-rise" in CSS and "var(--d, 0ms) backwards" in CSS, "rise")
-TPL = read("app/components/home/AutomationTemplates.tsx")
-check("templates reveal on scroll", '<Reveal as="li" key={template.id}>' in TPL
-      and 'className="of-enter"' not in TPL, "scroll")
+for needle in ("window.scrollY > 12", "backdrop-blur-xl",
+               '"/dashboard/login"', '"/use-cases"', '"/features"',
+               '"/blog"', '"/pricing"', "aria-expanded={open}",
+               "AnimatePresence"):
+    check("navbar " + needle[:24], needle in NAV, "pin")
 
 print("== footer ==")
 
 FOOT = read("app/components/Footer.tsx")
-check("footer config driven", "{columns.map((column) => (" in FOOT
-      and 'groupFooterLinks(await getMarketingList("footer"))' in FOOT, "config")
 for needle in ('href: "/features"', 'href: "/blog"', 'href: "/about"',
-               'href: "/privacy"', 'href: "/terms"', 'href: "/contact"',
-               'href: "/security"', 'href: "/integrations"'):
-    check("footer " + needle[:24], needle in NAVCFG, "pin")
-for title in ("Product", "Solutions", "Integrations", "Resources", "Company", "Legal"):
-    check("footer column " + title, 'title: "%s"' % title in NAVCFG, "cols")
-for needle in ("content.status_label", "content.description",
+               'href: "/privacy"', 'href: "/terms"',
+               'href: "/security"', 'href: "/integrations"',
+               "content.status_label", "content.description",
                '© {new Date().getFullYear()} OmniFlow'):
     check("footer " + needle[:24], needle in FOOT, "pin")
 
 print("== page shell ==")
 
 SHELL = read("app/components/PageShell.tsx")
-check("shell navbar+footer", '<Navbar items={await getMarketingList("nav")} />' in SHELL
+check("shell navbar+footer", "<Navbar />" in SHELL
       and "<Footer content={footerContent} />" in SHELL, "compose")
 check("shell cms footer", 'getSectionContent("footer", FOOTER_DEFAULTS)'
       in SHELL, "cms")
 check("shell skip link", 'href="#main"' in SHELL, "a11y")
 
-import os
-print("== homepage (redesign v2) ==")
+print("== homepage (P2) ==")
 
 PAGE = read("app/page.tsx")
 order = [PAGE.index(marker) for marker in (
-    "<Hero content", "<AIIntelligence content", "<ProblemSolution content",
-    "<AutomationTemplates templates={templates}", "<HowItWorks content", "<Integrations />",
-    "<Features content", "<CustomerMemory content", "<LiveDemo scenarios={demoScenarios}",
-    "<DashboardShowcase />", "<Trust content", "<FAQ content",
+    "<Hero content", "<ProblemSolution content", "<AIIntelligence content",
+    "<CustomerMemory content", "<HowItWorks content",
+    "<Features content", "<DashboardShowcase />",
+    "<MultiChannel content", "<UseCases content",
+    "<WhyOmniFlow content", "<Trust content", "<FAQ content",
     "<FinalCTA content")]
 check("homepage order", order == sorted(order), order)
 check("jsonld before navbar", PAGE.index("application/ld+json")
-      < PAGE.index("<Navbar items={navItems} />"), "seo")
-check("homepage canonical", 'canonical: "/"' in PAGE, "seo")
-check("homepage marketing scope", 'className="of-site' in PAGE, "tokens")
+      < PAGE.index("<Navbar />"), "seo")
 check("old dark shell gone", 'bg-[#07111f]' not in PAGE, "light")
 
 HERO = read("app/components/Hero.tsx")
-check("hero has no animation lib", "motion/react" not in HERO, "lcp")
-check("hero honest channels", "statusForChannel(name, integrations)" in HERO
-      and "AvailabilityBadge" in HERO, "honesty")
-check("hero visual slot", "<HeroVisual />" in HERO, "slot")
-check("hero visual asset config", "heroVisualAsset: AIVisualAsset | null" in SITE, "config")
-check("workflow animation retired", not os.path.exists(ROOT + "app/components/WorkflowAnimation.tsx"), "removed")
+check("hero is a motion island", "motion/react" in HERO, "island")
+check("hero honest channels", '"Soon"' in HERO
+      and "WhatsApp today. More channels as OmniFlow expands." in HERO,
+      "honesty")
+check("hero workflow island", 'import WorkflowAnimation from "./WorkflowAnimation"' in HERO, "run")
 
-INTEG = read("lib/marketing/integrations.ts")
-check("integration statuses honest", 'id: "whatsapp"' in INTEG
-      and 'status: "live"' in INTEG and 'status: "beta"' in INTEG
-      and 'status: "soon"' in INTEG, "honesty")
+WF = read("app/components/WorkflowAnimation.tsx")
+for needle in ("Assalam o Alaikum, mujhe black hoodie medium size mein",
+               "Intent detected", "Workflow decision",
+               "Customer history", "Follow-up scheduled",
+               "prefers-reduced-motion"):
+    check("workflow " + needle[:28], needle in WF, "pin")
 
 SHOW = read("app/components/DashboardShowcase.tsx")
-DASH = read("lib/marketing/dashboard.ts")
-check("showcase product ui", 'getCopy("dashboard_preview")' in SHOW
-      and '"Live conversations"' in DASH and '"Channel status"' in DASH, "ui")
-check("showcase sample-data caption", "sample data" in DASH, "honesty")
-
-CTA = read("app/components/FinalCTA.tsx")
-check("final cta light", "of-cta-gradient" not in CTA
-      and "night-outline" not in CTA, "light")
+check("showcase product ui", "Live conversations" in SHOW
+      and "WhatsApp connected" in SHOW, "ui")
 
 DEFAULTS = read("lib/content-defaults.ts")
-check("hero defaults copy", '"Turn every customer conversation"' in DEFAULTS
-      and '"into action."' in DEFAULTS, "copy")
+check("hero defaults copy", '"Your business,"' in DEFAULTS
+      and '"on autopilot."' in DEFAULTS, "copy")
 check("ai defaults meet", '"Meet OmniFlow"' in DEFAULTS, "dark head")
-check("cta defaults copy", '"Every conversation can become"' in DEFAULTS
-      and '"Start Building Free"' in DEFAULTS, "cta")
+check("cta defaults copy", '"Stop managing every"' in DEFAULTS, "cta")
 check("hexgrid retired", "HEX" not in DEFAULTS, "n/a")
 
 import os
@@ -174,9 +141,7 @@ print("== redesign patcher ==")
 
 import os
 PATCHER = "tools/patchers/add_batch_1271_1300_redesign.mjs"
-# Patchers are not kept in git since the 222 repo cleanup: check content only when present.
-if not os.path.exists(ROOT + PATCHER):
-    print("  skip: redesign patcher not in this checkout")
+check("redesign patcher shipped", os.path.exists(ROOT + PATCHER), "patcher")
 if os.path.exists(ROOT + PATCHER):
     P_SRC = read(PATCHER)
     check("patcher covers globals", '"app/globals.css"' in P_SRC, "ops")
@@ -188,8 +153,7 @@ if os.path.exists(ROOT + PATCHER):
     check("patcher lucide marker", "lucide-react" in P_SRC, "deps")
 
 HOTFIX = "tools/patchers/add_batch_1271_1300_redesign_hotfix1.mjs"
-if not os.path.exists(ROOT + HOTFIX):
-    print("  skip: redesign hotfix not in this checkout")
+check("redesign hotfix shipped", os.path.exists(ROOT + HOTFIX), "patcher")
 if os.path.exists(ROOT + HOTFIX):
     H_SRC = read(HOTFIX)
     check("hotfix restores session glue", "lib/omniflow/session-cookies.ts" in H_SRC
@@ -197,8 +161,7 @@ if os.path.exists(ROOT + HOTFIX):
     check("hotfix glue closure", H_SRC.count("writeNewRepair(") >= 33, "ops")
 
 FULL = "tools/patchers/add_batch_1301_1310_full_restore.mjs"
-if not os.path.exists(ROOT + FULL):
-    print("  skip: full restore patcher not in this checkout")
+check("full restore shipped", os.path.exists(ROOT + FULL), "patcher")
 if os.path.exists(ROOT + FULL):
     F_SRC = read(FULL)
     check("full restore covers tree", F_SRC.count("writeNewRepair(") >= 790, "ops")
