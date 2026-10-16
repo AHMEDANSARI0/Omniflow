@@ -4,8 +4,8 @@ import { isAdminApp } from "@/config/env";
 
 /**
  * Entry gate: signed out -> login; signed in -> the variant's home.
- * Role routing for the Admin variant lands with its Supabase guard (P1);
- * today the Admin build reuses the same CP session for platform owners.
+ * Role routing for the Admin variant uses its Neon-backed mobile-admin login
+ * (§275); the Admin build signs platform owners in through the CP.
  */
 export default function Index() {
   const status = useAuthStore((s) => s.status);

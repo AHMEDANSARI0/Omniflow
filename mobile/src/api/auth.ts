@@ -1,8 +1,8 @@
 /**
  * Client-auth endpoints of the existing Control Plane, reused as-is by the
  * mobile Client app (the web portal uses the same routes via
- * lib/omniflow/control-plane.ts). Admin auth is Supabase and lives in
- * src/api/admin.ts (P1).
+ * lib/omniflow/control-plane.ts). Admin auth is the CP's Neon-backed
+ * mobile-admin login and lives in src/api/admin.ts (§275).
  */
 
 import { z } from "zod";

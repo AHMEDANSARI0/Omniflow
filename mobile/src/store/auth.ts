@@ -7,7 +7,14 @@ import {
   type LoginInput,
   type SessionUser,
 } from "@/api/auth";
+import {
+  adminLogin,
+  adminLogout,
+  adminRefresh,
+  fetchAdminSession,
+} from "@/api/admin";
 import { setTokenProvider } from "@/api/client";
+import { isAdminApp } from "@/config/env";
 import {
   KEYS,
   clearSessionSecrets,
@@ -41,13 +48,30 @@ async function persistTokens(access: string, refresh: string): Promise<void> {
 async function doRefresh(): Promise<string | null> {
   if (!refreshToken) return null;
   try {
-    const pair = await apiRefresh(refreshToken);
+    // §272: the Admin variant refreshes through the CP mobile-admin proxy,
+    // the Client variant through the existing portal auth flow.
+    const pair = isAdminApp
+      ? await adminRefresh(refreshToken)
+      : await apiRefresh(refreshToken);
     await persistTokens(pair.access_token, pair.refresh_token);
     return pair.access_token;
   } catch (err) {
     logger.warn("token refresh failed", err);
     return null;
   }
+}
+
+async function currentSession(): Promise<SessionUser> {
+  if (isAdminApp) {
+    const admin = await fetchAdminSession();
+    return {
+      id: admin.id ?? "admin",
+      email: admin.email,
+      name: admin.name ?? undefined,
+      role: admin.role ?? "admin",
+    };
+  }
+  return fetchSession();
 }
 
 setTokenProvider(async () => ({
@@ -71,10 +95,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       }
       accessToken = access;
       refreshToken = refresh;
-      const user = await fetchSession().catch(async () => {
+      const user = await currentSession().catch(async () => {
         const newAccess = await doRefresh();
         if (!newAccess) throw new Error("session expired");
-        return fetchSession();
+        return currentSession();
       });
       set({ status: "authenticated", user });
     } catch (err) {
@@ -87,14 +111,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   async login(input) {
-    const pair = await apiLogin(input);
+    // §275: Admin app credentials are exchanged by the Control Plane
+    // server-side against its Neon-backed mobile-admin auth (table
+    // mobile_admins); no database secret ever ships inside the app binary.
+    const pair = isAdminApp ? await adminLogin(input) : await apiLogin(input);
     await persistTokens(pair.access_token, pair.refresh_token);
-    const user = await fetchSession();
+    const user = await currentSession();
     set({ status: "authenticated", user });
   },
 
   async logout() {
-    void logoutCall();
+    // §275: Admin sessions live on the CP (Neon), client sessions on the
+    // portal auth flow - revoke against the matching endpoint, fail-soft.
+    void (isAdminApp ? adminLogout() : logoutCall());
     await clearSessionSecrets();
     accessToken = null;
     refreshToken = null;
