@@ -29,6 +29,12 @@ describe("validation schemas", () => {
     ).toBe(true);
   });
 
+  it("§277b: tolerates a CP /me payload without id", () => {
+    const parsed = sessionUserSchema.safeParse({ email: "a@b.co", display_name: "A" });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.id).toBe("");
+  });
+
   it("parses remote config tolerantly", () => {
     const parsed = mobileConfigSchema.safeParse({
       min_version: "0.2.0",

@@ -189,6 +189,10 @@ export const api = {
   post<T>(path: string, body?: unknown, opts: RequestOptions = {}): Promise<T> {
     return request<T>("POST", path, body, opts);
   },
+  // §278: PUT for the portal profile document (workflows status uses POST).
+  put<T>(path: string, body?: unknown, opts: RequestOptions = {}): Promise<T> {
+    return request<T>("PUT", path, body, opts);
+  },
   patch<T>(path: string, body?: unknown, opts: RequestOptions = {}): Promise<T> {
     return request<T>("PATCH", path, body, opts);
   },

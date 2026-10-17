@@ -22,7 +22,13 @@ export const tokenPairSchema = z.object({
 export type TokenPair = z.infer<typeof tokenPairSchema>;
 
 export const sessionUserSchema = z.object({
-  id: z.union([z.string(), z.number()]),
+  // §277b fail-soft: the live CP /me payload can omit `id` entirely - a
+  // missing id must never break session hydrate (ZodError loop on login).
+  id: z
+    .union([z.string(), z.number()])
+    .nullish()
+    .transform((v) => v ?? "")
+    .catch(""),
   email: z.string().optional(),
   name: z.string().optional(),
   role: z.string().optional(),
@@ -53,7 +59,16 @@ export async function fetchSession(): Promise<SessionUser> {
     obj && typeof obj.user === "object" && obj.user !== null
       ? (obj.user as Record<string, unknown>)
       : obj;
-  return sessionUserSchema.parse(candidate);
+  // §277b: CP portal sessions expose display_name / business rather than
+  // name / business_name - map them so the UI shows a friendly greeting.
+  const mapped: Record<string, unknown> = { ...candidate };
+  if (mapped.name == null && typeof mapped.display_name === "string") {
+    mapped.name = mapped.display_name;
+  }
+  if (mapped.business_name == null && typeof mapped.business === "string") {
+    mapped.business_name = mapped.business;
+  }
+  return sessionUserSchema.parse(mapped);
 }
 
 export async function logoutCall(): Promise<void> {
