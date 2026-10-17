@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/ui/theme";
 import { createQueryClient } from "@/api/queryClient";
 import { useAuthStore } from "@/store/auth";
 import { useAppStore } from "@/store/app";
+import { useSettingsStore } from "@/store/settings";
+import { initNotifications, setNotificationNavigator } from "@/lib/notify";
 import { checkForUpdatesSilently } from "@/lib/updates";
 import { logger } from "@/lib/logger";
 
@@ -26,11 +28,15 @@ export default function RootLayout() {
         await Promise.all([
           useAuthStore.getState().hydrate(),
           useAppStore.getState().loadConfig(),
+          // §279 P4: local settings + notification plumbing boot with the app
+          useSettingsStore.getState().hydrate(),
+          initNotifications(),
         ]);
       } catch (err) {
         logger.warn("boot failed soft", err);
       } finally {
         if (!cancelled) setReady(true);
+        setNotificationNavigator((href) => router.push(href as never));
         void checkForUpdatesSilently();
       }
     })();

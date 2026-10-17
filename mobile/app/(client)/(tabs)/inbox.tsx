@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { listConversations, type Conversation } from "@/api/portal";
+import { diffNewUnread } from "@/lib/notifyCore";
+import { notifyNewMessages } from "@/lib/notify";
 import { formatRelative } from "@/lib/format";
 import { Screen, StatusDot } from "@/ui/Screen";
 import { Button } from "@/ui/Button";
@@ -122,6 +124,24 @@ export default function InboxScreen() {
     [inbox.data],
   );
   const counts = inbox.data?.counts ?? null;
+
+  // §279 P4: when a poll brings NEW unread messages, fire a local
+  // notification (only while backgrounded - notify.ts checks AppState) and
+  // deep-link it to the newest conversation.
+  const prevUnread = useRef<number | null>(null);
+  useEffect(() => {
+    if (!counts) return;
+    const fresh = diffNewUnread(prevUnread.current ?? counts.unread, counts.unread);
+    prevUnread.current = counts.unread;
+    if (fresh > 0) {
+      const newest = conversations[0];
+      void notifyNewMessages(
+        newest?.last_message_preview ?? "",
+        fresh,
+        newest?.id ?? null,
+      );
+    }
+  }, [counts, conversations]);
 
   const filters: Array<{ key: StatusFilter; label: string }> = [
     { key: "all", label: counts ? `All` : "All" },

@@ -3,6 +3,8 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { listConversations } from "@/api/portal";
 import { useTheme } from "@/ui/theme";
 
 /**
@@ -12,6 +14,16 @@ import { useTheme } from "@/ui/theme";
  */
 export default function ClientTabs() {
   const { colors, scheme } = useTheme();
+
+  // §279 P4: unread badge on the Inbox tab (shares the dashboard's counts
+  // query cache - one cheap request every 30s feeds both).
+  const counts = useQuery({
+    queryKey: ["conversations", "counts"],
+    queryFn: () => listConversations({ limit: 1 }),
+    refetchInterval: 30_000,
+    placeholderData: (prev) => prev,
+  });
+  const unread = counts.data?.counts?.unread ?? 0;
 
   return (
     <Tabs
@@ -44,6 +56,8 @@ export default function ClientTabs() {
         name="inbox"
         options={{
           title: "Inbox",
+          tabBarBadge: unread > 0 ? unread : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.danger, fontSize: 10 },
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={size} color={typeof color === "string" ? color : colors.brand} />
           ),

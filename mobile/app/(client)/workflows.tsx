@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listWorkflows, setWorkflowStatus, type Workflow } from "@/api/workflows";
+import { haptics } from "@/lib/haptics";
 import { formatCompact, formatRelative } from "@/lib/format";
 import { Screen } from "@/ui/Screen";
 import { Button } from "@/ui/Button";
@@ -42,7 +43,12 @@ function WorkflowCard({ item }: { item: Workflow }) {
     mutationFn: () =>
       setWorkflowStatus(item.id, item.status === "active" ? "paused" : "active"),
     onSuccess: () => {
+      // §279 P4: tactile confirmation on every pause/resume flip
+      void haptics.success();
       void queryClient.invalidateQueries({ queryKey: ["workflows"] });
+    },
+    onError: () => {
+      void haptics.error();
     },
   });
 

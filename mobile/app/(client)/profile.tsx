@@ -10,6 +10,7 @@ import {
   type EditableProfile,
 } from "@/api/profile";
 import { formatRelative } from "@/lib/format";
+import { haptics } from "@/lib/haptics";
 import { Screen } from "@/ui/Screen";
 import { Button } from "@/ui/Button";
 import { TextField } from "@/ui/TextField";
@@ -54,8 +55,13 @@ export default function ProfileScreen() {
     mutationFn: (edits: EditableProfile) =>
       saveProfile(profile.data ?? { profile: {}, updated_at: "" }, edits),
     onSuccess: (updatedAt) => {
+      // §279 P4: success buzz when the profile persists
+      void haptics.success();
       setSavedAt(updatedAt);
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+    onError: () => {
+      void haptics.warning();
     },
   });
 

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, Switch, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/auth";
+import { useSettingsStore } from "@/store/settings";
 import { appVersion } from "@/config/env";
+import { haptics } from "@/lib/haptics";
 import { checkForUpdatesNow } from "@/lib/updates";
 import { Screen } from "@/ui/Screen";
 import { Card, Divider, Spacer, Text } from "@/ui/primitives";
@@ -21,7 +23,42 @@ export default function MoreScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const prefs = useSettingsStore((s) => s.prefs);
+  const updateSettings = useSettingsStore((s) => s.update);
   const [checking, setChecking] = useState(false);
+
+  // §279 P4: local preference switches - alerts, sounds and haptics
+  const toggleRow = (
+    label: string,
+    hint: string,
+    value: boolean,
+    onChange: (v: boolean) => void,
+  ) => (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.md,
+        paddingVertical: spacing.sm,
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text weight="semibold">{label}</Text>
+        <Text variant="caption" tone="ink3">
+          {hint}
+        </Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={(v) => {
+          void haptics.selection();
+          onChange(v);
+        }}
+        trackColor={{ false: colors.line2, true: colors.ok }}
+        thumbColor={"#ffffff"}
+      />
+    </View>
+  );
 
   const onCheckUpdates = async () => {
     setChecking(true);
@@ -110,6 +147,34 @@ export default function MoreScreen() {
           "Analytics",
           "Customers, tiers, repeat share and languages",
           "/analytics",
+        )}
+      </Card>
+
+      <Spacer size={spacing.md} />
+
+      {/* §279 P4: notification preferences (persisted locally, instant) */}
+      <Card>
+        <Text weight="semibold">Notifications</Text>
+        <Spacer size={spacing.sm} />
+        {toggleRow(
+          "Message alerts",
+          "Local alert when new messages arrive while the app is closed",
+          prefs.notifications,
+          (v) => void updateSettings({ notifications: v }),
+        )}
+        <Divider />
+        {toggleRow(
+          "Sounds",
+          "Play a sound with alerts",
+          prefs.sounds,
+          (v) => void updateSettings({ sounds: v }),
+        )}
+        <Divider />
+        {toggleRow(
+          "Haptics",
+          "Vibration feedback on sends, toggles and saves",
+          prefs.haptics,
+          (v) => void updateSettings({ haptics: v }),
         )}
       </Card>
 

@@ -17,6 +17,7 @@ import {
   type Message,
 } from "@/api/portal";
 import { formatRelative } from "@/lib/format";
+import { haptics } from "@/lib/haptics";
 import { Screen } from "@/ui/Screen";
 import { Chip, Spacer, Text } from "@/ui/primitives";
 import { spacing } from "@/ui/tokens";
@@ -128,6 +129,8 @@ export default function ConversationScreen() {
   const send = useMutation({
     mutationFn: (body: string) => sendReply(id, body),
     onMutate: async (body) => {
+      // §279 P4: instant feedback - light tap on send, success/error buzz after
+      void haptics.tap();
       const optimistic: Message = {
         id: "pending-" + Date.now(),
         direction: "out",
@@ -143,6 +146,12 @@ export default function ConversationScreen() {
         };
         return { ...data, messages: [...data.messages, optimistic] };
       });
+    },
+    onSuccess: () => {
+      void haptics.success();
+    },
+    onError: () => {
+      void haptics.warning();
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["messages", id] });
