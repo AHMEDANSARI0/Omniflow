@@ -1,27 +1,42 @@
 /**
- * §279 P4 haptics - one guarded wrapper around expo-haptics. Every call is
- * fire-and-forget, respects the user's preference and never throws (tests,
- * web and older devices degrade silently).
+ * §279b P4 haptics - lazy, guarded wrapper around expo-haptics. Dynamic
+ * import keeps runtimes without the native module alive (same fail-soft
+ * law as notify.ts); every call respects the user's preference and never
+ * throws. Haptics are cosmetic - the app must never depend on them.
  */
 
-import * as Haptics from "expo-haptics";
 import { useSettingsStore } from "@/store/settings";
 
-async function guarded(run: () => Promise<void>): Promise<void> {
+type HapticsModule = typeof import("expo-haptics");
+
+let cached: HapticsModule | null | undefined;
+
+async function loadHaptics(): Promise<HapticsModule | null> {
+  if (cached !== undefined) return cached;
+  try {
+    cached = await import("expo-haptics");
+  } catch {
+    cached = null;
+  }
+  return cached;
+}
+
+async function guarded(run: (H: HapticsModule) => Promise<void>): Promise<void> {
   if (!useSettingsStore.getState().prefs.haptics) return;
   try {
-    await run();
+    const H = await loadHaptics();
+    if (H) await run(H);
   } catch {
     // unsupported platform / permission - haptics are cosmetic, fail soft
   }
 }
 
 export const haptics = {
-  tap: () => guarded(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)),
+  tap: () => guarded((H) => H.impactAsync(H.ImpactFeedbackStyle.Light)),
   success: () =>
-    guarded(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),
+    guarded((H) => H.notificationAsync(H.NotificationFeedbackType.Success)),
   warning: () =>
-    guarded(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)),
-  error: () => guarded(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)),
-  selection: () => guarded(() => Haptics.selectionAsync()),
+    guarded((H) => H.notificationAsync(H.NotificationFeedbackType.Warning)),
+  error: () => guarded((H) => H.notificationAsync(H.NotificationFeedbackType.Error)),
+  selection: () => guarded((H) => H.selectionAsync()),
 };

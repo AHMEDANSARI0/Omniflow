@@ -97,3 +97,89 @@ export async function fetchAdminUsers(): Promise<AdminUsers> {
   const data = await api.get<unknown>("/api/v1/mobile/admin/users");
   return adminUsersSchema.parse(data ?? { users: [], count: 0 });
 }
+
+// ---------------------------------------------------------------------------
+// §280 P5: platform quality + website analytics for the Admin app. Both are
+// session-guarded CP routes (portal_mobile_admin.py) that reuse the exact
+// sources the web admin uses - no service key ever ships in the app.
+// ---------------------------------------------------------------------------
+
+const numOr0 = z
+  .number()
+  .nullish()
+  .transform((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0))
+  .catch(0);
+
+export const adminQualityEnvelopeSchema = z.object({
+  days: z.number().catch(7),
+  degraded: z.boolean().catch(false),
+  overview: z
+    .record(z.string(), z.unknown())
+    .nullish()
+    .transform((v) => v ?? null)
+    .catch(null),
+});
+export type AdminQualityEnvelope = z.infer<typeof adminQualityEnvelopeSchema>;
+
+export const siteStatsSchema = z.object({
+  days: numOr0,
+  timezone: z.string().catch(""),
+  totals: z
+    .object({
+      views: numOr0,
+      visitors: numOr0,
+      cta_clicks: numOr0,
+      cta_visitors: numOr0,
+      form_submits: numOr0,
+      form_visitors: numOr0,
+      avg_seconds: numOr0,
+    })
+    .catch({
+      views: 0,
+      visitors: 0,
+      cta_clicks: 0,
+      cta_visitors: 0,
+      form_submits: 0,
+      form_visitors: 0,
+      avg_seconds: 0,
+    }),
+  daily: z
+    .array(z.object({ day: z.string().catch(""), views: numOr0, visitors: numOr0 }))
+    .catch([]),
+  countries: z
+    .array(z.object({ country: z.string().catch(""), visitors: numOr0 }))
+    .catch([]),
+  browsers: z
+    .array(z.object({ browser: z.string().catch(""), visitors: numOr0 }))
+    .catch([]),
+});
+export type SiteStats = z.infer<typeof siteStatsSchema>;
+
+export const adminSiteStatsEnvelopeSchema = z.object({
+  days: z.number().catch(7),
+  degraded: z.boolean().catch(false),
+  stats: siteStatsSchema.nullish().transform((v) => v ?? null).catch(null),
+});
+export type AdminSiteStatsEnvelope = z.infer<typeof adminSiteStatsEnvelopeSchema>;
+
+function safeDays(days: number): number {
+  return [1, 7, 14, 30].includes(days) ? days : 7;
+}
+
+export async function fetchAdminQuality(
+  days = 7,
+): Promise<AdminQualityEnvelope> {
+  const data = await api.get<unknown>(
+    `/api/v1/mobile/admin/quality?days=${safeDays(days)}`,
+  );
+  return adminQualityEnvelopeSchema.parse(data ?? {});
+}
+
+export async function fetchAdminSiteStats(
+  days = 7,
+): Promise<AdminSiteStatsEnvelope> {
+  const data = await api.get<unknown>(
+    `/api/v1/mobile/admin/site-stats?days=${safeDays(days)}`,
+  );
+  return adminSiteStatsEnvelopeSchema.parse(data ?? {});
+}
