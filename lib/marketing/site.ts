@@ -16,6 +16,8 @@ export const SITE_ROUTES = {
   integrations: "/integrations",
   contact: "/contact",
   pricing: "/pricing",
+  // §282: mobile app landing page (Android APK + Expo Go)
+  download: "/download",
 } as const;
 
 /**

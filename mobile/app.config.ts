@@ -54,7 +54,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     appVariant: variant,
+    // §282: default is the live Control Plane (the old omniflow-backend
+    // host was stale). eas.json profiles and `set OMNIFLOW_API_URL=...`
+    // still override this at build time.
     apiUrl:
-      process.env.OMNIFLOW_API_URL || "https://omniflow-backend.vercel.app",
+      process.env.OMNIFLOW_API_URL ||
+      "https://omniflow-control-plane-rho.vercel.app",
   },
 });

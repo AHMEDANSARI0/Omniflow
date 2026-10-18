@@ -12,6 +12,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/use-cases",
     "/integrations",
     "/pricing",
+    // §282: mobile app landing page
+    "/download",
     "/security",
     "/contact",
     "/faq",

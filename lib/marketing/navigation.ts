@@ -9,6 +9,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Integrations", href: "/integrations" },
   { label: "How it works", href: SITE_ROUTES.howItWorks },
   { label: "Pricing", href: "/pricing" },
+  // §282: mobile app landing page
+  { label: "Download", href: "/download" },
   { label: "Resources", href: "/blog" },
 ];
 
@@ -29,6 +31,8 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
       { label: "How it works", href: SITE_ROUTES.howItWorks },
       { label: "Automation templates", href: SITE_ROUTES.templates },
       { label: "Pricing", href: "/pricing" },
+      // §282: mobile app landing page
+      { label: "Mobile app", href: "/download" },
     ],
   },
   {

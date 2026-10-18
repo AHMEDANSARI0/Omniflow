@@ -65,3 +65,15 @@ export function compareVersions(a: string, b: string): number {
   }
   return 0;
 }
+
+// §281 P6: version/maintenance gate (pure, unit-tested). The CP admin sets
+// min_version and/or maintenance under /api/v1/mobile/config; this maps the
+// fetched config plus the app's own version onto one of three UI states.
+export type UpdateGate = "ok" | "maintenance" | "update_required";
+
+export function updateGate(config: MobileConfig, currentVersion: string): UpdateGate {
+  if (config.maintenance === true) return "maintenance";
+  const min = typeof config.min_version === "string" ? config.min_version.trim() : "";
+  if (min.length > 0 && compareVersions(currentVersion, min) < 0) return "update_required";
+  return "ok";
+}

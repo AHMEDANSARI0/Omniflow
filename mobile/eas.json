@@ -1,0 +1,41 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview-client": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "OMNIFLOW_APP_VARIANT": "client",
+        "OMNIFLOW_API_URL": "https://omniflow-control-plane-rho.vercel.app"
+      }
+    },
+    "preview-admin": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "OMNIFLOW_APP_VARIANT": "admin",
+        "OMNIFLOW_API_URL": "https://omniflow-control-plane-rho.vercel.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "OMNIFLOW_APP_VARIANT": "client",
+        "OMNIFLOW_API_URL": "https://omniflow-control-plane-rho.vercel.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -16,8 +16,11 @@ export type AppVariant = "client" | "admin";
 export const appVariant: AppVariant =
   extra.appVariant === "admin" ? "admin" : "client";
 
+// §282: fallback = the live Control Plane (old omniflow-backend host was
+// stale). Builds bake extra.apiUrl from app.config.ts / eas.json env, so
+// this only matters when expoConfig is unavailable (tests, bare runs).
 export const apiUrl: string = (extra.apiUrl ?? "")
-  .replace(/\/+$/, "") || "https://omniflow-backend.vercel.app";
+  .replace(/\/+$/, "") || "https://omniflow-control-plane-rho.vercel.app";
 
 /** Sent on every request so the CP can gate/telemetry mobile versions. */
 export const appVersion: string = Constants.expoConfig?.version ?? "0.0.0";

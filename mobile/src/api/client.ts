@@ -7,6 +7,8 @@
 
 import { apiUrl, appVariant, appVersion } from "@/config/env";
 import { logger } from "@/lib/logger";
+// §281: connectivity signal (net.ts imports only zustand - no cycle).
+import { useNetStore } from "@/store/net";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -89,6 +91,8 @@ async function rawRequest<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
     });
+    // §281: any HTTP response (even 4xx/5xx) proves the device is online.
+    useNetStore.getState().setOnline(true);
     const text = await res.text();
     if (!res.ok) {
       let message = res.statusText || `HTTP ${res.status}`;
@@ -117,6 +121,10 @@ async function rawRequest<T>(
     const aborted =
       (err instanceof Error && err.name === "AbortError") ||
       opts.signal?.aborted === true;
+    // §281: a genuine network failure flips the app offline (the banner shows
+    // and screens serve their cached snapshot). Aborts don't count - they are
+    // deliberate, not connectivity problems.
+    if (!aborted) useNetStore.getState().setOnline(false);
     throw new ApiError(
       aborted ? 0 : 599,
       aborted ? "aborted" : "network",
