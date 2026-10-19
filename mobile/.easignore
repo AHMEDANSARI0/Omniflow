@@ -1,0 +1,19 @@
+# §282c: archive ignore list for when eas-cli packs from THIS folder.
+# Mirrors mobile/.gitignore (.easignore replaces gitignore rules for the
+# upload) - node_modules and friends must never ride along; the EAS worker
+# installs fresh from package-lock.json.
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+npm-debug.log*

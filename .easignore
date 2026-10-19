@@ -1,0 +1,27 @@
+# §282d: EAS archive = ONLY mobile/ (allowlist). EAS CLI archives from
+# the Git root and, when a root .easignore exists, ignores ALL .gitignore
+# files. The earlier blacklist still allowed unrelated root/runtime files;
+# the observed 97.5 MB upload is proof of archive bloat, but NOT proof of
+# what those files were. This allowlist excludes everything at repo root
+# except mobile/. The trailing-slash-free !/mobile is deliberate: eas-cli's
+# fs.cp filter tests the directory as the path "mobile" (no slash); the
+# !/mobile/ form would still exclude that directory and its entire tree.
+/*
+!/mobile
+
+# Keep secrets, generated outputs and install artifacts out of the mobile
+# project too. eas-cli also excludes node_modules and .git by default.
+.expo/
+dist/
+web-build/
+coverage/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+npm-debug.log*

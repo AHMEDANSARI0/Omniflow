@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "ca30d461-910e-4661-bfb9-a7da7044ed5c"
+      }
+    },
+    "android": {
+      "package": "com.omniflow.omniflow"
+    },
+    "ios": {
+      "bundleIdentifier": "y",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

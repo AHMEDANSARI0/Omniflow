@@ -1,16 +1,29 @@
-import type { ConfigContext, ExpoConfig } from "expo/config";
-
 /**
  * One codebase, two apps. The build-time env var OMNIFLOW_APP_VARIANT
  * selects the Client app (default) or the Admin app: name, ids, deep-link
  * scheme and icon set. Nothing else forks - all features live in src/.
+ *
+ * §282b: plain JavaScript ON PURPOSE. The previous app.config.ts broke
+ * eas-cli's config reader on Windows ("Unexpected token '{'" - the reader
+ * evaluated the TS file as plain JS and choked on `import type {`). A .js
+ * config parses identically on every Node / eas-cli / expo version, so
+ * builds and linking never touch TS transpilation again.
  */
-const variant: "client" | "admin" =
+const variant =
   process.env.OMNIFLOW_APP_VARIANT === "admin" ? "admin" : "client";
-
 const isClient = variant === "client";
 
-export default ({ config }: ConfigContext): ExpoConfig => ({
+/**
+ * §282b: the client app's EAS project, created on the owner's Expo account
+ * (slug "omniflow"). Pre-linked here so `eas build` skips the interactive
+ * "EAS project not configured" step entirely. The ADMIN app (slug
+ * "omniflow-admin") links its own project on its first `eas build` - paste
+ * its id below the same way afterwards. Switching Expo accounts? Replace
+ * this id (or delete the line and let eas-cli re-link).
+ */
+const EAS_PROJECT_ID_CLIENT = "ca30d461-910e-4661-bfb9-a7da7044ed5c";
+
+module.exports = ({ config }) => ({
   ...config,
   name: isClient ? "OmniFlow" : "OmniFlow Admin",
   slug: isClient ? "omniflow" : "omniflow-admin",
@@ -53,10 +66,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       : {}),
   },
   extra: {
+    // §282b: pre-linked EAS project (client variant only).
+    ...(isClient ? { eas: { projectId: EAS_PROJECT_ID_CLIENT } } : {}),
     appVariant: variant,
     // §282: default is the live Control Plane (the old omniflow-backend
-    // host was stale). eas.json profiles and `set OMNIFLOW_API_URL=...`
-    // still override this at build time.
+    // host was stale). eas.json profiles and OMNIFLOW_API_URL still
+    // override this at build time.
     apiUrl:
       process.env.OMNIFLOW_API_URL ||
       "https://omniflow-control-plane-rho.vercel.app",
