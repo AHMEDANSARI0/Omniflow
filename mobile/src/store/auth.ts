@@ -21,6 +21,8 @@ import {
   getSecret,
   setSecret,
 } from "@/security/secureStore";
+import { clearOfflineCache, setSessionFingerprint } from "@/lib/offlineCache";
+import { clearQueryCache } from "@/api/queryClient";
 import { logger } from "@/lib/logger";
 
 export type AuthStatus = "booting" | "unauthenticated" | "authenticated";
@@ -79,6 +81,10 @@ setTokenProvider(async () => ({
   refresh: doRefresh,
 }));
 
+export function fingerprintForUser(user: SessionUser): string {
+  return `user=${user.id}`;
+}
+
 export const useAuthStore = create<AuthState>()((set, get) => ({
   status: "booting",
   user: null,
@@ -100,6 +106,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         if (!newAccess) throw new Error("session expired");
         return currentSession();
       });
+      setSessionFingerprint(fingerprintForUser(user));
       set({ status: "authenticated", user });
     } catch (err) {
       logger.warn("session hydrate failed", err);
@@ -117,6 +124,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const pair = isAdminApp ? await adminLogin(input) : await apiLogin(input);
     await persistTokens(pair.access_token, pair.refresh_token);
     const user = await currentSession();
+    setSessionFingerprint(fingerprintForUser(user));
     set({ status: "authenticated", user });
   },
 
@@ -125,6 +133,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     // portal auth flow - revoke against the matching endpoint, fail-soft.
     void (isAdminApp ? adminLogout() : logoutCall());
     await clearSessionSecrets();
+    await clearOfflineCache();
+    clearQueryCache();
     accessToken = null;
     refreshToken = null;
     set({ status: "unauthenticated", user: null });

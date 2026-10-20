@@ -17,6 +17,18 @@ function updatesConfigured(): boolean {
   return Boolean(Constants.expoConfig?.updates?.url);
 }
 
+/** Returns true when a newer JS bundle is available on the server. */
+export async function getUpdateAvailability(): Promise<boolean> {
+  if (!updatesConfigured()) return false;
+  try {
+    const update = await Updates.checkForUpdateAsync();
+    return update.isAvailable;
+  } catch (err) {
+    logger.warn("update availability check failed", err);
+    return false;
+  }
+}
+
 export async function checkForUpdatesSilently(): Promise<void> {
   if (!updatesConfigured()) return;
   try {

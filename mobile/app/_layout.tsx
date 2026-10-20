@@ -6,7 +6,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider, useTheme } from "@/ui/theme";
 import { createQueryClient } from "@/api/queryClient";
-import { useAuthStore } from "@/store/auth";
+import { useAuthStore, fingerprintForUser } from "@/store/auth";
 import { updateGate, useAppStore } from "@/store/app";
 import { useSettingsStore } from "@/store/settings";
 import { initNotifications, setNotificationNavigator } from "@/lib/notify";
@@ -23,6 +23,7 @@ import { Card, Spacer, Text } from "@/ui/primitives";
 import { spacing } from "@/ui/tokens";
 import { ErrorBoundary } from "@/ui/ErrorBoundary";
 import { OfflineBanner } from "@/ui/OfflineBanner";
+import { UpdateBanner } from "@/ui/UpdateBanner";
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // reloading or dev-server quirks may reject - safe to ignore
@@ -39,15 +40,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     let cancelled = false;
+    let loadedFingerprint: string | null = null;
     (async () => {
       try {
         // §281: seed the offline snapshot BEFORE first paint so a cold start
         // (even with no network) shows the last known data immediately. The
         // entries are invalidated right away - online, they refetch and
         // replace themselves; offline, the cached data stays on screen.
-        const snapshot = await loadSnapshot();
-        if (snapshot && !cancelled) {
-          const seeded = seedQueryClient(queryClient, snapshot);
+        const cached = await loadSnapshot();
+        if (cached && !cancelled) {
+          loadedFingerprint = cached.fingerprint;
+          const seeded = seedQueryClient(queryClient, cached.snapshot);
           if (seeded > 0) logger.log("offline cache seeded", { entries: seeded });
         }
       } catch {
@@ -61,12 +64,24 @@ export default function RootLayout() {
           useSettingsStore.getState().hydrate(),
           initNotifications(),
         ]);
+        // §282i: if the seeded snapshot belongs to a different session,
+        // clear it so the current user never sees another account's data.
+        if (!cancelled && loadedFingerprint) {
+          const state = useAuthStore.getState();
+          if (state.status === "authenticated" && state.user) {
+            const expected = fingerprintForUser(state.user);
+            if (loadedFingerprint !== expected) {
+              queryClient.clear();
+              logger.log("offline cache cleared: session fingerprint mismatch");
+            }
+          }
+        }
       } catch (err) {
         logger.warn("boot failed soft", err);
       } finally {
         if (!cancelled) setReady(true);
         setNotificationNavigator((href) => router.push(href as never));
-        void checkForUpdatesSilently();
+        /* update availability check moved to UpdateBanner (user-facing notification) */
       }
     })();
     return () => {
@@ -104,6 +119,7 @@ export default function RootLayout() {
           <View style={{ flex: 1 }}>
             <StatusBar style="auto" />
             <OfflineBanner />
+          <UpdateBanner />
             <Stack
               screenOptions={{ headerShown: false, animation: "fade" }}
             >

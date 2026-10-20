@@ -17,6 +17,8 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 
 const STORAGE_KEY = "omniflow.cache.v1";
+const SESSION_FINGERPRINT_KEY = "omniflow.cache.session";
+let currentFingerprint: string | null = null;
 
 /** Query-key prefixes worth persisting (dashboards, lists, configs). */
 export const SNAPSHOT_PREFIXES = [
@@ -43,6 +45,7 @@ export const snapshotEntrySchema = z.object({
 export const snapshotSchema = z.object({
   version: z.number().catch(1),
   savedAt: z.number().catch(0),
+  fingerprint: z.string().catch(""),
   entries: z.array(snapshotEntrySchema).catch([]),
 });
 export type Snapshot = z.infer<typeof snapshotSchema>;
@@ -83,7 +86,7 @@ export function buildSnapshot(
     if (!isSerializable(data)) continue;
     out.push({ key, data, savedAt: now });
   }
-  return { version: 1, savedAt: now, entries: out };
+  return { version: 1, savedAt: now, fingerprint: currentFingerprint ?? "", entries: out };
 }
 
 /**
@@ -109,7 +112,12 @@ export function applySnapshot(
 }
 
 /** Convenience wiring for the real QueryClient (used by the root layout). */
-export function seedQueryClient(queryClient: QueryClient, snapshot: unknown): number {
+export function seedQueryClient(queryClient: QueryClient, snapshot: unknown, expectedFingerprint?: string): number {
+  const parsed = snapshotSchema.safeParse(snapshot);
+  if (!parsed.success) return 0;
+  if (expectedFingerprint && parsed.data.fingerprint && parsed.data.fingerprint !== expectedFingerprint) {
+    return 0;
+  }
   return applySnapshot(
     (key, data) => queryClient.setQueryData(key, data),
     (key) => void queryClient.invalidateQueries({ queryKey: key, refetchType: "none" }),
@@ -121,12 +129,12 @@ export function seedQueryClient(queryClient: QueryClient, snapshot: unknown): nu
 // AsyncStorage IO (thin, fail-soft)
 // ---------------------------------------------------------------------------
 
-export async function loadSnapshot(): Promise<Snapshot | null> {
+export async function loadSnapshot(): Promise<{ snapshot: Snapshot; fingerprint: string | null } | null> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = snapshotSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : null;
+    return parsed.success ? { snapshot: parsed.data, fingerprint: parsed.data.fingerprint ?? null } : null;
   } catch (err) {
     logger.warn("offline cache load failed soft", err);
     return null;
@@ -138,6 +146,20 @@ export async function saveSnapshot(snapshot: Snapshot): Promise<void> {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
   } catch (err) {
     logger.warn("offline cache save failed soft", err);
+  }
+}
+
+export function setSessionFingerprint(fp: string): void {
+  currentFingerprint = fp;
+  AsyncStorage.setItem(SESSION_FINGERPRINT_KEY, fp).catch(() => {});
+}
+
+export async function clearOfflineCache(): Promise<void> {
+  currentFingerprint = null;
+  try {
+    await AsyncStorage.multiRemove([STORAGE_KEY, SESSION_FINGERPRINT_KEY]);
+  } catch (err) {
+    logger.warn("offline cache clear failed soft", err);
   }
 }
 
