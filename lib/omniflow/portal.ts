@@ -194,6 +194,7 @@ export interface BotConfig {
   workingHoursEnd: string;
   humanHandoffEnabled: boolean;
   customInstructions: string;
+  responseDelaySeconds: number;
   updatedAt: string | null;
 }
 
@@ -208,6 +209,7 @@ export const DEFAULT_BOT_CONFIG: BotConfig = {
   workingHoursEnd: "18:00",
   humanHandoffEnabled: false,
   customInstructions: "",
+  responseDelaySeconds: 0,
   updatedAt: null,
 };
 
@@ -227,6 +229,7 @@ function normalizeBotConfig(payload: unknown): BotConfig {
     workingHoursEnd: typeof p.working_hours_end === "string" ? p.working_hours_end : "18:00",
     humanHandoffEnabled: p.human_handoff_enabled === true,
     customInstructions: typeof p.custom_instructions === "string" ? p.custom_instructions : "",
+    responseDelaySeconds: typeof p.response_delay_seconds === "number" ? Math.max(0, Math.min(3600, p.response_delay_seconds)) : 0,
     updatedAt: typeof p.updated_at === "string" ? p.updated_at : null,
   };
 }

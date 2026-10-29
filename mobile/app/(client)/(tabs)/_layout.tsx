@@ -26,7 +26,7 @@ export default function ClientTabs() {
   const unread = counts.data?.counts?.unread ?? 0;
 
   return (
-    <Tabs
+    <><Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.brand,
@@ -50,8 +50,7 @@ export default function ClientTabs() {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "grid" : "grid-outline"} size={size} color={typeof color === "string" ? color : colors.brand} />
           ),
-        }}
-      />
+        }} />
       <Tabs.Screen
         name="inbox"
         options={{
@@ -61,8 +60,7 @@ export default function ClientTabs() {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={size} color={typeof color === "string" ? color : colors.brand} />
           ),
-        }}
-      />
+        }} />
       <Tabs.Screen
         name="activity"
         options={{
@@ -70,8 +68,7 @@ export default function ClientTabs() {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "pulse" : "pulse-outline"} size={size} color={typeof color === "string" ? color : colors.brand} />
           ),
-        }}
-      />
+        }} />
       <Tabs.Screen
         name="more"
         options={{
@@ -79,8 +76,15 @@ export default function ClientTabs() {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "apps" : "apps-outline"} size={size} color={typeof color === "string" ? color : colors.brand} />
           ),
-        }}
-      />
-    </Tabs>
+        }} /><Tabs.Screen
+        name="ai-chat"
+        options={{
+          title: "AI Chat",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "construct" : "construct-outline"} size={size} color={color} />
+          ),
+        }} /> 
+    </Tabs>  
+</>
   );
 }

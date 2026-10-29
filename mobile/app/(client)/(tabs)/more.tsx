@@ -1,215 +1,366 @@
-import React, { useState } from "react";
-import { Pressable, Switch, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useAuthStore } from "@/store/auth";
-import { useSettingsStore } from "@/store/settings";
-import { appVersion } from "@/config/env";
-import { haptics } from "@/lib/haptics";
-import { checkForUpdatesNow } from "@/lib/updates";
-import { Screen } from "@/ui/Screen";
-import { Card, Divider, Spacer, Text } from "@/ui/primitives";
-import { Button } from "@/ui/Button";
-import { spacing } from "@/ui/tokens";
-import { useTheme } from "@/ui/theme";
-
-/**
- * §278 P3 settings hub: business profile, contacts, workflows and
- * analytics now open real screens (CP-backed); version, OTA update check
- * and sign out stay from P1.
- */
-export default function MoreScreen() {
-  const { colors } = useTheme();
-  const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
-  const prefs = useSettingsStore((s) => s.prefs);
-  const updateSettings = useSettingsStore((s) => s.update);
-  const [checking, setChecking] = useState(false);
-
-  // §279 P4: local preference switches - alerts, sounds and haptics
-  const toggleRow = (
-    label: string,
-    hint: string,
-    value: boolean,
-    onChange: (v: boolean) => void,
-  ) => (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: spacing.md,
-        paddingVertical: spacing.sm,
-      }}
-    >
-      <View style={{ flex: 1 }}>
-        <Text weight="semibold">{label}</Text>
-        <Text variant="caption" tone="ink3">
-          {hint}
+import React, { useState } from "react";
+import { Pressable, Switch, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useAuthStore } from "@/store/auth";
+import { useSettingsStore } from "@/store/settings";
+import { appVersion } from "@/config/env";
+import { haptics } from "@/lib/haptics";
+import { checkForUpdatesNow } from "@/lib/updates";
+import { Screen } from "@/ui/Screen";
+import { Card, Divider, Spacer, Text } from "@/ui/primitives";
+import { Button } from "@/ui/Button";
+import { spacing } from "@/ui/tokens";
+import { useTheme } from "@/ui/theme";
+
+/**
+ * §278 P3 settings hub: business profile, contacts, workflows and
+ * analytics now open real screens (CP-backed); version, OTA update check
+ * and sign out stay from P1.
+ */
+export default function MoreScreen() {
+  const { colors } = useTheme();
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const prefs = useSettingsStore((s) => s.prefs);
+  const updateSettings = useSettingsStore((s) => s.update);
+  const [checking, setChecking] = useState(false);
+
+  // §279 P4: local preference switches - alerts, sounds and haptics
+  const toggleRow = (
+    label: string,
+    hint: string,
+    value: boolean,
+    onChange: (v: boolean) => void,
+  ) => (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.md,
+        paddingVertical: spacing.sm,
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text weight="semibold">{label}</Text>
+        <Text variant="caption" tone="ink3">
+          {hint}
+        </Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={(v) => {
+          void haptics.selection();
+          onChange(v);
+        }}
+        trackColor={{ false: colors.line2, true: colors.ok }}
+        thumbColor={"#ffffff"}
+      />
+    </View>
+  );
+
+  const onCheckUpdates = async () => {
+    setChecking(true);
+    await checkForUpdatesNow();
+    setChecking(false);
+  };
+
+  const link = (
+    icon: keyof typeof Ionicons.glyphMap,
+    label: string,
+    hint: string,
+    href: string,
+  ) => (
+    <Pressable onPress={() => router.push(href as never)}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.md,
+          paddingVertical: spacing.md,
+        }}
+      >
+        <View
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            backgroundColor: colors.brandSoft,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name={icon} size={18} color={colors.brand} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text weight="semibold">{label}</Text>
+          <Text variant="caption" tone="ink3">
+            {hint}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.ink3} />
+      </View>
+      <Divider />
+    </Pressable>
+  );
+
+  return (
+    <Screen>
+      <Text variant="display" weight="bold">
+        More
+      </Text>
+      <Spacer size={spacing.lg} />
+
+      <Card>
+        <Text weight="semibold">{user?.name ?? user?.email ?? "Signed in"}</Text>
+        {user?.email ? (
+          <Text variant="caption" tone="ink3">
+            {user.email}
+          </Text>
+        ) : null}
+      </Card>
+
+      <Spacer size={spacing.md} />
+
+      <Card>
+        {link(
+          "briefcase-outline",
+          "Business profile",
+          "Name, tagline, phone and address used across channels",
+          "/profile",
+        )}
+        {link(
+          "people-outline",
+          "Contacts",
+          "Every customer across WhatsApp, email and social",
+          "/contacts",
+        )}
+        {link(
+          "git-branch-outline",
+          "Workflows",
+          "View automations and pause / activate them",
+          "/workflows",
+        )}
+        {link(
+          "stats-chart-outline",
+          "Analytics",
+          "Customers, tiers, repeat share and languages",
+          "/analytics",
+        )}
+      </Card>
+
+      <Spacer size={spacing.md} />
+
+      {/* §279 P4: notification preferences (persisted locally, instant) */}
+      <Card>
+        <Text weight="semibold">Notifications</Text>
+        <Spacer size={spacing.sm} />
+        {toggleRow(
+          "Message alerts",
+          "Local alert when new messages arrive while the app is closed",
+          prefs.notifications,
+          (v) => void updateSettings({ notifications: v }),
+        )}
+        <Divider />
+        {toggleRow(
+          "Sounds",
+          "Play a sound with alerts",
+          prefs.sounds,
+          (v) => void updateSettings({ sounds: v }),
+        )}
+        <Divider />
+        {toggleRow(
+          "Haptics",
+          "Vibration feedback on sends, toggles and saves",
+          prefs.haptics,
+          (v) => void updateSettings({ haptics: v }),
+        )}
+      </Card>
+
+      <Spacer size={spacing.md} />
+
+      <Card>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text variant="body" tone="ink3">
+            App version
+          </Text>
+          <Text variant="body" weight="semibold">
+            v{appVersion}
+          </Text>
+        </View>
+        <Spacer size={spacing.sm} />
+        <Divider />
+        <Spacer size={spacing.sm} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text variant="body" tone="ink3">
+            Update channel
+          </Text>
+          <Text variant="body" weight="semibold">
+            Auto (on launch)
+          </Text>
+        </View>
+        <Spacer size={spacing.lg} />
+        <Button
+          variant="secondary"
+          title={checking ? "Checking…" : "Check for updates"}
+          onPress={onCheckUpdates}
+        />
+      </Card>
+
+      <Spacer size={spacing.md} />
+      <Button variant="danger" title="Sign out" onPress={() => void logout()} />
+    
+      <View style={{ marginTop: spacing.md }}>
+        <Text variant="sub" weight="bold" style={{ color: colors.ink, marginBottom: spacing.sm }}>
+          All Features
         </Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={(v) => {
-          void haptics.selection();
-          onChange(v);
-        }}
-        trackColor={{ false: colors.line2, true: colors.ok }}
-        thumbColor={"#ffffff"}
-      />
-    </View>
-  );
-
-  const onCheckUpdates = async () => {
-    setChecking(true);
-    await checkForUpdatesNow();
-    setChecking(false);
-  };
-
-  const link = (
-    icon: keyof typeof Ionicons.glyphMap,
-    label: string,
-    hint: string,
-    href: string,
-  ) => (
-    <Pressable onPress={() => router.push(href as never)}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: spacing.md,
-          paddingVertical: spacing.md,
-        }}
-      >
-        <View
+        <Pressable
           style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            backgroundColor: colors.brandSoft,
+            flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
           }}
+          onPress={() => router.push("/ai-chat")}
         >
-          <Ionicons name={icon} size={18} color={colors.brand} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text weight="semibold">{label}</Text>
-          <Text variant="caption" tone="ink3">
-            {hint}
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            AI Chat
           </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color={colors.ink3} />
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
+        <Pressable
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => router.push("/knowledge-base")}
+        >
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            Knowledge Base
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
+        <Pressable
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => router.push("/saved-replies")}
+        >
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            Saved Replies
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
+        <Pressable
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => router.push("/broadcasts")}
+        >
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            Broadcasts
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
+        <Pressable
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => router.push("/automations")}
+        >
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            Automations
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
+        <Pressable
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => router.push("/pipeline")}
+        >
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            Pipeline
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
+        <Pressable
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => router.push("/settings")}
+        >
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            Settings
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
+        <Pressable
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => router.push("/growth")}
+        >
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            Growth
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
+        <Pressable
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => router.push("/integrations")}
+        >
+          <Ionicons name="ellipse" size={18} color={colors.ink3} style={{ marginRight: spacing.sm }} />
+          <Text variant="body" style={{ color: colors.ink, flex: 1 }}>
+            Integrations
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ink3} />
+        </Pressable>
       </View>
-      <Divider />
-    </Pressable>
-  );
 
-  return (
-    <Screen>
-      <Text variant="display" weight="bold">
-        More
-      </Text>
-      <Spacer size={spacing.lg} />
-
-      <Card>
-        <Text weight="semibold">{user?.name ?? user?.email ?? "Signed in"}</Text>
-        {user?.email ? (
-          <Text variant="caption" tone="ink3">
-            {user.email}
-          </Text>
-        ) : null}
-      </Card>
-
-      <Spacer size={spacing.md} />
-
-      <Card>
-        {link(
-          "briefcase-outline",
-          "Business profile",
-          "Name, tagline, phone and address used across channels",
-          "/profile",
-        )}
-        {link(
-          "people-outline",
-          "Contacts",
-          "Every customer across WhatsApp, email and social",
-          "/contacts",
-        )}
-        {link(
-          "git-branch-outline",
-          "Workflows",
-          "View automations and pause / activate them",
-          "/workflows",
-        )}
-        {link(
-          "stats-chart-outline",
-          "Analytics",
-          "Customers, tiers, repeat share and languages",
-          "/analytics",
-        )}
-      </Card>
-
-      <Spacer size={spacing.md} />
-
-      {/* §279 P4: notification preferences (persisted locally, instant) */}
-      <Card>
-        <Text weight="semibold">Notifications</Text>
-        <Spacer size={spacing.sm} />
-        {toggleRow(
-          "Message alerts",
-          "Local alert when new messages arrive while the app is closed",
-          prefs.notifications,
-          (v) => void updateSettings({ notifications: v }),
-        )}
-        <Divider />
-        {toggleRow(
-          "Sounds",
-          "Play a sound with alerts",
-          prefs.sounds,
-          (v) => void updateSettings({ sounds: v }),
-        )}
-        <Divider />
-        {toggleRow(
-          "Haptics",
-          "Vibration feedback on sends, toggles and saves",
-          prefs.haptics,
-          (v) => void updateSettings({ haptics: v }),
-        )}
-      </Card>
-
-      <Spacer size={spacing.md} />
-
-      <Card>
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text variant="body" tone="ink3">
-            App version
-          </Text>
-          <Text variant="body" weight="semibold">
-            v{appVersion}
-          </Text>
-        </View>
-        <Spacer size={spacing.sm} />
-        <Divider />
-        <Spacer size={spacing.sm} />
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text variant="body" tone="ink3">
-            Update channel
-          </Text>
-          <Text variant="body" weight="semibold">
-            Auto (on launch)
-          </Text>
-        </View>
-        <Spacer size={spacing.lg} />
-        <Button
-          variant="secondary"
-          title={checking ? "Checking…" : "Check for updates"}
-          onPress={onCheckUpdates}
-        />
-      </Card>
-
-      <Spacer size={spacing.md} />
-      <Button variant="danger" title="Sign out" onPress={() => void logout()} />
-    </Screen>
-  );
-}
+</Screen>
+  );
+}

@@ -105,7 +105,7 @@ export default function RootLayout() {
 
   // §281: maintenance / forced-update screens replace the whole navigator.
   if (gate !== "ok") {
-    return (
+    return ( 
       <ThemeProvider>
         <GateScreen gate={gate} />
       </ThemeProvider>
