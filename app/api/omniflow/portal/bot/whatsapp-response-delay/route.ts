@@ -1,28 +1,53 @@
-import { NextRequest, NextResponse } from "next/server";
-import { BotConfig, DEFAULT_BOT_CONFIG } from "../../../../../../lib/omniflow/portal";
+import { validateAdminToken, requireAdmin } from "../../../../lib/auth/admin-middleware";
+import { checkRateLimit, RATE_LIMITS } from "../../../../lib/rate-limit/limiter";
+import { getLogger } from "../../../../lib/logger";
 
-// In-memory store for per-client delays (dev only - use DB for production)
-export const clientDelays = new Map<string, number>();
+const log = getLogger({ serviceName: "bot-api" });
+
+import { NextRequest, NextResponse } from "next/server";
+import { DEFAULT_BOT_CONFIG } from "../../../../lib/omniflow/portal";
+import {
+  getClientDelay,
+  setClientDelay,
+  getAllClientDelays,
+} from "../../../../lib/database/client-delays";
 
 /**
  * GET /api/v1/omniflow/portal/bot/whatsapp-response-delay?client_id=<id>
- * Returns per-client response delay in seconds.
+ * Returns the response delay (in seconds) for the given client.
  */
 export async function GET(request: NextRequest) {
+  // Rate limit - admin endpoints
+  const rateLimitResponse = await checkRateLimit(request, "admin");
+  if (rateLimitResponse) return rateLimitResponse;
+
+  // Auth check
+  const authError = await requireAdmin(request);
+  if (authError) return authError; {
   const searchParams = request.nextUrl.searchParams;
   const clientId = searchParams.get("client_id");
 
   if (!clientId) {
-    return NextResponse.json(
+    
+  log.info("api response", { status: 200 });
+
       { error: "client_id is required" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
-  // Return stored delay for this client, or default 0
-  const delaySeconds = clientDelays.get(clientId) ?? DEFAULT_BOT_CONFIG.responseDelaySeconds;
+  // Try database first, fallback to default
+  let delaySeconds = DEFAULT_BOT_CONFIG.responseDelaySeconds;
+  try {
+    delaySeconds = await getClientDelay(clientId);
+  } catch (err) {
+    console.error("Failed to fetch client delay from DB:", err);
+    // Fallback to default
+  }
 
-  return NextResponse.json({
+  
+  log.info("api response", { status: 200 });
+{
     client_id: clientId,
     responseDelaySeconds: delaySeconds,
   });
@@ -39,9 +64,11 @@ export async function POST(request: NextRequest) {
     const { client_id, responseDelaySeconds } = body;
 
     if (!client_id) {
-      return NextResponse.json(
+      
+  log.info("api response", { status: 200 });
+
         { error: "client_id is required" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -50,17 +77,31 @@ export async function POST(request: NextRequest) {
       ? Math.max(0, Math.min(3600, responseDelaySeconds))
       : 0;
 
-    clientDelays.set(client_id, delay);
+    try {
+      await setClientDelay(client_id, delay);
+    } catch (err) {
+      console.error("Failed to save client delay to DB:", err);
+      
+  log.info("api response", { status: 200 });
 
-    return NextResponse.json({
+        { error: "Failed to save delay" },
+        { status: 500 }
+      );
+    }
+
+    
+  log.info("api response", { status: 200 });
+{
       success: true,
       client_id,
       responseDelaySeconds: delay,
     });
   } catch {
-    return NextResponse.json(
+    
+  log.info("api response", { status: 200 });
+
       { error: "Invalid request body" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 }
@@ -69,20 +110,44 @@ export async function POST(request: NextRequest) {
  * GET /api/v1/omniflow/portal/bot/whatsapp-response-delay/analytics
  * Returns analytics for admin.
  */
-export async function GET_ANALYTICS() {
-  const analytics = {
-    total_clients: clientDelays.size,
-    clients: Array.from(clientDelays.entries()).map(([client_id, delay]) => ({
-      client_id,
-      responseDelaySeconds: delay,
-    })),
-    average_delay: clientDelays.size > 0
-      ? Math.round(
-          Array.from(clientDelays.values()).reduce((a, b) => a + b, 0)
-          / clientDelays.size
-        )
-      : 0,
-  };
+export async function GET_ANALYTICS(request: NextRequest) {
+  try {
+    const delays = await getAllClientDelays();
 
-  return NextResponse.json(analytics);
+    const analytics = {
+      total_clients: delays.length,
+      average_delay_seconds:
+        delays.length > 0
+          ? Math.round(
+              delays.reduce((sum, d) => sum + d.response_delay_seconds, 0) /
+                delays.length
+            )
+          : 0,
+      max_delay_seconds:
+        delays.length > 0
+          ? Math.max(...delays.map((d) => d.response_delay_seconds))
+          : 0,
+      min_delay_seconds:
+        delays.length > 0
+          ? Math.min(...delays.map((d) => d.response_delay_seconds))
+          : 0,
+      clients: delays.map((d) => ({
+        client_id: d.client_id,
+        responseDelaySeconds: d.response_delay_seconds,
+      })),
+      updated_at: new Date().toISOString(),
+    };
+
+    
+  log.info("api response", { status: 200 });
+analytics);
+  } catch (err) {
+    console.error("Failed to fetch analytics:", err);
+    
+  log.info("api response", { status: 200 });
+
+      { error: "Failed to fetch analytics" },
+      { status: 500 }
+    );
+  }
 }

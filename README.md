@@ -68,3 +68,30 @@ Configure the environment variables from `.env.example`, select Node.js 22,
 and deploy from the connected GitHub repository. The customer login will stay
 safely unavailable until `OMNIFLOW_CONTROL_PLANE_URL` points to the live HTTPS
 Control Plane.
+## Response Delay Feature
+
+The Response Delay feature allows you to configure how long the bot waits before sending a WhatsApp reply. You can set different delays for different clients.
+
+### Features
+
+- Per-client response delay configuration
+- Instant, fast, medium, and slow response options
+- Analytics dashboard with response time metrics
+- Satisfaction tracking
+
+### Usage
+
+1. Go to **Admin > Bot Settings**
+2. Select a client from the dropdown
+3. Configure the response delay
+4. Save changes
+5. The bot will wait the configured time before replying to WhatsApp messages
+
+### API
+
+For API documentation, see [API Reference](./docs/api-reference.md).
+
+### Deployment
+
+For deployment instructions, see [Deployment Guide](./docs/deployment-guide.md).
+

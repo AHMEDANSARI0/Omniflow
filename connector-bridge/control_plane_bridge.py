@@ -982,3 +982,35 @@ class ControlPlaneBridge:
                 )
                 
             )
+                    # WhatsApp response delay - fetched from CP per client_id with DB fallback
+        def get_response_delay(self) -> float:
+            """Fetch response delay for current client from CP or DB."""
+            # Try CP first
+            try:
+                url = f"{self.base_url}/api/v1/portal/whatsapp-response-delay?client_id={self.client_id}"
+                req = urllib.request.Request(url, headers={
+                    "Authorization": f"Bearer {self.service_key}",
+                    "Content-Type": "application/json",
+                })
+                with urllib.request.urlopen(req, timeout=self.timeout_seconds) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                    delay = data.get("responseDelaySeconds", 0)
+                    return float(delay) if delay else 0.0
+            except Exception as cp_error:
+                print(f"CP response delay fetch failed (using DB fallback): {cp_error}")
+
+            # Fallback: try local DB/API
+            try:
+                local_url = f"http://localhost:3000/api/v1/omniflow/portal/bot/whatsapp-response-delay?client_id={self.client_id}"
+                req = urllib.request.Request(local_url, headers={
+                    "Content-Type": "application/json",
+                })
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                    delay = data.get("responseDelaySeconds", 0)
+                    return float(delay) if delay else 0.0
+            except Exception as db_error:
+                print(f"Local DB response delay fetch failed (using default): {db_error}")
+
+            # Final fallback: instant response
+            return 0.0
