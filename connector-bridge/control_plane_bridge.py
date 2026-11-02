@@ -82,6 +82,25 @@ class ControlPlaneBridge:
         self._pending = []
         self._lock = threading.Lock()
 
+        # WhatsApp response delay - fetched from CP per client_id
+        # 0 = instant response, 120 = 2 min delay, etc.
+        def get_response_delay(self) -> float:
+            """Fetch response delay for current client from CP."""
+            try:
+                url = f"{self.base_url}/api/v1/portal/whatsapp-response-delay?client_id={self.client_id}"
+                req = urllib.request.Request(url, headers={
+                    "Authorization": f"Bearer {self.service_key}",
+                    "Content-Type": "application/json",
+                })
+                with urllib.request.urlopen(req, timeout=self.timeout_seconds) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                    delay = data.get("responseDelaySeconds", 0)
+                    return float(delay) if delay else 0.0
+            except Exception:
+                return 0.0
+
+        self.response_delay_seconds = self.get_response_delay()
+
         print(
             "CP bridge: "
             + self.base_url
@@ -961,4 +980,5 @@ class ControlPlaneBridge:
                     if note
                     else ""
                 )
+                
             )

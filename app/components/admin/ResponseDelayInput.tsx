@@ -1,13 +1,3 @@
-
-/**
- * WhatsApp Response Delay Input Component
- * Add this to your admin bot settings page.
- *
- * Props:
- *   - value: number (current delay in seconds)
- *   - onChange: (value: number) => void
- *   - disabled?: boolean
- */
 import React from "react";
 
 interface ResponseDelayProps {
@@ -17,7 +7,7 @@ interface ResponseDelayProps {
 }
 
 export default function ResponseDelayInput({ value, onChange, disabled = false }: ResponseDelayProps) {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e) => {
     const val = parseInt(e.target.value);
     if (!isNaN(val) && val >= 0 && val <= 3600) {
       onChange(val);
@@ -25,7 +15,6 @@ export default function ResponseDelayInput({ value, onChange, disabled = false }
   };
 
   const handleBlur = () => {
-    // Reset to 0 if empty
     onChange(0);
   };
 
@@ -91,7 +80,7 @@ export default function ResponseDelayInput({ value, onChange, disabled = false }
 
       {value > 0 && (
         <div style={{ marginTop: 8, padding: "8px 12px", backgroundColor: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 6, fontSize: 12, color: "#92400e" }}>
-          <strong style={{ display: block, marginBottom: 2 }}>What happens:</strong>
+          <strong style={{ display: "block", marginBottom: 2 }}>What happens:</strong>
           Bot will wait {displayValue} before replying to WhatsApp messages.
         </div>
       )}

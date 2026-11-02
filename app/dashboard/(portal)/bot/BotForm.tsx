@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-
+import ResponseDelayInput from "../../../components/admin/ResponseDelayInput";
 
 export interface BotConfigView {
   configured: boolean;
+  clientId: string;
   agentName: string;
   tone: "friendly" | "professional" | "concise";
   greeting: string;
@@ -15,6 +16,7 @@ export interface BotConfigView {
   workingHoursEnd: string;
   humanHandoffEnabled: boolean;
   customInstructions: string;
+  responseDelaySeconds: number;
 }
 
 const DRAFT_KEY = "omniflow.bot.draft.v1";
@@ -25,8 +27,15 @@ const TONES: Array<{ value: BotConfigView["tone"]; label: string }> = [
   { value: "concise", label: "Concise" },
 ];
 
+// Known clients (can be fetched dynamically later)
+const KNOWN_CLIENTS: Array<{ id: string; name: string }> = [
+  { id: "1", name: "Production Test WhatsApp" },
+  { id: "4", name: "Isolation Test WhatsApp" },
+];
+
 const FALLBACK_INITIAL: BotConfigView = {
   configured: false,
+  clientId: "1",
   agentName: "OmniFlow Assistant",
   tone: "friendly",
   greeting: "",
@@ -36,6 +45,7 @@ const FALLBACK_INITIAL: BotConfigView = {
   workingHoursEnd: "18:00",
   humanHandoffEnabled: false,
   customInstructions: "",
+  responseDelaySeconds: 0,
 };
 
 function Toggle({
@@ -147,7 +157,7 @@ export default function BotForm({
       setMessage({
         kind: "info",
         text:
-          "Server module is not deployed yet — your changes are saved as a draft on this device and will sync automatically once the endpoint ships.",
+          "Server module is not deployed yet — your changes are saved as a local draft on this device and will sync automatically once the endpoint ships.",
       });
     } catch {
       setMessage({ kind: "error", text: "Network error — please try again." });
@@ -207,6 +217,28 @@ export default function BotForm({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Client selector for multi-client support */}
+        <div className="mt-4">
+          <label htmlFor="clientId" className={labelClass}>
+            Client / WhatsApp Account
+          </label>
+          <select
+            id="clientId"
+            className={`${inputClass} appearance-none`}
+            value={config.clientId}
+            onChange={(e) => update("clientId", e.target.value)}
+          >
+            {KNOWN_CLIENTS.map((client) => (
+              <option key={client.id} value={client.id} className="bg-white">
+                {client.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[11px] leading-relaxed text-ink-3">
+            Response delay and settings apply to this selected client account.
+          </p>
         </div>
 
         <div className="mt-4">
@@ -300,6 +332,21 @@ export default function BotForm({
           label="Human handoff"
           hint="Offer a human colleague when the AI is unsure"
         />
+      </div>
+
+      {/* Response Timing Section - Multiple Client Support */}
+      <div style={{ marginTop: 24, padding: 16, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+        <h3 style={{ margin: "0 0 16px 0", fontSize: 16, fontWeight: 600, color: "#111827" }}>Response Timing</h3>
+        <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#6b7280" }}>
+          Configure response delay for: <strong>{KNOWN_CLIENTS.find(c => c.id === config.clientId)?.name || "Selected client"}</strong>
+        </p>
+        <ResponseDelayInput
+          value={config.responseDelaySeconds}
+          onChange={(val: number) => setConfig({ ...config, responseDelaySeconds: val })}
+        />
+        <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
+          Controls how long the bot waits before sending a WhatsApp reply.
+        </div>
       </div>
 
       {message && (
