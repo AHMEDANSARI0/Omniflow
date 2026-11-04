@@ -2,38 +2,23 @@
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  // Security: Secret check karo
   const authHeader = request.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
+  const isProduction = process.env.NODE_ENV === "production";
   
-  // Agar secret set hai aur request mein sahi secret nahi hai, toh reject karo
-  if (cronSecret && (!authHeader || authHeader !== `Bearer ${cronSecret}`)) {
+  // Production mein sirf secret check karo
+  if (isProduction && cronSecret && (!authHeader || authHeader !== `Bearer ${cronSecret}`)) {
     console.log("Cron: Unauthorized attempt");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    // Yahan apna kaam karo jo cron ke waqt hona chahiye
-    console.log("Cron job started:", new Date().toISOString());
+    console.log("Cron job executed:", new Date().toISOString());
     
-    // Example tasks (jo chahiye unhe uncomment karo):
-    
-    // 1. Database cleanup
+    // Yahan apna task likho
+    // Example:
     // await cleanupOldData();
-    
-    // 2. Send scheduled emails
     // await sendScheduledEmails();
-    
-    // 3. Sync data
-    // await syncData();
-    
-    // 4. Update analytics
-    // await updateAnalytics();
-    
-    // Temporary: sirf log print karo
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    console.log("Cron job completed:", new Date().toISOString());
     
     return NextResponse.json({ 
       success: true, 
