@@ -19,7 +19,7 @@ export const HERO_DEFAULTS: HeroContent = {
   heading_line2: "into action.",
   description:
     "OmniFlow understands customer messages, applies your business context and automatically triggers the right response, workflow or action.",
-  primary_button: "Start Building",
+  primary_button: "Join Early Access",
   secondary_button: "See How It Works",
   channels_label: "Works with the channels your customers already use",
   integrations: "WhatsApp, Telegram, Website chat, Instagram, Messenger",
@@ -41,7 +41,7 @@ export const FINAL_CTA_DEFAULTS: FinalCtaContent = {
   heading_line2: "an automated workflow.",
   description:
     "Connect a channel, teach OmniFlow your business and launch your first automation. Your team steps in only where a human makes the difference.",
-  primary_button: "Start Building Free",
+  primary_button: "Join Early Access",
   secondary_button: "See How It Works",
   notes:
     "WhatsApp, Telegram and website chat live | Human handoff anytime | Pricing announced before public launch",
@@ -479,5 +479,6 @@ export const FAQ_DEFAULTS: FaqContent = {
   q6: "Can a human take over a conversation?",
   a6: "Yes — anytime. Automation never locks your team out. Any conversation can be taken over by a human at any moment, with the full conversation context in front of them.",
   contact_text: "Still have questions?",
-  contact_email: "hello@omniflow.example.com",
+  contact_email: "ahmedehtesham15@outlook.com",
+  contact_whatsapp: "+92 300 1234567",
 };

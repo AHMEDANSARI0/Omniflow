@@ -78,7 +78,7 @@ export default function PrivacyPage() {
           ))}
           <Reveal>
             <p className="text-center text-xs text-ink-3">
-              Last updated: October 2026 · Questions? Use the contact page.
+              Last updated: January 2027 · Questions? Use the contact page.
             </p>
           </Reveal>
         </div>

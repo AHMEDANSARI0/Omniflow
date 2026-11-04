@@ -77,7 +77,7 @@ export default function TermsPage() {
           ))}
           <Reveal>
             <p className="text-center text-xs text-ink-3">
-              Last updated: September 2026
+              Last updated: January 2027
             </p>
           </Reveal>
         </div>
