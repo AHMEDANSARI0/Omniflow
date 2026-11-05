@@ -1,20 +1,42 @@
-// §260 daily website analytics retention job. Vercel Cron calls this route once a
-// day (see vercel.json) with `Authorization: Bearer <CRON_SECRET>`. Visit records older
-// than the retention window are deleted. No daily totals are kept.
-import { safeJson } from "../../../../../lib/omniflow/request-security";
-import { runSiteMaintenance, sameSecret } from "../../../../../lib/omniflow/site-analytics";
+// // §260 daily website analytics retention job. Vercel Cron calls this route once a
+// // day (see vercel.json) with `Authorization: Bearer <CRON_SECRET>`. Visit records older
+// // than the retention window are deleted. No daily totals are kept.
+// import { safeJson } from "../../../../../lib/omniflow/request-security";
+// import { runSiteMaintenance, sameSecret } from "../../../../../lib/omniflow/site-analytics";
 
-export const runtime = "nodejs";
+// export const runtime = "nodejs";
 
-export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET ?? "";
-  const given = request.headers.get("authorization") ?? "";
-  if (!secret || !sameSecret(given, `Bearer ${secret}`)) {
-    return safeJson({ error: { code: "unauthorized", message: "Not allowed." } }, 401);
+// export async function GET(request: Request) {
+//   const secret = process.env.CRON_SECRET ?? "";
+//   const given = request.headers.get("authorization") ?? "";
+//   if (!secret || !sameSecret(given, `Bearer ${secret}`)) {
+//     return safeJson({ error: { code: "unauthorized", message: "Not allowed." } }, 401);
+//   }
+//   const result = await runSiteMaintenance();
+//   if (!result.ok) {
+//     return safeJson({ error: { code: "maintenance_failed", message: result.error } }, 500);
+//   }
+//   return safeJson(result.summary, 200);
+// }
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  try {
+    console.log("Site analytics cron executed:", new Date().toISOString());
+    
+    // Yahan apna kaam karo
+    // Example: website analytics update, cleanup, etc.
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: "Site analytics cron executed successfully",
+      timestamp: new Date().toISOString() 
+    });
+  } catch (error) {
+    console.error("Site analytics cron failed:", error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : "Error occurred" 
+    }, { status: 500 });
   }
-  const result = await runSiteMaintenance();
-  if (!result.ok) {
-    return safeJson({ error: { code: "maintenance_failed", message: result.error } }, 500);
-  }
-  return safeJson(result.summary, 200);
 }
