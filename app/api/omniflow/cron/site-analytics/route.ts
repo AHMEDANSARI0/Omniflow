@@ -24,8 +24,7 @@ export async function GET() {
   try {
     console.log("Site analytics cron executed:", new Date().toISOString());
     
-    // Yahan apna kaam karo
-    // Example: website analytics update, cleanup, etc.
+    // Yahan apna kaam karo (ya temporary empty rakhho)
     
     return NextResponse.json({ 
       success: true, 
