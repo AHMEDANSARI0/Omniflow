@@ -1,1 +1,5 @@
-export { adminMiddleware, isAdmin } from "./admin-middleware";
+export {
+  requireAdmin,
+  requireRole,
+  validateAdminToken,
+} from "./admin-middleware";

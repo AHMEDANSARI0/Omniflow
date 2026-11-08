@@ -1,9 +1,8 @@
-import { GetServerSideProps } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { motion } from "motion/react";
-import AnalyticsChart from "@/components/admin/AnalyticsChart";
-import ClientDelayTable from "@/components/admin/ClientDelayTable";
+import AnalyticsChart from "@/app/components/admin/AnalyticsChart";
+import ClientDelayTable from "@/app/components/admin/ClientDelayTable";
 
 interface AnalyticsData {
   total_clients: number;
@@ -23,12 +22,47 @@ interface TrendData {
   count: number;
 }
 
-interface PageProps {
-  analytics: AnalyticsData;
-  trendData: TrendData[];
-}
+export default async function AnalyticsPage() {
+  const session = (await cookies()).get("session");
+  if (!session?.value) {
+    redirect("/login");
+  }
 
-export default function AnalyticsPage({ analytics, trendData }: PageProps) {
+  let analytics: AnalyticsData = {
+    total_clients: 0,
+    average_delay_seconds: 0,
+    max_delay_seconds: 0,
+    min_delay_seconds: 0,
+    clients: [],
+    updated_at: new Date().toISOString(),
+  };
+  let trendData: TrendData[] = [];
+
+  try {
+    const response = await fetch(
+      "http://localhost:3000/api/omniflow/portal/bot/analytics",
+      {
+        headers: { Cookie: `session=${session.value}` },
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to fetch analytics:", response.status);
+    } else {
+      analytics = (await response.json()) as AnalyticsData;
+      trendData = [
+        { date: "00:00", avgDelay: analytics.average_delay_seconds, count: analytics.total_clients },
+        { date: "06:00", avgDelay: Math.max(0, analytics.average_delay_seconds - 10), count: Math.max(0, analytics.total_clients - 1) },
+        { date: "12:00", avgDelay: analytics.average_delay_seconds, count: analytics.total_clients },
+        { date: "18:00", avgDelay: Math.max(0, analytics.average_delay_seconds + 5), count: analytics.total_clients },
+        { date: "23:59", avgDelay: analytics.average_delay_seconds, count: analytics.total_clients },
+      ];
+    }
+  } catch (error) {
+    console.error("Failed to fetch analytics:", error);
+  }
+
   // Convert delay to trend data format
   const chartData = trendData.length > 0
     ? trendData
@@ -127,74 +161,3 @@ export default function AnalyticsPage({ analytics, trendData }: PageProps) {
     </motion.div>
   );
 }
-
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  // Check authentication
-  const cookieStore = await cookies();
-  const session = cookieStore.get("session");
-
-  if (!session?.value) {
-    return redirect("/login");
-  }
-
-  // Fetch analytics from API
-  try {
-    const response = await fetch(
-      `http://localhost:3000/api/v1/omniflow/portal/bot/whatsapp-response-delay/analytics`,
-      {
-        headers: {
-          Cookie: `session=${session.value}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      return {
-        props: {
-          analytics: {
-            total_clients: 0,
-            average_delay_seconds: 0,
-            max_delay_seconds: 0,
-            min_delay_seconds: 0,
-            clients: [],
-            updated_at: new Date().toISOString(),
-          },
-          trendData: [],
-        },
-      };
-    }
-
-    const analytics = await response.json() as AnalyticsData;
-
-    // Generate some trend data (in real app, fetch from analytics API)
-    const trendData: TrendData[] = [
-      { date: "00:00", avgDelay: analytics.average_delay_seconds, count: analytics.total_clients },
-      { date: "06:00", avgDelay: Math.max(0, analytics.average_delay_seconds - 10), count: Math.max(0, analytics.total_clients - 1) },
-      { date: "12:00", avgDelay: analytics.average_delay_seconds, count: analytics.total_clients },
-      { date: "18:00", avgDelay: Math.max(0, analytics.average_delay_seconds + 5), count: analytics.total_clients },
-      { date: "23:59", avgDelay: analytics.average_delay_seconds, count: analytics.total_clients },
-    ];
-
-    return {
-      props: {
-        analytics,
-        trendData,
-      },
-    };
-  } catch (error) {
-    console.error("Failed to fetch analytics:", error);
-    return {
-      props: {
-        analytics: {
-          total_clients: 0,
-          average_delay_seconds: 0,
-          max_delay_seconds: 0,
-          min_delay_seconds: 0,
-          clients: [],
-          updated_at: new Date().toISOString(),
-        },
-        trendData: [],
-      },
-    };
-  }
-};

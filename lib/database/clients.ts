@@ -74,3 +74,44 @@ export async function createClient(
     dbClient.release();
   }
 }
+
+/**
+ * Update an existing client.
+ */
+export async function updateClient(
+  clientId: string,
+  input: Partial<Pick<ClientRecord, "name" | "platform" | "status">>
+): Promise<ClientRecord | null> {
+  const client = await getPool().connect();
+  try {
+    const result = await client.query<ClientRecord>(
+      `UPDATE clients
+       SET name = COALESCE($1, name),
+           platform = COALESCE($2, platform),
+           status = COALESCE($3, status),
+           updated_at = NOW()
+       WHERE client_id = $4
+       RETURNING id, client_id, name, platform, status, created_at, updated_at`,
+      [input.name, input.platform?.toLowerCase(), input.status, clientId]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Delete a client.
+ */
+export async function deleteClient(clientId: string): Promise<boolean> {
+  const client = await getPool().connect();
+  try {
+    const result = await client.query(
+      "DELETE FROM clients WHERE client_id = $1 RETURNING client_id",
+      [clientId]
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  } finally {
+    client.release();
+  }
+}

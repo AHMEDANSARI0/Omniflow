@@ -17,7 +17,7 @@ const CLIENT_NAMES: Record<string, string> = {
 };
 
 export default function ClientDelayTable({ clients, onUpdate }: ClientDelayTableProps) {
-  const handleChange = (clientId, value) => {
+  const handleChange = (clientId: string, value: string) => {
     const delay = Math.max(0, Math.min(3600, parseInt(value) || 0));
     onUpdate?.(clientId, delay);
   };

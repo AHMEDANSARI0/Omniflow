@@ -7,7 +7,7 @@ interface ResponseDelayProps {
 }
 
 export default function ResponseDelayInput({ value, onChange, disabled = false }: ResponseDelayProps) {
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value);
     if (!isNaN(val) && val >= 0 && val <= 3600) {
       onChange(val);

@@ -1,13 +1,22 @@
 // lib/auth/admin-middleware.ts
 // Admin authentication middleware for Next.js API routes
 
+interface AdminUser {
+  id: string;
+  email: string;
+  role: string;
+  client_ids?: string[];
+}
+
+type AdminRequest = Request & { adminUser?: AdminUser };
+
 /**
  * Validate admin JWT token from Authorization header.
  * Supports Bearer token from Control Plane or local session.
  */
 export async function validateAdminToken(
-  request
-): Promise<{ id: string; email: string; role: string; client_ids?: string[] } | null> {
+  request: Request
+): Promise<AdminUser | null> {
   const authHeader = request.headers.get("Authorization") || "";
 
   if (!authHeader.startsWith("Bearer ")) {
@@ -46,7 +55,7 @@ export async function validateAdminToken(
  * Require admin role - returns 401/403 if not authorized.
  */
 export async function requireAdmin(
-  request
+  request: Request
 ): Promise<Response | null> {
   const user = await validateAdminToken(request);
 
@@ -71,7 +80,7 @@ export async function requireAdmin(
   }
 
   // Attach user to request for downstream use
-  (request as any).adminUser = user;
+  (request as AdminRequest).adminUser = user;
   return null;
 }
 
@@ -79,8 +88,8 @@ export async function requireAdmin(
  * Require specific role.
  */
 export async function requireRole(
-  request,
-  allowedRoles
+  request: Request,
+  allowedRoles: readonly string[]
 ): Promise<Response | null> {
   const user = await validateAdminToken(request);
 
@@ -104,6 +113,6 @@ export async function requireRole(
     );
   }
 
-  (request as any).adminUser = user;
+  (request as AdminRequest).adminUser = user;
   return null;
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "../../../../lib/auth/admin-middleware";
-import { getLogger } from "../../../../lib/logger";
+import { requireAdmin } from "@/lib/auth/admin-middleware";
+import { getLogger } from "@/lib/logger";
 
 const log = getLogger({ serviceName: "error-tracker" });
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       source: "bot-api",
       client_id: Math.random() > 0.5 ? "1" : "4",
       details: {
-        request_id: `req-${(offset + i) * 100}`,"
+        request_id: `req-${(offset + i) * 100}`,
         user_agent: "Mozilla/5.0",
         ip: "192.168.1.1",
       },

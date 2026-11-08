@@ -37,7 +37,7 @@ export default async function MyBotPage() {
       </div>
 
       <BotForm
-        initial={config}
+        initial={config ? { ...config, clientId: "1" } : null}
         backendConfigured={config?.configured ?? false}
       />
 

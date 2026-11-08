@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClients, getClient, createClient, updateClient, deleteClient } from "../../../../lib/database/clients";
-import { validateAdminToken, requireAdmin } from "../../../../lib/auth/admin-middleware";
+import { getClients, getClient, createClient, updateClient, deleteClient } from "@/lib/database/clients";
+import { requireAdmin } from "@/lib/auth/admin-middleware";
 
 /**
  * GET /api/v1/admin/clients

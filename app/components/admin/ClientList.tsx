@@ -28,7 +28,7 @@ export default function ClientList({ clients, onEdit, onDelete, isLoading }: Cli
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientItem | null>(null);
 
-  const handleDelete = (clientId) => {
+  const handleDelete = (clientId: string) => {
     if (confirm("Delete client #" + clientId + "? This cannot be undone.")) {
       setDeletingId(clientId);
       onDelete(clientId);

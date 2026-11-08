@@ -6,8 +6,13 @@ interface RateLimitConfig {
   maxRequests: number;
 }
 
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
 // In-memory store (use Redis in production)
-const rateLimitStore = new Map();
+const rateLimitStore = new Map<string, RateLimitEntry>();
 
 // Cleanup interval - runs every minute
 setInterval(() => {
@@ -20,7 +25,7 @@ setInterval(() => {
 }, 60000);
 
 // Default rate limits per endpoint type
-const RATE_LIMITS = {
+export const RATE_LIMITS = {
   admin: {
     windowMs: 60000,
     maxRequests: 30,
@@ -42,7 +47,7 @@ const RATE_LIMITS = {
 /**
  * Get client identifier (IP or client_id from request).
  */
-function getClientKey(request) {
+function getClientKey(request: Request): string {
   const url = new URL(request.url);
   const clientId = url.searchParams.get("client_id");
   if (clientId) {
@@ -59,8 +64,8 @@ function getClientKey(request) {
  * Returns null if allowed, or a Response with 429 status.
  */
 export async function checkRateLimit(
-  request,
-  limitType = "general"
+  request: Request,
+  limitType: keyof typeof RATE_LIMITS = "general"
 ): Promise<Response | null> {
   const config = RATE_LIMITS[limitType];
   const clientId = getClientKey(request);
@@ -107,7 +112,7 @@ export async function checkRateLimit(
 /**
  * Build rate limit headers for response.
  */
-export function addRateLimitHeaders(response, clientKey) {
+export function addRateLimitHeaders(response: Response, clientKey: string): Response {
   const entry = rateLimitStore.get(clientKey);
   if (!entry) {
     return response;
@@ -117,13 +122,14 @@ export function addRateLimitHeaders(response, clientKey) {
   const remaining = Math.max(0, config.maxRequests - entry.count);
   const resetTime = entry.resetTime;
 
+  const headers = new Headers(response.headers);
+  headers.set("X-RateLimit-Limit", String(config.maxRequests));
+  headers.set("X-RateLimit-Remaining", String(remaining));
+  headers.set("X-RateLimit-Reset", String(Math.ceil(resetTime / 1000)));
+
   return new Response(response.body, {
-    ...response,
-    headers: {
-      ...response.headers,
-      "X-RateLimit-Limit": String(config.maxRequests),
-      "X-RateLimit-Remaining": String(remaining),
-      "X-RateLimit-Reset": String(Math.ceil(resetTime / 1000)),
-    },
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
