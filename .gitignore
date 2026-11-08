@@ -54,3 +54,6 @@ next-env.d.ts
 *.dir_conflict.bak/
 .hide
 hide/
+mobile
+/mobile
+.mobile
