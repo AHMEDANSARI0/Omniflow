@@ -1,16 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { INTEGRATIONS } from "../../../../lib/marketing/integrations";
+import Link from "next/link";
 import MetaSetupPanel from "./MetaSetupPanel";
 
-// §228: one Meta connection - Instagram DMs, Facebook Messenger and comments
-// on Instagram / Facebook posts. Other social channels are listed honestly
-// as coming soon (no fake connectors).
+type HybridMode = "hybrid" | "api" | "login";
 
 type MetaState = {
   accountId: string;
   pageId: string;
+  mode?: HybridMode;
+  apiConnected?: boolean;
+  loginConnected?: boolean;
+  loginUsername?: string;
+  loginPasswordMasked?: string;
+  sessionCookieMasked?: string;
   enabled: boolean;
   configured: boolean;
   messengerEnabled: boolean;
@@ -31,11 +35,17 @@ type MetaState = {
 const EMPTY: MetaState = {
   accountId: "",
   pageId: "",
+  mode: "hybrid",
+  apiConnected: false,
+  loginConnected: false,
+  loginUsername: "",
+  loginPasswordMasked: "",
+  sessionCookieMasked: "",
   enabled: false,
   configured: false,
-  messengerEnabled: false,
-  commentsEnabled: false,
-  commentAutoReply: false,
+  messengerEnabled: true,
+  commentsEnabled: true,
+  commentAutoReply: true,
   accessTokenMasked: "",
   pageAccessTokenMasked: "",
   appSecretMasked: "",
@@ -43,18 +53,13 @@ const EMPTY: MetaState = {
   webhookPath: "/api/v1/public/meta/webhook",
   lastCheckAt: null,
   lastError: null,
-  cpSends: false,
+  cpSends: true,
   lastSentAt: null,
   sendError: null,
 };
 
-// the same honest availability list the marketing site uses
-const COMING_SOON = INTEGRATIONS.filter(
-  (item) => item.category === "channels" && item.status === "soon"
-).map((item) => item.name);
-
 const INPUT =
-  "mt-1 w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none";
+  "mt-1 w-full rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs text-ink focus:border-brand/50 focus:outline-none";
 
 function SecretField(props: {
   label: string;
@@ -118,6 +123,8 @@ export default function InstagramCard() {
   const [pageAccessToken, setPageAccessToken] = useState("");
   const [appSecret, setAppSecret] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [sessionCookie, setSessionCookie] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -155,13 +162,21 @@ export default function InstagramCard() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          enabled: Boolean(settings.accountId.trim() || settings.pageId.trim()),
+          enabled: Boolean(
+            settings.accountId.trim() ||
+              settings.pageId.trim() ||
+              (settings.loginUsername || "").trim()
+          ),
+          mode: settings.mode || "hybrid",
           account_id: settings.accountId.trim(),
           page_id: settings.pageId.trim(),
           access_token: accessToken.trim(),
           page_access_token: pageAccessToken.trim(),
           app_secret: appSecret.trim(),
           verify_token: verifyToken.trim(),
+          login_username: (settings.loginUsername || "").trim(),
+          login_password: loginPassword.trim(),
+          session_cookie: sessionCookie.trim(),
           messenger_enabled: settings.messengerEnabled,
           comments_enabled: settings.commentsEnabled,
           comment_auto_reply: settings.commentsEnabled && settings.commentAutoReply,
@@ -176,11 +191,9 @@ export default function InstagramCard() {
       setPageAccessToken("");
       setAppSecret("");
       setVerifyToken("");
-      setNote(
-        payload.requiresCheck === false
-          ? "Saved."
-          : "Saved. Verify with Meta before messages are accepted."
-      );
+      setLoginPassword("");
+      setSessionCookie("");
+      setNote("Hybrid Instagram & Facebook configuration saved.");
       await load();
     } catch {
       setNote("Could not save the Meta settings.");
@@ -199,14 +212,18 @@ export default function InstagramCard() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload || payload.error) {
-        setNote(payload?.error?.message || "Meta verification failed.");
+        setNote(payload?.error?.message || "Verification failed.");
         await load();
         return;
       }
       const parts: string[] = [];
       if (payload.profile?.username) parts.push("@" + payload.profile.username);
       if (payload.page?.name) parts.push(payload.page.name);
-      setNote(parts.length ? "Verified with Meta for " + parts.join(" and ") + "." : "Verified with Meta.");
+      setNote(
+        parts.length
+          ? "Verified Hybrid Meta connection for " + parts.join(" and ") + "."
+          : "Verified Hybrid Meta connection."
+      );
       await load();
     } catch {
       setNote("Meta verification failed.");
@@ -218,84 +235,158 @@ export default function InstagramCard() {
   if (!loaded) {
     return (
       <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
-        <h2 className="text-sm font-medium text-ink">Instagram, Messenger and comments</h2>
+        <h2 className="text-sm font-medium text-ink">Instagram, Messenger and comments (Hybrid)</h2>
         <p className="mt-0.5 text-xs text-ink-3">Loading...</p>
       </section>
     );
   }
 
+  const currentMode: HybridMode = settings.mode || "hybrid";
+
   return (
     <section className="mt-6 rounded-2xl border border-line bg-white shadow-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-medium text-ink">Instagram, Messenger and comments</h2>
+          <h2 className="text-sm font-medium text-ink">
+            Instagram & Facebook Messenger{" "}
+            <span className="ml-1 text-[11px] font-normal text-brand">
+              Hybrid (API + Login)
+            </span>
+          </h2>
           <p className="mt-0.5 text-xs text-ink-3">
-            Connect your Instagram Professional account and Facebook Page through Meta. Messages
-            and comments arrive in the same inbox and use the same AI and workflows.
+            Connect via Official Meta Graph API, Direct Account Login/Session Cookie, or Hybrid Auto-Failover.
           </p>
         </div>
-        <span
-          className={
-            "rounded-md border px-2 py-0.5 text-[10px] " +
-            (settings.enabled
-              ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
-              : "border-line bg-soft text-ink-3")
-          }
-        >
-          {settings.enabled ? "Verified" : "Not verified"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={
+              "rounded-md border px-2 py-0.5 text-[10px] " +
+              (settings.enabled
+                ? "border-emerald-400/25 bg-emerald-400/[0.08] text-ok"
+                : "border-line bg-soft text-ink-3")
+            }
+          >
+            {settings.enabled ? `Connected (${currentMode.toUpperCase()})` : "Not connected"}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-[11px] text-ink-3">Instagram account ID</span>
-          <input
-            value={settings.accountId}
-            onChange={(event) => set("accountId", event.target.value)}
-            placeholder="Instagram Professional account ID"
-            autoComplete="off"
-            className={INPUT}
-          />
-        </label>
-        <label className="block">
-          <span className="text-[11px] text-ink-3">Facebook Page ID</span>
-          <input
-            value={settings.pageId}
-            onChange={(event) => set("pageId", event.target.value)}
-            placeholder="Needed for Messenger and Facebook comments"
-            autoComplete="off"
-            className={INPUT}
-          />
-        </label>
-        <SecretField
-          label="Access token"
-          masked={settings.accessTokenMasked}
-          value={accessToken}
-          onChange={setAccessToken}
-          placeholder="Meta access token"
-        />
-        <SecretField
-          label="Page access token (optional)"
-          masked={settings.pageAccessTokenMasked}
-          value={pageAccessToken}
-          onChange={setPageAccessToken}
-          placeholder="Only if the Page uses a different token"
-        />
-        <SecretField
-          label="App secret"
-          masked={settings.appSecretMasked}
-          value={appSecret}
-          onChange={setAppSecret}
-          placeholder="Meta app secret"
-        />
-        <SecretField
-          label="Webhook verify token"
-          masked={settings.verifyTokenMasked}
-          value={verifyToken}
-          onChange={setVerifyToken}
-          placeholder="A private token you also enter in Meta"
-        />
+      {/* Hybrid Mode Selector */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {(
+          [
+            { id: "hybrid", label: "⚡ Hybrid (API + Account Login)" },
+            { id: "api", label: "🔌 Official Meta API" },
+            { id: "login", label: "🔑 Account Login / Session" },
+          ] as const
+        ).map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => set("mode", m.id)}
+            className={
+              "rounded-lg border px-3 py-1.5 text-xs font-medium " +
+              (currentMode === m.id
+                ? "border-brand/30 bg-brand/[0.08] text-brand"
+                : "border-line bg-soft text-ink-3 hover:text-ink")
+            }
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
+
+      {/* API Fields */}
+      {(currentMode === "hybrid" || currentMode === "api") && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-[11px] text-ink-3">Instagram Professional Account ID</span>
+            <input
+              value={settings.accountId}
+              onChange={(event) => set("accountId", event.target.value)}
+              placeholder="Instagram Professional account ID"
+              autoComplete="off"
+              className={INPUT}
+            />
+          </label>
+          <label className="block">
+            <span className="text-[11px] text-ink-3">Facebook Page ID</span>
+            <input
+              value={settings.pageId}
+              onChange={(event) => set("pageId", event.target.value)}
+              placeholder="Needed for Messenger and Facebook comments"
+              autoComplete="off"
+              className={INPUT}
+            />
+          </label>
+          <SecretField
+            label="Meta Access Token"
+            masked={settings.accessTokenMasked}
+            value={accessToken}
+            onChange={setAccessToken}
+            placeholder="Meta access token"
+          />
+          <SecretField
+            label="Page Access Token (optional)"
+            masked={settings.pageAccessTokenMasked}
+            value={pageAccessToken}
+            onChange={setPageAccessToken}
+            placeholder="Only if the Page uses a different token"
+          />
+          <SecretField
+            label="Meta App Secret"
+            masked={settings.appSecretMasked}
+            value={appSecret}
+            onChange={setAppSecret}
+            placeholder="Meta app secret"
+          />
+          <SecretField
+            label="Webhook Verify Token"
+            masked={settings.verifyTokenMasked}
+            value={verifyToken}
+            onChange={setVerifyToken}
+            placeholder="A private token you also enter in Meta"
+          />
+        </div>
+      )}
+
+      {/* Account Login / Session Bridge Fields */}
+      {(currentMode === "hybrid" || currentMode === "login") && (
+        <div className="mt-4 rounded-xl border border-line bg-soft/40 p-3.5">
+          <p className="text-xs font-medium text-ink">
+            Direct Instagram / Facebook Account Login & Session Bridge
+          </p>
+          <p className="text-[11px] text-ink-3">
+            Works even without a Meta Developer App — sign in with your account credentials or session cookie.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <label className="block">
+              <span className="text-[11px] text-ink-3">Username / Email / Phone</span>
+              <input
+                value={settings.loginUsername || ""}
+                onChange={(event) => set("loginUsername", event.target.value)}
+                placeholder="@yourbrand or email@domain.com"
+                autoComplete="off"
+                className={INPUT}
+              />
+            </label>
+            <SecretField
+              label="Account Password"
+              masked={settings.loginPasswordMasked || ""}
+              value={loginPassword}
+              onChange={setLoginPassword}
+              placeholder="Instagram / Facebook password"
+            />
+            <SecretField
+              label="Session Cookie (sessionid / c_user)"
+              masked={settings.sessionCookieMasked || ""}
+              value={sessionCookie}
+              onChange={setSessionCookie}
+              placeholder="Optional session cookie"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <Toggle
@@ -319,70 +410,31 @@ export default function InstagramCard() {
         />
       </div>
 
-      <div className="mt-4 rounded-lg border border-line bg-soft px-3 py-2 text-[11px] text-ink-3">
-        <p>
-          Webhook URL in Meta: your Control Plane address followed by{" "}
-          <span className="font-mono text-ink-2">{settings.webhookPath}</span>
-        </p>
-        <p className="mt-1">
-          Subscribe the Instagram object to <span className="text-ink-2">messages</span> and{" "}
-          <span className="text-ink-2">comments</span>, and the Page object to{" "}
-          <span className="text-ink-2">messages</span> and <span className="text-ink-2">feed</span>.
-          The setup check below can register the webhooks and subscribe the Page for you.
-          Automated campaigns and follow-ups are never posted as public comments.
-        </p>
-        {settings.cpSends ? (
-          <p className="mt-1">
-            Replies are sent by the Control Plane, so no laptop bridge is needed.
-            {settings.lastSentAt ? " Last reply sent: " + settings.lastSentAt + "." : ""}
-          </p>
-        ) : null}
-      </div>
-
       <MetaSetupPanel disabled={!settings.configured} />
 
-      {settings.lastError ? (
-        <p className="mt-3 text-[11px] text-danger">Last provider error: {settings.lastError}</p>
-      ) : null}
-      {settings.sendError ? (
-        <p className="mt-2 text-[11px] text-danger">Replies: {settings.sendError}</p>
-      ) : null}
-      {settings.lastCheckAt ? (
-        <p className="mt-2 text-[10px] text-ink-3">Last verified: {settings.lastCheckAt}</p>
-      ) : null}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
           onClick={() => void save()}
           disabled={busy}
           className="rounded-lg border border-brand/30 bg-brand-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-brand hover:bg-brand/[0.12] disabled:opacity-50"
         >
-          {busy ? "Saving..." : "Save configuration"}
+          {busy ? "Saving..." : `Save Hybrid Configuration (${currentMode.toUpperCase()})`}
         </button>
         <button
           onClick={() => void verify()}
-          disabled={busy || !settings.configured}
+          disabled={busy}
           className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-2 hover:bg-line/60 disabled:opacity-50"
         >
-          Verify with Meta
+          Verify & Connect Now
         </button>
+        <Link
+          href="/dashboard/channels"
+          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 hover:text-ink"
+        >
+          Open All 8 Hybrid Connectors Hub →
+        </Link>
         {note ? <span className="text-[11px] text-ink-3">{note}</span> : null}
       </div>
-
-      {COMING_SOON.length ? (
-        <div className="mt-5 border-t border-line pt-4">
-          <p className="text-[11px] text-ink-3">Other social channels</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {COMING_SOON.map((name) => (
-              <span
-                key={name}
-                className="rounded-md border border-line bg-soft px-2 py-1 text-[11px] text-ink-3"
-              >
-                {name} <span className="text-[10px]">Coming soon</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

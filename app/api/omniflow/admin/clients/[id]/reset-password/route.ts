@@ -1,13 +1,10 @@
 import { createClient } from "../../../../../../../lib/supabase/server";
-import { ControlPlaneRequestError } from "../../../../../../../lib/omniflow/control-plane";
-import { resetAdminPassword } from "../../../../../../../lib/omniflow/admin-control-plane";
-import { adminBridgeError } from "../../../../../../../lib/omniflow/admin-bridge-error";
 import {
   noStoreHeaders,
   safeJson,
   sameOrigin,
 } from "../../../../../../../lib/omniflow/request-security";
-
+import { resetClientWorkspacePassword } from "../../../../../../lib/workspace-store";
 
 async function requireAdminSession() {
   const supabase = await createClient();
@@ -47,20 +44,16 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const customPassword =
+    typeof body.password === "string" && body.password.trim().length >= 8
+      ? body.password.trim()
+      : undefined;
+
   try {
-    const result = await resetAdminPassword(userId);
+    const result = await resetClientWorkspacePassword(userId, customPassword);
     return safeJson(result);
-  } catch (error) {
-    const bridge = adminBridgeError(error);
-    if (bridge) return bridge;
-    if (error instanceof ControlPlaneRequestError) {
-      if (error.status === 404) {
-        return safeJson(
-          { error: { code: "user_not_found", message: "No such client." } },
-          404
-        );
-      }
-    }
+  } catch {
     return safeJson(
       {
         error: {

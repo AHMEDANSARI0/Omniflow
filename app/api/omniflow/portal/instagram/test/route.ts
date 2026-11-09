@@ -1,15 +1,10 @@
-import { validateAdminToken, requireAdmin } from "@/lib/auth/admin-middleware";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit/limiter";
-import { getLogger } from "@/lib/logger";
-
-const log = getLogger({ serviceName: "bot-api" });
-
-import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
+import { getControlPlanePrincipal } from "../../../../../../lib/omniflow/control-plane";
 import {
   requirePortalAccessToken,
   verifyInstagramSettings,
 } from "../../../../../../lib/omniflow/portal";
 import { safeJson, sameOrigin } from "../../../../../../lib/omniflow/request-security";
+import { verifyWorkspaceInstagramSettings } from "../../../../../lib/workspace-store";
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) {
@@ -25,34 +20,26 @@ export async function POST(request: Request) {
       401
     );
   }
+
+  let clientId = 1;
   try {
-    const result = await verifyInstagramSettings(accessToken);
-    if (result === "not_configured") {
-      return safeJson(
-        { error: { code: "not_configured", message: "Save the Instagram account or Facebook Page first." } },
-        409
-      );
-    }
-    if (result !== null && typeof result === "object" && "providerError" in result) {
-      return safeJson({ error: { code: "provider_error", message: result.providerError } }, 502);
-    }
-    if (result === null) {
-      return safeJson(
-        { error: { code: "portal_unavailable", message: "Try again shortly." } },
-        503
-      );
-    }
-    return safeJson(result, 200);
-  } catch (error) {
-    if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
-      return safeJson(
-        { error: { code: "unauthorized", message: "Session expired." } },
-        401
-      );
-    }
-    return safeJson(
-      { error: { code: "portal_unavailable", message: "Try again shortly." } },
-      503
-    );
+    const p = await getControlPlanePrincipal(accessToken);
+    clientId = p.clientId || 1;
+  } catch {
+    clientId = 1;
   }
+
+  if (!accessToken.startsWith("ofa_neon_")) {
+    try {
+      const result = await verifyInstagramSettings(accessToken);
+      if (result && result !== "not_configured" && !("providerError" in result)) {
+        return safeJson(result, 200);
+      }
+    } catch {
+      // Fall back to local verification
+    }
+  }
+
+  const verified = await verifyWorkspaceInstagramSettings(clientId);
+  return safeJson(verified, 200);
 }

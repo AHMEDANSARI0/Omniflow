@@ -103,6 +103,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Workspace",
     icon: "workspace",
     items: [
+      { label: "Social connectors", href: "/dashboard/channels", icon: "integrations" },
       { label: "WhatsApp setup", href: "/dashboard/channels/whatsapp", icon: "whatsapp" },
       { label: "Setup wizard", href: "/dashboard/onboarding", icon: "setupWizard" },
       { label: "Business profile", href: "/dashboard/profile", icon: "profile" },

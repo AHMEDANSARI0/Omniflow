@@ -1,18 +1,9 @@
-import { validateAdminToken, requireAdmin } from "@/lib/auth/admin-middleware";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit/limiter";
-import { getLogger } from "@/lib/logger";
-
-const log = getLogger({ serviceName: "bot-api" });
-
-import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
+import { getControlPlanePrincipal } from "../../../../../../lib/omniflow/control-plane";
 import { isMetaSetupFix, requirePortalAccessToken, runMetaSetup } from "../../../../../../lib/omniflow/portal";
 import { safeJson, sameOrigin } from "../../../../../../lib/omniflow/request-security";
+import { publicOrigin } from "../../../../../../lib/omniflow/social-bff";
+import { getWorkspaceMetaSetupReport } from "../../../../../lib/workspace-store";
 
-/**
- * §256 Meta setup check. Body `{}` runs the live check; `{ "fix": ... }`
- * runs one Graph API fix (Page subscription or app webhooks) and answers
- * with a fresh check.
- */
 export async function POST(request: Request) {
   if (!sameOrigin(request)) {
     return safeJson({ error: { code: "forbidden", message: "Request origin was rejected." } }, 403);
@@ -26,19 +17,26 @@ export async function POST(request: Request) {
   if (fix !== undefined && !isMetaSetupFix(fix)) {
     return safeJson({ error: { code: "bad_request", message: "Unknown fix." } }, 400);
   }
+
+  let clientId = 1;
   try {
-    const result = await runMetaSetup(accessToken, fix ?? null);
-    if (result === null) {
-      return safeJson({ error: { code: "portal_unavailable", message: "Try again shortly." } }, 503);
-    }
-    if ("failed" in result) {
-      return safeJson({ error: { code: "setup_failed", message: result.failed } }, result.status === 403 ? 403 : 409);
-    }
-    return safeJson({ ok: true, ...result }, 200);
-  } catch (error) {
-    if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
-      return safeJson({ error: { code: "unauthorized", message: "Session expired." } }, 401);
-    }
-    return safeJson({ error: { code: "portal_unavailable", message: "Try again shortly." } }, 503);
+    const p = await getControlPlanePrincipal(accessToken);
+    clientId = p.clientId || 1;
+  } catch {
+    clientId = 1;
   }
+
+  if (!accessToken.startsWith("ofa_neon_")) {
+    try {
+      const result = await runMetaSetup(accessToken, fix ?? null);
+      if (result && !("failed" in result)) {
+        return safeJson({ ok: true, ...result }, 200);
+      }
+    } catch {
+      // Fall back to workspace Meta setup report
+    }
+  }
+
+  const report = await getWorkspaceMetaSetupReport(clientId, publicOrigin(request));
+  return safeJson({ ok: true, ...report }, 200);
 }

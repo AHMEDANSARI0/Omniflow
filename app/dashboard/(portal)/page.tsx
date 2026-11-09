@@ -1,7 +1,5 @@
 import Link from "next/link";
-import LivePortalStats from "./analytics/LivePortalStats";
 import { Suspense } from "react";
-
 import { requireOmniFlowPrincipal } from "../../../lib/omniflow/auth-dal";
 import { readSessionCookies } from "../../../lib/omniflow/session-cookies";
 import SetupChecklist from "../components/SetupChecklist";
@@ -10,6 +8,7 @@ import OperationsCard from "../components/OperationsCard";
 import PortalIcon from "../components/PortalIcon";
 import { NAV_GROUPS } from "../components/portalNav";
 import DailyBrief from "./DailyBrief";
+import LivePortalStats from "./analytics/LivePortalStats";
 import {
   ActivityCard,
   AiCard,
@@ -23,11 +22,7 @@ import {
   RevenueCard,
   SalesCard,
   TrafficCard,
-<LivePortalStats />
 } from "./DashboardWidgets";
-
-// §246: the global dashboard - live numbers from every part of the workspace.
-// Each widget streams in on its own, so a slow service never holds the page.
 
 export default async function ClientDashboardPage() {
   const principal = await requireOmniFlowPrincipal();
@@ -48,6 +43,7 @@ export default async function ClientDashboardPage() {
       </div>
 
       <SetupChecklist />
+      <LivePortalStats />
 
       {token && (
         <>

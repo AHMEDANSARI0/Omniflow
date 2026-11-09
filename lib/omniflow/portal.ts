@@ -47,6 +47,12 @@ async function portalRequest(
   init: RequestInit = {},
   timeoutMs: number = REQUEST_TIMEOUT_MS
 ): Promise<Response> {
+  if (accessToken.startsWith("ofa_neon_")) {
+    return new Response(JSON.stringify({ configured: false }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   const url = new URL(path.replace(/^\//, ""), controlPlaneBaseUrl());
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");

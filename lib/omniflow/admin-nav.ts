@@ -52,10 +52,10 @@ export const ADMIN_NAV: AdminNavItem[] = [
     enabled: true,
   },
   {
-    label: "Customers",
+    label: "Workspaces & Clients",
     href: "/admin/customers",
     icon: "users",
-    description: "Client accounts: password resets and locks.",
+    description: "Create client workspaces, grant Customer Portal access and manage social connectors.",
     enabled: true,
   },
   // §263: client billing sits under Customers in the nav.

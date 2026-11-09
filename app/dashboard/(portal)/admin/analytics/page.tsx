@@ -65,9 +65,9 @@ export default async function AnalyticsPage() {
 
   // Convert delay to trend data format
   const chartData = trendData.length > 0
-    ? trendData
+    ? trendData.map(({ date, avgDelay }) => ({ name: date, value: avgDelay }))
     : [
-        { date: new Date().toISOString().slice(0, 10), avgDelay: analytics.average_delay_seconds, count: analytics.total_clients },
+        { name: new Date().toISOString().slice(0, 10), value: analytics.average_delay_seconds },
       ];
 
   return (

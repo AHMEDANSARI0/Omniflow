@@ -2,6 +2,12 @@ import { IS_PRODUCTION_BUILD } from "./session-constants";
 import "server-only";
 
 import { createHash, randomUUID } from "crypto";
+import {
+  authenticatePortalClient,
+  refreshPortalSessionToken,
+  revokePortalSessionToken,
+  verifyPortalAccessToken,
+} from "../../app/lib/workspace-store";
 
 
 const REQUEST_TIMEOUT_MS = 8_000;
@@ -51,7 +57,7 @@ export class ControlPlaneRequestError extends Error {
 }
 
 function controlPlaneBaseUrl(): URL {
-  if (IS_PRODUCTION_BUILD) throw new ControlPlaneRequestError(503, "control_plane_not_configured"); // §276r4e
+  if (IS_PRODUCTION_BUILD) throw new ControlPlaneRequestError(503, "control_plane_not_configured");
   const raw = process.env.OMNIFLOW_CONTROL_PLANE_URL?.trim();
 
   if (!raw) {
@@ -65,7 +71,7 @@ function controlPlaneBaseUrl(): URL {
     throw new ControlPlaneRequestError(503, "control_plane_url_invalid");
   }
 
-  if (!['http:', 'https:'].includes(url.protocol)) {
+  if (!["http:", "https:"].includes(url.protocol)) {
     throw new ControlPlaneRequestError(503, "control_plane_url_invalid");
   }
 
@@ -236,6 +242,21 @@ async function jsonResponse(response: Response): Promise<unknown> {
 export async function loginToControlPlane(
   input: LoginInput
 ): Promise<OmniFlowSessionTokens> {
+  const localAuth = await authenticatePortalClient(
+    input.email,
+    input.password,
+    input.clientId
+  );
+  if (localAuth.kind === "ok") {
+    return localAuth.tokens;
+  }
+  if (localAuth.kind === "locked") {
+    throw new ControlPlaneRequestError(423, "account_locked");
+  }
+  if (localAuth.kind === "invalid") {
+    throw new ControlPlaneRequestError(401, "invalid_credentials");
+  }
+
   const body: Record<string, unknown> = {
     email: input.email,
     password: input.password,
@@ -253,6 +274,14 @@ export async function loginToControlPlane(
 export async function refreshControlPlaneSession(
   refreshToken: string
 ): Promise<OmniFlowSessionTokens> {
+  if (refreshToken.startsWith("ofr_neon_")) {
+    const refreshed = await refreshPortalSessionToken(refreshToken);
+    if (!refreshed) {
+      throw new ControlPlaneRequestError(401, "invalid_refresh_token");
+    }
+    return refreshed;
+  }
+
   const response = await controlPlaneRequest("api/v1/auth/refresh", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -271,6 +300,14 @@ const principalCache = new Map<
 export async function getControlPlanePrincipal(
   accessToken: string
 ): Promise<OmniFlowPrincipal> {
+  if (accessToken.startsWith("ofa_neon_")) {
+    const principal = await verifyPortalAccessToken(accessToken);
+    if (!principal) {
+      throw new ControlPlaneRequestError(401, "invalid_access_token");
+    }
+    return principal;
+  }
+
   const cacheKey = createHash("sha256").update(accessToken).digest("hex");
   const now = Date.now();
   const cached = principalCache.get(cacheKey);
@@ -293,6 +330,10 @@ export async function getControlPlanePrincipal(
 export async function logoutControlPlaneSession(
   accessToken: string
 ): Promise<void> {
+  if (accessToken.startsWith("ofa_neon_")) {
+    await revokePortalSessionToken(accessToken);
+    return;
+  }
   await controlPlaneRequest("api/v1/auth/logout", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}` },
