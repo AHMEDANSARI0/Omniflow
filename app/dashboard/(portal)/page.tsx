@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LivePortalStats from "./analytics/LivePortalStats";
 import { Suspense } from "react";
 
 import { requireOmniFlowPrincipal } from "../../../lib/omniflow/auth-dal";
@@ -22,6 +23,7 @@ import {
   RevenueCard,
   SalesCard,
   TrafficCard,
+<LivePortalStats />
 } from "./DashboardWidgets";
 
 // §246: the global dashboard - live numbers from every part of the workspace.
