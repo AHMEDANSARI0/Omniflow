@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import EmailChannelCard from "../../dashboard/(portal)/settings/EmailChannelCard";
 import InstagramCard from "../../dashboard/(portal)/settings/InstagramCard";
 import SmsChannelCard from "../../dashboard/(portal)/settings/SmsChannelCard";
@@ -48,13 +48,28 @@ interface WhatsAppLiveStatus {
   accountName: string | null;
   phone: string | null;
   lastSeenAt: string | null;
+  qrImageData: string | null;
   pairingCode: string | null;
-  qrPayload: string | null;
+  statusNote: string | null;
   apiConfig?: WhatsAppApiConfigState;
 }
 
+const COUNTRY_DIAL_CODES = [
+  { label: "Pakistan (+92)", dial: "+92" },
+  { label: "United Arab Emirates (+971)", dial: "+971" },
+  { label: "Saudi Arabia (+966)", dial: "+966" },
+  { label: "United Kingdom (+44)", dial: "+44" },
+  { label: "United States / Canada (+1)", dial: "+1" },
+  { label: "India (+91)", dial: "+91" },
+  { label: "Australia (+61)", dial: "+61" },
+  { label: "Germany (+49)", dial: "+49" },
+  { label: "Turkey (+90)", dial: "+90" },
+  { label: "Malaysia (+60)", dial: "+60" },
+  { label: "Custom (+...)", dial: "" },
+];
+
 function fmtDate(iso: string | null): string {
-  if (!iso) return "No recent activity";
+  if (!iso) return "—";
   try {
     return new Date(iso).toLocaleString();
   } catch {
@@ -66,89 +81,21 @@ function formatConnectionModeLabel(
   mode: WhatsAppLiveStatus["connectionMode"],
   state: WhatsAppLiveStatus["state"]
 ): string {
-  if (state === "disconnected") return "Not Connected";
+  if (state === "disconnected") return "Not linked";
   switch (mode) {
     case "meta_cloud":
-      return "Meta WhatsApp Cloud API";
+      return "Meta Cloud API";
     case "wati":
       return "WATI Business API";
     case "custom_api":
-      return "Custom WhatsApp API";
+      return "Custom Business API";
     case "pairing_code":
-      return "8-Digit Phone Pairing Code";
+      return "Phone Pairing Code";
     case "qr":
-      return "WhatsApp Web QR Device Link";
+      return "WhatsApp Web (QR)";
     default:
-      return state === "connected" ? "WhatsApp Bridge" : "Awaiting Connection";
+      return state === "connected" ? "WhatsApp Web" : "Pending link";
   }
-}
-
-function DeterministicQrSvg({ seed }: { seed: string }) {
-  const cells = useMemo(() => {
-    const size = 21;
-    const grid: boolean[][] = Array.from({ length: size }, () =>
-      Array.from({ length: size }, () => false)
-    );
-
-    const drawFinder = (r0: number, c0: number) => {
-      for (let r = 0; r < 7; r++) {
-        for (let c = 0; c < 7; c++) {
-          const border = r === 0 || r === 6 || c === 0 || c === 6;
-          const inner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-          grid[r0 + r][c0 + c] = border || inner;
-        }
-      }
-    };
-
-    drawFinder(0, 0);
-    drawFinder(0, size - 7);
-    drawFinder(size - 7, 0);
-
-    let hash = 2166136261;
-    for (let i = 0; i < seed.length; i++) {
-      hash ^= seed.charCodeAt(i);
-      hash = Math.imul(hash, 16777619);
-    }
-
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        const inFinder =
-          (r < 8 && c < 8) ||
-          (r < 8 && c >= size - 8) ||
-          (r >= size - 8 && c < 8);
-        if (inFinder) continue;
-        hash ^= (r * 31 + c * 17) & 0xff;
-        hash = Math.imul(hash, 16777619);
-        grid[r][c] = (Math.abs(hash) % 10) < 5;
-      }
-    }
-    return grid;
-  }, [seed]);
-
-  return (
-    <svg
-      viewBox="0 0 25 25"
-      className="h-44 w-44 rounded-xl border border-line bg-white p-2 shadow-sm"
-      role="img"
-      aria-label="WhatsApp Link Device QR Code"
-    >
-      <rect width="25" height="25" fill="#ffffff" />
-      {cells.map((row, rIdx) =>
-        row.map((filled, cIdx) =>
-          filled ? (
-            <rect
-              key={`${rIdx}-${cIdx}`}
-              x={cIdx + 2}
-              y={rIdx + 2}
-              width={1}
-              height={1}
-              fill="#111827"
-            />
-          ) : null
-        )
-      )}
-    </svg>
-  );
 }
 
 export default function SocialConnectorsHub({
@@ -175,16 +122,18 @@ export default function SocialConnectorsHub({
     accountName: null,
     phone: null,
     lastSeenAt: null,
+    qrImageData: null,
     pairingCode: null,
-    qrPayload: null,
+    statusNote: null,
   });
   const [waLoading, setWaLoading] = useState(true);
   const [waBusy, setWaBusy] = useState(false);
   const [waNote, setWaNote] = useState("");
   const [waError, setWaError] = useState("");
 
-  // QR / Phone Pairing form state
-  const [linkPhone, setLinkPhone] = useState("");
+  // Official "Link with phone number" state
+  const [countryDial, setCountryDial] = useState("+92");
+  const [nationalPhone, setNationalPhone] = useState("");
   const [linkAccountName, setLinkAccountName] = useState("");
 
   // WhatsApp API Connection form state
@@ -239,8 +188,9 @@ export default function SocialConnectorsHub({
           (payload.lastSeenAt as string | null) ??
           (payload.last_seen_at as string | null) ??
           null,
+        qrImageData: (payload.qrImageData as string | null) ?? null,
         pairingCode: (payload.pairingCode as string | null) ?? null,
-        qrPayload: (payload.qrPayload as string | null) ?? null,
+        statusNote: (payload.statusNote as string | null) ?? null,
         apiConfig: apiCfg,
       });
 
@@ -314,7 +264,7 @@ export default function SocialConnectorsHub({
       if (document.visibilityState === "visible") {
         void loadWhatsApp(true);
       }
-    }, 5000);
+    }, 2500);
     return () => window.clearInterval(timer);
   }, [adminClientId, loadAdminConnectors, loadWhatsApp]);
 
@@ -349,17 +299,27 @@ export default function SocialConnectorsHub({
       } else {
         await loadWhatsApp(true);
       }
-      setWaNote(
-        (payload?.message as string) ||
-          (action === "disconnect"
-            ? "WhatsApp disconnected."
-            : "WhatsApp status updated.")
-      );
+      if (action === "disconnect") {
+        setWaNote("WhatsApp disconnected.");
+      } else if (typeof payload?.message === "string") {
+        setWaNote(payload.message);
+      }
     } catch {
       setWaError("Could not reach the WhatsApp connector API right now.");
     } finally {
       setWaBusy(false);
     }
+  }
+
+  function handleRequestOfficialPairingCode() {
+    const rawTrimmed = nationalPhone.trim();
+    const combined = rawTrimmed.startsWith("+")
+      ? rawTrimmed
+      : `${countryDial}${rawTrimmed.replace(/^0+/, "")}`;
+    void runWhatsAppCommand("request_pairing_code", {
+      phone: combined,
+      accountName: linkAccountName,
+    });
   }
 
   async function triggerAdminAction(
@@ -526,6 +486,12 @@ export default function SocialConnectorsHub({
       ? `${window.location.origin}/api/omniflow/portal/webhooks/whatsapp`
       : "https://omniflow-bice.vercel.app/api/omniflow/portal/webhooks/whatsapp";
 
+  const pairingChars = (waStatus.pairingCode || "")
+    .replace(/[^A-Z0-9]/gi, "")
+    .toUpperCase()
+    .slice(0, 8)
+    .split("");
+
   return (
     <div className="space-y-6">
       {(title || subtitle) && (
@@ -567,150 +533,51 @@ export default function SocialConnectorsHub({
 
       {activeTab === "whatsapp" && (
         <div className="space-y-6">
-          {/* 1. LIVE WHATSAPP CONNECTION STATUS & DISCONNECT BAR */}
-          <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          {/* UNIFIED PROFESSIONAL WHATSAPP CONNECTION CARD */}
+          <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+            {/* Top Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line px-6 py-4">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <h2 className="text-base font-semibold text-ink">
-                    Live WhatsApp Connection Status
+                    WhatsApp Connection
                   </h2>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-line bg-soft px-2 py-0.5 text-[10px] font-medium text-ink-3">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
-                    Auto-syncs every 5s
+                  <span
+                    className={
+                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium " +
+                      (waStatus.state === "connected"
+                        ? "bg-ok/15 text-ok"
+                        : waStatus.state === "connecting"
+                          ? "bg-amber-500/15 text-amber-700"
+                          : "bg-soft text-ink-3")
+                    }
+                  >
+                    <span
+                      className={
+                        "h-1.5 w-1.5 rounded-full " +
+                        (waStatus.state === "connected"
+                          ? "bg-ok"
+                          : waStatus.state === "connecting"
+                            ? "animate-pulse bg-amber-500"
+                            : "bg-ink-3")
+                      }
+                    />
+                    {waLoading
+                      ? "Checking…"
+                      : waStatus.state === "connected"
+                        ? "Connected"
+                        : waStatus.state === "connecting"
+                          ? "Waiting for Link"
+                          : "Disconnected"}
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-ink-3">
-                  Real-time connection status for your workspace. Connect via WhatsApp Web QR Code, 8-Digit Phone Pairing Code, or Official WhatsApp Business API.
+                  Connect your WhatsApp number using QR code, phone number linking code, or official Cloud API.
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={
-                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold " +
-                    (waStatus.state === "connected"
-                      ? "bg-ok/15 text-ok"
-                      : waStatus.state === "connecting"
-                        ? "bg-amber-500/15 text-amber-700"
-                        : "bg-soft text-ink-3")
-                  }
-                >
-                  <span
-                    className={
-                      "h-2 w-2 rounded-full " +
-                      (waStatus.state === "connected"
-                        ? "bg-ok"
-                        : waStatus.state === "connecting"
-                          ? "animate-ping bg-amber-500"
-                          : "bg-ink-3")
-                    }
-                  />
-                  {waLoading
-                    ? "Checking Live Status..."
-                    : waStatus.state === "connected"
-                      ? "Connected"
-                      : waStatus.state === "connecting"
-                        ? "Connecting / Waiting for Link"
-                        : "Not Connected"}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => void loadWhatsApp(false)}
-                  disabled={waLoading || waBusy}
-                  className="inline-flex min-h-8 items-center rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-soft disabled:opacity-50"
-                >
-                  {waLoading ? "Refreshing…" : "Refresh Status"}
-                </button>
-
-                {(waStatus.state === "connected" ||
-                  waStatus.state === "connecting") && (
-                  <button
-                    type="button"
-                    onClick={() => void runWhatsAppCommand("disconnect")}
-                    disabled={waBusy}
-                    className="inline-flex min-h-8 items-center rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-1.5 text-xs font-semibold text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-50"
-                  >
-                    {waBusy ? "Disconnecting…" : "Disconnect WhatsApp"}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-4">
-              <div className="rounded-xl border border-line bg-soft p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
-                  Connection State
-                </p>
-                <p className="mt-1 text-xs font-semibold text-ink">
-                  {waStatus.state === "connected"
-                    ? "Active & Online"
-                    : waStatus.state === "connecting"
-                      ? "Pending Verification"
-                      : "Disconnected (Offline)"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-line bg-soft p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
-                  Linked WhatsApp Number
-                </p>
-                <p className="mt-1 text-xs font-semibold text-ink">
-                  {waStatus.state === "connected" && waStatus.phone
-                    ? waStatus.phone
-                    : waStatus.state === "connecting" && waStatus.phone
-                      ? `${waStatus.phone} (Pending)`
-                      : "No number connected"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-line bg-soft p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
-                  Connection Method
-                </p>
-                <p className="mt-1 text-xs font-semibold text-ink">
-                  {formatConnectionModeLabel(
-                    waStatus.connectionMode,
-                    waStatus.state
-                  )}
-                </p>
-              </div>
-              <div className="rounded-xl border border-line bg-soft p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
-                  Last Live Heartbeat
-                </p>
-                <p className="mt-1 text-xs font-semibold text-ink">
-                  {waStatus.state === "connected"
-                    ? fmtDate(waStatus.lastSeenAt)
-                    : "Not connected"}
-                </p>
-              </div>
-            </div>
-
-            {waNote ? (
-              <div className="mt-4 rounded-xl border border-ok/25 bg-ok/10 px-4 py-2.5 text-xs font-medium text-ok">
-                {waNote}
-              </div>
-            ) : null}
-            {waError ? (
-              <div className="mt-4 rounded-xl border border-danger/25 bg-danger/10 px-4 py-2.5 text-xs font-medium text-danger">
-                {waError}
-              </div>
-            ) : null}
-          </section>
-
-          {/* 2. PROFESSIONAL 3-METHOD WHATSAPP CONNECTION CENTER */}
-          <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-ink">
-                  Connect or Manage WhatsApp Account
-                </h3>
-                <p className="mt-0.5 text-xs text-ink-3">
-                  Choose how you want to connect your WhatsApp number to this workspace.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 rounded-xl bg-soft p-1">
+              {/* Clean Segmented Mode Switcher */}
+              <div className="flex flex-wrap items-center gap-1 rounded-xl border border-line bg-soft p-1">
                 <button
                   type="button"
                   onClick={() => setWaMethod("qr")}
@@ -721,7 +588,7 @@ export default function SocialConnectorsHub({
                       : "text-ink-2 hover:text-ink")
                   }
                 >
-                  1. Scan QR Code
+                  QR Code
                 </button>
                 <button
                   type="button"
@@ -733,7 +600,7 @@ export default function SocialConnectorsHub({
                       : "text-ink-2 hover:text-ink")
                   }
                 >
-                  2. 8-Digit Pairing Code
+                  Phone Number
                 </button>
                 <button
                   type="button"
@@ -745,55 +612,269 @@ export default function SocialConnectorsHub({
                       : "text-ink-2 hover:text-ink")
                   }
                 >
-                  3. Connect via WhatsApp API
+                  Business API
                 </button>
               </div>
             </div>
 
-            {/* METHOD 1: SCAN QR CODE */}
-            {waMethod === "qr" && (
-              <div className="mt-5 grid gap-6 md:grid-cols-[1fr_240px]">
-                <div className="space-y-4">
-                  <div>
-                    <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
-                      WhatsApp Web Device Link
-                    </span>
-                    <h4 className="mt-2 text-sm font-semibold text-ink">
-                      Link Your WhatsApp by Scanning QR Code
-                    </h4>
-                    <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-xs text-ink-2">
-                      <li>
-                        Open <strong>WhatsApp</strong> or{" "}
-                        <strong>WhatsApp Business</strong> on your phone.
-                      </li>
-                      <li>
-                        Tap <strong>Menu (⋮)</strong> on Android or{" "}
-                        <strong>Settings</strong> on iPhone, then select{" "}
-                        <strong>Linked Devices</strong>.
-                      </li>
-                      <li>
-                        Tap <strong>Link a Device</strong> and point your phone camera at the QR code.
-                      </li>
-                      <li>
-                        Once scanned, enter your linked WhatsApp phone number below and click{" "}
-                        <strong>Confirm QR Linked</strong>.
-                      </li>
-                    </ol>
+            {/* Compact Live Status Strip */}
+            <div className="grid gap-4 border-b border-line bg-soft/50 px-6 py-3 sm:grid-cols-4">
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                  Status
+                </p>
+                <p className="mt-0.5 text-xs font-semibold text-ink">
+                  {waStatus.state === "connected"
+                    ? "Active & Online"
+                    : waStatus.state === "connecting"
+                      ? "Awaiting Device Link"
+                      : "Not Connected"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                  Linked Number
+                </p>
+                <p className="mt-0.5 text-xs font-semibold text-ink">
+                  {waStatus.phone || "Not linked"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                  Method
+                </p>
+                <p className="mt-0.5 text-xs font-semibold text-ink">
+                  {formatConnectionModeLabel(
+                    waStatus.connectionMode,
+                    waStatus.state
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center justify-start gap-2 sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => void loadWhatsApp(false)}
+                  disabled={waLoading || waBusy}
+                  className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-[11px] font-medium text-ink-2 hover:bg-soft disabled:opacity-50"
+                >
+                  {waLoading ? "Refreshing…" : "Refresh"}
+                </button>
+                {(waStatus.state === "connected" ||
+                  waStatus.state === "connecting") && (
+                  <button
+                    type="button"
+                    onClick={() => void runWhatsAppCommand("disconnect")}
+                    disabled={waBusy}
+                    className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-1.5 text-[11px] font-semibold text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-50"
+                  >
+                    {waBusy ? "Disconnecting…" : "Disconnect"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Feedback Banner (only when user triggers an action or error) */}
+            {(waNote || waError) && (
+              <div className="border-b border-line px-6 py-2.5">
+                {waError ? (
+                  <p className="text-xs font-medium text-danger">{waError}</p>
+                ) : (
+                  <p className="text-xs font-medium text-ink-2">{waNote}</p>
+                )}
+              </div>
+            )}
+
+            {/* Main Body */}
+            <div className="p-6">
+              {/* TAB 1: QR CODE */}
+              {waMethod === "qr" && (
+                <div className="grid items-center gap-8 md:grid-cols-[1fr_240px]">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-ink">
+                        Link WhatsApp by Scanning QR Code
+                      </h3>
+                      <p className="mt-1 text-xs text-ink-3">
+                        Scan the official WhatsApp Web QR code with your phone to link your account directly to this workspace.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand">
+                          1
+                        </span>
+                        <p className="text-xs text-ink-2">
+                          Open <strong>WhatsApp</strong> or{" "}
+                          <strong>WhatsApp Business</strong> on your phone.
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand">
+                          2
+                        </span>
+                        <p className="text-xs text-ink-2">
+                          Tap <strong>Menu (⋮)</strong> or{" "}
+                          <strong>Settings</strong>, then select{" "}
+                          <strong>Linked Devices → Link a Device</strong>.
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand">
+                          3
+                        </span>
+                        <p className="text-xs text-ink-2">
+                          Point your phone camera at the QR code on the right. Your status will update to <strong>Connected</strong> automatically.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void runWhatsAppCommand("start_qr", {
+                            accountName: linkAccountName,
+                          })
+                        }
+                        disabled={waBusy}
+                        className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-2 disabled:opacity-50"
+                      >
+                        {waBusy
+                          ? "Generating QR…"
+                          : waStatus.qrImageData
+                            ? "Refresh QR Code"
+                            : "Generate QR Code"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setWaMethod("pairing")}
+                        className="rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:bg-soft hover:text-ink"
+                      >
+                        Link with phone number instead →
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  {/* QR Code Frame */}
+                  <div className="flex h-60 flex-col items-center justify-center rounded-2xl border border-line bg-soft/60 p-4 text-center">
+                    {waStatus.state === "connected" ? (
+                      <div className="space-y-2">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-lg font-bold text-ok">
+                          ✓
+                        </div>
+                        <p className="text-xs font-semibold text-ink">
+                          WhatsApp Connected
+                        </p>
+                        <p className="text-[11px] text-ink-3">
+                          {waStatus.phone || "Active session"}
+                        </p>
+                      </div>
+                    ) : waStatus.qrImageData ? (
+                      <>
+                        <div className="rounded-xl border border-line bg-white p-2 shadow-sm">
+                          <img
+                            src={waStatus.qrImageData}
+                            alt="WhatsApp Web QR Code"
+                            className="h-44 w-44 object-contain"
+                          />
+                        </div>
+                        <p className="mt-2 text-[11px] font-medium text-ink-2">
+                          Scan with WhatsApp
+                        </p>
+                      </>
+                    ) : waStatus.state === "connecting" &&
+                      waStatus.connectionMode === "qr" ? (
+                      <div className="space-y-2.5 px-2">
+                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-line border-t-brand" />
+                        <p className="text-xs font-medium text-ink">
+                          Generating QR code…
+                        </p>
+                        <p className="text-[11px] text-ink-3">
+                          Wait a moment for the live QR code to appear.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 px-3">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white text-sm font-semibold text-ink-2 shadow-sm">
+                          QR
+                        </div>
+                        <p className="text-xs font-medium text-ink">
+                          No Active QR Session
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void runWhatsAppCommand("start_qr", {
+                              accountName: linkAccountName,
+                            })
+                          }
+                          disabled={waBusy}
+                          className="rounded-lg bg-brand px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-2 disabled:opacity-50"
+                        >
+                          Generate QR Code
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: LINK WITH PHONE NUMBER */}
+              {waMethod === "pairing" && (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="text-sm font-semibold text-ink">
+                      Link with Phone Number
+                    </h3>
+                    <p className="mt-1 text-xs text-ink-3">
+                      Select your country and enter your WhatsApp phone number to receive an official 8-character linking code.
+                    </p>
+                  </div>
+
+                  <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
                     <div>
                       <label className="block text-[11px] font-medium text-ink-2">
-                        Your WhatsApp Phone Number
+                        Country
                       </label>
-                      <input
-                        type="tel"
-                        value={linkPhone}
-                        onChange={(e) => setLinkPhone(e.target.value)}
-                        placeholder="+92 312 1234567"
-                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                      />
+                      <select
+                        value={countryDial}
+                        onChange={(e) => setCountryDial(e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand focus:bg-white"
+                      >
+                        {COUNTRY_DIAL_CODES.map((c) => (
+                          <option key={c.label} value={c.dial}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        WhatsApp Phone Number *
+                      </label>
+                      <div className="mt-1 flex items-center rounded-xl border border-line bg-soft px-3 py-2 focus-within:border-brand focus-within:bg-white">
+                        {countryDial ? (
+                          <span className="mr-2 select-none border-r border-line pr-2 font-mono text-xs font-semibold text-ink-2">
+                            {countryDial}
+                          </span>
+                        ) : null}
+                        <input
+                          type="tel"
+                          value={nationalPhone}
+                          onChange={(e) => setNationalPhone(e.target.value)}
+                          placeholder={
+                            countryDial === "+92"
+                              ? "331 3194929"
+                              : "+92 331 3194929"
+                          }
+                          className="w-full bg-transparent text-xs text-ink placeholder:text-ink-3 outline-none"
+                        />
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-[11px] font-medium text-ink-2">
                         Account Label (Optional)
@@ -803,443 +884,341 @@ export default function SocialConnectorsHub({
                         value={linkAccountName}
                         onChange={(e) => setLinkAccountName(e.target.value)}
                         placeholder="e.g. Main Store WhatsApp"
-                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand focus:bg-white"
                       />
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2.5">
+                  {/* 8-CHARACTER PAIRING CODE DISPLAY */}
+                  {pairingChars.length === 8 ? (
+                    <div className="max-w-2xl rounded-2xl border border-brand/25 bg-brand-soft/40 p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold text-ink">
+                            Enter this 8-character code on your phone ({waStatus.phone})
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-ink-3">
+                            Tap the WhatsApp notification on your phone, or open{" "}
+                            <strong>
+                              WhatsApp → Linked Devices → Link a Device → Link with phone number instead
+                            </strong>
+                            .
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void navigator.clipboard.writeText(
+                              waStatus.pairingCode || ""
+                            )
+                          }
+                          className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-soft"
+                        >
+                          Copy Code
+                        </button>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                        {pairingChars.slice(0, 4).map((ch, idx) => (
+                          <span
+                            key={`p1-${idx}`}
+                            className="flex h-11 w-10 items-center justify-center rounded-xl border border-line bg-white font-mono text-lg font-bold text-ink shadow-sm"
+                          >
+                            {ch}
+                          </span>
+                        ))}
+                        <span className="px-1 font-mono text-lg font-bold text-ink-3">
+                          -
+                        </span>
+                        {pairingChars.slice(4, 8).map((ch, idx) => (
+                          <span
+                            key={`p2-${idx}`}
+                            className="flex h-11 w-10 items-center justify-center rounded-xl border border-line bg-white font-mono text-lg font-bold text-ink shadow-sm"
+                          >
+                            {ch}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : waStatus.state === "connecting" &&
+                    waStatus.connectionMode === "pairing_code" ? (
+                    <div className="flex max-w-2xl items-center gap-3 rounded-xl border border-line bg-soft p-3.5">
+                      <div className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand" />
+                      <p className="text-xs text-ink-2">
+                        Requesting 8-character linking code for{" "}
+                        <strong>{waStatus.phone || "your number"}</strong>…
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleRequestOfficialPairingCode}
+                      disabled={waBusy || !nationalPhone.trim()}
+                      className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-2 disabled:opacity-50"
+                    >
+                      {waBusy
+                        ? "Requesting Code…"
+                        : pairingChars.length === 8
+                          ? "Get New Code"
+                          : "Get 8-Character Code"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setWaMethod("qr")}
+                      className="rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:bg-soft hover:text-ink"
+                    >
+                      ← Back to QR Code
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: BUSINESS API */}
+              {waMethod === "api" && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-ink">
+                        Connect via WhatsApp Business API
+                      </h3>
+                      <p className="mt-1 text-xs text-ink-3">
+                        Connect directly using Meta WhatsApp Cloud API, WATI, or a custom WhatsApp Business API gateway.
+                      </p>
+                    </div>
+                    {waStatus.apiConfig?.enabled && (
+                      <span className="rounded-full bg-ok/15 px-3 py-1 text-xs font-semibold text-ok">
+                        API Connected ({waStatus.apiConfig.phone})
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        API Provider *
+                      </label>
+                      <select
+                        value={apiProvider}
+                        onChange={(e) => {
+                          const val = e.target.value as
+                            | "meta_cloud"
+                            | "wati"
+                            | "custom_api";
+                          setApiProvider(val);
+                          if (val === "meta_cloud" && !apiBaseUrl) {
+                            setApiBaseUrl("https://graph.facebook.com/v21.0");
+                          }
+                        }}
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand focus:bg-white"
+                      >
+                        <option value="meta_cloud">
+                          Meta WhatsApp Cloud API (Official)
+                        </option>
+                        <option value="wati">WATI WhatsApp Business API</option>
+                        <option value="custom_api">
+                          360dialog / Twilio / Custom API
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        WhatsApp Business Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        value={apiPhone}
+                        onChange={(e) => setApiPhone(e.target.value)}
+                        placeholder="+923313194929"
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        Display / Business Account Name
+                      </label>
+                      <input
+                        type="text"
+                        value={apiAccountName}
+                        onChange={(e) => setApiAccountName(e.target.value)}
+                        placeholder="e.g. OmniFlow Official Store"
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        {apiProvider === "meta_cloud"
+                          ? "Phone Number ID (Meta Graph API) *"
+                          : "Instance / Channel ID (Optional)"}
+                      </label>
+                      <input
+                        type="text"
+                        value={apiPhoneNumberId}
+                        onChange={(e) => setApiPhoneNumberId(e.target.value)}
+                        placeholder={
+                          apiProvider === "meta_cloud"
+                            ? "e.g. 104928173645192"
+                            : "Optional channel/instance ID"
+                        }
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        WhatsApp Business Account ID (WABA ID)
+                      </label>
+                      <input
+                        type="text"
+                        value={apiWabaId}
+                        onChange={(e) => setApiWabaId(e.target.value)}
+                        placeholder="e.g. 109827364519283 (Optional)"
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        API Endpoint / Base URL *
+                      </label>
+                      <input
+                        type="url"
+                        value={apiBaseUrl}
+                        onChange={(e) => setApiBaseUrl(e.target.value)}
+                        placeholder={
+                          apiProvider === "meta_cloud"
+                            ? "https://graph.facebook.com/v21.0"
+                            : "https://live-mt-server.wati.io/12345"
+                        }
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        Permanent Access Token / API Key *
+                        {waStatus.apiConfig?.maskedToken ? (
+                          <span className="ml-2 text-[10px] font-normal text-ok">
+                            (Saved: {waStatus.apiConfig.maskedToken})
+                          </span>
+                        ) : null}
+                      </label>
+                      <div className="mt-1 flex gap-1.5">
+                        <input
+                          type={showApiToken ? "text" : "password"}
+                          value={apiAccessToken}
+                          onChange={(e) => setApiAccessToken(e.target.value)}
+                          placeholder={
+                            waStatus.apiConfig?.hasAccessToken
+                              ? "Leave blank to keep existing token, or paste new token"
+                              : "EAAGm0PX4ZCpsBA..."
+                          }
+                          className="flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand focus:bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiToken((s) => !s)}
+                          className="rounded-xl border border-line bg-white px-3 py-2 text-[11px] font-medium text-ink-2 hover:bg-soft"
+                        >
+                          {showApiToken ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        Webhook Verify Token
+                      </label>
+                      <div className="mt-1 flex gap-1.5">
+                        <input
+                          type="text"
+                          value={apiVerifyToken}
+                          onChange={(e) => setApiVerifyToken(e.target.value)}
+                          className="flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 font-mono text-xs text-ink outline-none focus:border-brand focus:bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void navigator.clipboard.writeText(apiVerifyToken)
+                          }
+                          className="rounded-xl border border-line bg-white px-3 py-2 text-[11px] font-medium text-ink-2 hover:bg-soft"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-line bg-soft p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">
+                          Webhook Callback URL
+                        </p>
+                        <p className="mt-0.5 break-all font-mono text-xs text-ink">
+                          {webhookCallbackUrl}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void navigator.clipboard.writeText(webhookCallbackUrl)
+                        }
+                        className="rounded-lg border border-line bg-white px-2.5 py-1 text-[11px] font-medium text-ink-2 hover:bg-soft"
+                      >
+                        Copy URL
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5 pt-1">
                     <button
                       type="button"
                       onClick={() =>
-                        void runWhatsAppCommand("start_qr", {
-                          accountName: linkAccountName,
+                        void runWhatsAppCommand("connect_api", {
+                          provider: apiProvider,
+                          phone: apiPhone,
+                          accountName: apiAccountName,
+                          phoneNumberId: apiPhoneNumberId,
+                          wabaId: apiWabaId,
+                          baseUrl: apiBaseUrl,
+                          accessToken: apiAccessToken,
+                          verifyToken: apiVerifyToken,
                         })
                       }
                       disabled={waBusy}
                       className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-2 disabled:opacity-50"
                     >
-                      {waStatus.qrPayload
-                        ? "Refresh QR Code"
-                        : "Generate Live QR Code"}
+                      {waBusy
+                        ? "Connecting API…"
+                        : waStatus.apiConfig?.enabled
+                          ? "Update WhatsApp API"
+                          : "Verify & Connect API"}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void runWhatsAppCommand("confirm_qr", {
-                          phone: linkPhone || waStatus.phone || "",
-                          accountName:
-                            linkAccountName || waStatus.accountName || "",
-                        })
-                      }
-                      disabled={waBusy}
-                      className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white disabled:opacity-50"
-                    >
-                      Confirm QR Linked & Connect
-                    </button>
-
-                    {(waStatus.state === "connected" ||
-                      waStatus.state === "connecting") && (
+                    {waStatus.state === "connected" && (
                       <button
                         type="button"
                         onClick={() => void runWhatsAppCommand("disconnect")}
                         disabled={waBusy}
-                        className="rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-medium text-ink-2 hover:bg-soft disabled:opacity-50"
+                        className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-2 text-xs font-semibold text-danger hover:bg-danger hover:text-white disabled:opacity-50"
                       >
-                        Disconnect
+                        Disconnect API
                       </button>
                     )}
                   </div>
                 </div>
-
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-line bg-soft p-4 text-center">
-                  {waStatus.qrPayload ? (
-                    <>
-                      <DeterministicQrSvg seed={waStatus.qrPayload} />
-                      <p className="mt-2 text-[11px] font-medium text-ink">
-                        Scan with WhatsApp → Linked Devices
-                      </p>
-                      <p className="mt-0.5 text-[10px] text-ink-3">
-                        Session active · awaiting scan
-                      </p>
-                    </>
-                  ) : waStatus.state === "connected" ? (
-                    <div className="py-8">
-                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-xl text-ok">
-                        ✓
-                      </div>
-                      <p className="mt-2.5 text-xs font-semibold text-ink">
-                        WhatsApp Connected
-                      </p>
-                      <p className="mt-1 text-[11px] text-ink-2">
-                        {waStatus.phone || "Active session"}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="py-8">
-                      <p className="text-xs font-semibold text-ink">
-                        No Active QR Session
-                      </p>
-                      <p className="mt-1 text-[11px] text-ink-3">
-                        Click &ldquo;Generate Live QR Code&rdquo; to display a fresh QR code.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* METHOD 2: 8-DIGIT PHONE PAIRING CODE */}
-            {waMethod === "pairing" && (
-              <div className="mt-5 space-y-4">
-                <div>
-                  <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
-                    No Camera Required
-                  </span>
-                  <h4 className="mt-2 text-sm font-semibold text-ink">
-                    Link with Phone Number (8-Character Pairing Code)
-                  </h4>
-                  <p className="mt-1 text-xs text-ink-3">
-                    Enter your WhatsApp phone number below to generate an 8-character pairing code, then open{" "}
-                    <strong>
-                      WhatsApp → Linked Devices → Link a Device → Link with phone number instead
-                    </strong>{" "}
-                    and enter the code.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      WhatsApp Phone Number (with Country Code) *
-                    </label>
-                    <input
-                      type="tel"
-                      value={linkPhone}
-                      onChange={(e) => setLinkPhone(e.target.value)}
-                      placeholder="+92 300 1234567"
-                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      Account Name / Label
-                    </label>
-                    <input
-                      type="text"
-                      value={linkAccountName}
-                      onChange={(e) => setLinkAccountName(e.target.value)}
-                      placeholder="e.g. Support Desk WhatsApp"
-                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                    />
-                  </div>
-                </div>
-
-                {waStatus.pairingCode && (
-                  <div className="rounded-2xl border border-brand/30 bg-brand-soft p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-brand">
-                          Your 8-Character WhatsApp Pairing Code
-                        </p>
-                        <p className="mt-1 font-mono text-2xl font-bold tracking-[0.2em] text-ink">
-                          {waStatus.pairingCode}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void navigator.clipboard.writeText(
-                            waStatus.pairingCode || ""
-                          )
-                        }
-                        className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-soft"
-                      >
-                        Copy Code
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void runWhatsAppCommand("request_pairing_code", {
-                        phone: linkPhone,
-                        accountName: linkAccountName,
-                      })
-                    }
-                    disabled={waBusy}
-                    className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-2 disabled:opacity-50"
-                  >
-                    {waBusy ? "Generating…" : "Get 8-Digit Pairing Code"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void runWhatsAppCommand("confirm_pairing_code", {
-                        phone: linkPhone || waStatus.phone || "",
-                        accountName:
-                          linkAccountName || waStatus.accountName || "",
-                      })
-                    }
-                    disabled={waBusy}
-                    className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white disabled:opacity-50"
-                  >
-                    Confirm Code Entered & Connect
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* METHOD 3: CONNECT VIA WHATSAPP BUSINESS API (Meta Cloud API / WATI / Custom API) */}
-            {waMethod === "api" && (
-              <div className="mt-5 space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
-                      Direct Cloud & Business API
-                    </span>
-                    <h4 className="mt-2 text-sm font-semibold text-ink">
-                      Connect via Official WhatsApp Business API (Meta Cloud API / WATI / Custom)
-                    </h4>
-                    <p className="mt-1 text-xs text-ink-3">
-                      Connect directly using your Meta WhatsApp Cloud API credentials, WATI endpoint, or custom WhatsApp Business API gateway — 24/7 cloud connection without keeping a phone browser open.
-                    </p>
-                  </div>
-                  {waStatus.apiConfig?.enabled && (
-                    <span className="rounded-full bg-ok/15 px-3 py-1 text-xs font-semibold text-ok">
-                      API Connected ({waStatus.apiConfig.phone})
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      API Provider *
-                    </label>
-                    <select
-                      value={apiProvider}
-                      onChange={(e) => {
-                        const val = e.target.value as
-                          | "meta_cloud"
-                          | "wati"
-                          | "custom_api";
-                        setApiProvider(val);
-                        if (val === "meta_cloud" && !apiBaseUrl) {
-                          setApiBaseUrl("https://graph.facebook.com/v21.0");
-                        }
-                      }}
-                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand"
-                    >
-                      <option value="meta_cloud">
-                        Meta WhatsApp Cloud API (Official)
-                      </option>
-                      <option value="wati">WATI WhatsApp Business API</option>
-                      <option value="custom_api">
-                        360dialog / Twilio / Custom API
-                      </option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      WhatsApp Business Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      value={apiPhone}
-                      onChange={(e) => setApiPhone(e.target.value)}
-                      placeholder="+923121234567"
-                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      Display / Business Account Name
-                    </label>
-                    <input
-                      type="text"
-                      value={apiAccountName}
-                      onChange={(e) => setApiAccountName(e.target.value)}
-                      placeholder="e.g. OmniFlow Official Store"
-                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      {apiProvider === "meta_cloud"
-                        ? "Phone Number ID (Meta Graph API) *"
-                        : "Instance / Channel ID (Optional)"}
-                    </label>
-                    <input
-                      type="text"
-                      value={apiPhoneNumberId}
-                      onChange={(e) => setApiPhoneNumberId(e.target.value)}
-                      placeholder={
-                        apiProvider === "meta_cloud"
-                          ? "e.g. 104928173645192"
-                          : "Optional channel/instance ID"
-                      }
-                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      WhatsApp Business Account ID (WABA ID)
-                    </label>
-                    <input
-                      type="text"
-                      value={apiWabaId}
-                      onChange={(e) => setApiWabaId(e.target.value)}
-                      placeholder="e.g. 109827364519283 (Optional)"
-                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      API Endpoint / Base URL *
-                    </label>
-                    <input
-                      type="url"
-                      value={apiBaseUrl}
-                      onChange={(e) => setApiBaseUrl(e.target.value)}
-                      placeholder={
-                        apiProvider === "meta_cloud"
-                          ? "https://graph.facebook.com/v21.0"
-                          : "https://live-mt-server.wati.io/12345"
-                      }
-                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      Permanent Access Token / API Key *
-                      {waStatus.apiConfig?.maskedToken ? (
-                        <span className="ml-2 text-[10px] font-normal text-ok">
-                          (Saved: {waStatus.apiConfig.maskedToken})
-                        </span>
-                      ) : null}
-                    </label>
-                    <div className="mt-1 flex gap-1.5">
-                      <input
-                        type={showApiToken ? "text" : "password"}
-                        value={apiAccessToken}
-                        onChange={(e) => setApiAccessToken(e.target.value)}
-                        placeholder={
-                          waStatus.apiConfig?.hasAccessToken
-                            ? "Leave blank to keep existing token, or paste new token"
-                            : "EAAGm0PX4ZCpsBA..."
-                        }
-                        className="flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowApiToken((s) => !s)}
-                        className="rounded-xl border border-line bg-white px-3 py-2 text-[11px] font-medium text-ink-2 hover:bg-soft"
-                      >
-                        {showApiToken ? "Hide" : "Show"}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-ink-2">
-                      Webhook Verify Token
-                    </label>
-                    <div className="mt-1 flex gap-1.5">
-                      <input
-                        type="text"
-                        value={apiVerifyToken}
-                        onChange={(e) => setApiVerifyToken(e.target.value)}
-                        className="flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 font-mono text-xs text-ink outline-none focus:border-brand"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void navigator.clipboard.writeText(apiVerifyToken)
-                        }
-                        className="rounded-xl border border-line bg-white px-3 py-2 text-[11px] font-medium text-ink-2 hover:bg-soft"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-line bg-soft p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">
-                        Webhook Callback URL (Paste in Meta Developer Console / API Dashboard)
-                      </p>
-                      <p className="mt-0.5 break-all font-mono text-xs text-ink">
-                        {webhookCallbackUrl}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void navigator.clipboard.writeText(webhookCallbackUrl)
-                      }
-                      className="rounded-lg border border-line bg-white px-2.5 py-1 text-[11px] font-medium text-ink-2 hover:bg-soft"
-                    >
-                      Copy Webhook URL
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void runWhatsAppCommand("connect_api", {
-                        provider: apiProvider,
-                        phone: apiPhone,
-                        accountName: apiAccountName,
-                        phoneNumberId: apiPhoneNumberId,
-                        wabaId: apiWabaId,
-                        baseUrl: apiBaseUrl,
-                        accessToken: apiAccessToken,
-                        verifyToken: apiVerifyToken,
-                      })
-                    }
-                    disabled={waBusy}
-                    className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-2 disabled:opacity-50"
-                  >
-                    {waBusy
-                      ? "Connecting API…"
-                      : waStatus.apiConfig?.enabled
-                        ? "Update & Re-Verify WhatsApp API"
-                        : "Verify & Connect WhatsApp API"}
-                  </button>
-
-                  {waStatus.state === "connected" && (
-                    <button
-                      type="button"
-                      onClick={() => void runWhatsAppCommand("disconnect")}
-                      disabled={waBusy}
-                      className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-2 text-xs font-semibold text-danger hover:bg-danger hover:text-white disabled:opacity-50"
-                    >
-                      Disconnect API
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </section>
 
           {canUseWati && <WatiCard />}

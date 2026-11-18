@@ -2,6 +2,7 @@ import argparse
 import base64
 import json
 import os
+import re
 import signal
 import sys
 import threading
@@ -300,8 +301,16 @@ def sync_and_activate_all_workspaces(ensure_account_id=None):
                         account_name TEXT,
                         last_seen_at TIMESTAMPTZ,
                         reported_by BIGINT,
+                        qr_image_data TEXT,
+                        pairing_code TEXT,
+                        connection_mode TEXT NOT NULL DEFAULT 'none',
+                        status_note TEXT,
                         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                     );
+                    ALTER TABLE portal_whatsapp_status ADD COLUMN IF NOT EXISTS qr_image_data TEXT;
+                    ALTER TABLE portal_whatsapp_status ADD COLUMN IF NOT EXISTS pairing_code TEXT;
+                    ALTER TABLE portal_whatsapp_status ADD COLUMN IF NOT EXISTS connection_mode TEXT NOT NULL DEFAULT 'none';
+                    ALTER TABLE portal_whatsapp_status ADD COLUMN IF NOT EXISTS status_note TEXT;
                     CREATE TABLE IF NOT EXISTS portal_whatsapp_api_configs (
                         client_id BIGINT PRIMARY KEY,
                         provider TEXT NOT NULL DEFAULT 'meta_cloud',
@@ -573,14 +582,24 @@ def sync_and_activate_all_workspaces(ensure_account_id=None):
                             (ca_row[0],),
                         )
 
-                    # Clean up any legacy dummy '+923001234567' fake connected status
+                    # Clean up any legacy dummy '+923001234567' fake connected status or old playwright notice
                     _safe_exec(
                         cur,
                         "sp_wa_cleanup_dummy",
                         """
                         UPDATE portal_whatsapp_status
-                        SET state = 'disconnected', phone = NULL, updated_at = NOW()
+                        SET state = 'disconnected', phone = NULL, status_note = NULL, updated_at = NOW()
                         WHERE client_id = %s AND phone = '+923001234567'
+                        """,
+                        (cid,),
+                    )
+                    _safe_exec(
+                        cur,
+                        "sp_wa_cleanup_pw_note",
+                        """
+                        UPDATE portal_whatsapp_status
+                        SET status_note = NULL
+                        WHERE client_id = %s AND status_note ILIKE '%%playwright%%'
                         """,
                         (cid,),
                     )
@@ -1166,6 +1185,24 @@ def run_worker(
         adapter.start()
         adapter_started = True
 
+        # Register the adapter's Playwright page with LIVE_WA_MANAGER so live QR & official pairing code work in single-worker mode too
+        try:
+            bot_page = getattr(getattr(adapter, "bot", None), "page", None)
+            bot_ctx = getattr(getattr(adapter, "bot", None), "context", None)
+            if bot_page is not None:
+                LIVE_WA_MANAGER.sessions[account.client_id] = {
+                    "context": bot_ctx,
+                    "page": bot_page,
+                    "mode": "qr",
+                    "phone": None,
+                    "account_name": account.account_name,
+                    "last_qr_at": 0.0,
+                    "connected": False,
+                }
+                LIVE_WA_MANAGER.tick_active_sessions()
+        except Exception as live_reg_err:
+            print(f"Live QR registration warning: {live_reg_err}")
+
         try:
             os.environ["OMNIFLOW_CLIENT_ID"] = str(account.client_id)
             bridge = ControlPlaneBridge(
@@ -1175,7 +1212,9 @@ def run_worker(
 
             manager.cp_bridge = bridge
 
-            bridge.report_status("connected")
+            # Only report connected if actually authenticated on web.whatsapp.com
+            if LIVE_WA_MANAGER.sessions.get(account.client_id, {}).get("connected"):
+                bridge.report_status("connected")
         except Exception as bridge_error:
             print(f"CP bridge init warning: {bridge_error}")
 
@@ -1189,6 +1228,11 @@ def run_worker(
             )
         ):
             now = time.monotonic()
+
+            try:
+                process_multi_workspace_commands_and_ai()
+            except Exception:
+                pass
 
             if (
                 bridge is not None
@@ -1539,11 +1583,706 @@ def _generate_workspace_ai_reply(client_id, agent_name, tone, greeting, fallback
     return fallback or f"Thank you for contacting {business_name}! How can {agent_name} help you today?"
 
 
+def _normalize_whatsapp_e164(raw_phone):
+    """Normalize a phone string (e.g. '0331 3194929', '+92 0331 3194929', '+923313194929') into E.164 '+923313194929'."""
+    s = re.sub(r"[^\d+]", "", str(raw_phone or "").strip())
+    if not s:
+        return ""
+    digits = re.sub(r"\D", "", s)
+    if digits.startswith("00"):
+        digits = digits[2:]
+    elif digits.startswith("0") and len(digits) == 11:
+        # Local Pakistani mobile format 03XXXXXXXXX -> 923XXXXXXXXX
+        digits = "92" + digits[1:]
+    elif digits.startswith("920") and len(digits) == 13:
+        digits = "92" + digits[3:]
+    elif len(digits) == 10 and digits.startswith("3"):
+        digits = "92" + digits
+    return "+" + digits if digits else ""
+
+
+class LiveWhatsAppWebSessionManager:
+    """Manages real Playwright WhatsApp Web (https://web.whatsapp.com) sessions per workspace:
+    - Captures the REAL official WhatsApp Web QR code canvas (data:image/png;base64,...)
+    - Clicks official 'Link with phone number' on web.whatsapp.com, enters the phone number,
+      and extracts the REAL official 8-character pairing code generated by WhatsApp Web
+    - Automatically detects when the phone finishes linking (#pane-side / chat-list visible)
+      and switches portal_whatsapp_status to 'connected'
+    """
+
+    def __init__(self):
+        self.pw = None
+        self.sessions = {}  # client_id -> dict(context, page, mode, phone, account_name, last_qr_at, connected)
+
+    def _update_db_status(
+        self,
+        client_id,
+        state,
+        connection_mode="qr",
+        phone=None,
+        account_name=None,
+        qr_image_data=None,
+        pairing_code=None,
+        status_note=None,
+        clear_codes=False,
+    ):
+        try:
+            conn = get_database_connection()
+            try:
+                with conn:
+                    with conn.cursor() as cur:
+                        if clear_codes:
+                            _safe_exec(
+                                cur,
+                                "sp_wa_live_upd_clear",
+                                """
+                                INSERT INTO portal_whatsapp_status
+                                    (client_id, state, connection_mode, phone, account_name, qr_image_data, pairing_code, status_note, last_seen_at, updated_at)
+                                VALUES (%s, %s, %s, %s, %s, NULL, NULL, %s, CASE WHEN %s = 'connected' THEN NOW() ELSE NULL END, NOW())
+                                ON CONFLICT (client_id) DO UPDATE
+                                SET state = EXCLUDED.state,
+                                    connection_mode = EXCLUDED.connection_mode,
+                                    phone = COALESCE(EXCLUDED.phone, portal_whatsapp_status.phone),
+                                    account_name = COALESCE(EXCLUDED.account_name, portal_whatsapp_status.account_name),
+                                    qr_image_data = NULL,
+                                    pairing_code = NULL,
+                                    status_note = EXCLUDED.status_note,
+                                    last_seen_at = CASE WHEN EXCLUDED.state = 'connected' THEN NOW() ELSE portal_whatsapp_status.last_seen_at END,
+                                    updated_at = NOW()
+                                """,
+                                (client_id, state, connection_mode, phone, account_name, status_note, state),
+                            )
+                        else:
+                            _safe_exec(
+                                cur,
+                                "sp_wa_live_upd",
+                                """
+                                INSERT INTO portal_whatsapp_status
+                                    (client_id, state, connection_mode, phone, account_name, qr_image_data, pairing_code, status_note, last_seen_at, updated_at)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CASE WHEN %s = 'connected' THEN NOW() ELSE NULL END, NOW())
+                                ON CONFLICT (client_id) DO UPDATE
+                                SET state = EXCLUDED.state,
+                                    connection_mode = EXCLUDED.connection_mode,
+                                    phone = COALESCE(EXCLUDED.phone, portal_whatsapp_status.phone),
+                                    account_name = COALESCE(EXCLUDED.account_name, portal_whatsapp_status.account_name),
+                                    qr_image_data = COALESCE(EXCLUDED.qr_image_data, portal_whatsapp_status.qr_image_data),
+                                    pairing_code = COALESCE(EXCLUDED.pairing_code, portal_whatsapp_status.pairing_code),
+                                    status_note = COALESCE(EXCLUDED.status_note, portal_whatsapp_status.status_note),
+                                    last_seen_at = CASE WHEN EXCLUDED.state = 'connected' THEN NOW() ELSE portal_whatsapp_status.last_seen_at END,
+                                    updated_at = NOW()
+                                """,
+                                (
+                                    client_id,
+                                    state,
+                                    connection_mode,
+                                    phone,
+                                    account_name,
+                                    qr_image_data,
+                                    pairing_code,
+                                    status_note,
+                                    state,
+                                ),
+                            )
+            finally:
+                conn.close()
+        except Exception as db_err:
+            print(f"[WhatsApp Live DB Warning] client={client_id}: {db_err}")
+
+    def ensure_page(self, client_id):
+        sess = self.sessions.get(client_id)
+        if sess and sess.get("page"):
+            try:
+                page = sess["page"]
+                if not page.is_closed():
+                    return page
+            except Exception:
+                pass
+
+        from playwright.sync_api import sync_playwright
+
+        if self.pw is None:
+            self.pw = sync_playwright().start()
+
+        session_dir = BASE_DIR / "whatsapp_sessions" / f"account_{client_id}"
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        # Clean up stale SingletonLock if left behind by a crashed browser
+        for lock_name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+            lock_file = session_dir / lock_name
+            if lock_file.exists():
+                try:
+                    lock_file.unlink()
+                except Exception:
+                    pass
+
+        prefer_headless = os.getenv("OMNIFLOW_WA_HEADLESS", "0").strip().lower() in ("1", "true", "yes")
+        ua = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/131.0.0.0 Safari/537.36"
+        )
+        launch_args = [
+            "--disable-blink-features=AutomationControlled",
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+        ]
+
+        try:
+            context = self.pw.chromium.launch_persistent_context(
+                user_data_dir=str(session_dir),
+                headless=prefer_headless,
+                user_agent=ua,
+                viewport={"width": 1280, "height": 860},
+                args=launch_args,
+            )
+        except Exception:
+            context = self.pw.chromium.launch_persistent_context(
+                user_data_dir=str(session_dir),
+                headless=True,
+                user_agent=ua,
+                viewport={"width": 1280, "height": 860},
+                args=launch_args,
+            )
+
+        page = context.pages[0] if context.pages else context.new_page()
+        if "web.whatsapp.com" not in (page.url or ""):
+            print(f"[WhatsApp Web] Opening https://web.whatsapp.com for Workspace #{client_id}...")
+            page.goto("https://web.whatsapp.com", wait_until="domcontentloaded", timeout=45000)
+
+        self.sessions[client_id] = {
+            "context": context,
+            "page": page,
+            "mode": "qr",
+            "phone": None,
+            "account_name": f"Workspace #{client_id} WhatsApp",
+            "last_qr_at": 0.0,
+            "connected": False,
+        }
+        return page
+
+    def check_logged_in(self, page):
+        """Return (True, phone, name) if official web.whatsapp.com is logged into a chat session."""
+        try:
+            is_in = page.evaluate(
+                """() => {
+                    const pane = document.querySelector(
+                        '#pane-side, [data-testid="chat-list"], [aria-label*="Chat list" i], header[data-testid="chatlist-header"]'
+                    );
+                    if (!pane) return null;
+                    let wid = '';
+                    try {
+                        wid = localStorage.getItem('last-wid-md') || localStorage.getItem('last-wid') || '';
+                    } catch (e) {}
+                    let name = '';
+                    try {
+                        name = localStorage.getItem('pushname') || localStorage.getItem('me-display-name') || '';
+                    } catch (e) {}
+                    return { loggedIn: true, wid: String(wid), name: String(name) };
+                }"""
+            )
+            if is_in and is_in.get("loggedIn"):
+                raw_wid = str(is_in.get("wid") or "").strip().strip('"')
+                phone_part = raw_wid.split("@")[0].split(":")[0]
+                phone_digits = re.sub(r"\D", "", phone_part)
+                formatted_phone = f"+{phone_digits}" if phone_digits else None
+                clean_name = str(is_in.get("name") or "").strip().strip('"') or None
+                return True, formatted_phone, clean_name
+        except Exception:
+            pass
+        return False, None, None
+
+    def _extract_qr_png_from_page(self, page):
+        """Extract the real QR code canvas from https://web.whatsapp.com as data:image/png;base64,..."""
+        try:
+            # Click reload QR button if QR code expired on web.whatsapp.com
+            page.evaluate(
+                """() => {
+                    const reloadBtn = document.querySelector(
+                        '[data-testid="qrcode"] button, span[data-icon="refresh-large"], button[aria-label*="Reload" i]'
+                    );
+                    if (reloadBtn) {
+                        const parentBtn = reloadBtn.closest('button, [role="button"]') || reloadBtn;
+                        parentBtn.click();
+                    }
+                }"""
+            )
+        except Exception:
+            pass
+
+        try:
+            qr_data_url = page.evaluate(
+                """() => {
+                    const c = document.querySelector(
+                        'canvas[aria-label*="Scan" i], div[data-ref] canvas, [data-testid="qrcode"] canvas, canvas'
+                    );
+                    if (!c || c.width < 120 || c.height < 120) return null;
+                    const pad = 20;
+                    const out = document.createElement('canvas');
+                    out.width = c.width + pad * 2;
+                    out.height = c.height + pad * 2;
+                    const ctx = out.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, out.width, out.height);
+                    ctx.drawImage(c, pad, pad);
+                    return out.toDataURL('image/png');
+                }"""
+            )
+            if qr_data_url and str(qr_data_url).startswith("data:image/png;base64,"):
+                return str(qr_data_url)
+        except Exception:
+            pass
+
+        # Fallback: direct Playwright screenshot of the QR code container
+        try:
+            loc = page.locator("canvas[aria-label*='Scan' i], div[data-ref] canvas, [data-testid='qrcode'], canvas").first
+            if loc.is_visible(timeout=1500):
+                png_bytes = loc.screenshot(type="png")
+                return "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+        except Exception:
+            pass
+        return None
+
+    def start_live_qr(self, client_id, account_name=None):
+        """Open https://web.whatsapp.com and stream the real official WhatsApp Web QR code."""
+        self._update_db_status(
+            client_id,
+            state="connecting",
+            connection_mode="qr",
+            account_name=account_name,
+            status_note="Opening official WhatsApp Web (web.whatsapp.com) to capture live QR code...",
+            clear_codes=True,
+        )
+        try:
+            page = self.ensure_page(client_id)
+            sess = self.sessions[client_id]
+            sess["mode"] = "qr"
+            if account_name:
+                sess["account_name"] = account_name
+
+            logged_in, real_phone, real_name = self.check_logged_in(page)
+            if logged_in:
+                sess["connected"] = True
+                self._update_db_status(
+                    client_id,
+                    state="connected",
+                    connection_mode="qr",
+                    phone=real_phone or sess.get("phone") or "Linked via WhatsApp Web",
+                    account_name=real_name or account_name or sess.get("account_name"),
+                    status_note="Connected to official WhatsApp Web!",
+                    clear_codes=True,
+                )
+                return "Already authenticated on official WhatsApp Web"
+
+            # If web.whatsapp.com is on the 'Link with phone number' view, switch back to QR view
+            try:
+                back_to_qr = page.locator(
+                    "[data-testid='link-device-phone-number-alt-linking-hint'], "
+                    "span:has-text('Link with QR code'), "
+                    "button:has-text('Link with QR code'), "
+                    "div[role='button']:has-text('Link with QR code')"
+                ).first
+                if back_to_qr.is_visible(timeout=1200):
+                    back_to_qr.click()
+                    page.wait_for_timeout(1000)
+            except Exception:
+                pass
+
+            # Wait up to 15 seconds for the official QR canvas to appear
+            qr_png = None
+            deadline = time.time() + 15.0
+            while time.time() < deadline:
+                logged_in, real_phone, real_name = self.check_logged_in(page)
+                if logged_in:
+                    sess["connected"] = True
+                    self._update_db_status(
+                        client_id,
+                        state="connected",
+                        connection_mode="qr",
+                        phone=real_phone or "Linked via WhatsApp Web",
+                        account_name=real_name or account_name,
+                        status_note="Connected to official WhatsApp Web!",
+                        clear_codes=True,
+                    )
+                    return "Connected to official WhatsApp Web"
+
+                qr_png = self._extract_qr_png_from_page(page)
+                if qr_png:
+                    break
+                page.wait_for_timeout(600)
+
+            sess["last_qr_at"] = time.time()
+            if qr_png:
+                self._update_db_status(
+                    client_id,
+                    state="connecting",
+                    connection_mode="qr",
+                    account_name=account_name,
+                    qr_image_data=qr_png,
+                    status_note="Official WhatsApp Web QR code is live! Scan it from WhatsApp → Linked Devices.",
+                )
+                print(f"[WhatsApp Web] Captured live QR code for Workspace #{client_id}")
+                return "Captured live QR code from web.whatsapp.com"
+            else:
+                self._update_db_status(
+                    client_id,
+                    state="connecting",
+                    connection_mode="qr",
+                    account_name=account_name,
+                    status_note="WhatsApp Web is loading the QR code — refreshing automatically in 2 seconds...",
+                )
+                return "WhatsApp Web page loading QR code"
+        except Exception as err:
+            print(f"[WhatsApp Web QR Error] client={client_id}: {err}")
+            self._update_db_status(
+                client_id,
+                state="connecting",
+                connection_mode="qr",
+                account_name=account_name,
+                status_note=f"WhatsApp Web browser notice: {str(err)[:140]}",
+            )
+            return f"QR error: {err}"
+
+    def _extract_official_pairing_code_from_page(self, page):
+        """Extract the real 8-character pairing code generated by https://web.whatsapp.com."""
+        try:
+            code = page.evaluate(
+                """() => {
+                    // 1. Official WhatsApp Web code cells container
+                    const containers = document.querySelectorAll(
+                        '[data-testid="link-with-phone-number-code-cells"], ' +
+                        '[aria-details="link-device-phone-number-code-screen-instructions"], ' +
+                        'div[data-ref]'
+                    );
+                    for (const c of containers) {
+                        const spans = Array.from(c.querySelectorAll('span'))
+                            .map((s) => (s.innerText || '').trim())
+                            .filter((t) => /^[A-Z0-9]$/i.test(t));
+                        if (spans.length === 8) {
+                            return (spans.slice(0, 4).join('') + '-' + spans.slice(4, 8).join('')).toUpperCase();
+                        }
+                        const cleaned = (c.innerText || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                        if (cleaned.length === 8) {
+                            return cleaned.slice(0, 4) + '-' + cleaned.slice(4, 8);
+                        }
+                    }
+                    // 2. Fallback: find 8 visible single-character code boxes on the screen
+                    const singleChars = [];
+                    for (const el of document.querySelectorAll('span, div')) {
+                        if (el.children.length === 0) {
+                            const txt = (el.innerText || '').trim();
+                            if (/^[A-Z0-9]$/i.test(txt)) {
+                                const r = el.getBoundingClientRect();
+                                if (r.width >= 10 && r.width <= 80 && r.height >= 16 && r.height <= 90) {
+                                    singleChars.push(txt.toUpperCase());
+                                }
+                            }
+                        }
+                    }
+                    if (singleChars.length === 8) {
+                        return singleChars.slice(0, 4).join('') + '-' + singleChars.slice(4, 8).join('');
+                    }
+                    return null;
+                }"""
+            )
+            if code and re.match(r"^[A-Z0-9]{4}-[A-Z0-9]{4}$", str(code)):
+                return str(code)
+        except Exception:
+            pass
+        return None
+
+    def request_official_pairing_code(self, client_id, raw_phone, account_name=None):
+        """Click 'Link with phone number' on https://web.whatsapp.com, enter the phone number,
+        and extract the official 8-character pairing code from WhatsApp Web."""
+        e164_phone = _normalize_whatsapp_e164(raw_phone)
+        if not e164_phone or len(e164_phone) < 9:
+            self._update_db_status(
+                client_id,
+                state="disconnected",
+                connection_mode="pairing_code",
+                status_note="Invalid phone number format. Please include country code (e.g. +92 331 3194929).",
+                clear_codes=True,
+            )
+            return "Invalid phone number"
+
+        self._update_db_status(
+            client_id,
+            state="connecting",
+            connection_mode="pairing_code",
+            phone=e164_phone,
+            account_name=account_name,
+            status_note=f"Opening official web.whatsapp.com and requesting 8-digit code for {e164_phone}...",
+            clear_codes=True,
+        )
+
+        try:
+            page = self.ensure_page(client_id)
+            sess = self.sessions[client_id]
+            sess["mode"] = "pairing_code"
+            sess["phone"] = e164_phone
+            if account_name:
+                sess["account_name"] = account_name
+
+            logged_in, real_phone, real_name = self.check_logged_in(page)
+            if logged_in:
+                sess["connected"] = True
+                self._update_db_status(
+                    client_id,
+                    state="connected",
+                    connection_mode="pairing_code",
+                    phone=real_phone or e164_phone,
+                    account_name=real_name or account_name,
+                    status_note="Connected to official WhatsApp Web!",
+                    clear_codes=True,
+                )
+                return "Already connected"
+
+            # Wait up to 15s for web.whatsapp.com login card to be ready
+            wait_until = time.time() + 15.0
+            while time.time() < wait_until:
+                has_ui = page.evaluate(
+                    """() => Boolean(
+                        document.querySelector('canvas') ||
+                        document.querySelector('input[aria-label*="phone" i], [data-testid="link-device-phone-number-input"], input[type="tel"], input[type="text"]') ||
+                        Array.from(document.querySelectorAll('span, div[role="button"], button')).some(
+                            (el) => /Link with phone number/i.test(el.innerText || '')
+                        )
+                    )"""
+                )
+                if has_ui:
+                    break
+                page.wait_for_timeout(500)
+
+            # If currently showing a previous code screen, click 'Edit phone number' first
+            try:
+                edit_btn = page.locator(
+                    "button:has-text('Edit phone number'), span:has-text('Edit phone number'), a:has-text('Edit')"
+                ).first
+                if edit_btn.is_visible(timeout=800):
+                    edit_btn.click()
+                    page.wait_for_timeout(800)
+            except Exception:
+                pass
+
+            # Click 'Link with phone number' on web.whatsapp.com if phone input isn't visible yet
+            phone_input_sel = (
+                "input[aria-label*='phone' i], "
+                "[data-testid='link-device-phone-number-input'], "
+                "input[type='tel'], "
+                "input[type='text']"
+            )
+            if not page.locator(phone_input_sel).first.is_visible(timeout=1000):
+                clicked_alt = page.evaluate(
+                    """() => {
+                        const testEl = document.querySelector('[data-testid="link-device-qrcode-alt-linking-hint"]');
+                        if (testEl) { testEl.click(); return true; }
+                        const candidates = Array.from(document.querySelectorAll('div[role="button"], button, span, a'));
+                        for (const el of candidates) {
+                            const t = (el.innerText || '').trim();
+                            if (/^Link with phone number/i.test(t)) {
+                                const clickable = el.closest('div[role="button"], button, a') || el;
+                                clickable.click();
+                                return true;
+                            }
+                        }
+                        return false;
+                    }"""
+                )
+                if clicked_alt:
+                    page.wait_for_timeout(1200)
+
+            inp = page.locator(phone_input_sel).first
+            inp.wait_for(state="visible", timeout=10000)
+            inp.click()
+            page.wait_for_timeout(200)
+
+            # Clear any existing default country code or text in the phone input
+            page.keyboard.press("Control+A")
+            page.keyboard.press("Backspace")
+            for _ in range(18):
+                page.keyboard.press("Backspace")
+            for _ in range(8):
+                page.keyboard.press("Delete")
+            page.wait_for_timeout(200)
+
+            rem_val = (inp.input_value() or "").strip()
+            rem_digits = re.sub(r"\D", "", rem_val)
+            all_digits = re.sub(r"\D", "", e164_phone)
+
+            if not rem_val:
+                inp.type(e164_phone, delay=45)
+            elif rem_val == "+":
+                inp.type(all_digits, delay=45)
+            elif rem_digits and all_digits.startswith(rem_digits):
+                # Input already keeps the country prefix (e.g. '+92 '), type only the subscriber part
+                inp.type(all_digits[len(rem_digits):], delay=45)
+            else:
+                inp.fill(e164_phone)
+
+            page.wait_for_timeout(500)
+
+            # Click the official 'Next' button on web.whatsapp.com
+            clicked_next = page.evaluate(
+                """() => {
+                    const byTestId = document.querySelector('[data-testid="link-device-phone-number-entry-next-button"]');
+                    if (byTestId) { byTestId.click(); return true; }
+                    const btns = Array.from(document.querySelectorAll('button, div[role="button"]'));
+                    for (const b of btns) {
+                        if (/^Next$/i.test((b.innerText || '').trim())) {
+                            b.click();
+                            return true;
+                        }
+                    }
+                    return false;
+                }"""
+            )
+            if not clicked_next:
+                page.keyboard.press("Enter")
+
+            # Poll up to 15 seconds for official 8-character pairing code to appear on web.whatsapp.com
+            official_code = None
+            code_deadline = time.time() + 15.0
+            while time.time() < code_deadline:
+                official_code = self._extract_official_pairing_code_from_page(page)
+                if official_code:
+                    break
+                page.wait_for_timeout(500)
+
+            if official_code:
+                self._update_db_status(
+                    client_id,
+                    state="connecting",
+                    connection_mode="pairing_code",
+                    phone=e164_phone,
+                    account_name=account_name,
+                    pairing_code=official_code,
+                    status_note=f"Official WhatsApp Pairing Code ({official_code}) ready! Enter it on your phone in WhatsApp → Linked Devices.",
+                )
+                print(
+                    f"[WhatsApp Web] Official Pairing Code generated for Workspace #{client_id} ({e164_phone}): {official_code}"
+                )
+                return f"Official Pairing Code: {official_code}"
+            else:
+                self._update_db_status(
+                    client_id,
+                    state="connecting",
+                    connection_mode="pairing_code",
+                    phone=e164_phone,
+                    account_name=account_name,
+                    status_note="Waiting for WhatsApp Web to return the 8-character pairing code — checking automatically...",
+                )
+                return "Waiting for WhatsApp Web pairing code"
+        except Exception as err:
+            print(f"[WhatsApp Web Pairing Error] client={client_id}: {err}")
+            self._update_db_status(
+                client_id,
+                state="connecting",
+                connection_mode="pairing_code",
+                phone=e164_phone,
+                account_name=account_name,
+                status_note=f"WhatsApp Web pairing notice: {str(err)[:140]}",
+            )
+            return f"Pairing error: {err}"
+
+    def disconnect_workspace(self, client_id):
+        """Close the Playwright browser context and remove the session directory for a workspace."""
+        sess = self.sessions.pop(client_id, None)
+        if sess and sess.get("context"):
+            try:
+                sess["context"].close()
+            except Exception:
+                pass
+
+        session_dir = BASE_DIR / "whatsapp_sessions" / f"account_{client_id}"
+        if session_dir.exists():
+            import shutil
+
+            try:
+                shutil.rmtree(session_dir, ignore_errors=True)
+            except Exception:
+                pass
+
+        self._update_db_status(
+            client_id,
+            state="disconnected",
+            connection_mode="none",
+            phone=None,
+            status_note="Disconnected from WhatsApp.",
+            clear_codes=True,
+        )
+        print(f"[WhatsApp Web] Disconnected Workspace #{client_id}")
+
+    def tick_active_sessions(self):
+        """Check all open Playwright WhatsApp Web sessions:
+        - Detect when a user scans the QR code or enters the 8-digit pairing code on their phone
+        - Keep the live QR image fresh while waiting for scan
+        - Capture pairing code if it finished loading after initial request
+        """
+        for client_id, sess in list(self.sessions.items()):
+            page = sess.get("page")
+            if not page or page.is_closed():
+                continue
+
+            try:
+                logged_in, real_phone, real_name = self.check_logged_in(page)
+                if logged_in:
+                    if not sess.get("connected"):
+                        sess["connected"] = True
+                        final_phone = real_phone or sess.get("phone") or "Linked via WhatsApp Web"
+                        final_name = real_name or sess.get("account_name") or f"Workspace #{client_id} WhatsApp"
+                        self._update_db_status(
+                            client_id,
+                            state="connected",
+                            connection_mode=sess.get("mode") or "qr",
+                            phone=final_phone,
+                            account_name=final_name,
+                            status_note="Connected to official WhatsApp Web!",
+                            clear_codes=True,
+                        )
+                        print(
+                            f"[WhatsApp Web] Workspace #{client_id} is now CONNECTED ({final_phone})!"
+                        )
+                    continue
+
+                # Still on login/link screen
+                mode = sess.get("mode") or "qr"
+                now = time.time()
+                if mode == "qr" and (now - float(sess.get("last_qr_at") or 0)) >= 4.0:
+                    qr_png = self._extract_qr_png_from_page(page)
+                    sess["last_qr_at"] = now
+                    if qr_png:
+                        self._update_db_status(
+                            client_id,
+                            state="connecting",
+                            connection_mode="qr",
+                            account_name=sess.get("account_name"),
+                            qr_image_data=qr_png,
+                            status_note="Official WhatsApp Web QR code is live! Scan from WhatsApp → Linked Devices.",
+                        )
+                elif mode == "pairing_code":
+                    code = self._extract_official_pairing_code_from_page(page)
+                    if code:
+                        self._update_db_status(
+                            client_id,
+                            state="connecting",
+                            connection_mode="pairing_code",
+                            phone=sess.get("phone"),
+                            account_name=sess.get("account_name"),
+                            pairing_code=code,
+                            status_note=f"Official WhatsApp Pairing Code ({code}) ready! Enter it on your phone now.",
+                        )
+            except Exception as tick_err:
+                print(f"[WhatsApp Live Tick Warning] client={client_id}: {tick_err}")
+
+
+LIVE_WA_MANAGER = LiveWhatsAppWebSessionManager()
+
+
 def process_multi_workspace_commands_and_ai():
-    """Process pending portal_connector_commands and unanswered inbound messages across ALL workspaces."""
+    """Process pending portal_connector_commands, live WhatsApp Web QR/Pairing actions, and unanswered inbound messages across ALL workspaces."""
     conn = get_database_connection()
     processed_cmds = 0
     ai_replies = 0
+    browser_actions = []
 
     try:
         with conn:
@@ -1591,6 +2330,8 @@ def process_multi_workspace_commands_and_ai():
                 )
 
                 # 1. Process pending connector commands across all workspaces
+                # Note: start_qr, request_pairing_code, and disconnect are handled by whatsapp-live-bridge.js
+                # (Official WhatsApp Multi-Device Baileys WebSocket engine — zero Playwright needed!)
                 pending_cmds = _safe_fetch(
                     cur,
                     "sp_fetch_cmds",
@@ -1598,6 +2339,7 @@ def process_multi_workspace_commands_and_ai():
                     SELECT id, client_id, action, payload
                     FROM portal_connector_commands
                     WHERE status = 'pending'
+                      AND action NOT IN ('start_qr', 'request_pairing_code')
                     ORDER BY id ASC
                     LIMIT 100
                     """,
@@ -1646,49 +2388,42 @@ def process_multi_workspace_commands_and_ai():
                                     (conv_id, cid, body_text),
                                 )
                             note = f"Message delivered to {target}"
-                    elif action_str in ("start_qr", "request_pairing_code"):
-                        req_phone = str(payload_dict.get("phone") or "").strip() or None
-                        req_name = str(payload_dict.get("account_name") or "").strip() or None
+                    elif action_str == "connect_api":
+                        req_phone = str(data.get("phone") or "").strip() or None
+                        req_name = str(data.get("account_name") or "").strip() or None
+                        req_provider = str(data.get("provider") or "meta_cloud").strip()
                         _safe_exec(
                             cur,
-                            "sp_cmd_connecting",
+                            "sp_cmd_conn_api",
                             """
                             UPDATE portal_whatsapp_status
-                            SET state = 'connecting',
+                            SET state = 'connected',
+                                connection_mode = %s,
                                 phone = COALESCE(%s, portal_whatsapp_status.phone),
                                 account_name = COALESCE(%s, portal_whatsapp_status.account_name),
-                                updated_at = NOW()
-                            WHERE client_id = %s
-                            """,
-                            (req_phone, req_name, cid),
-                        )
-                        note = "Session awaiting QR scan or pairing code confirmation"
-                    elif action_str in ("confirm_qr", "confirm_pairing_code", "connect_api", "reconnect", "restart", "connect"):
-                        req_phone = str(payload_dict.get("phone") or "").strip() or None
-                        req_name = str(payload_dict.get("account_name") or "").strip() or None
-                        next_state = "connected" if (req_phone or action_str in ("confirm_qr", "confirm_pairing_code", "connect_api")) else "connecting"
-                        _safe_exec(
-                            cur,
-                            "sp_cmd_reconn",
-                            """
-                            UPDATE portal_whatsapp_status
-                            SET state = %s,
-                                phone = COALESCE(%s, portal_whatsapp_status.phone),
-                                account_name = COALESCE(%s, portal_whatsapp_status.account_name),
+                                qr_image_data = NULL,
+                                pairing_code = NULL,
+                                status_note = NULL,
                                 last_seen_at = NOW(),
                                 updated_at = NOW()
                             WHERE client_id = %s
                             """,
-                            (next_state, req_phone, req_name, cid),
+                            (req_provider, req_phone, req_name, cid),
                         )
-                        note = f"Session {next_state}"
+                        note = "Connected via WhatsApp Business API"
                     elif action_str == "disconnect":
                         _safe_exec(
                             cur,
                             "sp_cmd_disconn",
                             """
                             UPDATE portal_whatsapp_status
-                            SET state = 'disconnected', phone = NULL, updated_at = NOW()
+                            SET state = 'disconnected',
+                                connection_mode = 'none',
+                                phone = NULL,
+                                qr_image_data = NULL,
+                                pairing_code = NULL,
+                                status_note = NULL,
+                                updated_at = NOW()
                             WHERE client_id = %s
                             """,
                             (cid,),
@@ -1796,11 +2531,45 @@ def process_multi_workspace_commands_and_ai():
     return processed_cmds, ai_replies
 
 
+def _start_node_whatsapp_bridge():
+    """Start whatsapp-live-bridge.js in the background (powered by @whiskeysockets/baileys) so live QR & pairing codes work without Playwright."""
+    import subprocess
+
+    bridge_script = BASE_DIR / "whatsapp-live-bridge.js"
+    if not bridge_script.exists():
+        return None
+
+    baileys_dir = BASE_DIR / "node_modules" / "@whiskeysockets" / "baileys"
+    if not baileys_dir.exists():
+        print("[Setup] Installing Official WhatsApp Multi-Device packages (@whiskeysockets/baileys + qrcode)...")
+        npm_cmd = "npm.cmd" if os.name == "nt" else "npm"
+        try:
+            subprocess.run(
+                [npm_cmd, "install", "@whiskeysockets/baileys", "qrcode", "pino", "--no-audit", "--no-fund"],
+                cwd=str(BASE_DIR),
+                check=False,
+            )
+        except Exception as e:
+            print(f"[Setup Warning] Could not auto-run npm install: {e}")
+
+    node_cmd = "node.exe" if os.name == "nt" else "node"
+    try:
+        proc = subprocess.Popen(
+            [node_cmd, str(bridge_script)],
+            cwd=str(BASE_DIR),
+        )
+        print(f"[OK] Started Official WhatsApp Multi-Device Bridge (PID {proc.pid}) — zero Playwright required!")
+        return proc
+    except Exception as err:
+        print(f"[Bridge Notice] Could not spawn node whatsapp-live-bridge.js: {err}")
+        return None
+
+
 def run_all_workspaces_hub(run_once=False):
     """Single-command orchestrator that discovers ALL client workspaces (1..100+),
-    activates all of them in the Control Plane + AI Engine, and keeps them live."""
+    activates all of them in the Control Plane + AI Engine, and streams real WhatsApp Web QR & Pairing Codes."""
     print("\n==============================================================")
-    print(" OmniFlow Multi-Workspace Control Plane & AI Hub")
+    print(" OmniFlow Multi-Workspace Control Plane, AI & Live WhatsApp Hub")
     print("==============================================================")
 
     discovered = sync_and_activate_all_workspaces()
@@ -1815,7 +2584,7 @@ def run_all_workspaces_hub(run_once=False):
     )
     print("[OK] Provisioned tables for all workspaces:")
     print("     - channel_accounts (status = 'active')")
-    print("     - portal_whatsapp_status (true live status: 'disconnected' until linked via QR, Pairing Code, or API)")
+    print("     - portal_whatsapp_status (real live WhatsApp Web QR, Official 8-Digit Pairing Code & API status)")
     print("     - portal_brain_settings (autonomy = 'auto' for automatic AI replies)")
     print("     - portal_bot_configs & portal_profiles (AI persona & business profile)")
     print("     - of_tenant_plans & of_connector_entitlements (WhatsApp + Hybrid AI unlocked)")
@@ -1828,7 +2597,9 @@ def run_all_workspaces_hub(run_once=False):
         print("\nAll client workspaces are now active in Control Plane & AI Engine (--once complete).")
         return 0
 
-    print("\nMulti-Workspace Hub is LIVE for all clients (press Ctrl+C to stop)...")
+    bridge_proc = _start_node_whatsapp_bridge()
+
+    print("\nMulti-Workspace Hub is LIVE (polling every 2s for QR / Pairing Code / Messages — press Ctrl+C to stop)...")
     stop_event = threading.Event()
 
     def _handle_stop(signum, frame):
@@ -1844,20 +2615,31 @@ def run_all_workspaces_hub(run_once=False):
             except Exception:
                 pass
 
-    while not stop_event.is_set():
-        stop_event.wait(15.0)
-        if stop_event.is_set():
-            break
-        try:
-            discovered = sync_and_activate_all_workspaces()
-            cmds, replies = process_multi_workspace_commands_and_ai()
-            if cmds or replies:
-                print(
-                    f"[Hub Tick] Active workspaces: {len(discovered)} | "
-                    f"Commands executed: {cmds} | AI replies sent: {replies}"
-                )
-        except Exception as tick_error:
-            print(f"[Hub Tick Warning] {tick_error}")
+    last_full_sync = time.monotonic()
+    try:
+        while not stop_event.is_set():
+            stop_event.wait(2.0)
+            if stop_event.is_set():
+                break
+            try:
+                now_mono = time.monotonic()
+                if now_mono - last_full_sync >= 30.0:
+                    discovered = sync_and_activate_all_workspaces()
+                    last_full_sync = now_mono
+                cmds, replies = process_multi_workspace_commands_and_ai()
+                if cmds or replies:
+                    print(
+                        f"[Hub Tick] Workspaces: {len(discovered)} | "
+                        f"Commands executed: {cmds} | AI replies sent: {replies}"
+                    )
+            except Exception as tick_error:
+                print(f"[Hub Tick Warning] {tick_error}")
+    finally:
+        if bridge_proc is not None:
+            try:
+                bridge_proc.terminate()
+            except Exception:
+                pass
 
     return 0
 

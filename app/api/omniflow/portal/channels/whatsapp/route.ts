@@ -1,10 +1,6 @@
-import crypto from "crypto";
 import { neonEnabled, neonQuery } from "../../../../../../lib/db/neon";
 import { getOmniFlowSession } from "../../../../../../lib/omniflow/auth-dal";
-import {
-  ControlPlaneRequestError,
-  getControlPlanePrincipal,
-} from "../../../../../../lib/omniflow/control-plane";
+import { getControlPlanePrincipal } from "../../../../../../lib/omniflow/control-plane";
 import {
   getWhatsAppChannelStatus,
   requestWhatsAppAction,
@@ -15,6 +11,12 @@ import {
   safeJson,
   sameOrigin,
 } from "../../../../../../lib/omniflow/request-security";
+import {
+  disconnectBaileysSession,
+  getBaileysMemorySnapshot,
+  requestBaileysPairingCode,
+  startBaileysQrSession,
+} from "../../../../../../lib/omniflow/whatsapp-baileys";
 
 export type WhatsAppConnectionMode =
   | "qr"
@@ -45,8 +47,9 @@ export interface WhatsAppFullStatusPayload {
   accountName: string | null;
   phone: string | null;
   lastSeenAt: string | null;
+  qrImageData: string | null;
   pairingCode: string | null;
-  qrPayload: string | null;
+  statusNote: string | null;
   apiConfig: WhatsAppApiConfigSummary;
 }
 
@@ -56,14 +59,15 @@ type MemoryWhatsAppState = {
   accountName: string | null;
   phone: string | null;
   lastSeenAt: string | null;
+  qrImageData: string | null;
   pairingCode: string | null;
-  qrPayload: string | null;
+  statusNote: string | null;
   apiConfig: WhatsAppApiConfigSummary & { accessToken?: string };
 };
 
 const globalForWa = globalThis as unknown as {
   __omniflowWaMem?: Map<number, MemoryWhatsAppState>;
-  __omniflowWaSchemaReady?: boolean;
+  __omniflowWaSchemaV3Ready?: boolean;
 };
 
 function getWaMem(): Map<number, MemoryWhatsAppState> {
@@ -96,19 +100,24 @@ function maskSecret(token: string | null | undefined): string | null {
   return `${t.slice(0, 4)}••••••••${t.slice(-4)}`;
 }
 
-function generatePairingCode(): string {
-  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const bytes = crypto.randomBytes(8);
-  let out = "";
-  for (let i = 0; i < 8; i++) {
-    if (i === 4) out += "-";
-    out += alphabet[bytes[i] % alphabet.length];
+function normalizeWhatsAppPhone(raw: string): string {
+  const cleaned = raw.trim().replace(/[^\d+]/g, "");
+  if (!cleaned) return "";
+  let digits = cleaned.replace(/\D/g, "");
+  if (digits.startsWith("00")) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith("0") && digits.length === 11) {
+    digits = "92" + digits.slice(1);
+  } else if (digits.startsWith("920") && digits.length === 13) {
+    digits = "92" + digits.slice(3);
+  } else if (digits.length === 10 && digits.startsWith("3")) {
+    digits = "92" + digits;
   }
-  return out;
+  return digits ? `+${digits}` : "";
 }
 
 async function ensureWhatsAppTables(): Promise<void> {
-  if (!neonEnabled() || globalForWa.__omniflowWaSchemaReady) return;
+  if (!neonEnabled() || globalForWa.__omniflowWaSchemaV3Ready) return;
   try {
     await neonQuery(
       `CREATE TABLE IF NOT EXISTS portal_whatsapp_status (
@@ -118,9 +127,26 @@ async function ensureWhatsAppTables(): Promise<void> {
          account_name TEXT,
          last_seen_at TIMESTAMPTZ,
          reported_by BIGINT,
+         qr_image_data TEXT,
+         pairing_code TEXT,
+         connection_mode TEXT NOT NULL DEFAULT 'none',
+         status_note TEXT,
          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
        )`
     );
+    await neonQuery(
+      `ALTER TABLE portal_whatsapp_status ADD COLUMN IF NOT EXISTS qr_image_data TEXT`
+    ).catch(() => null);
+    await neonQuery(
+      `ALTER TABLE portal_whatsapp_status ADD COLUMN IF NOT EXISTS pairing_code TEXT`
+    ).catch(() => null);
+    await neonQuery(
+      `ALTER TABLE portal_whatsapp_status ADD COLUMN IF NOT EXISTS connection_mode TEXT NOT NULL DEFAULT 'none'`
+    ).catch(() => null);
+    await neonQuery(
+      `ALTER TABLE portal_whatsapp_status ADD COLUMN IF NOT EXISTS status_note TEXT`
+    ).catch(() => null);
+
     await neonQuery(
       `CREATE TABLE IF NOT EXISTS portal_whatsapp_api_configs (
          client_id BIGINT PRIMARY KEY,
@@ -137,7 +163,7 @@ async function ensureWhatsAppTables(): Promise<void> {
          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
        )`
     );
-    globalForWa.__omniflowWaSchemaReady = true;
+    globalForWa.__omniflowWaSchemaV3Ready = true;
   } catch {
     // ignore
   }
@@ -177,23 +203,39 @@ async function readWorkspaceWhatsAppStatus(
   accessToken: string
 ): Promise<WhatsAppFullStatusPayload> {
   const mem = getWaMem().get(clientId);
-  let state: "connected" | "connecting" | "disconnected" = mem?.state || "disconnected";
-  let connectionMode: WhatsAppConnectionMode = mem?.connectionMode || "none";
-  let accountName: string | null = mem?.accountName || null;
-  let phone: string | null = mem?.phone || null;
-  let lastSeenAt: string | null = mem?.lastSeenAt || null;
-  const pairingCode: string | null = mem?.pairingCode || null;
-  const qrPayload: string | null = mem?.qrPayload || null;
-  let apiConfig: WhatsAppApiConfigSummary = mem?.apiConfig || defaultApiConfig(clientId);
+  const baileysSnap = getBaileysMemorySnapshot(clientId);
+
+  let state: "connected" | "connecting" | "disconnected" =
+    baileysSnap?.state || mem?.state || "disconnected";
+  let connectionMode: WhatsAppConnectionMode =
+    baileysSnap?.connectionMode || mem?.connectionMode || "none";
+  let accountName: string | null =
+    baileysSnap?.accountName || mem?.accountName || null;
+  let phone: string | null = baileysSnap?.phone || mem?.phone || null;
+  let lastSeenAt: string | null =
+    baileysSnap?.lastSeenAt || mem?.lastSeenAt || null;
+  let qrImageData: string | null =
+    baileysSnap?.qrImageData || mem?.qrImageData || null;
+  let pairingCode: string | null =
+    baileysSnap?.pairingCode || mem?.pairingCode || null;
+  let statusNote: string | null = null;
+  let apiConfig: WhatsAppApiConfigSummary =
+    mem?.apiConfig || defaultApiConfig(clientId);
 
   if (neonEnabled()) {
     await ensureWhatsAppTables();
     try {
-      // Automatically clear any legacy dummy '+923001234567' fake connected status
       await neonQuery(
         `UPDATE portal_whatsapp_status
-         SET state = 'disconnected', phone = NULL, updated_at = NOW()
+         SET state = 'disconnected', phone = NULL, status_note = NULL, updated_at = NOW()
          WHERE client_id = $1 AND phone = '+923001234567'`,
+        [clientId]
+      ).catch(() => null);
+
+      await neonQuery(
+        `UPDATE portal_whatsapp_status
+         SET status_note = NULL
+         WHERE client_id = $1 AND status_note ILIKE '%playwright%'`,
         [clientId]
       ).catch(() => null);
 
@@ -245,8 +287,13 @@ async function readWorkspaceWhatsAppStatus(
         phone: string | null;
         account_name: string | null;
         last_seen_at: string | null;
+        qr_image_data: string | null;
+        pairing_code: string | null;
+        connection_mode: string | null;
+        status_note: string | null;
       }>(
-        `SELECT state, phone, account_name, last_seen_at
+        `SELECT state, phone, account_name, last_seen_at,
+                qr_image_data, pairing_code, connection_mode, status_note
          FROM portal_whatsapp_status
          WHERE client_id = $1
          LIMIT 1`,
@@ -261,8 +308,24 @@ async function readWorkspaceWhatsAppStatus(
           row.state === "connected" || row.state === "connecting"
             ? row.state
             : "disconnected";
+        const dbModeRaw = row.connection_mode || "none";
+        const dbMode: WhatsAppConnectionMode =
+          dbModeRaw === "qr" ||
+          dbModeRaw === "pairing_code" ||
+          dbModeRaw === "meta_cloud" ||
+          dbModeRaw === "wati" ||
+          dbModeRaw === "custom_api"
+            ? dbModeRaw
+            : "none";
 
-        // Only treat as 'connected' if there is either an active API config OR a real linked phone/session
+        qrImageData = row.qr_image_data || qrImageData;
+        pairingCode = row.pairing_code || pairingCode;
+        const cleanNote =
+          row.status_note && !/playwright/i.test(row.status_note)
+            ? row.status_note
+            : null;
+        statusNote = cleanNote;
+
         if (apiConfig.enabled && apiConfig.hasAccessToken) {
           state = "connected";
           connectionMode = apiConfig.provider;
@@ -273,7 +336,7 @@ async function readWorkspaceWhatsAppStatus(
             : apiConfig.connectedAt;
         } else if (rawState === "connected" && dbPhone) {
           state = "connected";
-          if (connectionMode === "none") connectionMode = "qr";
+          connectionMode = dbMode !== "none" ? dbMode : "qr";
           phone = dbPhone;
           accountName = row.account_name || null;
           lastSeenAt = row.last_seen_at
@@ -281,15 +344,18 @@ async function readWorkspaceWhatsAppStatus(
             : null;
         } else if (rawState === "connecting") {
           state = "connecting";
+          connectionMode = dbMode !== "none" ? dbMode : "qr";
           phone = dbPhone;
           accountName = row.account_name || null;
           lastSeenAt = row.last_seen_at
             ? new Date(row.last_seen_at).toISOString()
             : null;
-        } else {
+        } else if (baileysSnap?.state !== "connected" && baileysSnap?.state !== "connecting") {
           state = "disconnected";
           connectionMode = "none";
           phone = null;
+          qrImageData = null;
+          pairingCode = null;
           accountName = row.account_name || null;
           lastSeenAt = row.last_seen_at
             ? new Date(row.last_seen_at).toISOString()
@@ -330,8 +396,9 @@ async function readWorkspaceWhatsAppStatus(
     accountName,
     phone,
     lastSeenAt,
+    qrImageData,
     pairingCode,
-    qrPayload,
+    statusNote,
     apiConfig,
   };
 }
@@ -377,20 +444,24 @@ export async function POST(request: Request) {
     accountName: null,
     phone: null,
     lastSeenAt: null,
+    qrImageData: null,
     pairingCode: null,
-    qrPayload: null,
+    statusNote: null,
     apiConfig: defaultApiConfig(clientId),
   };
 
   await ensureWhatsAppTables();
 
-  // 1. DISCONNECT WHATSAPP (Immediate disconnect for QR, Pairing Code, or API)
+  // 1. DISCONNECT WHATSAPP
   if (action === "disconnect") {
+    await disconnectBaileysSession(clientId);
+
     currentMem.state = "disconnected";
     currentMem.connectionMode = "none";
     currentMem.phone = null;
+    currentMem.qrImageData = null;
     currentMem.pairingCode = null;
-    currentMem.qrPayload = null;
+    currentMem.statusNote = null;
     currentMem.apiConfig = {
       ...currentMem.apiConfig,
       enabled: false,
@@ -399,10 +470,17 @@ export async function POST(request: Request) {
 
     if (neonEnabled()) {
       await neonQuery(
-        `INSERT INTO portal_whatsapp_status (client_id, state, phone, last_seen_at, updated_at)
-         VALUES ($1, 'disconnected', NULL, NOW(), NOW())
+        `INSERT INTO portal_whatsapp_status
+         (client_id, state, connection_mode, phone, qr_image_data, pairing_code, status_note, last_seen_at, updated_at)
+         VALUES ($1, 'disconnected', 'none', NULL, NULL, NULL, NULL, NOW(), NOW())
          ON CONFLICT (client_id) DO UPDATE
-         SET state = 'disconnected', phone = NULL, updated_at = NOW()`,
+         SET state = 'disconnected',
+             connection_mode = 'none',
+             phone = NULL,
+             qr_image_data = NULL,
+             pairing_code = NULL,
+             status_note = NULL,
+             updated_at = NOW()`,
         [clientId]
       ).catch(() => null);
 
@@ -410,6 +488,13 @@ export async function POST(request: Request) {
         `UPDATE portal_whatsapp_api_configs
          SET enabled = FALSE, updated_at = NOW()
          WHERE client_id = $1`,
+        [clientId]
+      ).catch(() => null);
+
+      await neonQuery(
+        `UPDATE portal_connector_commands
+         SET status = 'cancelled', updated_at = NOW()
+         WHERE client_id = $1 AND status = 'pending'`,
         [clientId]
       ).catch(() => null);
 
@@ -429,37 +514,32 @@ export async function POST(request: Request) {
     return safeJson(
       {
         ok: true,
-        message: "WhatsApp has been disconnected from this workspace.",
+        message: "WhatsApp disconnected.",
         status,
       },
       200
     );
   }
 
-  // 2. START QR SESSION (WhatsApp Web Link Device via QR Code)
+  // 2. START REAL WHATSAPP WEB MULTI-DEVICE QR SESSION
   if (action === "start_qr" || action === "connect") {
-    const qrToken = `2@${crypto.randomBytes(18).toString("base64url")},${crypto
-      .randomBytes(16)
-      .toString("base64url")},omniflow_ws_${clientId},${Date.now()}`;
     const accountLabel =
       typeof payload.accountName === "string" && payload.accountName.trim()
         ? payload.accountName.trim().slice(0, 80)
         : currentMem.accountName || `Workspace #${clientId} WhatsApp`;
 
-    currentMem.state = "connecting";
-    currentMem.connectionMode = "qr";
-    currentMem.accountName = accountLabel;
-    currentMem.qrPayload = qrToken;
-    currentMem.pairingCode = null;
-    memMap.set(clientId, currentMem);
-
     if (neonEnabled()) {
       await neonQuery(
-        `INSERT INTO portal_whatsapp_status (client_id, state, account_name, updated_at)
-         VALUES ($1, 'connecting', $2, NOW())
+        `INSERT INTO portal_whatsapp_status
+         (client_id, state, connection_mode, account_name, qr_image_data, pairing_code, status_note, updated_at)
+         VALUES ($1, 'connecting', 'qr', $2, NULL, NULL, NULL, NOW())
          ON CONFLICT (client_id) DO UPDATE
          SET state = 'connecting',
+             connection_mode = 'qr',
              account_name = COALESCE(EXCLUDED.account_name, portal_whatsapp_status.account_name),
+             qr_image_data = NULL,
+             pairing_code = NULL,
+             status_note = NULL,
              updated_at = NOW()`,
         [clientId, accountLabel]
       ).catch(() => null);
@@ -468,47 +548,43 @@ export async function POST(request: Request) {
         `INSERT INTO portal_connector_commands
          (client_id, channel, action, payload, status, requested_by, created_at, updated_at)
          VALUES ($1, 'whatsapp', 'start_qr', $2::jsonb, 'pending', $3, NOW(), NOW())`,
-        [
-          clientId,
-          JSON.stringify({ account_name: accountLabel, qr_token: qrToken }),
-          userId,
-        ]
+        [clientId, JSON.stringify({ account_name: accountLabel }), userId]
       ).catch(() => null);
     }
 
-    if (!accessToken.startsWith("ofa_neon_")) {
-      await requestWhatsAppAction(accessToken, "connect").catch(() => null);
-    }
+    const baileysSnap = await startBaileysQrSession(clientId, accountLabel);
+    currentMem.state = baileysSnap.state;
+    currentMem.connectionMode = "qr";
+    currentMem.accountName = accountLabel;
+    currentMem.qrImageData = baileysSnap.qrImageData;
+    currentMem.pairingCode = null;
+    currentMem.statusNote = null;
+    memMap.set(clientId, currentMem);
 
     const status = await readWorkspaceWhatsAppStatus(clientId, accessToken);
     return safeJson(
       {
         ok: true,
-        message:
-          "Live QR Code generated. Open WhatsApp on your phone → Linked Devices → Link a Device to scan.",
-        qrPayload: qrToken,
-        status: {
-          ...status,
-          state: "connecting",
-          connectionMode: "qr",
-          qrPayload: qrToken,
-        },
+        message: status.qrImageData
+          ? "Official WhatsApp Web QR code is ready. Scan it with your phone."
+          : "Generating official WhatsApp Web QR code…",
+        status,
       },
       200
     );
   }
 
-  // 3. REQUEST 8-DIGIT PHONE PAIRING CODE
+  // 3. REQUEST OFFICIAL 8-CHARACTER PAIRING CODE ("Link with phone number instead")
   if (action === "request_pairing_code") {
     const rawPhone = typeof payload.phone === "string" ? payload.phone.trim() : "";
-    const normalizedPhone = rawPhone.replace(/[^\d+]/g, "");
-    if (normalizedPhone.length < 8) {
+    const normalizedPhone = normalizeWhatsAppPhone(rawPhone);
+    if (normalizedPhone.length < 9) {
       return safeJson(
         {
           error: {
             code: "invalid_phone",
             message:
-              "Please enter a valid WhatsApp phone number with country code (e.g. +92 300 1234567).",
+              "Please enter a valid WhatsApp phone number with country code (e.g. +92 331 3194929).",
           },
         },
         400
@@ -519,24 +595,20 @@ export async function POST(request: Request) {
       typeof payload.accountName === "string" && payload.accountName.trim()
         ? payload.accountName.trim().slice(0, 80)
         : currentMem.accountName || `WhatsApp (${normalizedPhone})`;
-    const code = generatePairingCode();
-
-    currentMem.state = "connecting";
-    currentMem.connectionMode = "pairing_code";
-    currentMem.phone = normalizedPhone;
-    currentMem.accountName = accountLabel;
-    currentMem.pairingCode = code;
-    currentMem.qrPayload = null;
-    memMap.set(clientId, currentMem);
 
     if (neonEnabled()) {
       await neonQuery(
-        `INSERT INTO portal_whatsapp_status (client_id, state, phone, account_name, updated_at)
-         VALUES ($1, 'connecting', $2, $3, NOW())
+        `INSERT INTO portal_whatsapp_status
+         (client_id, state, connection_mode, phone, account_name, qr_image_data, pairing_code, status_note, updated_at)
+         VALUES ($1, 'connecting', 'pairing_code', $2, $3, NULL, NULL, NULL, NOW())
          ON CONFLICT (client_id) DO UPDATE
          SET state = 'connecting',
+             connection_mode = 'pairing_code',
              phone = EXCLUDED.phone,
              account_name = EXCLUDED.account_name,
+             qr_image_data = NULL,
+             pairing_code = NULL,
+             status_note = NULL,
              updated_at = NOW()`,
         [clientId, normalizedPhone, accountLabel]
       ).catch(() => null);
@@ -550,100 +622,40 @@ export async function POST(request: Request) {
           JSON.stringify({
             phone: normalizedPhone,
             account_name: accountLabel,
-            pairing_code: code,
           }),
           userId,
         ]
       ).catch(() => null);
     }
 
-    const status = await readWorkspaceWhatsAppStatus(clientId, accessToken);
-    return safeJson(
-      {
-        ok: true,
-        pairingCode: code,
-        message: `Pairing code ${code} generated for ${normalizedPhone}. Enter it on your phone in WhatsApp → Linked Devices → Link with phone number instead.`,
-        status: {
-          ...status,
-          state: "connecting",
-          connectionMode: "pairing_code",
-          phone: normalizedPhone,
-          accountName: accountLabel,
-          pairingCode: code,
-        },
-      },
-      200
+    const baileysSnap = await requestBaileysPairingCode(
+      clientId,
+      normalizedPhone,
+      accountLabel
     );
-  }
-
-  // 4. CONFIRM QR OR PAIRING CODE LINK
-  if (action === "confirm_qr" || action === "confirm_pairing_code") {
-    const rawPhone = typeof payload.phone === "string" ? payload.phone.trim() : "";
-    const normalizedPhone =
-      rawPhone.replace(/[^\d+]/g, "") || currentMem.phone || "";
-    if (!normalizedPhone || normalizedPhone.length < 8) {
-      return safeJson(
-        {
-          error: {
-            code: "phone_required",
-            message:
-              "Please enter the linked WhatsApp phone number (e.g. +92 312 8765432) to verify and complete device linking.",
-          },
-        },
-        400
-      );
-    }
-    const accountLabel =
-      typeof payload.accountName === "string" && payload.accountName.trim()
-        ? payload.accountName.trim().slice(0, 80)
-        : currentMem.accountName || `WhatsApp (${normalizedPhone})`;
-    const nowIso = new Date().toISOString();
-
-    currentMem.state = "connected";
-    currentMem.connectionMode = action === "confirm_qr" ? "qr" : "pairing_code";
+    currentMem.state = baileysSnap.state;
+    currentMem.connectionMode = "pairing_code";
     currentMem.phone = normalizedPhone;
     currentMem.accountName = accountLabel;
-    currentMem.lastSeenAt = nowIso;
+    currentMem.pairingCode = baileysSnap.pairingCode;
+    currentMem.qrImageData = null;
+    currentMem.statusNote = null;
     memMap.set(clientId, currentMem);
-
-    if (neonEnabled()) {
-      await neonQuery(
-        `INSERT INTO portal_whatsapp_status (client_id, state, phone, account_name, last_seen_at, updated_at)
-         VALUES ($1, 'connected', $2, $3, NOW(), NOW())
-         ON CONFLICT (client_id) DO UPDATE
-         SET state = 'connected',
-             phone = EXCLUDED.phone,
-             account_name = EXCLUDED.account_name,
-             last_seen_at = NOW(),
-             updated_at = NOW()`,
-        [clientId, normalizedPhone, accountLabel]
-      ).catch(() => null);
-
-      await neonQuery(
-        `INSERT INTO portal_connector_commands
-         (client_id, channel, action, payload, status, requested_by, created_at, updated_at)
-         VALUES ($1, 'whatsapp', $2, $3::jsonb, 'pending', $4, NOW(), NOW())`,
-        [
-          clientId,
-          action,
-          JSON.stringify({ phone: normalizedPhone, account_name: accountLabel }),
-          userId,
-        ]
-      ).catch(() => null);
-    }
 
     const status = await readWorkspaceWhatsAppStatus(clientId, accessToken);
     return safeJson(
       {
         ok: true,
-        message: `WhatsApp (${normalizedPhone}) is now linked and live!`,
+        message: status.pairingCode
+          ? `Official WhatsApp linking code (${status.pairingCode}) generated for ${normalizedPhone}.`
+          : `Requesting official linking code for ${normalizedPhone}…`,
         status,
       },
       200
     );
   }
 
-  // 5. CONNECT VIA WHATSAPP BUSINESS API (Meta Cloud API / WATI / Custom API)
+  // 4. CONNECT VIA WHATSAPP BUSINESS API (Meta Cloud API / WATI / Custom API)
   if (action === "connect_api") {
     const providerRaw =
       typeof payload.provider === "string" ? payload.provider : "meta_cloud";
@@ -654,7 +666,7 @@ export async function POST(request: Request) {
 
     const phone =
       typeof payload.phone === "string"
-        ? payload.phone.trim().replace(/[^\d+]/g, "")
+        ? normalizeWhatsAppPhone(payload.phone)
         : "";
     const accountName =
       typeof payload.accountName === "string" && payload.accountName.trim()
@@ -679,13 +691,13 @@ export async function POST(request: Request) {
         ? payload.verifyToken.trim()
         : `omniflow_wa_verify_${clientId}`;
 
-    if (!phone || phone.length < 8) {
+    if (!phone || phone.length < 9) {
       return safeJson(
         {
           error: {
             code: "invalid_phone",
             message:
-              "Please provide your WhatsApp Business phone number with country code (e.g. +923001234567).",
+              "Please provide your WhatsApp Business phone number with country code (e.g. +923313194929).",
           },
         },
         400
@@ -739,6 +751,9 @@ export async function POST(request: Request) {
     currentMem.phone = phone;
     currentMem.accountName = accountName;
     currentMem.lastSeenAt = nowIso;
+    currentMem.qrImageData = null;
+    currentMem.pairingCode = null;
+    currentMem.statusNote = null;
     currentMem.apiConfig = {
       provider,
       phone,
@@ -790,15 +805,20 @@ export async function POST(request: Request) {
       ).catch(() => null);
 
       await neonQuery(
-        `INSERT INTO portal_whatsapp_status (client_id, state, phone, account_name, last_seen_at, updated_at)
-         VALUES ($1, 'connected', $2, $3, NOW(), NOW())
+        `INSERT INTO portal_whatsapp_status
+         (client_id, state, connection_mode, phone, account_name, qr_image_data, pairing_code, status_note, last_seen_at, updated_at)
+         VALUES ($1, 'connected', $2, $3, $4, NULL, NULL, NULL, NOW(), NOW())
          ON CONFLICT (client_id) DO UPDATE
          SET state = 'connected',
+             connection_mode = EXCLUDED.connection_mode,
              phone = EXCLUDED.phone,
              account_name = EXCLUDED.account_name,
+             qr_image_data = NULL,
+             pairing_code = NULL,
+             status_note = NULL,
              last_seen_at = NOW(),
              updated_at = NOW()`,
-        [clientId, phone, accountName]
+        [clientId, provider, phone, accountName]
       ).catch(() => null);
 
       await neonQuery(
@@ -824,13 +844,13 @@ export async function POST(request: Request) {
     return safeJson(
       {
         ok: true,
-        message: `Connected to WhatsApp via ${
+        message: `Connected via ${
           provider === "meta_cloud"
             ? "Meta WhatsApp Cloud API"
             : provider === "wati"
               ? "WATI Business API"
               : "Custom WhatsApp API"
-        } (${phone})!`,
+        } (${phone}).`,
         status,
       },
       200
