@@ -1,66 +1,62 @@
-import { getControlPlanePrincipal } from "../../../../../../../../lib/omniflow/control-plane";
 import {
-  SOCIAL_ACTIONS,
-  requirePortalAccessToken,
   runSocialAction,
+  SOCIAL_ACTIONS,
   startSocialOAuth,
+  type SocialAction,
 } from "../../../../../../../../lib/omniflow/portal";
-import { safeJson, sameOrigin } from "../../../../../../../../lib/omniflow/request-security";
 import {
-  SOCIAL_CALLBACK_PATH,
+  noStoreHeaders,
+  safeJson,
+} from "../../../../../../../../lib/omniflow/request-security";
+import {
   isSocialChannel,
   publicOrigin,
+  SOCIAL_CALLBACK_PATH,
 } from "../../../../../../../../lib/omniflow/social-bff";
-import { runWorkspaceSocialAction } from "../../../../../../../lib/workspace-store";
+import {
+  serviceResponse,
+  withPortalToken,
+} from "../../../../../../../../lib/omniflow/voice-vision-bff";
 
-export const maxDuration = 60;
-
-interface RouteContext {
-  params: Promise<{ channel: string; action: string }>;
+function isSocialAction(value: string): value is SocialAction {
+  return (SOCIAL_ACTIONS as readonly string[]).includes(value);
 }
 
-export async function POST(request: Request, context: RouteContext) {
-  if (!sameOrigin(request)) {
-    return safeJson({ error: { code: "forbidden", message: "Request origin was rejected." } }, 403);
-  }
-  const { channel, action } = await context.params;
-  const known = SOCIAL_ACTIONS.find((value) => value === action);
-  if (!isSocialChannel(channel) || (!known && action !== "connect")) {
-    return safeJson({ error: { code: "not_found", message: "Unknown action." } }, 404);
-  }
-  const accessToken = await requirePortalAccessToken();
-  if (!accessToken) {
-    return safeJson({ error: { code: "unauthorized", message: "Sign in required." } }, 401);
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ channel: string; action: string }> }
+) {
+  const { channel: rawChannel, action } = await context.params;
+  if (!isSocialChannel(rawChannel)) {
+    return safeJson(
+      { error: { code: "bad_request", message: "Unknown social channel." } },
+      400
+    );
   }
 
-  let clientId = 1;
-  try {
-    const p = await getControlPlanePrincipal(accessToken);
-    clientId = p.clientId || 1;
-  } catch {
-    clientId = 1;
+  if (action === "connect") {
+    return withPortalToken(async (accessToken) => {
+      const redirectUri = publicOrigin(request) + SOCIAL_CALLBACK_PATH;
+      return serviceResponse(
+        await startSocialOAuth(accessToken, rawChannel, redirectUri)
+      );
+    }, request);
   }
 
-  const origin = publicOrigin(request);
-
-  if (!accessToken.startsWith("ofa_neon_")) {
-    try {
-      const cp = !known
-        ? await startSocialOAuth(accessToken, channel, origin + SOCIAL_CALLBACK_PATH)
-        : await runSocialAction(accessToken, channel, known);
-      if (cp.kind === "ok" && cp.data) {
-        return safeJson(cp.data, 200);
-      }
-    } catch {
-      // Fallback to local action
-    }
+  if (!isSocialAction(action)) {
+    return safeJson(
+      { error: { code: "bad_request", message: "Unknown social action." } },
+      400
+    );
   }
 
-  const result = await runWorkspaceSocialAction(
-    clientId,
-    channel,
-    known ? known : "connect",
-    origin
+  return withPortalToken(
+    async (accessToken) =>
+      serviceResponse(await runSocialAction(accessToken, rawChannel, action)),
+    request
   );
-  return safeJson(result, 200);
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: noStoreHeaders() });
 }

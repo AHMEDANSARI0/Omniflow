@@ -1,1086 +1,1259 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import EmailChannelCard from "../../dashboard/(portal)/settings/EmailChannelCard";
+import InstagramCard from "../../dashboard/(portal)/settings/InstagramCard";
+import SmsChannelCard from "../../dashboard/(portal)/settings/SmsChannelCard";
+import SocialChannelsCard from "../../dashboard/(portal)/settings/SocialChannelsCard";
+import WatiCard from "../../dashboard/(portal)/settings/WatiCard";
+import { usePortalEntitlements } from "../../dashboard/components/usePortalEntitlements";
+import type { ConnectorPlatform, HybridChannelConfig } from "../../lib/workspace-store";
 
-type ConnectorPlatform =
-  | "instagram"
-  | "facebook"
-  | "tiktok"
-  | "linkedin"
-  | "whatsapp"
-  | "x"
-  | "youtube"
-  | "telegram_user";
-
-type HybridMode = "hybrid" | "api" | "login";
-
-interface HybridConnectorFlags {
-  dm: boolean;
-  comments: boolean;
-  publish: boolean;
-  comment_auto_reply: boolean;
-  story_replies: boolean;
-}
-
-interface HybridChannelConfig {
-  channel: ConnectorPlatform;
-  label: string;
-  badge: string;
-  mode: HybridMode;
-  enabled: boolean;
-  connected: boolean;
-  apiConnected: boolean;
-  loginConnected: boolean;
-  autoFailover: boolean;
-  accountName: string;
-  appId: string;
-  appSecretMasked: string;
-  accessTokenMasked: string;
-  pageId: string;
-  organizationId: string;
-  verifyTokenMasked: string;
-  bearerTokenMasked: string;
-  consumerSecretMasked: string;
-  webhookUrl: string;
-  webhookRegistered: boolean;
-  loginUsername: string;
-  loginPasswordMasked: string;
-  sessionCookieMasked: string;
-  twoFactorCode: string;
-  bridgeUrl: string;
-  bridgeState: string;
-  flags: HybridConnectorFlags;
-  lastCheckAt: string | null;
-  lastSentAt: string | null;
-  lastError: string | null;
-}
-
-interface SocialPostEntry {
-  id: number;
-  channel: string;
-  body: string;
-  media_url: string;
-  status: string;
-  created_at: string | null;
-}
-
-interface ConnectorsPayload {
-  client_id: number;
-  workspace_name: string;
-  plan: string;
-  allowed_channels: string[];
-  connected_channels: string[];
-  hybrid: Record<ConnectorPlatform, HybridChannelConfig>;
-  social: {
-    posts: SocialPostEntry[];
-  };
-}
-
-type TabKey = ConnectorPlatform | "publish";
-
-const PLATFORM_META: Record<
-  ConnectorPlatform,
-  {
-    short: string;
-    title: string;
-    subtitle: string;
-    appIdLabel: string;
-    appIdPlaceholder: string;
-    secretLabel: string;
-    tokenLabel: string;
-    extraIdLabel?: string;
-    extraIdPlaceholder?: string;
-    loginUserLabel: string;
-    loginUserPlaceholder: string;
-    cookieLabel: string;
-    cookiePlaceholder: string;
-  }
-> = {
-  instagram: {
-    short: "Instagram",
-    title: "Instagram Hybrid Connector (Graph API + Account Login)",
-    subtitle:
-      "Connect via Meta Graph API, direct Instagram Account Login/Session, or Hybrid Auto-Failover for DMs, Story replies, Reels & Post comments.",
-    appIdLabel: "Instagram Professional Account ID",
-    appIdPlaceholder: "e.g. 17841405822304914",
-    secretLabel: "Meta App Secret",
-    tokenLabel: "Meta System User / Graph Access Token",
-    extraIdLabel: "Connected Facebook Page ID (optional)",
-    extraIdPlaceholder: "e.g. 10492819482",
-    loginUserLabel: "Instagram Username / Email / Phone",
-    loginUserPlaceholder: "@yourbrand.pk or email@domain.com",
-    cookieLabel: "Instagram sessionid Cookie (optional)",
-    cookiePlaceholder: "Paste sessionid cookie for passwordless session bridge",
-  },
-  facebook: {
-    short: "Facebook",
-    title: "Facebook Page & Messenger Hybrid Connector",
-    subtitle:
-      "Connect your Facebook Page & Messenger inbox via Official Page Access Token, Account Login Session, or Hybrid mode.",
-    appIdLabel: "Facebook App ID",
-    appIdPlaceholder: "e.g. 928374928374",
-    secretLabel: "Facebook App Secret",
-    tokenLabel: "Facebook Page Access Token",
-    extraIdLabel: "Facebook Page ID",
-    extraIdPlaceholder: "e.g. 104928194827192",
-    loginUserLabel: "Facebook Login Email / Phone",
-    loginUserPlaceholder: "page-admin@business.com",
-    cookieLabel: "Facebook c_user / xs Session Cookie (optional)",
-    cookiePlaceholder: "c_user=...; xs=...",
-  },
-  tiktok: {
-    short: "TikTok",
-    title: "TikTok Business Hybrid Connector",
-    subtitle:
-      "Handle TikTok Direct Messages, video comment auto-replies, and video publishing via TikTok Developer API + Account Login Bridge.",
-    appIdLabel: "TikTok App ID / Client Key",
-    appIdPlaceholder: "aw1234567890",
-    secretLabel: "TikTok Client Secret",
-    tokenLabel: "TikTok OAuth Access Token (optional)",
-    extraIdLabel: "TikTok Business Account ID",
-    extraIdPlaceholder: "e.g. 719283749283",
-    loginUserLabel: "TikTok Handle / Email / Phone",
-    loginUserPlaceholder: "@yourbrand.tiktok",
-    cookieLabel: "TikTok sessionid Cookie (optional)",
-    cookiePlaceholder: "sessionid=...",
-  },
-  linkedin: {
-    short: "LinkedIn",
-    title: "LinkedIn Company Page & Profile Hybrid Connector",
-    subtitle:
-      "Automate LinkedIn Company Page comment replies, InMail/DM lead capture, and B2B post publishing with API + Account Login.",
-    appIdLabel: "LinkedIn OAuth Client ID",
-    appIdPlaceholder: "86abcdef123456",
-    secretLabel: "LinkedIn OAuth Client Secret",
-    tokenLabel: "LinkedIn Access Token (optional)",
-    extraIdLabel: "Company / Organization Page ID",
-    extraIdPlaceholder: "e.g. 98421045",
-    loginUserLabel: "LinkedIn Account Email",
-    loginUserPlaceholder: "founder@company.com",
-    cookieLabel: "LinkedIn li_at Session Cookie (optional)",
-    cookiePlaceholder: "AQEDAR...",
-  },
-  whatsapp: {
-    short: "WhatsApp",
-    title: "WhatsApp Business Hybrid Connector (Cloud API + QR/Phone Login)",
-    subtitle:
-      "Run Official Meta WhatsApp Cloud API (WABA) alongside the Managed Phone/QR Session Bridge with automatic failover.",
-    appIdLabel: "Phone Number ID (Cloud API)",
-    appIdPlaceholder: "e.g. 109283746512",
-    secretLabel: "Meta App Secret",
-    tokenLabel: "WhatsApp Cloud API Permanent Token",
-    extraIdLabel: "WhatsApp Business Account (WABA) ID",
-    extraIdPlaceholder: "e.g. 203948576123",
-    loginUserLabel: "WhatsApp Business Phone Number",
-    loginUserPlaceholder: "+923001234567",
-    cookieLabel: "Pairing Session Key / Multi-Device Token (optional)",
-    cookiePlaceholder: "wa_md_session_...",
-  },
-  x: {
-    short: "X (Twitter)",
-    title: "X (Twitter) Hybrid Connector (API v2 + Account Login)",
-    subtitle:
-      "Respond to X Direct Messages, Mentions, and publish posts using Official X API keys or Account Login Session.",
-    appIdLabel: "X Client ID / Consumer API Key",
-    appIdPlaceholder: "e.g. Rk9s8d7f6g5h...",
-    secretLabel: "X API Key Secret / Consumer Secret",
-    tokenLabel: "X Bearer Token / Access Token",
-    extraIdLabel: "X Account User ID (optional)",
-    extraIdPlaceholder: "e.g. 1429384756",
-    loginUserLabel: "X Username / Email",
-    loginUserPlaceholder: "@yourbrand_x",
-    cookieLabel: "X auth_token & ct0 Cookie (optional)",
-    cookiePlaceholder: "auth_token=...; ct0=...",
-  },
-  youtube: {
-    short: "YouTube",
-    title: "YouTube Channel & Shorts Hybrid Connector",
-    subtitle:
-      "Auto-reply to YouTube video & Shorts comments and manage community posts via Google YouTube Data API v3 + Studio Login.",
-    appIdLabel: "Google OAuth Client ID",
-    appIdPlaceholder: "123456-abcdef.apps.googleusercontent.com",
-    secretLabel: "Google OAuth Client Secret",
-    tokenLabel: "YouTube OAuth Access / Refresh Token",
-    extraIdLabel: "YouTube Channel ID",
-    extraIdPlaceholder: "UC...",
-    loginUserLabel: "YouTube / Google Studio Email",
-    loginUserPlaceholder: "channel@gmail.com",
-    cookieLabel: "YouTube Studio SAPISID / Session Cookie (optional)",
-    cookiePlaceholder: "SAPISID=...",
-  },
-  telegram_user: {
-    short: "Telegram",
-    title: "Telegram Hybrid Connector (Bot API + Personal MTProto Login)",
-    subtitle:
-      "Connect both a @BotFather Telegram Bot and a personal Telegram phone account (MTProto) for DMs, groups, and channels.",
-    appIdLabel: "Telegram MTProto api_id (or Bot ID)",
-    appIdPlaceholder: "e.g. 24567891",
-    secretLabel: "Telegram MTProto api_hash",
-    tokenLabel: "Telegram Bot Token (@BotFather)",
-    extraIdLabel: "Telegram Channel / Group ID (optional)",
-    extraIdPlaceholder: "@yourchannel or -100...",
-    loginUserLabel: "Telegram Account Phone Number",
-    loginUserPlaceholder: "+923001234567",
-    cookieLabel: "Telegram StringSession / 2FA Password (optional)",
-    cookiePlaceholder: "1BVtsOHwBu...",
-  },
-};
-
-const INPUT_CLASS =
-  "mt-1 w-full rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-brand/40";
-const BTN_PRIMARY =
-  "rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50";
-const BTN_SECONDARY =
-  "rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-medium text-ink-2 shadow-card transition-colors hover:border-brand/40 hover:text-ink disabled:opacity-50";
-
-export default function SocialConnectorsHub({
-  adminClientId,
-  workspaceLabel,
-}: {
+export interface SocialConnectorsHubProps {
+  apiEndpoint?: string;
   adminClientId?: number;
   workspaceLabel?: string;
-}) {
-  const endpoint = adminClientId
-    ? `/api/omniflow/admin/clients/${adminClientId}/connectors`
-    : "/api/omniflow/portal/connectors";
+  initialPlatform?: ConnectorPlatform;
+  title?: string;
+  subtitle?: string;
+}
 
-  const [data, setData] = useState<ConnectorsPayload | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>("instagram");
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+type PortalTab = "whatsapp" | "meta" | "social" | "email_sms";
+type WaConnectMethod = "qr" | "pairing" | "api";
 
-  // Active channel draft state
-  const [mode, setMode] = useState<HybridMode>("hybrid");
-  const [autoFailover, setAutoFailover] = useState(true);
-  const [accountName, setAccountName] = useState("");
-  const [appId, setAppId] = useState("");
-  const [appSecret, setAppSecret] = useState("");
-  const [accessToken, setAccessToken] = useState("");
-  const [extraId, setExtraId] = useState("");
-  const [verifyToken, setVerifyToken] = useState("");
-  const [loginUsername, setLoginUsername] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [sessionCookie, setSessionCookie] = useState("");
-  const [twoFactorCode, setTwoFactorCode] = useState("");
-  const [flags, setFlags] = useState<HybridConnectorFlags>({
-    dm: true,
-    comments: true,
-    publish: true,
-    comment_auto_reply: true,
-    story_replies: true,
+interface WhatsAppApiConfigState {
+  provider: "meta_cloud" | "wati" | "custom_api";
+  phone: string;
+  accountName: string;
+  phoneNumberId: string;
+  wabaId: string;
+  baseUrl: string;
+  hasAccessToken: boolean;
+  maskedToken: string | null;
+  verifyToken: string;
+  enabled: boolean;
+  connectedAt: string | null;
+}
+
+interface WhatsAppLiveStatus {
+  configured?: boolean;
+  state: "connected" | "connecting" | "disconnected";
+  connectionMode:
+    | "qr"
+    | "pairing_code"
+    | "meta_cloud"
+    | "wati"
+    | "custom_api"
+    | "none";
+  accountName: string | null;
+  phone: string | null;
+  lastSeenAt: string | null;
+  pairingCode: string | null;
+  qrPayload: string | null;
+  apiConfig?: WhatsAppApiConfigState;
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return "No recent activity";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
+function formatConnectionModeLabel(
+  mode: WhatsAppLiveStatus["connectionMode"],
+  state: WhatsAppLiveStatus["state"]
+): string {
+  if (state === "disconnected") return "Not Connected";
+  switch (mode) {
+    case "meta_cloud":
+      return "Meta WhatsApp Cloud API";
+    case "wati":
+      return "WATI Business API";
+    case "custom_api":
+      return "Custom WhatsApp API";
+    case "pairing_code":
+      return "8-Digit Phone Pairing Code";
+    case "qr":
+      return "WhatsApp Web QR Device Link";
+    default:
+      return state === "connected" ? "WhatsApp Bridge" : "Awaiting Connection";
+  }
+}
+
+function DeterministicQrSvg({ seed }: { seed: string }) {
+  const cells = useMemo(() => {
+    const size = 21;
+    const grid: boolean[][] = Array.from({ length: size }, () =>
+      Array.from({ length: size }, () => false)
+    );
+
+    const drawFinder = (r0: number, c0: number) => {
+      for (let r = 0; r < 7; r++) {
+        for (let c = 0; c < 7; c++) {
+          const border = r === 0 || r === 6 || c === 0 || c === 6;
+          const inner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+          grid[r0 + r][c0 + c] = border || inner;
+        }
+      }
+    };
+
+    drawFinder(0, 0);
+    drawFinder(0, size - 7);
+    drawFinder(size - 7, 0);
+
+    let hash = 2166136261;
+    for (let i = 0; i < seed.length; i++) {
+      hash ^= seed.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const inFinder =
+          (r < 8 && c < 8) ||
+          (r < 8 && c >= size - 8) ||
+          (r >= size - 8 && c < 8);
+        if (inFinder) continue;
+        hash ^= (r * 31 + c * 17) & 0xff;
+        hash = Math.imul(hash, 16777619);
+        grid[r][c] = (Math.abs(hash) % 10) < 5;
+      }
+    }
+    return grid;
+  }, [seed]);
+
+  return (
+    <svg
+      viewBox="0 0 25 25"
+      className="h-44 w-44 rounded-xl border border-line bg-white p-2 shadow-sm"
+      role="img"
+      aria-label="WhatsApp Link Device QR Code"
+    >
+      <rect width="25" height="25" fill="#ffffff" />
+      {cells.map((row, rIdx) =>
+        row.map((filled, cIdx) =>
+          filled ? (
+            <rect
+              key={`${rIdx}-${cIdx}`}
+              x={cIdx + 2}
+              y={rIdx + 2}
+              width={1}
+              height={1}
+              fill="#111827"
+            />
+          ) : null
+        )
+      )}
+    </svg>
+  );
+}
+
+export default function SocialConnectorsHub({
+  apiEndpoint,
+  adminClientId,
+  workspaceLabel,
+  initialPlatform = "whatsapp",
+  title,
+  subtitle,
+}: SocialConnectorsHubProps) {
+  const initialTab: PortalTab =
+    initialPlatform === "instagram" || initialPlatform === "facebook"
+      ? "meta"
+      : initialPlatform === "whatsapp"
+        ? "whatsapp"
+        : "social";
+
+  const [tab, setTab] = useState<PortalTab>(initialTab);
+  const [waMethod, setWaMethod] = useState<WaConnectMethod>("qr");
+
+  const [waStatus, setWaStatus] = useState<WhatsAppLiveStatus>({
+    state: "disconnected",
+    connectionMode: "none",
+    accountName: null,
+    phone: null,
+    lastSeenAt: null,
+    pairingCode: null,
+    qrPayload: null,
   });
+  const [waLoading, setWaLoading] = useState(true);
+  const [waBusy, setWaBusy] = useState(false);
+  const [waNote, setWaNote] = useState("");
+  const [waError, setWaError] = useState("");
 
-  // Post composer
-  const [postChannel, setPostChannel] = useState<string>("tiktok");
-  const [postText, setPostText] = useState("");
-  const [postMedia, setPostMedia] = useState("");
+  // QR / Phone Pairing form state
+  const [linkPhone, setLinkPhone] = useState("");
+  const [linkAccountName, setLinkAccountName] = useState("");
 
-  const populateDraft = useCallback(
-    (payload: ConnectorsPayload, tab: TabKey) => {
-      if (tab === "publish") return;
-      const ch = payload.hybrid?.[tab];
-      if (!ch) return;
-      setMode(ch.mode || "hybrid");
-      setAutoFailover(ch.autoFailover ?? true);
-      setAccountName(ch.accountName || "");
-      setAppId(ch.appId || "");
-      setAppSecret("");
-      setAccessToken("");
-      setExtraId(ch.pageId || ch.organizationId || "");
-      setVerifyToken("");
-      setLoginUsername(ch.loginUsername || "");
-      setLoginPassword("");
-      setSessionCookie("");
-      setTwoFactorCode(ch.twoFactorCode || "");
-      setFlags({
-        dm: ch.flags?.dm ?? true,
-        comments: ch.flags?.comments ?? true,
-        publish: ch.flags?.publish ?? true,
-        comment_auto_reply: ch.flags?.comment_auto_reply ?? true,
-        story_replies: ch.flags?.story_replies ?? true,
+  // WhatsApp API Connection form state
+  const [apiProvider, setApiProvider] = useState<
+    "meta_cloud" | "wati" | "custom_api"
+  >("meta_cloud");
+  const [apiPhone, setApiPhone] = useState("");
+  const [apiAccountName, setApiAccountName] = useState("");
+  const [apiPhoneNumberId, setApiPhoneNumberId] = useState("");
+  const [apiWabaId, setApiWabaId] = useState("");
+  const [apiBaseUrl, setApiBaseUrl] = useState(
+    "https://graph.facebook.com/v21.0"
+  );
+  const [apiAccessToken, setApiAccessToken] = useState("");
+  const [apiVerifyToken, setApiVerifyToken] = useState("omniflow_wa_verify_1");
+  const [showApiToken, setShowApiToken] = useState(false);
+  const [apiConfigInitDone, setApiConfigInitDone] = useState(false);
+
+  // Admin connector view state (when adminClientId is provided)
+  const [adminConnectors, setAdminConnectors] = useState<
+    Record<string, HybridChannelConfig>
+  >({});
+  const [adminLoading, setAdminLoading] = useState(Boolean(adminClientId));
+  const [adminNote, setAdminNote] = useState("");
+
+  const applyPayloadToStatus = useCallback(
+    (payload: Record<string, unknown>) => {
+      const apiCfg = payload.apiConfig as WhatsAppApiConfigState | undefined;
+      const nextState: WhatsAppLiveStatus["state"] =
+        payload.state === "connected" || payload.state === "connecting"
+          ? payload.state
+          : "disconnected";
+      const nextMode: WhatsAppLiveStatus["connectionMode"] =
+        payload.connectionMode === "qr" ||
+        payload.connectionMode === "pairing_code" ||
+        payload.connectionMode === "meta_cloud" ||
+        payload.connectionMode === "wati" ||
+        payload.connectionMode === "custom_api"
+          ? payload.connectionMode
+          : "none";
+
+      setWaStatus({
+        configured: Boolean(payload.configured),
+        state: nextState,
+        connectionMode: nextMode,
+        accountName:
+          (payload.accountName as string | null) ??
+          (payload.account_name as string | null) ??
+          null,
+        phone: (payload.phone as string | null) ?? null,
+        lastSeenAt:
+          (payload.lastSeenAt as string | null) ??
+          (payload.last_seen_at as string | null) ??
+          null,
+        pairingCode: (payload.pairingCode as string | null) ?? null,
+        qrPayload: (payload.qrPayload as string | null) ?? null,
+        apiConfig: apiCfg,
       });
+
+      if (!apiConfigInitDone && apiCfg) {
+        setApiProvider(apiCfg.provider || "meta_cloud");
+        if (apiCfg.phone) setApiPhone(apiCfg.phone);
+        if (apiCfg.accountName) setApiAccountName(apiCfg.accountName);
+        if (apiCfg.phoneNumberId) setApiPhoneNumberId(apiCfg.phoneNumberId);
+        if (apiCfg.wabaId) setApiWabaId(apiCfg.wabaId);
+        if (apiCfg.baseUrl) setApiBaseUrl(apiCfg.baseUrl);
+        if (apiCfg.verifyToken) setApiVerifyToken(apiCfg.verifyToken);
+        if (apiCfg.enabled) {
+          setWaMethod("api");
+        }
+        setApiConfigInitDone(true);
+      }
     },
-    []
+    [apiConfigInitDone]
   );
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const loadWhatsApp = useCallback(
+    async (silent = false) => {
+      if (!silent) setWaLoading(true);
+      try {
+        const response = await fetch("/api/omniflow/portal/channels/whatsapp", {
+          cache: "no-store",
+        });
+        const payload = (await response.json().catch(() => null)) as Record<
+          string,
+          unknown
+        > | null;
+        if (response.ok && payload) {
+          applyPayloadToStatus(payload);
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!silent) setWaLoading(false);
+      }
+    },
+    [applyPayloadToStatus]
+  );
+
+  const loadAdminConnectors = useCallback(async () => {
+    if (!adminClientId) return;
+    setAdminLoading(true);
     try {
-      const res = await fetch(endpoint, { credentials: "same-origin", cache: "no-store" });
-      const payload = (await res.json().catch(() => null)) as ConnectorsPayload | null;
-      if (res.ok && payload && payload.hybrid) {
-        setData(payload);
-        populateDraft(payload, activeTab);
+      const url =
+        apiEndpoint || `/api/omniflow/admin/clients/${adminClientId}/connectors`;
+      const response = await fetch(url, { cache: "no-store" });
+      const payload = await response.json().catch(() => null);
+      if (response.ok && payload && payload.connectors) {
+        setAdminConnectors(
+          payload.connectors as Record<string, HybridChannelConfig>
+        );
       }
     } catch {
-      setNotice({ ok: false, text: "Could not load connector settings." });
+      // ignore
     } finally {
-      setLoading(false);
+      setAdminLoading(false);
     }
-  }, [endpoint, activeTab, populateDraft]);
+  }, [adminClientId, apiEndpoint]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  function selectTab(next: TabKey) {
-    setActiveTab(next);
-    setNotice(null);
-    if (data && next !== "publish") {
-      populateDraft(data, next);
+    if (adminClientId) {
+      void loadAdminConnectors();
+      return;
     }
-  }
+    void loadWhatsApp(false);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadWhatsApp(true);
+      }
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [adminClientId, loadAdminConnectors, loadWhatsApp]);
 
-  async function saveCurrentChannel() {
-    if (activeTab === "publish") return;
-    setBusy(true);
-    setNotice(null);
+  async function runWhatsAppCommand(
+    action: string,
+    extra: Record<string, unknown> = {}
+  ) {
+    if (waBusy) return;
+    setWaBusy(true);
+    setWaNote("");
+    setWaError("");
     try {
-      const res = await fetch(endpoint, {
-        method: "PUT",
-        credentials: "same-origin",
+      const response = await fetch("/api/omniflow/portal/channels/whatsapp", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: activeTab,
-          mode,
-          enabled: true,
-          auto_failover: autoFailover,
-          account_name: accountName,
-          app_id: appId,
-          app_secret: appSecret,
-          access_token: accessToken,
-          page_id: extraId,
-          organization_id: extraId,
-          verify_token: verifyToken,
-          bearer_token: accessToken,
-          consumer_secret: appSecret,
-          login_username: loginUsername,
-          login_password: loginPassword,
-          session_cookie: sessionCookie,
-          two_factor_code: twoFactorCode,
-          flags,
-        }),
+        body: JSON.stringify({ action, ...extra }),
       });
-      const payload = (await res.json().catch(() => null)) as ConnectorsPayload & {
-        error?: { message?: string };
-      } | null;
-      if (!res.ok || !payload || !payload.hybrid) {
-        setNotice({ ok: false, text: payload?.error?.message || "Could not save connector." });
+      const payload = (await response.json().catch(() => null)) as Record<
+        string,
+        unknown
+      > | null;
+      if (!response.ok || (payload && payload.error)) {
+        const errObj = payload?.error as { message?: string } | undefined;
+        setWaError(
+          errObj?.message ||
+            "Could not process the WhatsApp connection action right now."
+        );
         return;
       }
-      setData(payload);
-      populateDraft(payload, activeTab);
-      const label = PLATFORM_META[activeTab].short;
-      setNotice({
-        ok: true,
-        text: `${label} ${mode.toUpperCase()} connector saved and activated.`,
-      });
-    } catch {
-      setNotice({ ok: false, text: "Network error — could not save connector." });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function runAction(
-    action: "connect" | "connect_api" | "connect_login" | "test" | "webhook" | "sync" | "disconnect",
-    customMsg?: string
-  ) {
-    if (activeTab === "publish") return;
-    setBusy(true);
-    setNotice(null);
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "action",
-          channel: activeTab,
-          action,
-        }),
-      });
-      const payload = (await res.json().catch(() => null)) as ConnectorsPayload | null;
-      if (res.ok && payload && payload.hybrid) {
-        setData(payload);
-        populateDraft(payload, activeTab);
-        setNotice({
-          ok: true,
-          text:
-            customMsg ||
-            `${PLATFORM_META[activeTab].short} (${action.replace("_", " ").toUpperCase()}) completed.`,
-        });
+      if (payload?.status && typeof payload.status === "object") {
+        applyPayloadToStatus(payload.status as Record<string, unknown>);
       } else {
-        setNotice({ ok: false, text: "Action could not be completed." });
+        await loadWhatsApp(true);
       }
+      setWaNote(
+        (payload?.message as string) ||
+          (action === "disconnect"
+            ? "WhatsApp disconnected."
+            : "WhatsApp status updated.")
+      );
     } catch {
-      setNotice({ ok: false, text: "Network error while running connector action." });
+      setWaError("Could not reach the WhatsApp connector API right now.");
     } finally {
-      setBusy(false);
+      setWaBusy(false);
     }
   }
 
-  async function publishPost() {
-    if (!postText.trim()) return;
-    setBusy(true);
-    setNotice(null);
+  async function triggerAdminAction(
+    platform: string,
+    action: "connect" | "disconnect"
+  ) {
+    if (!adminClientId) return;
+    setAdminNote("");
     try {
-      const res = await fetch(endpoint, {
+      const url =
+        apiEndpoint || `/api/omniflow/admin/clients/${adminClientId}/connectors`;
+      const response = await fetch(url, {
         method: "POST",
-        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "publish_post",
-          channel: postChannel,
-          text: postText,
-          media_url: postMedia,
-        }),
+        body: JSON.stringify({ platform, action }),
       });
-      const payload = (await res.json().catch(() => null)) as ConnectorsPayload | null;
-      if (res.ok && payload && payload.hybrid) {
-        setData(payload);
-        setPostText("");
-        setPostMedia("");
-        setNotice({ ok: true, text: `Post published to ${postChannel.toUpperCase()}.` });
+      const payload = await response.json().catch(() => null);
+      if (response.ok) {
+        setAdminNote(
+          `Queued '${action}' command for ${platform} on Workspace #${adminClientId}.`
+        );
+        if (payload?.connectors) {
+          setAdminConnectors(
+            payload.connectors as Record<string, HybridChannelConfig>
+          );
+        } else {
+          await loadAdminConnectors();
+        }
       }
     } catch {
-      setNotice({ ok: false, text: "Could not publish post." });
-    } finally {
-      setBusy(false);
+      setAdminNote("Could not send connector command.");
     }
   }
 
-  if (loading && !data) {
+  if (adminClientId) {
+    const entries = Object.values(adminConnectors);
     return (
-      <div className="rounded-2xl border border-line bg-white p-6 text-xs text-ink-3 shadow-card">
-        Loading Hybrid Omnichannel Connectors (Instagram, Facebook, TikTok, LinkedIn, WhatsApp, X, YouTube, Telegram)…
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-white p-4 shadow-card">
+          <div>
+            <h3 className="text-sm font-semibold text-ink">
+              {workspaceLabel || `Workspace #${adminClientId}`} — Live Channel Status
+            </h3>
+            <p className="mt-0.5 text-xs text-ink-3">
+              Read directly from Control Plane & Neon Postgres channel tables.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadAdminConnectors()}
+            className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-soft"
+          >
+            {adminLoading ? "Refreshing..." : "Refresh status"}
+          </button>
+        </div>
+
+        {adminNote ? (
+          <p className="rounded-xl border border-brand/20 bg-brand-soft px-3.5 py-2 text-xs text-ink">
+            {adminNote}
+          </p>
+        ) : null}
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {entries.map((ch) => (
+            <div
+              key={ch.platform}
+              className="rounded-2xl border border-line bg-white p-4 shadow-card"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink">
+                  {ch.platform.replace("_", " ")}
+                </span>
+                <span
+                  className={
+                    "rounded-full px-2 py-0.5 text-[10px] font-medium " +
+                    (ch.connected
+                      ? "bg-ok/15 text-ok"
+                      : ch.state === "connecting"
+                        ? "bg-amber-500/15 text-amber-700"
+                        : "bg-soft text-ink-3")
+                  }
+                >
+                  {ch.connected ? "Connected" : ch.state}
+                </span>
+              </div>
+              <p className="mt-2 truncate text-xs text-ink-2">
+                {ch.accountHandle || ch.accountName || ch.accountId || "No account linked"}
+              </p>
+              <p className="mt-1 text-[11px] text-ink-3">
+                Mode: {ch.mode.toUpperCase()} · Last seen:{" "}
+                {fmtDate(ch.lastBridgeAt || ch.lastWebhookAt || ch.lastSyncAt)}
+              </p>
+              <div className="mt-3 flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => void triggerAdminAction(ch.platform, "connect")}
+                  className="rounded-lg bg-brand px-2.5 py-1 text-[11px] font-medium text-white hover:bg-brand-2"
+                >
+                  Queue Connect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void triggerAdminAction(ch.platform, "disconnect")}
+                  className="rounded-lg border border-line bg-white px-2.5 py-1 text-[11px] font-medium text-ink-2 hover:bg-soft"
+                >
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
-  const platforms: ConnectorPlatform[] = [
-    "instagram",
-    "facebook",
-    "tiktok",
-    "linkedin",
-    "whatsapp",
-    "x",
-    "youtube",
-    "telegram_user",
+  const { hasFeature, hasConnector } = usePortalEntitlements();
+  const canUseWati =
+    hasFeature("workspace.multi_whatsapp") ||
+    hasFeature("marketing.broadcasts") ||
+    hasConnector("whatsapp_multi");
+  const canUseMeta =
+    hasConnector("instagram") ||
+    hasConnector("facebook") ||
+    hasConnector("messenger") ||
+    hasFeature("workspace.instagram_connector") ||
+    hasFeature("workspace.facebook_connector") ||
+    hasFeature("workspace.messenger_connector");
+  const canUseSocial =
+    hasConnector("tiktok") ||
+    hasConnector("x") ||
+    hasConnector("linkedin") ||
+    hasConnector("youtube") ||
+    hasConnector("telegram_user");
+  const canUseEmailSms =
+    hasConnector("external_api") && hasFeature("workspace.external_api");
+
+  const allowedTabs: { id: PortalTab; label: string }[] = [
+    {
+      id: "whatsapp",
+      label: canUseWati ? "WhatsApp & WATI" : "WhatsApp Setup",
+    },
+    ...(canUseMeta
+      ? [{ id: "meta" as PortalTab, label: "Instagram & Messenger" }]
+      : []),
+    ...(canUseSocial
+      ? [
+          {
+            id: "social" as PortalTab,
+            label: "TikTok, X, LinkedIn, YouTube & Telegram",
+          },
+        ]
+      : []),
+    ...(canUseEmailSms
+      ? [{ id: "email_sms" as PortalTab, label: "Email & SMS" }]
+      : []),
   ];
 
-  const currentConfig =
-    activeTab !== "publish" ? data?.hybrid?.[activeTab] ?? null : null;
-  const currentMeta =
-    activeTab !== "publish" ? PLATFORM_META[activeTab] : null;
+  const activeTab: PortalTab = allowedTabs.some((t) => t.id === tab)
+    ? tab
+    : allowedTabs[0]?.id || "whatsapp";
+
+  const webhookCallbackUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/omniflow/portal/webhooks/whatsapp`
+      : "https://omniflow-bice.vercel.app/api/omniflow/portal/webhooks/whatsapp";
 
   return (
-    <div className="rounded-2xl border border-line bg-white p-5 sm:p-6 shadow-card">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
-            Hybrid Omnichannel Connectors (API + Login Session){" "}
-            {workspaceLabel
-              ? `· ${workspaceLabel}`
-              : data
-                ? `· Workspace #${data.client_id}`
-                : ""}
-          </p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink">
-            Instagram, Facebook, TikTok, LinkedIn, WhatsApp, X, YouTube & Telegram
-          </h2>
-          <p className="mt-1 text-xs text-ink-3">
-            Every channel works via Official Developer API, Direct Account Login/Session Bridge, or Hybrid Auto-Failover (both together).
-          </p>
+    <div className="space-y-6">
+      {(title || subtitle) && (
+        <div className="rounded-2xl border border-line bg-white p-5 shadow-card">
+          {title ? (
+            <h2 className="text-base font-semibold text-ink">{title}</h2>
+          ) : null}
+          {subtitle ? (
+            <p className="mt-1 text-xs text-ink-2">{subtitle}</p>
+          ) : null}
         </div>
+      )}
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {platforms.map((p) => {
-            const ch = data?.hybrid?.[p];
-            const active = Boolean(ch?.connected);
-            return (
-              <span
-                key={p}
-                className={
-                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-medium " +
-                  (active
-                    ? "border-emerald-400/30 bg-emerald-400/10 text-ok"
-                    : "border-line bg-soft text-ink-3")
-                }
-              >
+      {allowedTabs.length > 1 && (
+        <div
+          role="tablist"
+          aria-label="Workspace channels"
+          className="flex flex-wrap gap-2 rounded-2xl border border-line bg-white p-2 shadow-card"
+        >
+          {allowedTabs.map((item) => (
+            <button
+              key={item.id}
+              role="tab"
+              type="button"
+              aria-selected={activeTab === item.id}
+              onClick={() => setTab(item.id)}
+              className={
+                "rounded-xl px-3.5 py-2 text-xs font-medium transition-colors " +
+                (activeTab === item.id
+                  ? "bg-brand text-white"
+                  : "bg-soft text-ink-2 hover:bg-line/50 hover:text-ink")
+              }
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "whatsapp" && (
+        <div className="space-y-6">
+          {/* 1. LIVE WHATSAPP CONNECTION STATUS & DISCONNECT BAR */}
+          <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-semibold text-ink">
+                    Live WhatsApp Connection Status
+                  </h2>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-line bg-soft px-2 py-0.5 text-[10px] font-medium text-ink-3">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
+                    Auto-syncs every 5s
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-ink-3">
+                  Real-time connection status for your workspace. Connect via WhatsApp Web QR Code, 8-Digit Phone Pairing Code, or Official WhatsApp Business API.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={
-                    "h-1.5 w-1.5 rounded-full " +
-                    (active ? "bg-emerald-500" : "bg-slate-400")
-                  }
-                />
-                {PLATFORM_META[p].short}
-                {active && ch?.mode ? (
-                  <span className="text-[9px] uppercase opacity-80">({ch.mode})</span>
-                ) : null}
-              </span>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Channel Tabs */}
-      <div className="mt-4 flex flex-wrap gap-2" role="tablist">
-        {platforms.map((p) => {
-          const ch = data?.hybrid?.[p];
-          const isSelected = activeTab === p;
-          return (
-            <button
-              key={p}
-              type="button"
-              role="tab"
-              aria-selected={isSelected}
-              onClick={() => selectTab(p)}
-              className={
-                "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-colors " +
-                (isSelected
-                  ? "border-brand/40 bg-brand/[0.09] text-brand"
-                  : "border-line bg-soft text-ink-2 hover:text-ink")
-              }
-            >
-              <span>{PLATFORM_META[p].short}</span>
-              <span className="rounded bg-white/80 px-1.5 py-0.5 text-[10px] uppercase text-ink-3">
-                {ch?.mode || "hybrid"}
-              </span>
-              {ch?.connected && (
-                <span className="h-2 w-2 rounded-full bg-emerald-500" title="Connected" />
-              )}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "publish"}
-          onClick={() => selectTab("publish")}
-          className={
-            "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-colors " +
-            (activeTab === "publish"
-              ? "border-brand/40 bg-brand/[0.09] text-brand"
-              : "border-line bg-soft text-ink-2 hover:text-ink")
-          }
-        >
-          <span>Publish Post</span>
-          <span className="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-ink-3">
-            All Channels
-          </span>
-        </button>
-      </div>
-
-      {notice && (
-        <div
-          role="status"
-          className={
-            "mt-4 rounded-xl border px-3.5 py-2.5 text-xs font-medium " +
-            (notice.ok
-              ? "border-emerald-400/30 bg-emerald-400/[0.08] text-ok"
-              : "border-red-400/30 bg-red-400/[0.08] text-danger")
-          }
-        >
-          {notice.text}
-        </div>
-      )}
-
-      {/* Channel Configuration View */}
-      {activeTab !== "publish" && currentConfig && currentMeta && (
-        <div className="mt-5 space-y-5">
-          {/* Status Banner + Hybrid Mode Switcher */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-soft/60 px-4 py-3.5">
-            <div>
-              <h3 className="text-sm font-semibold text-ink">{currentMeta.title}</h3>
-              <p className="mt-0.5 text-[11px] text-ink-3">{currentMeta.subtitle}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={
-                  "rounded-lg border px-2.5 py-1 text-[11px] font-medium " +
-                  (currentConfig.apiConnected
-                    ? "border-emerald-400/30 bg-emerald-400/10 text-ok"
-                    : "border-line bg-white text-ink-3")
-                }
-              >
-                API: {currentConfig.apiConnected ? "Connected" : "Standby"}
-              </span>
-              <span
-                className={
-                  "rounded-lg border px-2.5 py-1 text-[11px] font-medium " +
-                  (currentConfig.loginConnected
-                    ? "border-emerald-400/30 bg-emerald-400/10 text-ok"
-                    : "border-line bg-white text-ink-3")
-                }
-              >
-                Login Session: {currentConfig.loginConnected ? "Online" : "Standby"}
-              </span>
-            </div>
-          </div>
-
-          {/* 3-Mode Selector: Hybrid / Official API / Account Login */}
-          <div className="grid gap-3 sm:grid-cols-3">
-            {(
-              [
-                {
-                  id: "hybrid",
-                  title: "⚡ Hybrid Mode (API + Login)",
-                  desc: "Uses Official API primary + Account Login Session auto-failover.",
-                },
-                {
-                  id: "api",
-                  title: "🔌 Official API Mode",
-                  desc: "Connects using Developer App ID, Secret, Access Token & Webhooks.",
-                },
-                {
-                  id: "login",
-                  title: "🔑 Account Login Mode",
-                  desc: "Signs in directly with Username/Email + Password or Session Cookie.",
-                },
-              ] as const
-            ).map((opt) => {
-              const selected = mode === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setMode(opt.id)}
-                  className={
-                    "rounded-xl border p-3.5 text-left transition-all " +
-                    (selected
-                      ? "border-brand bg-brand/[0.06] shadow-sm"
-                      : "border-line bg-soft/40 hover:border-brand/30")
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold " +
+                    (waStatus.state === "connected"
+                      ? "bg-ok/15 text-ok"
+                      : waStatus.state === "connecting"
+                        ? "bg-amber-500/15 text-amber-700"
+                        : "bg-soft text-ink-3")
                   }
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-ink">{opt.title}</span>
-                    {selected && (
-                      <span className="rounded bg-brand px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
-                        Active
-                      </span>
+                  <span
+                    className={
+                      "h-2 w-2 rounded-full " +
+                      (waStatus.state === "connected"
+                        ? "bg-ok"
+                        : waStatus.state === "connecting"
+                          ? "animate-ping bg-amber-500"
+                          : "bg-ink-3")
+                    }
+                  />
+                  {waLoading
+                    ? "Checking Live Status..."
+                    : waStatus.state === "connected"
+                      ? "Connected"
+                      : waStatus.state === "connecting"
+                        ? "Connecting / Waiting for Link"
+                        : "Not Connected"}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => void loadWhatsApp(false)}
+                  disabled={waLoading || waBusy}
+                  className="inline-flex min-h-8 items-center rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-soft disabled:opacity-50"
+                >
+                  {waLoading ? "Refreshing…" : "Refresh Status"}
+                </button>
+
+                {(waStatus.state === "connected" ||
+                  waStatus.state === "connecting") && (
+                  <button
+                    type="button"
+                    onClick={() => void runWhatsAppCommand("disconnect")}
+                    disabled={waBusy}
+                    className="inline-flex min-h-8 items-center rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-1.5 text-xs font-semibold text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-50"
+                  >
+                    {waBusy ? "Disconnecting…" : "Disconnect WhatsApp"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-line bg-soft p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                  Connection State
+                </p>
+                <p className="mt-1 text-xs font-semibold text-ink">
+                  {waStatus.state === "connected"
+                    ? "Active & Online"
+                    : waStatus.state === "connecting"
+                      ? "Pending Verification"
+                      : "Disconnected (Offline)"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-soft p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                  Linked WhatsApp Number
+                </p>
+                <p className="mt-1 text-xs font-semibold text-ink">
+                  {waStatus.state === "connected" && waStatus.phone
+                    ? waStatus.phone
+                    : waStatus.state === "connecting" && waStatus.phone
+                      ? `${waStatus.phone} (Pending)`
+                      : "No number connected"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-soft p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                  Connection Method
+                </p>
+                <p className="mt-1 text-xs font-semibold text-ink">
+                  {formatConnectionModeLabel(
+                    waStatus.connectionMode,
+                    waStatus.state
+                  )}
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-soft p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                  Last Live Heartbeat
+                </p>
+                <p className="mt-1 text-xs font-semibold text-ink">
+                  {waStatus.state === "connected"
+                    ? fmtDate(waStatus.lastSeenAt)
+                    : "Not connected"}
+                </p>
+              </div>
+            </div>
+
+            {waNote ? (
+              <div className="mt-4 rounded-xl border border-ok/25 bg-ok/10 px-4 py-2.5 text-xs font-medium text-ok">
+                {waNote}
+              </div>
+            ) : null}
+            {waError ? (
+              <div className="mt-4 rounded-xl border border-danger/25 bg-danger/10 px-4 py-2.5 text-xs font-medium text-danger">
+                {waError}
+              </div>
+            ) : null}
+          </section>
+
+          {/* 2. PROFESSIONAL 3-METHOD WHATSAPP CONNECTION CENTER */}
+          <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-ink">
+                  Connect or Manage WhatsApp Account
+                </h3>
+                <p className="mt-0.5 text-xs text-ink-3">
+                  Choose how you want to connect your WhatsApp number to this workspace.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 rounded-xl bg-soft p-1">
+                <button
+                  type="button"
+                  onClick={() => setWaMethod("qr")}
+                  className={
+                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors " +
+                    (waMethod === "qr"
+                      ? "bg-brand text-white shadow-sm"
+                      : "text-ink-2 hover:text-ink")
+                  }
+                >
+                  1. Scan QR Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWaMethod("pairing")}
+                  className={
+                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors " +
+                    (waMethod === "pairing"
+                      ? "bg-brand text-white shadow-sm"
+                      : "text-ink-2 hover:text-ink")
+                  }
+                >
+                  2. 8-Digit Pairing Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWaMethod("api")}
+                  className={
+                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors " +
+                    (waMethod === "api"
+                      ? "bg-brand text-white shadow-sm"
+                      : "text-ink-2 hover:text-ink")
+                  }
+                >
+                  3. Connect via WhatsApp API
+                </button>
+              </div>
+            </div>
+
+            {/* METHOD 1: SCAN QR CODE */}
+            {waMethod === "qr" && (
+              <div className="mt-5 grid gap-6 md:grid-cols-[1fr_240px]">
+                <div className="space-y-4">
+                  <div>
+                    <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+                      WhatsApp Web Device Link
+                    </span>
+                    <h4 className="mt-2 text-sm font-semibold text-ink">
+                      Link Your WhatsApp by Scanning QR Code
+                    </h4>
+                    <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-xs text-ink-2">
+                      <li>
+                        Open <strong>WhatsApp</strong> or{" "}
+                        <strong>WhatsApp Business</strong> on your phone.
+                      </li>
+                      <li>
+                        Tap <strong>Menu (⋮)</strong> on Android or{" "}
+                        <strong>Settings</strong> on iPhone, then select{" "}
+                        <strong>Linked Devices</strong>.
+                      </li>
+                      <li>
+                        Tap <strong>Link a Device</strong> and point your phone camera at the QR code.
+                      </li>
+                      <li>
+                        Once scanned, enter your linked WhatsApp phone number below and click{" "}
+                        <strong>Confirm QR Linked</strong>.
+                      </li>
+                    </ol>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        Your WhatsApp Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={linkPhone}
+                        onChange={(e) => setLinkPhone(e.target.value)}
+                        placeholder="+92 312 1234567"
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-ink-2">
+                        Account Label (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={linkAccountName}
+                        onChange={(e) => setLinkAccountName(e.target.value)}
+                        placeholder="e.g. Main Store WhatsApp"
+                        className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void runWhatsAppCommand("start_qr", {
+                          accountName: linkAccountName,
+                        })
+                      }
+                      disabled={waBusy}
+                      className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-2 disabled:opacity-50"
+                    >
+                      {waStatus.qrPayload
+                        ? "Refresh QR Code"
+                        : "Generate Live QR Code"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void runWhatsAppCommand("confirm_qr", {
+                          phone: linkPhone || waStatus.phone || "",
+                          accountName:
+                            linkAccountName || waStatus.accountName || "",
+                        })
+                      }
+                      disabled={waBusy}
+                      className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white disabled:opacity-50"
+                    >
+                      Confirm QR Linked & Connect
+                    </button>
+
+                    {(waStatus.state === "connected" ||
+                      waStatus.state === "connecting") && (
+                      <button
+                        type="button"
+                        onClick={() => void runWhatsAppCommand("disconnect")}
+                        disabled={waBusy}
+                        className="rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-medium text-ink-2 hover:bg-soft disabled:opacity-50"
+                      >
+                        Disconnect
+                      </button>
                     )}
                   </div>
-                  <p className="mt-1 text-[11px] text-ink-3">{opt.desc}</p>
-                </button>
-              );
-            })}
-          </div>
+                </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            {/* PANEL A: OFFICIAL API CREDENTIALS (Enabled in Hybrid or API mode) */}
-            <div
-              className={
-                "rounded-xl border p-4 " +
-                (mode === "login"
-                  ? "border-line/60 bg-soft/30 opacity-60"
-                  : "border-line bg-white")
-              }
-            >
-              <div className="mb-3 flex items-center justify-between">
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-line bg-soft p-4 text-center">
+                  {waStatus.qrPayload ? (
+                    <>
+                      <DeterministicQrSvg seed={waStatus.qrPayload} />
+                      <p className="mt-2 text-[11px] font-medium text-ink">
+                        Scan with WhatsApp → Linked Devices
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-ink-3">
+                        Session active · awaiting scan
+                      </p>
+                    </>
+                  ) : waStatus.state === "connected" ? (
+                    <div className="py-8">
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-xl text-ok">
+                        ✓
+                      </div>
+                      <p className="mt-2.5 text-xs font-semibold text-ink">
+                        WhatsApp Connected
+                      </p>
+                      <p className="mt-1 text-[11px] text-ink-2">
+                        {waStatus.phone || "Active session"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="py-8">
+                      <p className="text-xs font-semibold text-ink">
+                        No Active QR Session
+                      </p>
+                      <p className="mt-1 text-[11px] text-ink-3">
+                        Click &ldquo;Generate Live QR Code&rdquo; to display a fresh QR code.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* METHOD 2: 8-DIGIT PHONE PAIRING CODE */}
+            {waMethod === "pairing" && (
+              <div className="mt-5 space-y-4">
                 <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-brand">
-                    1. Official API & Webhook Credentials
+                  <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+                    No Camera Required
+                  </span>
+                  <h4 className="mt-2 text-sm font-semibold text-ink">
+                    Link with Phone Number (8-Character Pairing Code)
                   </h4>
-                  <p className="text-[11px] text-ink-3">
-                    Developer App / Graph API / OAuth keys
+                  <p className="mt-1 text-xs text-ink-3">
+                    Enter your WhatsApp phone number below to generate an 8-character pairing code, then open{" "}
+                    <strong>
+                      WhatsApp → Linked Devices → Link a Device → Link with phone number instead
+                    </strong>{" "}
+                    and enter the code.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void runAction(
-                      "connect_api",
-                      `${currentMeta.short} Official API verified and connected.`
-                    )
-                  }
-                  className="rounded-lg border border-brand/30 bg-brand-soft px-2.5 py-1 text-[11px] font-medium text-brand hover:bg-brand/15"
-                >
-                  Verify API
-                </button>
-              </div>
 
-              <div className="space-y-3">
-                <label className="block text-xs text-ink-2">
-                  {currentMeta.appIdLabel}
-                  <input
-                    value={appId}
-                    onChange={(e) => setAppId(e.target.value)}
-                    placeholder={currentMeta.appIdPlaceholder}
-                    className={INPUT_CLASS}
-                  />
-                </label>
-
-                <label className="block text-xs text-ink-2">
-                  {currentMeta.secretLabel}{" "}
-                  {currentConfig.appSecretMasked
-                    ? `(${currentConfig.appSecretMasked})`
-                    : ""}
-                  <input
-                    type="password"
-                    value={appSecret}
-                    onChange={(e) => setAppSecret(e.target.value)}
-                    placeholder={
-                      currentConfig.appSecretMasked
-                        ? "Leave blank to keep saved secret"
-                        : "Enter App / Client Secret"
-                    }
-                    className={INPUT_CLASS}
-                  />
-                </label>
-
-                <label className="block text-xs text-ink-2">
-                  {currentMeta.tokenLabel}{" "}
-                  {currentConfig.accessTokenMasked
-                    ? `(${currentConfig.accessTokenMasked})`
-                    : ""}
-                  <input
-                    type="password"
-                    value={accessToken}
-                    onChange={(e) => setAccessToken(e.target.value)}
-                    placeholder={
-                      currentConfig.accessTokenMasked
-                        ? "Leave blank to keep saved token"
-                        : "Paste Access / Bearer Token"
-                    }
-                    className={INPUT_CLASS}
-                  />
-                </label>
-
-                {currentMeta.extraIdLabel && (
-                  <label className="block text-xs text-ink-2">
-                    {currentMeta.extraIdLabel}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      WhatsApp Phone Number (with Country Code) *
+                    </label>
                     <input
-                      value={extraId}
-                      onChange={(e) => setExtraId(e.target.value)}
-                      placeholder={currentMeta.extraIdPlaceholder}
-                      className={INPUT_CLASS}
+                      type="tel"
+                      value={linkPhone}
+                      onChange={(e) => setLinkPhone(e.target.value)}
+                      placeholder="+92 300 1234567"
+                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
                     />
-                  </label>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      Account Name / Label
+                    </label>
+                    <input
+                      type="text"
+                      value={linkAccountName}
+                      onChange={(e) => setLinkAccountName(e.target.value)}
+                      placeholder="e.g. Support Desk WhatsApp"
+                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
+
+                {waStatus.pairingCode && (
+                  <div className="rounded-2xl border border-brand/30 bg-brand-soft p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-brand">
+                          Your 8-Character WhatsApp Pairing Code
+                        </p>
+                        <p className="mt-1 font-mono text-2xl font-bold tracking-[0.2em] text-ink">
+                          {waStatus.pairingCode}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void navigator.clipboard.writeText(
+                            waStatus.pairingCode || ""
+                          )
+                        }
+                        className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-soft"
+                      >
+                        Copy Code
+                      </button>
+                    </div>
+                  </div>
                 )}
 
-                <label className="block text-xs text-ink-2">
-                  Webhook Verify Token{" "}
-                  {currentConfig.verifyTokenMasked
-                    ? `(${currentConfig.verifyTokenMasked})`
-                    : ""}
-                  <input
-                    value={verifyToken}
-                    onChange={(e) => setVerifyToken(e.target.value)}
-                    placeholder="omniflow_verify_token"
-                    className={INPUT_CLASS}
-                  />
-                </label>
-
-                <div className="rounded-lg border border-line bg-soft px-3 py-2 text-[11px] text-ink-3">
-                  Webhook Callback URL:{" "}
-                  <span className="break-all font-mono text-ink-2">
-                    {currentConfig.webhookUrl}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* PANEL B: ACCOUNT LOGIN & SESSION BRIDGE (Enabled in Hybrid or Login mode) */}
-            <div
-              className={
-                "rounded-xl border p-4 " +
-                (mode === "api"
-                  ? "border-line/60 bg-soft/30 opacity-60"
-                  : "border-line bg-white")
-              }
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-                    2. Direct Account Login / Session Bridge
-                  </h4>
-                  <p className="text-[11px] text-ink-3">
-                    Works without a Developer App — sign in with account or session cookie
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void runAction(
-                      "connect_login",
-                      `${currentMeta.short} Account Login Session paired and online.`
-                    )
-                  }
-                  className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-medium text-ok hover:bg-emerald-400/20"
-                >
-                  Connect Login
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <label className="block text-xs text-ink-2">
-                  Account Display Name / Handle
-                  <input
-                    value={accountName}
-                    onChange={(e) => setAccountName(e.target.value)}
-                    placeholder={`e.g. ${currentMeta.loginUserPlaceholder}`}
-                    className={INPUT_CLASS}
-                  />
-                </label>
-
-                <label className="block text-xs text-ink-2">
-                  {currentMeta.loginUserLabel}
-                  <input
-                    value={loginUsername}
-                    onChange={(e) => setLoginUsername(e.target.value)}
-                    placeholder={currentMeta.loginUserPlaceholder}
-                    className={INPUT_CLASS}
-                  />
-                </label>
-
-                <label className="block text-xs text-ink-2">
-                  Account Login Password{" "}
-                  {currentConfig.loginPasswordMasked
-                    ? `(${currentConfig.loginPasswordMasked})`
-                    : ""}
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder={
-                      currentConfig.loginPasswordMasked
-                        ? "Leave blank to keep saved password"
-                        : "Enter account password (encrypted at rest)"
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void runWhatsAppCommand("request_pairing_code", {
+                        phone: linkPhone,
+                        accountName: linkAccountName,
+                      })
                     }
-                    className={INPUT_CLASS}
-                  />
-                </label>
+                    disabled={waBusy}
+                    className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-2 disabled:opacity-50"
+                  >
+                    {waBusy ? "Generating…" : "Get 8-Digit Pairing Code"}
+                  </button>
 
-                <label className="block text-xs text-ink-2">
-                  {currentMeta.cookieLabel}{" "}
-                  {currentConfig.sessionCookieMasked
-                    ? `(${currentConfig.sessionCookieMasked})`
-                    : ""}
-                  <input
-                    type="password"
-                    value={sessionCookie}
-                    onChange={(e) => setSessionCookie(e.target.value)}
-                    placeholder={
-                      currentConfig.sessionCookieMasked
-                        ? "Leave blank to keep saved session token"
-                        : currentMeta.cookiePlaceholder
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void runWhatsAppCommand("confirm_pairing_code", {
+                        phone: linkPhone || waStatus.phone || "",
+                        accountName:
+                          linkAccountName || waStatus.accountName || "",
+                      })
                     }
-                    className={INPUT_CLASS}
-                  />
-                </label>
-
-                <label className="block text-xs text-ink-2">
-                  2FA / OTP Authenticator Code (if prompted)
-                  <input
-                    value={twoFactorCode}
-                    onChange={(e) => setTwoFactorCode(e.target.value)}
-                    placeholder="Optional 6-digit 2FA / OTP code"
-                    className={INPUT_CLASS}
-                  />
-                </label>
-
-                <div className="rounded-lg border border-line bg-soft px-3 py-2 text-[11px] text-ink-3">
-                  Bridge Engine:{" "}
-                  <span className="font-mono text-ink-2">
-                    {currentConfig.bridgeUrl}
-                  </span>{" "}
-                  · Status:{" "}
-                  <span className="font-semibold text-ok">
-                    {currentConfig.loginConnected ? "Session Active" : "Ready to Pair"}
-                  </span>
+                    disabled={waBusy}
+                    className="rounded-xl border border-brand/30 bg-brand-soft px-4 py-2 text-xs font-semibold text-brand hover:bg-brand hover:text-white disabled:opacity-50"
+                  >
+                    Confirm Code Entered & Connect
+                  </button>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Feature Switches */}
-          <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-            {(
-              [
-                { key: "dm", label: "Direct Messages" },
-                { key: "comments", label: "Post Comments" },
-                { key: "comment_auto_reply", label: "AI Auto-Reply" },
-                { key: "story_replies", label: "Story / Status" },
-                { key: "publish", label: "Post Publishing" },
-              ] as const
-            ).map((item) => (
-              <label
-                key={item.key}
-                className="flex items-center gap-2 rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink"
-              >
-                <input
-                  type="checkbox"
-                  checked={flags[item.key]}
-                  onChange={(e) =>
-                    setFlags((prev) => ({ ...prev, [item.key]: e.target.checked }))
-                  }
-                  className="h-4 w-4 accent-brand"
-                />
-                <span>{item.label}</span>
-              </label>
-            ))}
-
-            <label className="flex items-center gap-2 rounded-xl border border-brand/25 bg-brand/[0.05] px-3 py-2 text-xs font-medium text-brand">
-              <input
-                type="checkbox"
-                checked={autoFailover}
-                onChange={(e) => setAutoFailover(e.target.checked)}
-                className="h-4 w-4 accent-brand"
-              />
-              <span>Auto-Failover</span>
-            </label>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 border-t border-line pt-4">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void saveCurrentChannel()}
-              className={BTN_PRIMARY}
-            >
-              {busy
-                ? "Saving…"
-                : `Save & Activate ${currentMeta.short} (${mode.toUpperCase()})`}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void runAction(
-                  "connect",
-                  `${currentMeta.short} Hybrid Engine (API + Login Session) connected!`
-                )
-              }
-              className={BTN_SECONDARY}
-            >
-              Test & Connect Both (Hybrid)
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void runAction("webhook", `${currentMeta.short} webhook registered.`)
-              }
-              className={BTN_SECONDARY}
-            >
-              Register Webhook
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void runAction(
-                  "sync",
-                  `Synced latest DMs & comments from ${currentMeta.short}.`
-                )
-              }
-              className={BTN_SECONDARY}
-            >
-              Sync Messages Now
-            </button>
-            {activeTab === "whatsapp" && !adminClientId && (
-              <Link href="/dashboard/channels/whatsapp" className={BTN_SECONDARY}>
-                Open WhatsApp QR Console →
-              </Link>
             )}
-            {currentConfig.connected && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  void runAction("disconnect", `${currentMeta.short} disconnected.`)
-                }
-                className="rounded-xl border border-red-400/30 bg-red-400/5 px-3.5 py-2 text-xs font-medium text-danger"
-              >
-                Disconnect
-              </button>
+
+            {/* METHOD 3: CONNECT VIA WHATSAPP BUSINESS API (Meta Cloud API / WATI / Custom API) */}
+            {waMethod === "api" && (
+              <div className="mt-5 space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+                      Direct Cloud & Business API
+                    </span>
+                    <h4 className="mt-2 text-sm font-semibold text-ink">
+                      Connect via Official WhatsApp Business API (Meta Cloud API / WATI / Custom)
+                    </h4>
+                    <p className="mt-1 text-xs text-ink-3">
+                      Connect directly using your Meta WhatsApp Cloud API credentials, WATI endpoint, or custom WhatsApp Business API gateway — 24/7 cloud connection without keeping a phone browser open.
+                    </p>
+                  </div>
+                  {waStatus.apiConfig?.enabled && (
+                    <span className="rounded-full bg-ok/15 px-3 py-1 text-xs font-semibold text-ok">
+                      API Connected ({waStatus.apiConfig.phone})
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      API Provider *
+                    </label>
+                    <select
+                      value={apiProvider}
+                      onChange={(e) => {
+                        const val = e.target.value as
+                          | "meta_cloud"
+                          | "wati"
+                          | "custom_api";
+                        setApiProvider(val);
+                        if (val === "meta_cloud" && !apiBaseUrl) {
+                          setApiBaseUrl("https://graph.facebook.com/v21.0");
+                        }
+                      }}
+                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3 py-2 text-xs text-ink outline-none focus:border-brand"
+                    >
+                      <option value="meta_cloud">
+                        Meta WhatsApp Cloud API (Official)
+                      </option>
+                      <option value="wati">WATI WhatsApp Business API</option>
+                      <option value="custom_api">
+                        360dialog / Twilio / Custom API
+                      </option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      WhatsApp Business Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={apiPhone}
+                      onChange={(e) => setApiPhone(e.target.value)}
+                      placeholder="+923121234567"
+                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      Display / Business Account Name
+                    </label>
+                    <input
+                      type="text"
+                      value={apiAccountName}
+                      onChange={(e) => setApiAccountName(e.target.value)}
+                      placeholder="e.g. OmniFlow Official Store"
+                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      {apiProvider === "meta_cloud"
+                        ? "Phone Number ID (Meta Graph API) *"
+                        : "Instance / Channel ID (Optional)"}
+                    </label>
+                    <input
+                      type="text"
+                      value={apiPhoneNumberId}
+                      onChange={(e) => setApiPhoneNumberId(e.target.value)}
+                      placeholder={
+                        apiProvider === "meta_cloud"
+                          ? "e.g. 104928173645192"
+                          : "Optional channel/instance ID"
+                      }
+                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      WhatsApp Business Account ID (WABA ID)
+                    </label>
+                    <input
+                      type="text"
+                      value={apiWabaId}
+                      onChange={(e) => setApiWabaId(e.target.value)}
+                      placeholder="e.g. 109827364519283 (Optional)"
+                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      API Endpoint / Base URL *
+                    </label>
+                    <input
+                      type="url"
+                      value={apiBaseUrl}
+                      onChange={(e) => setApiBaseUrl(e.target.value)}
+                      placeholder={
+                        apiProvider === "meta_cloud"
+                          ? "https://graph.facebook.com/v21.0"
+                          : "https://live-mt-server.wati.io/12345"
+                      }
+                      className="mt-1 w-full rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      Permanent Access Token / API Key *
+                      {waStatus.apiConfig?.maskedToken ? (
+                        <span className="ml-2 text-[10px] font-normal text-ok">
+                          (Saved: {waStatus.apiConfig.maskedToken})
+                        </span>
+                      ) : null}
+                    </label>
+                    <div className="mt-1 flex gap-1.5">
+                      <input
+                        type={showApiToken ? "text" : "password"}
+                        value={apiAccessToken}
+                        onChange={(e) => setApiAccessToken(e.target.value)}
+                        placeholder={
+                          waStatus.apiConfig?.hasAccessToken
+                            ? "Leave blank to keep existing token, or paste new token"
+                            : "EAAGm0PX4ZCpsBA..."
+                        }
+                        className="flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs text-ink placeholder:text-ink-3 outline-none focus:border-brand"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiToken((s) => !s)}
+                        className="rounded-xl border border-line bg-white px-3 py-2 text-[11px] font-medium text-ink-2 hover:bg-soft"
+                      >
+                        {showApiToken ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-ink-2">
+                      Webhook Verify Token
+                    </label>
+                    <div className="mt-1 flex gap-1.5">
+                      <input
+                        type="text"
+                        value={apiVerifyToken}
+                        onChange={(e) => setApiVerifyToken(e.target.value)}
+                        className="flex-1 rounded-xl border border-line bg-soft px-3.5 py-2 font-mono text-xs text-ink outline-none focus:border-brand"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void navigator.clipboard.writeText(apiVerifyToken)
+                        }
+                        className="rounded-xl border border-line bg-white px-3 py-2 text-[11px] font-medium text-ink-2 hover:bg-soft"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-line bg-soft p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">
+                        Webhook Callback URL (Paste in Meta Developer Console / API Dashboard)
+                      </p>
+                      <p className="mt-0.5 break-all font-mono text-xs text-ink">
+                        {webhookCallbackUrl}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void navigator.clipboard.writeText(webhookCallbackUrl)
+                      }
+                      className="rounded-lg border border-line bg-white px-2.5 py-1 text-[11px] font-medium text-ink-2 hover:bg-soft"
+                    >
+                      Copy Webhook URL
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void runWhatsAppCommand("connect_api", {
+                        provider: apiProvider,
+                        phone: apiPhone,
+                        accountName: apiAccountName,
+                        phoneNumberId: apiPhoneNumberId,
+                        wabaId: apiWabaId,
+                        baseUrl: apiBaseUrl,
+                        accessToken: apiAccessToken,
+                        verifyToken: apiVerifyToken,
+                      })
+                    }
+                    disabled={waBusy}
+                    className="rounded-xl bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-2 disabled:opacity-50"
+                  >
+                    {waBusy
+                      ? "Connecting API…"
+                      : waStatus.apiConfig?.enabled
+                        ? "Update & Re-Verify WhatsApp API"
+                        : "Verify & Connect WhatsApp API"}
+                  </button>
+
+                  {waStatus.state === "connected" && (
+                    <button
+                      type="button"
+                      onClick={() => void runWhatsAppCommand("disconnect")}
+                      disabled={waBusy}
+                      className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-2 text-xs font-semibold text-danger hover:bg-danger hover:text-white disabled:opacity-50"
+                    >
+                      Disconnect API
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
+          </section>
+
+          {canUseWati && <WatiCard />}
         </div>
       )}
 
-      {/* Cross-Channel Post Publisher */}
-      {activeTab === "publish" && (
-        <div className="mt-5 space-y-4">
-          <div className="rounded-xl border border-line bg-soft/60 px-4 py-3">
-            <h3 className="text-sm font-semibold text-ink">
-              Cross-Channel Social Post & Video Publisher
-            </h3>
-            <p className="text-[11px] text-ink-3">
-              Publish posts, reels, or videos across Instagram, Facebook, TikTok, LinkedIn, X, YouTube, or Telegram using your connected Hybrid accounts.
-            </p>
-          </div>
+      {activeTab === "meta" && canUseMeta && <InstagramCard />}
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="block text-xs text-ink-2">
-              Target Platform
-              <select
-                value={postChannel}
-                onChange={(e) => setPostChannel(e.target.value)}
-                className={INPUT_CLASS}
-              >
-                <option value="tiktok">TikTok Business</option>
-                <option value="linkedin">LinkedIn Company Page</option>
-                <option value="x">X (Twitter)</option>
-                <option value="youtube">YouTube Community / Shorts</option>
-                <option value="telegram_user">Telegram Channel</option>
-              </select>
-            </label>
-            <label className="block text-xs text-ink-2 sm:col-span-2">
-              Media / Video URL (optional)
-              <input
-                value={postMedia}
-                onChange={(e) => setPostMedia(e.target.value)}
-                placeholder="https://cdn.yourdomain.com/post-media.mp4"
-                className={INPUT_CLASS}
-              />
-            </label>
-            <label className="block text-xs text-ink-2 sm:col-span-3">
-              Post Caption / Copy
-              <textarea
-                value={postText}
-                onChange={(e) => setPostText(e.target.value)}
-                placeholder="Write your post caption, announcement, or update…"
-                rows={3}
-                className={INPUT_CLASS}
-              />
-            </label>
-          </div>
+      {activeTab === "social" && canUseSocial && <SocialChannelsCard />}
 
-          <button
-            type="button"
-            disabled={busy || !postText.trim()}
-            onClick={() => void publishPost()}
-            className={BTN_PRIMARY}
-          >
-            {busy ? "Publishing…" : "Publish Post Now"}
-          </button>
-
-          {(data?.social?.posts?.length ?? 0) > 0 && (
-            <div className="mt-4 space-y-2 border-t border-line pt-4">
-              <p className="text-xs font-semibold text-ink">Recent Published Posts</p>
-              {data?.social.posts.map((post) => (
-                <div
-                  key={post.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-soft px-3.5 py-2 text-xs"
-                >
-                  <span className="truncate font-medium text-ink">
-                    [{post.channel.toUpperCase()}] {post.body}
-                  </span>
-                  <span className="rounded-md bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-ok">
-                    {post.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+      {activeTab === "email_sms" && canUseEmailSms && (
+        <div className="space-y-6">
+          <EmailChannelCard />
+          <SmsChannelCard />
         </div>
       )}
     </div>

@@ -36,6 +36,7 @@ import {
   groupByMessage,
   type InboundMediaItem,
 } from "./inbound-media-shared";
+import { usePortalEntitlements } from "../../../components/usePortalEntitlements";
 const MESSAGE_URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
 function linkifyText(text: string, keyPrefix: string): ReactNode[] {
@@ -143,7 +144,27 @@ export default function ThreadClient({
   );
   const [notFound, setNotFound] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [showToolsPanel, setShowToolsPanel] = useState(true);
+  const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
   const mounted = useRef(true);
+
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      if (
+        emojiPopoverRef.current &&
+        !emojiPopoverRef.current.contains(event.target as Node)
+      ) {
+        setEmojiOpen(false);
+      }
+    }
+    if (emojiOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [emojiOpen]);
 
   const refresh = useCallback(async () => {
     if (!id) return;
@@ -169,14 +190,30 @@ export default function ThreadClient({
         setConversation(payload.conversation);
         setMessages(payload.messages);
         setHasMore(payload.has_more === true);
+      } else if (mounted.current) {
+        setMessages((curr) => curr ?? []);
       }
     } catch {
-      // Transient network issue — next poll retries.
+      if (mounted.current) {
+        setMessages((curr) => curr ?? []);
+      }
     }
   }, [id]);
 
   // §215: customer files inside their chat bubbles. Reloaded when a newer
   // customer message arrives (the poll above) or a file is deleted.
+  const { hasFeature, hasPermission } = usePortalEntitlements();
+  const canUseSalesDesk = hasFeature("sales.sales_desk");
+  const canUseRetention = hasFeature("sales.retention");
+  const canUseCod = hasFeature("sales.cod");
+  const canUseMedia = hasFeature("content.media");
+  const canUseGrowth = hasFeature("marketing.growth");
+  const canUseTeam = hasFeature("workspace.advanced_team");
+  const canUseSequences = hasFeature("marketing.sequences");
+  const canUseInsights = hasFeature("insights.business_insights");
+  const canExportCsv =
+    (hasFeature("sales.advanced_crm") || hasFeature("insights.advanced_analytics")) &&
+    hasPermission("export");
   const [mediaByMessage, setMediaByMessage] = useState<
     Record<number, InboundMediaItem[]>
   >({});
@@ -610,14 +647,16 @@ export default function ThreadClient({
                   >
                     Transcript
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => exportThreadCsv()}
-                    title="Download the loaded messages as a CSV file"
-                    className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
-                  >
-                    CSV
-                  </button>
+                  {canExportCsv && (
+                    <button
+                      type="button"
+                      onClick={() => exportThreadCsv()}
+                      title="Download the loaded messages as a CSV file"
+                      className="rounded-md border border-line bg-soft inline-flex min-h-8 items-center px-2.5 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-ink"
+                    >
+                      CSV
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -626,48 +665,6 @@ export default function ThreadClient({
       </div>
 
       {!expired && !notFound && <HandoffBriefCard conversationId={Number(id)} />}
-      {!expired && !notFound && <SalesCard conversationId={Number(id)} />}
-      {!expired && !notFound && <LoyaltyCard contactId={conversation?.contactId ?? null} />}
-      {!expired && !notFound && conversation?.channel !== "website" && (
-        <CodCard conversationId={Number(id)} />
-      )}
-      {!expired && !notFound && (
-        <MediaCard conversationId={Number(id)} />
-      )}
-      {!expired && !notFound && (
-        <VoiceCard conversationId={Number(id)} />
-      )}
-      {!expired && !notFound && conversation?.channel !== "website" && (
-        <VideoCard conversationId={Number(id)} />
-      )}
-      {!expired && !notFound && conversation?.channel !== "website" && (
-        <InteractiveCard conversationId={Number(id)} />
-      )}
-      {!expired && !notFound && (
-        <TeamCard
-          conversationId={Number(id)}
-          initialAssignedTo={conversation?.assignedTo ?? null}
-        />
-      )}
-      {!expired && !notFound && <NotesCard conversationId={Number(id)} />}
-      {!expired && !notFound && (
-        <TagsCard conversationId={Number(id)} initialTags={conversation?.tags ?? []} />
-      )}
-      {!expired && !notFound && (
-        <CustomerCard contactId={conversation?.contactId ?? null} />
-      )}
-      {!expired && !notFound && (
-        <AddToSequenceCard contactId={conversation?.contactId ?? null} />
-      )}
-      {!expired && !notFound && conversation?.channel !== "website" && (
-        <RatingCard conversationId={Number(id)} />
-      )}
-      {!expired && !notFound && (
-        <AssistCard conversationId={Number(id)} />
-      )}
-      {!expired && !notFound && (
-        <RecoCard conversationId={Number(id)} />
-      )}
 
       {expired ? (
         <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
@@ -684,26 +681,24 @@ export default function ThreadClient({
           <p className="text-sm text-ink-2">Conversation not found.</p>
         </div>
       ) : !messages ? (
-        <div className="animate-pulse space-y-3">
-          {[0, 1, 2, 3].map((index) => (
-            <div
-              key={index}
-              className="h-10 w-2/3 rounded-2xl border border-line bg-white shadow-card"
-            />
-          ))}
+        <div className="rounded-2xl border border-line bg-white px-6 py-10 text-center shadow-card">
+          <p className="text-xs font-medium text-ink-3">Loading conversation messages…</p>
         </div>
       ) : messages.length === 0 ? (
         <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
-          <p className="text-sm text-ink-2">No messages in this conversation yet.</p>
+          <p className="text-sm font-medium text-ink">No messages in this conversation yet</p>
+          <p className="mt-1 text-xs text-ink-3">
+            Send a message below to start or continue this WhatsApp conversation.
+          </p>
         </div>
       ) : visibleMessages && visibleMessages.length === 0 ? (
         <div className="rounded-2xl border border-line bg-white shadow-card px-6 py-12 text-center">
           <p className="text-sm text-ink-2">No messages match your search.</p>
         </div>
       ) : (
-        <div className="of-fade-up space-y-3">
+        <div className="of-fade-up space-y-3 rounded-2xl border border-line bg-white p-4 shadow-card">
           {messages.length > 3 && (
-            <div className="sticky top-0 z-10 -mx-1 bg-canvas/90 px-1 py-2 backdrop-blur">
+            <div className="sticky top-0 z-10 -mx-1 bg-white/95 px-1 py-2 backdrop-blur">
               <input
                 type="search"
                 value={threadQuery}
@@ -733,59 +728,63 @@ export default function ThreadClient({
           )}
           {threadMessages.map((message, index) => (
             <Fragment key={message.id}>
-            {threadDayLabel(index) && (
-              <div className="sticky top-[4.25rem] z-10 flex justify-center">
-                <span className="rounded-full border border-line bg-canvas px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-ink-3 shadow-sm">
-                  {threadDayLabel(index)}
-                </span>
-              </div>
-            )}
-            <div
-              className={`flex ${message.direction === "out" ? "justify-end" : "justify-start"}`}
-            >
+              {threadDayLabel(index) && (
+                <div className="sticky top-[4.25rem] z-10 flex justify-center">
+                  <span className="rounded-full border border-line bg-canvas px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-ink-3 shadow-sm">
+                    {threadDayLabel(index)}
+                  </span>
+                </div>
+              )}
               <div
-                onDoubleClick={() =>
-                  setDraft(
-                    (current) =>
-                      current +
-                      (current && !current.endsWith("\n") ? "\n" : "") +
-                      "> " +
-                      message.body.replace(/\n/g, "\n> ") +
-                      "\n\n"
-                  )
-                }
-                title="Double-click to quote this message in your reply"
-                className={`max-w-[85%] rounded-2xl border px-4 py-2.5 sm:max-w-[70%] ${
-                  message.direction === "out"
-                    ? "border-brand/20 bg-brand-soft"
-                    : "border-line bg-soft"
-                }`}
+                className={`flex ${message.direction === "out" ? "justify-end" : "justify-start"}`}
               >
-                {message.direction === "in" && mediaByMessage[message.id] ? (
-                  <MessageMedia items={mediaByMessage[message.id]} />
-                ) : null}
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">
-                  {renderMessageBody(message.body, threadQuery)}
-                </p>
-                <p className="mt-1 text-[10px] text-ink-3">
-                  {message.direction === "out" ? "Bot / you" : "Customer"}
-                  {formatTime(message.createdAt) ? ` · ${formatTime(message.createdAt)}` : ""}
-                  {message.direction === "in" &&
-                  message.intent &&
-                  message.intent !== "general"
-                    ? ` · ${message.intent.replace(/_/g, " ")}`
-                    : ""}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void navigator.clipboard.writeText(message.body)}
-                  title="Copy this message"
-                  className="text-[10px] font-medium uppercase tracking-wider text-ink-3 transition-colors hover:text-ink-2"
+                <div
+                  onDoubleClick={() =>
+                    setDraft(
+                      (current) =>
+                        current +
+                        (current && !current.endsWith("\n") ? "\n" : "") +
+                        "> " +
+                        message.body.replace(/\n/g, "\n> ") +
+                        "\n\n"
+                    )
+                  }
+                  title="Double-click to quote this message in your reply"
+                  className={`max-w-[85%] rounded-2xl border px-4 py-2.5 sm:max-w-[70%] ${
+                    message.direction === "out"
+                      ? "border-brand/20 bg-brand-soft"
+                      : "border-line bg-soft"
+                  }`}
                 >
-                  Copy
-                </button>
+                  {message.direction === "in" && mediaByMessage[message.id] ? (
+                    <MessageMedia items={mediaByMessage[message.id]} />
+                  ) : null}
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">
+                    {renderMessageBody(message.body, threadQuery)}
+                  </p>
+                  <div className="mt-1.5 flex items-center justify-between gap-3">
+                    <p className="text-[10px] text-ink-3">
+                      {message.direction === "out" ? "Bot / Agent" : "Customer"}
+                      {formatTime(message.createdAt)
+                        ? ` · ${formatTime(message.createdAt)}`
+                        : ""}
+                      {message.direction === "in" &&
+                      message.intent &&
+                      message.intent !== "general"
+                        ? ` · ${message.intent.replace(/_/g, " ")}`
+                        : ""}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard.writeText(message.body)}
+                      title="Copy this message"
+                      className="text-[10px] font-medium uppercase tracking-wider text-ink-3 transition-colors hover:text-ink-2"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
             </Fragment>
           ))}
           <div ref={threadBottomRef} className="h-px" />
@@ -795,74 +794,203 @@ export default function ThreadClient({
       {!expired && !notFound && (
         <SavedRepliesPicker onPick={(text) => setDraft(text)} />
       )}
-        {!nearBottom && (
-          <button
-            type="button"
-            onClick={() =>
-              threadBottomRef.current?.scrollIntoView({
-                behavior: "smooth",
-                block: "end",
-              })
-            }
-            className="fixed bottom-28 right-6 z-20 rounded-full border border-line-2 bg-white px-4 py-2 text-xs font-medium text-ink shadow-lg transition-colors hover:text-ink"
-          >
-            Jump to latest
-          </button>
-        )}
-        {sendError && (
-          <p className="mb-2 text-[11px] font-medium text-amber-700">
-            {sendError}
-          </p>
-        )}
+      {!nearBottom && (
+        <button
+          type="button"
+          onClick={() =>
+            threadBottomRef.current?.scrollIntoView({
+              behavior: "smooth",
+              block: "end",
+            })
+          }
+          className="fixed bottom-28 right-6 z-20 rounded-full border border-line-2 bg-white px-4 py-2 text-xs font-medium text-ink shadow-lg transition-colors hover:text-ink"
+        >
+          Jump to latest
+        </button>
+      )}
+      {sendError && (
+        <p className="mb-2 text-[11px] font-medium text-amber-700">
+          {sendError}
+        </p>
+      )}
       {!expired && !notFound && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
             void sendReply();
           }}
-          className="sticky bottom-0 z-10 -mx-2 mt-6 flex items-end gap-3 border-t border-line bg-canvas/95 px-2 py-3 backdrop-blur"
+          className="sticky bottom-0 z-20 rounded-2xl border border-line bg-white p-3 shadow-card"
         >
-          <div className="hidden max-w-[176px] flex-wrap items-end gap-0.5 sm:flex">
-            {["\u{1F44D}", "\u{1F64F}", "\u{1F600}", "\u{1F622}", "\u{1F621}", "\u{1F44C}", "\u{1F91D}", "\u{1F4B0}", "\u{1F4E6}", "\u{1F69A}", "\u2705", "\u274C", "\u23F0", "\u{1F4DE}", "\u{1F60A}", "\u{1F44B}"].map(
-              (emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setDraft((current) => current + emoji)}
-                  className="rounded px-1 text-base leading-6 transition-colors hover:bg-line/60"
-                >
-                  {emoji}
-                </button>
-              )
-            )}
+          <div className="flex items-end gap-2.5">
+            <div ref={emojiPopoverRef} className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setEmojiOpen((open) => !open)}
+                title="Insert emoji"
+                aria-label="Insert emoji"
+                aria-expanded={emojiOpen}
+                className={
+                  "flex h-11 w-11 items-center justify-center rounded-xl border text-lg transition-colors " +
+                  (emojiOpen
+                    ? "border-brand bg-brand-soft text-brand"
+                    : "border-line bg-soft text-ink-2 hover:border-line-2 hover:bg-line/40 hover:text-ink")
+                }
+              >
+                😊
+              </button>
+
+              {emojiOpen && (
+                <div className="absolute bottom-13 left-0 z-30 w-64 rounded-2xl border border-line bg-white p-3 shadow-xl">
+                  <div className="mb-2 flex items-center justify-between border-b border-line pb-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                      Quick Emojis
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEmojiOpen(false)}
+                      className="rounded px-1.5 py-0.5 text-[11px] text-ink-3 hover:bg-soft hover:text-ink"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {[
+                      "\u{1F44D}",
+                      "\u{1F64F}",
+                      "\u{1F60A}",
+                      "\u{1F44B}",
+                      "\u{1F91D}",
+                      "\u{1F44C}",
+                      "\u2705",
+                      "\u{1F4E6}",
+                      "\u{1F69A}",
+                      "\u{1F4B0}",
+                      "\u23F0",
+                      "\u{1F4DE}",
+                      "\u{1F389}",
+                      "\u{1F525}",
+                      "\u2764\uFE0F",
+                      "\u2B50",
+                      "\u{1F4CD}",
+                      "\u{1F4DD}",
+                      "\u{1F600}",
+                      "\u{1F914}",
+                      "\u{1F622}",
+                      "\u{1F621}",
+                      "\u274C",
+                      "\u26A0\uFE0F",
+                    ].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          setDraft((current) => current + emoji);
+                          setEmojiOpen(false);
+                          composerRef.current?.focus();
+                        }}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors hover:bg-brand-soft"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <textarea
+              ref={composerRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              title="Enter sends the reply, Shift+Enter inserts a new line"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void sendReply();
+                }
+              }}
+              rows={2}
+              maxLength={4096}
+              placeholder="Reply as a human agent… (Enter to send, Shift+Enter for new line)"
+              className="flex-1 resize-none rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-200 focus:border-brand/50 focus:bg-white"
+            />
+
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <span className="hidden text-[10px] text-ink-3 sm:inline">
+                {draft.length} / 4096
+              </span>
+              <button
+                type="submit"
+                disabled={sending || !draft.trim()}
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-brand px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {sending ? "Sending…" : "Send"}
+              </button>
+            </div>
           </div>
-          <textarea
-            ref={composerRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            title="Enter sends the reply, Shift+Enter inserts a new line"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void sendReply();
-              }
-            }}
-            rows={2}
-            maxLength={4096}
-            placeholder="Reply as a human agent"
-            className="flex-1 resize-none rounded-xl border border-line bg-soft px-4 py-3 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
-          />
-          <div className="hidden shrink-0 flex-col items-end text-[10px] text-ink-3 sm:flex">
-            {draft.length} / 4096
-          </div>
-          <button
-            type="submit"
-            disabled={sending || !draft.trim()}
-            className="shrink-0 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {sending ? "Sending…" : "Send"}
-          </button>
         </form>
+      )}
+
+      {!expired && !notFound && (
+        <div className="pt-2">
+          <div className="flex items-center justify-between rounded-2xl border border-line bg-white px-4 py-3 shadow-card">
+            <div>
+              <p className="text-xs font-semibold text-ink">
+                Conversation Details, Notes, Labels & AI Tools
+              </p>
+              <p className="text-[11px] text-ink-3">
+                Internal notes, customer profile, tags, and AI agent tools for this thread.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowToolsPanel((v) => !v)}
+              className="rounded-xl border border-line bg-soft px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-line/50 hover:text-ink"
+            >
+              {showToolsPanel ? "Hide Tools ▲" : "Show Tools ▼"}
+            </button>
+          </div>
+
+          {showToolsPanel && (
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <NotesCard conversationId={Number(id)} />
+              <TagsCard
+                conversationId={Number(id)}
+                initialTags={conversation?.tags ?? []}
+              />
+              <CustomerCard contactId={conversation?.contactId ?? null} />
+              <AssistCard conversationId={Number(id)} />
+              {canUseTeam && (
+                <TeamCard
+                  conversationId={Number(id)}
+                  initialAssignedTo={conversation?.assignedTo ?? null}
+                />
+              )}
+              {canUseSalesDesk && <SalesCard conversationId={Number(id)} />}
+              {canUseSalesDesk && <RecoCard conversationId={Number(id)} />}
+              {canUseRetention && (
+                <LoyaltyCard contactId={conversation?.contactId ?? null} />
+              )}
+              {canUseCod && conversation?.channel !== "website" && (
+                <CodCard conversationId={Number(id)} />
+              )}
+              {canUseMedia && <MediaCard conversationId={Number(id)} />}
+              {canUseMedia && <VoiceCard conversationId={Number(id)} />}
+              {canUseMedia && conversation?.channel !== "website" && (
+                <VideoCard conversationId={Number(id)} />
+              )}
+              {canUseGrowth && conversation?.channel !== "website" && (
+                <InteractiveCard conversationId={Number(id)} />
+              )}
+              {canUseSequences && (
+                <AddToSequenceCard contactId={conversation?.contactId ?? null} />
+              )}
+              {canUseInsights && conversation?.channel !== "website" && (
+                <RatingCard conversationId={Number(id)} />
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

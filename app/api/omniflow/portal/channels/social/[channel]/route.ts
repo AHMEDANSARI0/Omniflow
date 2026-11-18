@@ -1,92 +1,63 @@
-import { getControlPlanePrincipal } from "../../../../../../../lib/omniflow/control-plane";
-import { requirePortalAccessToken, saveSocialChannel } from "../../../../../../../lib/omniflow/portal";
-import type { SocialChannelInput } from "../../../../../../../lib/omniflow/portal";
-import { safeJson, sameOrigin } from "../../../../../../../lib/omniflow/request-security";
-import { isSocialChannel, publicOrigin } from "../../../../../../../lib/omniflow/social-bff";
-import { jsonBody } from "../../../../../../../lib/omniflow/voice-vision-bff";
-import { saveWorkspaceSocialChannel } from "../../../../../../lib/workspace-store";
+import {
+  saveSocialChannel,
+  type SocialChannelInput,
+  type SocialFeature,
+  type SocialMode,
+} from "../../../../../../../lib/omniflow/portal";
+import {
+  noStoreHeaders,
+  safeJson,
+} from "../../../../../../../lib/omniflow/request-security";
+import { isSocialChannel } from "../../../../../../../lib/omniflow/social-bff";
+import {
+  jsonBody,
+  serviceResponse,
+  withPortalToken,
+} from "../../../../../../../lib/omniflow/voice-vision-bff";
 
-interface RouteContext {
-  params: Promise<{ channel: string }>;
+export async function PUT(
+  request: Request,
+  context: { params: Promise<{ channel: string }> }
+) {
+  const { channel: rawChannel } = await context.params;
+  if (!isSocialChannel(rawChannel)) {
+    return safeJson(
+      { error: { code: "bad_request", message: "Unknown social channel." } },
+      400
+    );
+  }
+
+  return withPortalToken(async (accessToken) => {
+    const body = await jsonBody(request);
+    const mode: SocialMode | undefined =
+      body.mode === "login" || body.mode === "api" ? body.mode : undefined;
+    const input: SocialChannelInput = {
+      mode,
+      enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
+      app_id: typeof body.app_id === "string" ? body.app_id.trim() : undefined,
+      app_secret:
+        typeof body.app_secret === "string" ? body.app_secret.trim() : undefined,
+      consumer_secret:
+        typeof body.consumer_secret === "string"
+          ? body.consumer_secret.trim()
+          : undefined,
+      bearer_token:
+        typeof body.bearer_token === "string"
+          ? body.bearer_token.trim()
+          : undefined,
+      organization_id:
+        typeof body.organization_id === "string"
+          ? body.organization_id.trim()
+          : undefined,
+      flags:
+        body.flags && typeof body.flags === "object"
+          ? (body.flags as Partial<Record<SocialFeature | "comment_auto_reply", boolean>>)
+          : undefined,
+    };
+    return serviceResponse(await saveSocialChannel(accessToken, rawChannel, input));
+  }, request);
 }
 
-const TEXT_FIELDS = ["app_id", "app_secret", "consumer_secret", "bearer_token", "organization_id"] as const;
-const FLAG_KEYS = ["dm", "comments", "publish", "comment_auto_reply"] as const;
-
-function bad(message: string) {
-  return safeJson({ error: { code: "bad_request", message } }, 400);
-}
-
-export async function PUT(request: Request, context: RouteContext) {
-  if (!sameOrigin(request)) {
-    return safeJson({ error: { code: "forbidden", message: "Request origin was rejected." } }, 403);
-  }
-  const { channel } = await context.params;
-  if (!isSocialChannel(channel)) {
-    return safeJson({ error: { code: "not_found", message: "Unknown channel." } }, 404);
-  }
-  const accessToken = await requirePortalAccessToken();
-  if (!accessToken) {
-    return safeJson({ error: { code: "unauthorized", message: "Sign in required." } }, 401);
-  }
-  const body = await jsonBody(request);
-  const input: SocialChannelInput = {};
-  if (body.mode !== undefined) {
-    if (body.mode !== "api" && body.mode !== "login") return bad("mode must be api or login.");
-    input.mode = body.mode;
-  }
-  if (body.enabled !== undefined) {
-    if (typeof body.enabled !== "boolean") return bad("enabled must be true or false.");
-    input.enabled = body.enabled;
-  }
-  for (const key of TEXT_FIELDS) {
-    const value = body[key];
-    if (value === undefined) continue;
-    if (typeof value !== "string" || value.length > 500) return bad(key + " must be text.");
-    input[key] = value.trim();
-  }
-  if (body.flags !== undefined) {
-    if (!body.flags || typeof body.flags !== "object" || Array.isArray(body.flags)) {
-      return bad("flags must be an object.");
-    }
-    const flags: NonNullable<SocialChannelInput["flags"]> = {};
-    for (const [key, value] of Object.entries(body.flags as Record<string, unknown>)) {
-      const known = FLAG_KEYS.find((flag) => flag === key);
-      if (!known || typeof value !== "boolean") return bad("Unknown or invalid switch.");
-      flags[known] = value;
-    }
-    input.flags = flags;
-  }
-
-  let clientId = 1;
-  try {
-    const p = await getControlPlanePrincipal(accessToken);
-    clientId = p.clientId || 1;
-  } catch {
-    clientId = 1;
-  }
-
-  const saved = await saveWorkspaceSocialChannel(
-    clientId,
-    channel,
-    {
-      ...input,
-      account_name: typeof body.account_name === "string" ? body.account_name.trim() : undefined,
-      access_token: typeof body.access_token === "string" ? body.access_token.trim() : undefined,
-    },
-    publicOrigin(request)
-  );
-
-  if (!accessToken.startsWith("ofa_neon_")) {
-    try {
-      const cp = await saveSocialChannel(accessToken, channel, input);
-      if (cp.kind === "ok" && cp.data) {
-        return safeJson(cp.data, 200);
-      }
-    } catch {
-      // Fallback to local saved state
-    }
-  }
-
-  return safeJson(saved, 200);
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: noStoreHeaders() });
 }

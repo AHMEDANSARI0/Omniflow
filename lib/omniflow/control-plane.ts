@@ -242,33 +242,33 @@ async function jsonResponse(response: Response): Promise<unknown> {
 export async function loginToControlPlane(
   input: LoginInput
 ): Promise<OmniFlowSessionTokens> {
-  const localAuth = await authenticatePortalClient(
-    input.email,
-    input.password,
-    input.clientId
-  );
-  if (localAuth.kind === "ok") {
-    return localAuth.tokens;
-  }
-  if (localAuth.kind === "locked") {
-    throw new ControlPlaneRequestError(423, "account_locked");
-  }
-  if (localAuth.kind === "invalid") {
-    throw new ControlPlaneRequestError(401, "invalid_credentials");
-  }
-
   const body: Record<string, unknown> = {
     email: input.email,
     password: input.password,
   };
   if (input.clientId !== undefined) body.client_id = input.clientId;
 
-  const response = await controlPlaneRequest("api/v1/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return parseTokens(await jsonResponse(response));
+  try {
+    const response = await controlPlaneRequest("api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return parseTokens(await jsonResponse(response));
+  } catch (err) {
+    const localAuth = await authenticatePortalClient(
+      input.email,
+      input.password,
+      input.clientId
+    );
+    if (localAuth.kind === "ok") {
+      return localAuth.tokens;
+    }
+    if (localAuth.kind === "locked") {
+      throw new ControlPlaneRequestError(423, "account_locked");
+    }
+    throw err;
+  }
 }
 
 export async function refreshControlPlaneSession(

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { usePortalEntitlements } from "./usePortalEntitlements";
 
 interface SetupFlags {
   whatsapp: boolean;
@@ -13,52 +14,69 @@ interface SetupFlags {
   cod: boolean;
 }
 
-const ITEMS: { key: keyof SetupFlags; label: string; hint: string; href: string }[] = [
+const ITEMS: {
+  key: keyof SetupFlags;
+  label: string;
+  hint: string;
+  href: string;
+  featureKey?: string;
+}[] = [
   {
     key: "whatsapp",
     label: "Connect your WhatsApp number",
-    hint: "Scan the QR from the connector laptop",
+    hint: "Scan the QR or enter the 8-digit Pairing Code",
     href: "/dashboard/channels/whatsapp",
+    featureKey: "basic.whatsapp_connect",
   },
   {
     key: "hours",
     label: "Set your business hours",
     hint: "Powers away replies and the thread banner",
     href: "/dashboard/settings",
+    featureKey: "basic.business_config",
   },
   {
     key: "away",
     label: "Turn on away replies",
     hint: "Customers get an instant reply outside hours",
     href: "/dashboard/settings",
+    featureKey: "basic.business_config",
   },
   {
     key: "kb",
     label: "Add knowledge base answers",
     hint: "FAQs the assistant can use verbatim",
     href: "/dashboard/knowledge-base",
+    featureKey: "content.knowledge_base",
   },
   {
     key: "customers",
-    label: "Bring customers in",
-    hint: "Chats, or a CSV import from the Customers page",
+    label: "View your WhatsApp customers",
+    hint: "Contacts appear automatically as chats arrive",
     href: "/dashboard/customers",
+    featureKey: "basic.customers",
   },
   {
     key: "broadcast",
     label: "Send your first broadcast",
     hint: "One message to a whole audience",
     href: "/dashboard/broadcasts",
+    featureKey: "marketing.broadcasts",
   },
   {
     key: "cod",
     label: "Enable COD confirmations",
     hint: "Cut returns on cash-on-delivery orders",
     href: "/dashboard/cod",
+    featureKey: "sales.cod",
   },
 ];
 
 export default function SetupChecklist() {
+  const { hasFeature } = usePortalEntitlements();
+  const visibleItems = ITEMS.filter(
+    (item) => !item.featureKey || hasFeature(item.featureKey)
+  );
   const [flags, setFlags] = useState<SetupFlags | null>(null);
   const [hidden, setHidden] = useState(false);
 
@@ -82,10 +100,10 @@ export default function SetupChecklist() {
     void load();
   }, [load]);
 
-  if (!flags || hidden) return null;
+  if (!flags || hidden || visibleItems.length === 0) return null;
 
-  const doneCount = ITEMS.filter((item) => flags[item.key]).length;
-  const total = ITEMS.length;
+  const doneCount = visibleItems.filter((item) => flags[item.key]).length;
+  const total = visibleItems.length;
   const percent = Math.round((doneCount / total) * 100);
 
   return (
@@ -119,7 +137,7 @@ export default function SetupChecklist() {
       </div>
 
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-        {ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const done = flags[item.key];
           return (
             <li key={item.key}>

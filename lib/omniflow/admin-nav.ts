@@ -58,6 +58,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
     description: "Create client workspaces, grant Customer Portal access and manage social connectors.",
     enabled: true,
   },
+  {
+    label: "Access & Entitlements",
+    href: "/admin/access-control",
+    icon: "shield",
+    description: "Centralized feature flags, connector permissions, RBAC roles, quotas and audit logs per client.",
+    enabled: true,
+  },
   // §263: client billing sits under Customers in the nav.
   {
     label: "Client billing",

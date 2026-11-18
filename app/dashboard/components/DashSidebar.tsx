@@ -8,8 +8,8 @@ import SignOutButton from "./SignOutButton";
 import PortalIcon from "./PortalIcon";
 import {
   DASHBOARD_LINK,
-  NAV_GROUPS,
   SETTINGS_LINK,
+  filterNavGroupsByEntitlements,
   findNav,
   isNavActive,
   type NavGroup,
@@ -64,15 +64,18 @@ function UnreadBadge({ count, compact }: { count: number; compact: boolean }) {
 
 function NavLinks({
   collapsed = false,
+  enabledFeatures,
   onNavigate,
   onExpand,
 }: {
   collapsed?: boolean;
+  enabledFeatures?: string[];
   onNavigate?: () => void;
   onExpand?: () => void;
 }) {
   const pathname = usePathname();
   const unreadCount = useUnreadCount();
+  const visibleGroups = filterNavGroupsByEntitlements(enabledFeatures);
   const activeGroup = findNav(pathname).group?.id ?? null;
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
@@ -184,7 +187,7 @@ function NavLinks({
             Menu
           </p>
         )}
-        {NAV_GROUPS.map(renderGroup)}
+        {visibleGroups.map(renderGroup)}
       </div>
       <div className="mb-2 border-t border-line pt-2">{renderLink(SETTINGS_LINK, false)}</div>
     </nav>
@@ -195,11 +198,13 @@ function SidebarFooter({
   userEmail,
   clientId,
   role,
+  planName,
   collapsed = false,
 }: {
   userEmail: string;
   clientId: number;
   role: string;
+  planName?: string;
   collapsed?: boolean;
 }) {
   if (collapsed) {
@@ -236,6 +241,7 @@ function SidebarFooter({
         </p>
         <p className="mt-1 text-[10px] uppercase tracking-wider text-ink-3">
           Workspace {clientId} · {role}
+          {planName ? ` · ${planName}` : ""}
         </p>
       </div>
       <div className="px-3 pb-1">
@@ -249,6 +255,8 @@ export default function DashSidebar({
   userEmail,
   clientId,
   role,
+  planName,
+  enabledFeatures,
   collapsed,
   onToggle,
   mobileOpen,
@@ -257,6 +265,8 @@ export default function DashSidebar({
   userEmail: string;
   clientId: number;
   role: string;
+  planName?: string;
+  enabledFeatures?: string[];
   collapsed: boolean;
   onToggle: () => void;
   mobileOpen: boolean;
@@ -291,12 +301,17 @@ export default function DashSidebar({
           </button>
         </div>
 
-        <NavLinks collapsed={collapsed} onExpand={collapsed ? onToggle : undefined} />
+        <NavLinks
+          collapsed={collapsed}
+          enabledFeatures={enabledFeatures}
+          onExpand={collapsed ? onToggle : undefined}
+        />
 
         <SidebarFooter
           userEmail={userEmail}
           clientId={clientId}
           role={role}
+          planName={planName}
           collapsed={collapsed}
         />
       </motion.aside>
@@ -331,11 +346,12 @@ export default function DashSidebar({
                   <PortalIcon name="close" />
                 </button>
               </div>
-              <NavLinks onNavigate={onMobileClose} />
+              <NavLinks enabledFeatures={enabledFeatures} onNavigate={onMobileClose} />
               <SidebarFooter
                 userEmail={userEmail}
                 clientId={clientId}
                 role={role}
+                planName={planName}
               />
             </motion.div>
           </>

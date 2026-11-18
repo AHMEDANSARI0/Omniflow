@@ -4,27 +4,26 @@ import { useEffect, useId, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowRight, Menu, X } from "lucide-react";
 import Logo from "./ui/Logo";
-import useScrolled from "./hooks/useScrolled";
 import { NAV_ACTIONS, NAV_ITEMS, type NavItem } from "../../lib/marketing/navigation";
-import { NAVBAR_SCROLL_THRESHOLD } from "../../lib/marketing/site";
 
-/**
- * The glass navbar (§216). Enters with a soft spring (CSS), starts
- * large and hero-integrated, and compacts into a floating bar once the
- * page scrolls past NAVBAR_SCROLL_THRESHOLD. All styling lives in
- * globals.css (.of-nav*) so the transition is pure CSS; links are the
- * admin-editable nav list (server pages pass getMarketingList("nav")).
- * §258: the current page is marked (aria-current + pill), the mobile sheet
- * closes on an outside tap like any other popover, and every control has a
- * visible hover.
- */
-export default function Navbar({ items = NAV_ITEMS }: { items?: readonly NavItem[] }) {
-  const scrolled = useScrolled(NAVBAR_SCROLL_THRESHOLD);
-  const pathname = usePathname();
+/* ============================================================================
+   Navbar — floating glassmorphic bar with responsive mobile drawer
+   ============================================================================ */
+
+export default function Navbar({ items = NAV_ITEMS }: { items?: NavItem[] }) {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname() || "/";
   const panelId = useId();
-  const rootRef = useRef<HTMLElement | null>(null);
-  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 16);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -38,7 +37,7 @@ export default function Navbar({ items = NAV_ITEMS }: { items?: readonly NavItem
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
     };
     const onResize = () => {
-      if (window.innerWidth >= 1024) setOpen(false);
+      if (window.innerWidth >= 960) setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("pointerdown", onPointerDown, true);
@@ -52,8 +51,6 @@ export default function Navbar({ items = NAV_ITEMS }: { items?: readonly NavItem
 
   const close = () => setOpen(false);
 
-  /* The nav is admin-editable, so "current" is matched on the href the
-     CMS stores, not on a hardcoded list. */
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
@@ -63,24 +60,25 @@ export default function Navbar({ items = NAV_ITEMS }: { items?: readonly NavItem
         <a
           href="/"
           aria-label="OmniFlow home"
-          className="-my-1 shrink-0 rounded-lg py-1 transition-opacity hover:opacity-80"
+          className="-my-1 shrink-0 whitespace-nowrap rounded-lg py-1 transition-opacity hover:opacity-80"
         >
           <Logo />
         </a>
 
-        <ul className="hidden items-center gap-0.5 lg:flex">
+        <ul className="of-nav-links hidden items-center gap-0.5 lg:flex">
           {items.map((item) => {
             const active = isActive(item.href);
             return (
-              <li key={item.label + item.href}>
+              <li key={item.label + item.href} className="shrink-0">
                 <a
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`rounded-lg px-3 py-2 text-[14px] font-medium transition-colors duration-200 ${
-                    active
+                  className={
+                    "inline-flex shrink-0 items-center whitespace-nowrap rounded-lg px-2.5 py-2 text-[13.5px] font-medium transition-colors duration-200 xl:px-3 xl:text-[14px] " +
+                    (active
                       ? "bg-white text-ink shadow-[0_1px_2px_rgba(16,24,40,0.06)] hover:bg-soft"
-                      : "text-ink-2 hover:bg-white/80 hover:text-brand"
-                  }`}
+                      : "text-ink-2 hover:bg-white/80 hover:text-brand")
+                  }
                 >
                   {item.label}
                 </a>
@@ -89,19 +87,19 @@ export default function Navbar({ items = NAV_ITEMS }: { items?: readonly NavItem
           })}
         </ul>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
           <a
             href={NAV_ACTIONS.login.href}
-            className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-ink-2 transition-colors hover:bg-white/80 hover:text-brand lg:inline-flex"
+            className="of-nav-login hidden shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-[14px] font-medium text-ink-2 transition-colors hover:bg-white/80 hover:text-brand lg:inline-flex"
           >
             {NAV_ACTIONS.login.label}
           </a>
           <a
             href={NAV_ACTIONS.primary.href}
-            className="hidden h-10 items-center gap-1.5 rounded-xl bg-brand px-4 text-[14px] font-semibold text-white shadow-cta transition-all duration-200 hover:-translate-y-px hover:bg-brand-2 sm:inline-flex"
+            className="of-nav-cta hidden h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-brand px-4 text-[14px] font-semibold text-white shadow-cta transition-all duration-200 hover:-translate-y-px hover:bg-brand-2 sm:inline-flex"
           >
-            {NAV_ACTIONS.primary.label}
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            <span className="whitespace-nowrap">{NAV_ACTIONS.primary.label}</span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
           </a>
           <button
             ref={toggleRef}
@@ -110,7 +108,7 @@ export default function Navbar({ items = NAV_ITEMS }: { items?: readonly NavItem
             aria-expanded={open}
             aria-controls={panelId}
             onClick={() => setOpen((value) => !value)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white/90 text-ink transition-colors hover:border-line-2 hover:bg-white lg:h-10 lg:w-10"
+            className="of-nav-toggle inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-white/90 text-ink transition-colors hover:border-line-2 hover:bg-white lg:hidden"
           >
             {open ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
           </button>
@@ -132,11 +130,12 @@ export default function Navbar({ items = NAV_ITEMS }: { items?: readonly NavItem
                   href={item.href}
                   onClick={close}
                   aria-current={active ? "page" : undefined}
-                  className={`block rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${
-                    active
+                  className={
+                    "block rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors " +
+                    (active
                       ? "bg-brand-soft text-brand-2 hover:bg-brand/15"
-                      : "text-ink hover:bg-soft"
-                  }`}
+                      : "text-ink hover:bg-soft")
+                  }
                 >
                   {item.label}
                 </a>

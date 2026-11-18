@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import PortalIcon from "../../components/PortalIcon";
+import { usePortalEntitlements } from "../../components/usePortalEntitlements";
 
 
 interface ConversationSummary {
@@ -263,6 +264,14 @@ export default function InboxClient({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [items, activeRowIndex, router]);
+  const { hasFeature, hasPermission, allowedInboxChannels } = usePortalEntitlements();
+  const visibleChannels = INBOX_CHANNELS.filter((ch) =>
+    allowedInboxChannels.includes(ch)
+  );
+  const canUseTeam = hasFeature("workspace.advanced_team");
+  const canExportCsv =
+    (hasFeature("sales.advanced_crm") || hasFeature("insights.advanced_analytics")) &&
+    hasPermission("export");
   const [assignTarget, setAssignTarget] = useState("");
   const [tagFilter, setTagFilter] = useState("all");
   const tagRef = useRef("all");
@@ -481,6 +490,14 @@ export default function InboxClient({
     }
     window.addEventListener("focus", onFocus);
 
+    return () => {
+      mounted.current = false;
+      window.clearInterval(timer);
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [refresh]);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -503,13 +520,6 @@ export default function InboxClient({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-    return () => {
-      mounted.current = false;
-      window.clearInterval(timer);
-      if (debounceRef.current) window.clearTimeout(debounceRef.current);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [refresh]);
 
   async function quickAssign(conversationId: number, assigneeEmail: string) {
     const previous = items;
@@ -967,387 +977,415 @@ export default function InboxClient({
     );
   }
 
+  const hasActiveFilters = Boolean(
+    search.trim() ||
+      statusFilter !== "all" ||
+      channelFilter !== "all" ||
+      tagFilter !== "all" ||
+      replyFilter ||
+      unreadFilter ||
+      starredFilter ||
+      assignedFilter ||
+      daysFilter ||
+      oldestFirst
+  );
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-4xl">
+      {/* Clean Enterprise Header */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Conversations
           </h1>
-          <p className="mt-1 text-sm text-ink-3">
-            Tenant-isolated WhatsApp conversations with AI outcomes.
+          <p className="mt-0.5 text-xs text-ink-3">
+            Manage customer chats, automated replies, and live agent handoffs.
           </p>
         </div>
-        <button
-          onClick={() => void refresh()}
-          className="shrink-0 rounded-xl border border-line bg-white shadow-card px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:border-brand/40"
-        >
-          Refresh
-        </button>
-      </div>
 
-      {(intentCounts.length > 0 || intentFilter !== "all") && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {intentCounts.map((entry) => (
-            <button
-              key={entry.intent}
-              onClick={() => {
-                const next = intentFilter === entry.intent ? "all" : entry.intent;
-                intentRef.current = next;
-                setIntentFilter(next);
-                void refresh();
-              }}
-              className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                intentFilter === entry.intent
-                  ? "border-brand/40 bg-brand/[0.12] text-brand"
-                  : "border-brand/20 bg-brand/[0.04] text-brand hover:bg-brand/[0.09]"
-              }`}
-            >
-              {entry.intent.replace(/_/g, " ")} · {entry.conversations}
-            </button>
-          ))}
-          {intentFilter !== "all" && (
-            <button
-              onClick={() => {
-                intentRef.current = "all";
-                setIntentFilter("all");
-                void refresh();
-              }}
-              className="rounded-full border border-line bg-soft px-2.5 py-1 text-[10px] font-medium text-ink-3 transition-colors hover:text-ink"
-            >
-              <span className="inline-flex items-center gap-1">
-                Clear <PortalIcon name="close" className="h-3 w-3" />
-              </span>
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="mb-5">
-        <input
-          ref={searchInputRef}
-          type="search"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search by contact name, number, or message text"
-          className="w-full rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
-        />
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {(["all", ...INBOX_CHANNELS] as const).map((value) => (
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            key={"channel-" + value}
+            type="button"
             onClick={() => {
-              channelRef.current = value;
-              setChannelFilter(value);
-              void refresh();
+              const next = !liveMode;
+              setLiveMode(next);
+              liveModeRef.current = next;
             }}
-            className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-              channelFilter === value
-                ? "border-ai/30 bg-violet-400/[0.08] text-violet-700"
-                : "border-line bg-soft text-ink-3 hover:text-ink"
+            title={
+              liveMode
+                ? "Auto-refresh is active"
+                : "Auto-refresh is paused — click to resume"
+            }
+            className={`inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-xs font-medium transition-colors ${
+              liveMode
+                ? "border-emerald-500/30 bg-emerald-500/[0.08] text-emerald-700"
+                : "border-line bg-white text-ink-3 hover:text-ink"
             }`}
           >
-            {value === "all" ? "All channels" : (CHANNEL_LABELS[value] ?? value)}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => {
-            const next = replyFilter === "1" ? "" : "1";
-            replyFilterRef.current = next;
-            setReplyFilter(next);
-            void refresh();
-          }}
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-            replyFilter === "1"
-              ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-800"
-              : "border-line bg-soft text-ink-3 hover:text-ink"
-          }`}
-        >
-          Needs reply
-          {chipCounts.needsReply > 0 && (
-            <span className="ml-1.5 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-              {chipCounts.needsReply}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const next = replyFilter === "overdue" ? "" : "overdue";
-            replyFilterRef.current = next;
-            setReplyFilter(next);
-            void refresh();
-          }}
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-            replyFilter === "overdue"
-              ? "border-red-400/30 bg-red-400/[0.08] text-red-700"
-              : "border-line bg-soft text-ink-3 hover:text-ink"
-          }`}
-        >
-          Overdue
-          {chipCounts.overdue > 0 && (
-            <span className="ml-1.5 rounded-md bg-red-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-danger">
-              {chipCounts.overdue}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            oldestRef.current = !oldestRef.current;
-            setOldestFirst(oldestRef.current);
-            void refresh();
-          }}
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-            oldestFirst
-              ? "border-brand/30 bg-brand-soft text-brand"
-              : "border-line bg-soft text-ink-3 hover:text-ink"
-          }`}
-        >
-          Oldest first
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const next = assignedFilter === "unassigned" ? "" : "unassigned";
-            assignedRef.current = next;
-            setAssignedFilter(next);
-            void refresh();
-          }}
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-            assignedFilter === "unassigned"
-              ? "border-sky-400/30 bg-sky-400/[0.08] text-sky-700"
-              : "border-line bg-soft text-ink-3 hover:text-ink"
-          }`}
-        >
-          Unassigned
-          {chipCounts.unassigned > 0 && (
-            <span className="ml-1.5 rounded-md bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
-              {chipCounts.unassigned}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const next = assignedFilter === "me" ? "" : "me";
-            assignedRef.current = next;
-            setAssignedFilter(next);
-            void refresh();
-          }}
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-            assignedFilter === "me"
-              ? "border-brand/30 bg-indigo-400/[0.08] text-indigo-700"
-              : "border-line bg-soft text-ink-3 hover:text-ink"
-          }`}
-        >
-          Mine
-        </button>
-        <select
-          value={daysFilter}
-          onChange={(event) => {
-            daysRef.current = event.target.value;
-            setDaysFilter(event.target.value);
-            void refresh();
-          }}
-          className="rounded-lg border border-line bg-soft px-2.5 py-1.5 text-xs font-medium text-ink-2 outline-none transition-colors focus:border-brand/40"
-        >
-          <option value="">Any time</option>
-          <option value="1">Last 24 hours</option>
-          <option value="7">Last 7 days</option>
-          <option value="30">Last 30 days</option>
-        </select>
-        <button
-          type="button"
-          onClick={() => {
-            const next = unreadFilter === "1" ? "" : "1";
-            unreadRef.current = next;
-            setUnreadFilter(next);
-            void refresh();
-          }}
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-            unreadFilter === "1"
-              ? "border-ai/30 bg-violet-400/[0.08] text-violet-700"
-              : "border-line bg-soft text-ink-3 hover:text-ink"
-          }`}
-        >
-          Unread
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const next = starredFilter === "1" ? "" : "1";
-            starredRef.current = next;
-            setStarredFilter(next);
-            void refresh();
-          }}
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-            starredFilter === "1"
-              ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-800"
-              : "border-line bg-soft text-ink-3 hover:text-ink"
-          }`}
-        >
-          Starred
-        </button>
-        <button
-          type="button"
-          onClick={() => resetFilters()}
-          title="Clear every filter and sort back to the default view"
-          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-3 transition-colors hover:text-ink"
-        >
-          Reset
-        </button>
-      </div>
-
-      {tagOptions.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {tagOptions.map((entry) => (
-            <button
-              key={"tag-" + entry.tag}
-              onClick={() => {
-                const next = tagFilter === entry.tag ? "all" : entry.tag;
-                tagRef.current = next;
-                setTagFilter(next);
-                void refresh();
-              }}
-              className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-                tagFilter === entry.tag
-                  ? "border-amber-400/30 bg-amber-400/[0.08] text-amber-800"
-                  : "border-line bg-soft text-ink-3 hover:text-ink"
+            <span
+              className={`h-2 w-2 rounded-full ${
+                liveMode ? "bg-emerald-500 animate-pulse" : "bg-ink-3"
               }`}
-            >
-              #{entry.tag} · {entry.count}
-            </button>
-          ))}
-        </div>
-      )}
+            />
+            {liveMode ? "Auto-sync" : "Paused"}
+          </button>
 
-      <div className="mb-4 flex items-center gap-2">
-        {(["all", "open", "closed"] as const).map((value) => (
           <button
-            key={value}
-            onClick={() => {
-              statusRef.current = value;
-              setStatusFilter(value);
-              void refresh();
-            }}
-            className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-              statusFilter === value
+            type="button"
+            onClick={() => toggleSound()}
+            title={
+              soundEnabled
+                ? "Sound notifications enabled"
+                : "Enable sound notifications for new messages"
+            }
+            className={`inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-xs font-medium transition-colors ${
+              soundEnabled
                 ? "border-brand/30 bg-brand-soft text-brand"
-                : "border-line bg-soft text-ink-3 hover:text-ink"
+                : "border-line bg-white text-ink-2 hover:text-ink"
             }`}
           >
-            {value}
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              {soundEnabled ? (
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              ) : (
+                <line x1="23" y1="9" x2="17" y2="15" />
+              )}
+            </svg>
+            <span>{soundEnabled ? "Sound On" : "Muted"}</span>
           </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => toggleSound()}
-          title={
-            soundEnabled
-              ? "Notification sound is on"
-              : "Play a sound when new customer messages arrive"
-          }
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
-            soundEnabled
-              ? "border-brand/30 bg-brand-soft text-brand"
-              : "border-line bg-soft text-ink-2 hover:text-ink"
-          }`}
-        >
-          {soundEnabled ? "Sound on" : "Sound off"}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const next = !liveMode;
-            setLiveMode(next);
-            liveModeRef.current = next;
-          }}
-          title={
-            liveMode
-              ? "The inbox refreshes itself"
-              : "Auto-refresh is paused - click Resume to go live again"
-          }
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
-            liveMode
-              ? "border-brand/30 bg-brand-soft text-brand"
-              : "border-line bg-soft text-ink-2 hover:text-ink"
-          }`}
-        >
-          {liveMode ? "Live" : "Paused"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          disabled={pending}
-          title="Refresh now"
-          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
-        >
-          {pending ? "Refreshing" : "Refresh"}
-        </button>
-        <span className="text-[10px] text-ink-3">
-          {syncedAt ? "Updated " + syncedAt.toLocaleTimeString() : ""}
-        </span>
-        <button
-          type="button"
-          onClick={() => setCompactList((current) => !current)}
-          title={
-            compactList
-              ? "Roomy list"
-              : "Fit more conversations on the screen"
-          }
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
-            compactList
-              ? "border-brand/30 bg-brand-soft text-brand"
-              : "border-line bg-soft text-ink-2 hover:text-ink"
-          }`}
-        >
-          {compactList ? "Compact" : "Cozy"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setHelpOpen((open) => !open)}
-          title="Keyboard shortcuts"
-          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink"
-        >
-          ?
-        </button>
-        <button
-          type="button"
-          onClick={() => void toggleAlert()}
-          title={
-            alertEnabled
-              ? "Desktop alerts are on"
-              : "Get a desktop alert when new customer messages arrive"
-          }
-          className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
-            alertEnabled
-              ? "border-brand/30 bg-brand-soft text-brand"
-              : "border-line bg-soft text-ink-2 hover:text-ink"
-          }`}
-        >
-          {alertEnabled ? "Alerts on" : "Alerts off"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void markAllRead()}
-          disabled={bulkBusy || !chipCounts.unread}
-          title="Mark every open conversation as read"
-          className="rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
-        >
-          Mark all read
-        </button>
-        <button
-          type="button"
-          onClick={() => void exportCsv()}
-          disabled={exporting || !items || items.length === 0}
-          className="ml-auto rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
-        >
-          {exporting ? "Preparing…" : "Export CSV"}
-        </button>
+
+          {chipCounts.unread > 0 && (
+            <button
+              type="button"
+              onClick={() => void markAllRead()}
+              disabled={bulkBusy}
+              className="inline-flex h-9 items-center whitespace-nowrap rounded-xl border border-line bg-white px-3 text-xs font-medium text-ink-2 shadow-2xs transition-colors hover:border-brand/30 hover:text-ink disabled:opacity-40"
+            >
+              Mark all read
+            </button>
+          )}
+
+          {canExportCsv && (
+            <button
+              type="button"
+              onClick={() => void exportCsv()}
+              disabled={exporting || !items || items.length === 0}
+              className="inline-flex h-9 items-center whitespace-nowrap rounded-xl border border-line bg-white px-3 text-xs font-medium text-ink-2 shadow-2xs transition-colors hover:border-brand/30 hover:text-ink disabled:opacity-40"
+            >
+              {exporting ? "Exporting…" : "Export CSV"}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={pending}
+            className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl border border-line bg-white px-3.5 text-xs font-medium text-ink-2 shadow-2xs transition-colors hover:border-brand/40 hover:text-ink disabled:opacity-40"
+          >
+            <svg
+              className={`h-3.5 w-3.5 ${pending ? "animate-spin" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+            <span>{pending ? "Syncing…" : "Refresh"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Unified Search & Filter Toolbar Card */}
+      <div className="mb-5 rounded-2xl border border-line bg-white p-3.5 shadow-card space-y-3">
+        {/* Top Row: Search Input + Segmented Status Filter */}
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <svg
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search by customer name, phone number, or message text..."
+              className="w-full rounded-xl border border-line bg-soft pl-10 pr-4 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-brand/40 focus:bg-white"
+            />
+          </div>
+
+          {/* Status Segmented Tabs */}
+          <div className="inline-flex shrink-0 items-center rounded-xl border border-line bg-soft p-1">
+            {(
+              [
+                { id: "all", label: "All Chats" },
+                { id: "open", label: "Open" },
+                { id: "closed", label: "Resolved" },
+              ] as const
+            ).map((tabItem) => (
+              <button
+                key={tabItem.id}
+                type="button"
+                onClick={() => {
+                  statusRef.current = tabItem.id;
+                  setStatusFilter(tabItem.id);
+                  void refresh();
+                }}
+                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  statusFilter === tabItem.id
+                    ? "bg-white text-brand shadow-2xs"
+                    : "text-ink-3 hover:text-ink"
+                }`}
+              >
+                {tabItem.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Multi-channel filter row (ONLY shown when client has 2+ channels enabled) */}
+        {visibleChannels.length > 1 && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5">
+            <span className="mr-1 text-[11px] font-medium text-ink-3">
+              Channel:
+            </span>
+            {(["all", ...visibleChannels] as const).map((value) => (
+              <button
+                key={"channel-" + value}
+                type="button"
+                onClick={() => {
+                  channelRef.current = value;
+                  setChannelFilter(value);
+                  void refresh();
+                }}
+                className={`whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                  channelFilter === value
+                    ? "border-brand/30 bg-brand-soft text-brand"
+                    : "border-line bg-soft text-ink-3 hover:text-ink"
+                }`}
+              >
+                {value === "all" ? "All Channels" : (CHANNEL_LABELS[value] ?? value)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Bottom Row: Clean Quick Filters + Sort & Time Dropdowns */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const next = unreadFilter === "1" ? "" : "1";
+                unreadRef.current = next;
+                setUnreadFilter(next);
+                void refresh();
+              }}
+              className={`inline-flex h-8 items-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                unreadFilter === "1"
+                  ? "border-brand/30 bg-brand-soft text-brand"
+                  : "border-line bg-soft text-ink-2 hover:text-ink"
+              }`}
+            >
+              Unread
+              {chipCounts.unread > 0 && (
+                <span className="ml-1.5 rounded-full bg-brand/15 px-1.5 py-0.2 text-[10px] font-semibold text-brand">
+                  {chipCounts.unread}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const next = replyFilter === "1" ? "" : "1";
+                replyFilterRef.current = next;
+                setReplyFilter(next);
+                void refresh();
+              }}
+              className={`inline-flex h-8 items-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                replyFilter === "1"
+                  ? "border-amber-400/40 bg-amber-400/10 text-amber-800"
+                  : "border-line bg-soft text-ink-2 hover:text-ink"
+              }`}
+            >
+              Needs Reply
+              {chipCounts.needsReply > 0 && (
+                <span className="ml-1.5 rounded-full bg-amber-400/20 px-1.5 py-0.2 text-[10px] font-semibold text-amber-800">
+                  {chipCounts.needsReply}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const next = starredFilter === "1" ? "" : "1";
+                starredRef.current = next;
+                setStarredFilter(next);
+                void refresh();
+              }}
+              className={`inline-flex h-8 items-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                starredFilter === "1"
+                  ? "border-amber-400/40 bg-amber-400/10 text-amber-800"
+                  : "border-line bg-soft text-ink-2 hover:text-ink"
+              }`}
+            >
+              Starred
+            </button>
+
+            {canUseTeam && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = assignedFilter === "unassigned" ? "" : "unassigned";
+                    assignedRef.current = next;
+                    setAssignedFilter(next);
+                    void refresh();
+                  }}
+                  className={`inline-flex h-8 items-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                    assignedFilter === "unassigned"
+                      ? "border-sky-400/40 bg-sky-400/10 text-sky-800"
+                      : "border-line bg-soft text-ink-2 hover:text-ink"
+                  }`}
+                >
+                  Unassigned
+                  {chipCounts.unassigned > 0 && (
+                    <span className="ml-1.5 rounded-full bg-sky-400/20 px-1.5 py-0.2 text-[10px] font-semibold text-sky-800">
+                      {chipCounts.unassigned}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = assignedFilter === "me" ? "" : "me";
+                    assignedRef.current = next;
+                    setAssignedFilter(next);
+                    void refresh();
+                  }}
+                  className={`inline-flex h-8 items-center whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                    assignedFilter === "me"
+                      ? "border-brand/30 bg-brand-soft text-brand"
+                      : "border-line bg-soft text-ink-2 hover:text-ink"
+                  }`}
+                >
+                  Assigned to Me
+                </button>
+              </>
+            )}
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => resetFilters()}
+                className="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg border border-brand/25 bg-brand-soft px-2.5 text-xs font-medium text-brand transition-colors hover:bg-brand/15"
+              >
+                <span>Clear filters</span>
+                <PortalIcon name="close" className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={daysFilter}
+              onChange={(event) => {
+                daysRef.current = event.target.value;
+                setDaysFilter(event.target.value);
+                void refresh();
+              }}
+              aria-label="Filter by time period"
+              className="h-8 rounded-lg border border-line bg-soft px-2.5 text-xs font-medium text-ink-2 outline-none transition-colors focus:border-brand/40"
+            >
+              <option value="">All time</option>
+              <option value="1">Last 24 hours</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+            </select>
+
+            <select
+              value={oldestFirst ? "oldest" : "newest"}
+              onChange={(event) => {
+                const isOldest = event.target.value === "oldest";
+                oldestRef.current = isOldest;
+                setOldestFirst(isOldest);
+                void refresh();
+              }}
+              aria-label="Sort order"
+              className="h-8 rounded-lg border border-line bg-soft px-2.5 text-xs font-medium text-ink-2 outline-none transition-colors focus:border-brand/40"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Tag & Intent Chips (only when present) */}
+        {(tagOptions.length > 0 || intentCounts.length > 0 || intentFilter !== "all") && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5">
+            {intentCounts.map((entry) => (
+              <button
+                key={entry.intent}
+                type="button"
+                onClick={() => {
+                  const next = intentFilter === entry.intent ? "all" : entry.intent;
+                  intentRef.current = next;
+                  setIntentFilter(next);
+                  void refresh();
+                }}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium capitalize transition-colors ${
+                  intentFilter === entry.intent
+                    ? "border-brand/40 bg-brand-soft text-brand"
+                    : "border-line bg-soft text-ink-2 hover:text-ink"
+                }`}
+              >
+                {entry.intent.replace(/_/g, " ")} ({entry.conversations})
+              </button>
+            ))}
+            {tagOptions.map((entry) => (
+              <button
+                key={"tag-" + entry.tag}
+                type="button"
+                onClick={() => {
+                  const next = tagFilter === entry.tag ? "all" : entry.tag;
+                  tagRef.current = next;
+                  setTagFilter(next);
+                  void refresh();
+                }}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  tagFilter === entry.tag
+                    ? "border-amber-400/40 bg-amber-400/10 text-amber-800"
+                    : "border-line bg-soft text-ink-2 hover:text-ink"
+                }`}
+              >
+                #{entry.tag} ({entry.count})
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {selectedIds.length > 0 && (
@@ -1372,14 +1410,16 @@ export default function InboxClient({
           >
             Clear
           </button>
-          <button
-            type="button"
-            onClick={() => void exportCsv(selectedIds)}
-            disabled={bulkBusy || exporting}
-            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
-          >
-            Export selected
-          </button>
+          {canExportCsv && (
+            <button
+              type="button"
+              onClick={() => void exportCsv(selectedIds)}
+              disabled={bulkBusy || exporting}
+              className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
+            >
+              Export selected
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void bulkAction("close")}
@@ -1396,31 +1436,35 @@ export default function InboxClient({
           >
             Reopen
           </button>
-          <select
-            value={assignTarget}
-            disabled={bulkBusy || teamMembers.length === 0}
-            onChange={(event) => {
-              const email = event.target.value;
-              setAssignTarget("");
-              if (email) void bulkAction("assign", email);
-            }}
-            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 disabled:opacity-40"
-          >
-            <option value="">Assign to...</option>
-            {teamMembers.map((member) => (
-              <option key={member.email} value={member.email}>
-                {member.name || member.email}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => void bulkAction("unassign")}
-            disabled={bulkBusy}
-            className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
-          >
-            Unassign
-          </button>
+          {canUseTeam && (
+            <>
+              <select
+                value={assignTarget}
+                disabled={bulkBusy || teamMembers.length === 0}
+                onChange={(event) => {
+                  const email = event.target.value;
+                  setAssignTarget("");
+                  if (email) void bulkAction("assign", email);
+                }}
+                className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 disabled:opacity-40"
+              >
+                <option value="">Assign to...</option>
+                {teamMembers.map((member) => (
+                  <option key={member.email} value={member.email}>
+                    {member.name || member.email}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void bulkAction("unassign")}
+                disabled={bulkBusy}
+                className="rounded-lg border border-line bg-soft px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-40"
+              >
+                Unassign
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={() => setSelectedIds([])}
@@ -1491,13 +1535,15 @@ export default function InboxClient({
               key={item.id}
               data-conv-row={item.id}
               className={
-                "flex items-start gap-2 rounded-2xl " +
-                (item.unread ? "bg-brand/[0.03] " : "") +
+                "group relative flex items-center gap-3 rounded-2xl border bg-white px-4 py-3.5 shadow-card transition-all duration-200 hover:border-brand/35 hover:shadow-md " +
+                (item.unread
+                  ? "border-brand/30 bg-brand/[0.02]"
+                  : "border-line") +
                 (item.needsReply && item.status === "open"
-                  ? "border-l-2 border-l-amber-400/60 "
+                  ? " border-l-4 border-l-amber-400"
                   : "") +
                 (activeRowIndex >= 0 && items[activeRowIndex]?.id === item.id
-                  ? "ring-1 ring-brand/40"
+                  ? " ring-2 ring-brand/30"
                   : "")
               }
             >
@@ -1508,16 +1554,16 @@ export default function InboxClient({
                 }
                 checked={selectedIds.includes(item.id)}
                 onChange={() => toggleSelected(item.id)}
-                className="mt-4 h-5 w-5 shrink-0 accent-brand"
+                className="h-4 w-4 shrink-0 rounded border-line accent-brand cursor-pointer"
               />
               <Link
                 href={`/dashboard/conversations/${item.id}`}
                 prefetch={false}
-                className={`block min-w-0 flex-1 rounded-2xl border border-line bg-soft ${compactList ? "p-2.5" : "p-4"} transition-colors duration-300 hover:border-brand/30 hover:bg-line/60`}
+                className="block min-w-0 flex-1"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.05] text-xs font-semibold text-brand">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand/20 bg-brand-soft text-xs font-semibold text-brand">
                       {(item.contactName || item.contactId || "?").slice(0, 2).toUpperCase()}
                     </span>
                     <div className="min-w-0">
@@ -1553,9 +1599,11 @@ export default function InboxClient({
                       {item.contactId ? (
                         <button
                           type="button"
-                          onClick={() =>
-                            void navigator.clipboard.writeText(item.contactId ?? "")
-                          }
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void navigator.clipboard.writeText(item.contactId ?? "");
+                          }}
                           title="Copy number"
                           className="truncate text-left text-xs text-ink-3 transition-colors hover:text-ink-2"
                         >
@@ -1570,7 +1618,11 @@ export default function InboxClient({
                     <button
                       type="button"
                       aria-label="Toggle star"
-                      onClick={() => void toggleStar(item.id)}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void toggleStar(item.id);
+                      }}
                       className={`text-base leading-none transition-transform hover:scale-110 ${
                         item.starred
                           ? "text-amber-700"
@@ -1581,7 +1633,11 @@ export default function InboxClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => void toggleConversationStatus(item.id, item.status)}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void toggleConversationStatus(item.id, item.status);
+                      }}
                       title={
                         item.status === "open"
                           ? "Close this conversation"

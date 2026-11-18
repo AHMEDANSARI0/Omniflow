@@ -26,7 +26,16 @@ __pycache__/
 
 # misc
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.pem
+*.swp
+*.swo
+*.tmp
+*.log
+.idea/
+.cache/
+.turbo/
 
 # debug
 npm-debug.log*
@@ -57,3 +66,9 @@ hide/
 mobile
 /mobile
 .mobile
+oflow_service_key.txt
+/oflow_service_key.txt
+.oflow_service_key.txt
+madmin.json
+/madmin.json
+.madmin.json

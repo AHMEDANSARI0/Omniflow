@@ -758,9 +758,9 @@ html.of-js .of-reveal.of-reveal-in {
   padding-top: 10px;
 }
 .of-nav[data-scrolled="true"] .of-nav-bar {
-  max-width: 1040px;
+  max-width: 1220px;
   height: var(--navbar-height-scrolled);
-  padding-inline: 16px;
+  padding-inline: 22px;
   border-radius: var(--radius-md);
   border-color: rgba(255, 255, 255, 0.7);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.45));
@@ -770,6 +770,40 @@ html.of-js .of-reveal.of-reveal-in {
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
     0 1px 2px rgba(16, 24, 40, 0.05),
     0 16px 40px -18px rgba(16, 24, 40, 0.28);
+}
+.of-nav-bar a,
+.of-nav-bar button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (min-width: 960px) {
+  .of-nav-links {
+    display: flex !important;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .of-nav-login,
+  .of-nav-cta {
+    display: inline-flex !important;
+    align-items: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .of-nav-toggle,
+  .of-nav-panel {
+    display: none !important;
+  }
+}
+@media (max-width: 959.98px) {
+  .of-nav-links,
+  .of-nav-login {
+    display: none !important;
+  }
+  .of-nav-toggle {
+    display: inline-flex !important;
+  }
 }
 @keyframes of-nav-enter {
   0% {

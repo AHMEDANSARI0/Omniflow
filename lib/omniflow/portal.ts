@@ -129,15 +129,19 @@ export async function getWhatsAppChannelStatus(
   const p = payload as Record<string, unknown>;
   const rawState = typeof p.state === "string" ? p.state : "unknown";
   const allowedStates: readonly string[] = ["disconnected", "connecting", "connected"];
-  const state = allowedStates.includes(rawState)
+  const rawPhone = typeof p.phone === "string" ? p.phone.trim() : null;
+  const cleanPhone = rawPhone && rawPhone !== "+923001234567" ? rawPhone : null;
+  const baseState = allowedStates.includes(rawState)
     ? (rawState as WhatsAppChannelStatus["state"])
     : "unknown";
+  const state: WhatsAppChannelStatus["state"] =
+    baseState === "connected" && !cleanPhone ? "disconnected" : baseState;
 
   return {
     configured: true,
     state,
     accountName: typeof p.account_name === "string" ? p.account_name : null,
-    phone: typeof p.phone === "string" ? p.phone : null,
+    phone: cleanPhone,
     lastSeenAt: typeof p.last_seen_at === "string" ? p.last_seen_at : null,
   };
 }

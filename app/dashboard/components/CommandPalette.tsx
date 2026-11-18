@@ -4,7 +4,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PortalIcon, { type IconName } from "./PortalIcon";
-import { ASSISTANT_LINK, DASHBOARD_LINK, NAV_GROUPS, SETTINGS_LINK } from "./portalNav";
+import {
+  ASSISTANT_LINK,
+  DASHBOARD_LINK,
+  SETTINGS_LINK,
+  filterNavGroupsByEntitlements,
+} from "./portalNav";
 
 interface PaletteItem {
   group: string;
@@ -16,15 +21,23 @@ interface PaletteItem {
 
 const OPEN_EVENT = "omniflow-command-open";
 
-// §246: every portal page is searchable - built from the sidebar config.
-const PAGES: PaletteItem[] = [
-  { ...DASHBOARD_LINK, group: "Pages" },
-  { ...ASSISTANT_LINK, group: "Pages" },
-  ...NAV_GROUPS.flatMap((navGroup) =>
-    navGroup.items.map((item) => ({ ...item, group: "Pages", sub: navGroup.title }))
-  ),
-  { ...SETTINGS_LINK, group: "Pages" },
-];
+function buildPages(enabledFeatures?: string[]): PaletteItem[] {
+  const groups = filterNavGroupsByEntitlements(enabledFeatures);
+  const askOmniAllowed =
+    !enabledFeatures || enabledFeatures.includes("ai.advanced_tools");
+  return [
+    { ...DASHBOARD_LINK, group: "Pages" },
+    ...(askOmniAllowed ? [{ ...ASSISTANT_LINK, group: "Pages" }] : []),
+    ...groups.flatMap((navGroup) =>
+      navGroup.items.map((item) => ({
+        ...item,
+        group: "Pages",
+        sub: navGroup.title,
+      }))
+    ),
+    { ...SETTINGS_LINK, group: "Pages" },
+  ];
+}
 
 export function openCommandPalette() {
   if (typeof window !== "undefined") {
@@ -44,7 +57,11 @@ interface CustomerHit {
   name: string;
 }
 
-export default function CommandPalette() {
+export default function CommandPalette({
+  enabledFeatures,
+}: {
+  enabledFeatures?: string[];
+} = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -105,7 +122,7 @@ export default function CommandPalette() {
 
   useEffect(() => {
     const needle = query.trim().toLowerCase();
-    const pages = PAGES.filter(
+    const pages = buildPages(enabledFeatures).filter(
       (page) =>
         !needle ||
         page.label.toLowerCase().includes(needle) ||

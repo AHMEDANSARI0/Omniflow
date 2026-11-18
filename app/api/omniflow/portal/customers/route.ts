@@ -1,15 +1,17 @@
-import { validateAdminToken, requireAdmin } from "@/lib/auth/admin-middleware";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit/limiter";
-import { getLogger } from "@/lib/logger";
-
-const log = getLogger({ serviceName: "bot-api" });
-
-import { ControlPlaneRequestError } from "../../../../../lib/omniflow/control-plane";
+import { neonEnabled, neonQuery } from "../../../../../lib/db/neon";
+import {
+  ControlPlaneRequestError,
+  getControlPlanePrincipal,
+} from "../../../../../lib/omniflow/control-plane";
 import {
   listCustomers,
   requirePortalAccessToken,
+  type CustomerSummary,
 } from "../../../../../lib/omniflow/portal";
-import { safeJson } from "../../../../../lib/omniflow/request-security";
+import {
+  noStoreHeaders,
+  safeJson,
+} from "../../../../../lib/omniflow/request-security";
 
 export async function GET(request: Request) {
   const accessToken = await requirePortalAccessToken();
@@ -21,33 +23,72 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const rawSearch = (url.searchParams.get("q") || "").trim().slice(0, 100);
-  const searchQuery = rawSearch || undefined;
-  const channelParam = url.searchParams.get("channel");
-  const channelFilter =
-    channelParam === "whatsapp" || channelParam === "website"
-      ? channelParam
-      : undefined;
+  const query = (url.searchParams.get("q") || "").trim().slice(0, 100);
+  const channel = (url.searchParams.get("channel") || "all")
+    .trim()
+    .toLowerCase();
 
-  try {
-    const data = await listCustomers(accessToken, searchQuery, channelFilter);
-    if (data === null) {
-      return safeJson(
-        { error: { code: "portal_unavailable", message: "Try again shortly." } },
-        503
+  if (!accessToken.startsWith("ofa_neon_")) {
+    try {
+      const customers = await listCustomers(
+        accessToken,
+        query || undefined,
+        channel !== "all" ? channel : undefined
       );
+
+      if (customers !== null) {
+        return safeJson({ customers }, 200);
+      }
+    } catch (error) {
+      if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
+        return safeJson(
+          { error: { code: "unauthorized", message: "Sign in required." } },
+          401
+        );
+      }
     }
-    return safeJson({ customers: data }, 200);
-  } catch (error) {
-    if (error instanceof ControlPlaneRequestError && error.isUnauthorized) {
-      return safeJson(
-        { error: { code: "unauthorized", message: "Session expired." } },
-        401
-      );
-    }
-    return safeJson(
-      { error: { code: "portal_unavailable", message: "Try again shortly." } },
-      503
-    );
   }
+
+  if (neonEnabled()) {
+    try {
+      const principal = await getControlPlanePrincipal(accessToken);
+      const res = await neonQuery<{
+        channel: string | null;
+        contact_id: string;
+        contact_name: string | null;
+        status: string | null;
+        last_message_preview: string | null;
+        last_message_at: string | null;
+      }>(
+        `SELECT channel, contact_id, contact_name, status, last_message_preview, last_message_at
+         FROM portal_conversations
+         WHERE client_id = $1
+         ORDER BY last_message_at DESC NULLS LAST, id DESC
+         LIMIT 50`,
+        [principal.clientId]
+      );
+      const customers: CustomerSummary[] = res.rows.map((r) => ({
+        contactId: r.contact_id,
+        name: r.contact_name || "",
+        channels: [r.channel || "whatsapp"],
+        conversationCount: 1,
+        openCount: (r.status || "open") === "open" ? 1 : 0,
+        lastMessageAt: r.last_message_at
+          ? new Date(r.last_message_at).toISOString()
+          : null,
+        lastMessagePreview: r.last_message_preview,
+        leadTemp: "cold",
+        tags: [],
+      }));
+      return safeJson({ customers }, 200);
+    } catch {
+      // fall through
+    }
+  }
+
+  return safeJson({ customers: [] }, 200);
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: noStoreHeaders() });
 }

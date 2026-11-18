@@ -4,6 +4,7 @@ import Link from "next/link";
 import CustomersImport from "./CustomersImport";
 import DuplicatesPanel from "./DuplicatesPanel";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePortalEntitlements } from "../../components/usePortalEntitlements";
 
 interface CustomerSummary {
   contactId: string;
@@ -55,6 +56,19 @@ export default function CustomersClient({
   initialCustomers?: CustomerSummary[] | null;
   initialQuery?: string | null;
 }) {
+  const { hasFeature, hasConnector, hasPermission } = usePortalEntitlements();
+  const canUseAdvancedCrm = hasFeature("sales.advanced_crm");
+  const canImportCsv = canUseAdvancedCrm && hasPermission("import");
+  const canExportCsv =
+    (canUseAdvancedCrm || hasFeature("insights.advanced_analytics")) &&
+    hasPermission("export");
+  const customerChannels = [
+    "whatsapp",
+    ...(hasFeature("marketing.growth") ? ["website"] : []),
+    ...(hasConnector("instagram") ? ["instagram"] : []),
+    ...(hasConnector("messenger") ? ["messenger"] : []),
+  ];
+
   const [customers, setCustomers] = useState<CustomerSummary[] | null>(
     initialCustomers ?? null
   );
@@ -78,10 +92,8 @@ export default function CustomersClient({
   const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
   const searchRef = useRef(initialQuery ?? "");
   const debounceRef = useRef<number | null>(null);
-  const [channelFilter, setChannelFilter] = useState<
-    "all" | "whatsapp" | "website"
-  >("all");
-  const channelRef = useRef<"all" | "whatsapp" | "website">("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+  const channelRef = useRef<string>("all");
   const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
@@ -172,6 +184,23 @@ export default function CustomersClient({
   const [mergeKeep, setMergeKeep] = useState("");
   const [mergeBusy, setMergeBusy] = useState(false);
   const [mergeNote, setMergeNote] = useState("");
+  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!menuOpenFor) return;
+    function onDocClick() {
+      setMenuOpenFor(null);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpenFor(null);
+    }
+    window.addEventListener("click", onDocClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", onDocClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpenFor]);
 
   async function mergeContact(duplicate: string) {
     if (mergeBusy || !mergeKeep || mergeKeep === duplicate) {
@@ -419,16 +448,57 @@ export default function CustomersClient({
   }
 
   return (
-    <div>
-      <h1 className="text-base font-semibold text-ink">Customers</h1>
-      <p className="mt-0.5 text-xs text-ink-3">
-        Every contact across WhatsApp and the website — search, filter, and
-        jump straight into their chats.
-      </p>
+    <div className="mx-auto max-w-4xl">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
+            Customers
+          </h1>
+          <p className="mt-0.5 text-xs text-ink-3">
+            {customerChannels.length > 1
+              ? "Every contact across your enabled channels — search, filter, and jump straight into their chats."
+              : "Every WhatsApp contact in your workspace — search, message, and jump straight into their chats."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {canImportCsv && <CustomersImport onImported={() => void refresh()} />}
+          {canExportCsv && (
+            <button
+              type="button"
+              onClick={() => exportCustomers()}
+              disabled={!customers || customers.length === 0}
+              className="inline-flex h-9 items-center whitespace-nowrap rounded-xl border border-line bg-white px-3 text-xs font-medium text-ink-2 shadow-2xs transition-colors hover:border-brand/30 hover:text-ink disabled:opacity-40"
+            >
+              Export CSV
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={pending}
+            className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl border border-line bg-white px-3.5 text-xs font-medium text-ink-2 shadow-2xs transition-colors hover:border-brand/40 hover:text-ink disabled:opacity-40"
+          >
+            <svg
+              className={`h-3.5 w-3.5 ${pending ? "animate-spin" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+            <span>{pending ? "Syncing…" : "Refresh"}</span>
+          </button>
+        </div>
+      </div>
 
-      {topCustomers.length > 0 ? (
-        <div className="mt-4">
-          <p className="text-[10px] font-semibold text-ink-3">
+      {(canUseAdvancedCrm || hasFeature("sales.sales_desk")) &&
+      topCustomers.length > 0 ? (
+        <div className="mb-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">
             Top customers
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -452,45 +522,56 @@ export default function CustomersClient({
         </div>
       ) : null}
 
-      <div className="mt-4">
-        <input
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search by name or contact…"
-          className="w-full rounded-xl border border-line bg-soft px-4 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors duration-300 focus:border-brand/40"
-        />
-      </div>
-
-      <div className="mb-4 mt-3 flex flex-wrap items-center gap-2">
-        {(["all", "whatsapp", "website"] as const).map((value) => (
-          <button
-            key={value}
-            onClick={() => {
-              channelRef.current = value;
-              setChannelFilter(value);
-              void refresh();
-            }}
-            className={`rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium transition-colors ${
-              channelFilter === value
-                ? "border-brand/30 bg-brand-soft text-brand"
-                : "border-line bg-soft text-ink-3 hover:text-ink"
-            }`}
+      <div className="mb-5 rounded-2xl border border-line bg-white p-3.5 shadow-card space-y-3">
+        <div className="relative">
+          <svg
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {value === "all" ? "All channels" : value}
-          </button>
-        ))}
-        <CustomersImport onImported={() => void refresh()} />
-        <button
-          type="button"
-          onClick={() => exportCustomers()}
-          disabled={!customers || customers.length === 0}
-          className="ml-auto rounded-lg border border-line bg-soft inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors duration-300 hover:text-ink disabled:opacity-40"
-        >
-          Export CSV
-        </button>
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Search customers by name or phone number..."
+            className="w-full rounded-xl border border-line bg-soft pl-10 pr-4 py-2 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-brand/40 focus:bg-white"
+          />
+        </div>
+
+        {customerChannels.length > 1 && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5">
+            <span className="mr-1 text-[11px] font-medium text-ink-3">
+              Channel:
+            </span>
+            {(["all", ...customerChannels] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  channelRef.current = value;
+                  setChannelFilter(value);
+                  void refresh();
+                }}
+                className={`whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                  channelFilter === value
+                    ? "border-brand/30 bg-brand-soft text-brand"
+                    : "border-line bg-soft text-ink-3 hover:text-ink"
+                }`}
+              >
+                {value === "all" ? "All Channels" : value}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <DuplicatesPanel onLinked={() => void refresh()} />
+      {canUseAdvancedCrm && <DuplicatesPanel onLinked={() => void refresh()} />}
 
       {!customers ? (
         <div className="animate-pulse space-y-3">
@@ -516,135 +597,116 @@ export default function CustomersClient({
           {customers.map((customer) => (
             <li
               key={customer.contactId}
-              className="overflow-hidden rounded-2xl border border-line bg-white shadow-card"
+              className="relative rounded-2xl border border-line bg-white shadow-card transition-shadow duration-200 hover:shadow-md"
             >
-              <div className="flex items-stretch">
-              <Link
-                prefetch={false}
-                href={
-                  "/dashboard/conversations?q=" +
-                  encodeURIComponent(customer.contactId)
-                }
-                className="min-w-0 flex-1 p-4 transition-colors duration-300 hover:bg-line/60"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand/20 bg-brand-soft text-sm font-semibold text-brand">
-                      {(customer.name || customer.contactId || "?")
-                        .trim()
-                        .charAt(0)
-                        .toUpperCase()}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">
-                        {customer.name || customer.contactId}
-                      </p>
-                      {customer.name && (
-                        <button
-                          type="button"
-                          onClick={() => copyContact(customer.contactId)}
-                          title="Copy number"
-                          className="truncate text-left text-[11px] text-ink-3 transition-colors hover:text-ink-2"
-                        >
-                          {customer.contactId}
-                        </button>
-                      )}
-                      {customer.tags.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {customer.tags.slice(0, 3).map((tag) => (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <Link
+                  prefetch={false}
+                  href={
+                    "/dashboard/conversations?q=" +
+                    encodeURIComponent(customer.contactId)
+                  }
+                  className="min-w-0 flex-1 rounded-t-2xl p-4 transition-colors duration-200 hover:bg-soft/70 sm:rounded-l-2xl sm:rounded-tr-none"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand/20 bg-brand-soft text-sm font-semibold text-brand">
+                        {(customer.name || customer.contactId || "?")
+                          .trim()
+                          .charAt(0)
+                          .toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-ink">
+                            {customer.name || customer.contactId}
+                          </p>
+                          {customer.leadTemp !== "cold" && (
                             <span
-                              key={"cust-tag-" + tag}
-                              className="inline-block rounded-md border px-1.5 py-0.5 text-[9px] font-medium tracking-wide"
-                              style={{
-                                borderColor:
-                                  `hsl(${tagHue(tag)} 70% 50% / 0.3)`,
-                                backgroundColor:
-                                  `hsl(${tagHue(tag)} 70% 50% / 0.10)`,
-                                color: `hsl(${tagHue(tag)} 80% 72%)`,
-                              }}
+                              className={
+                                "inline-block shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider " +
+                                (customer.leadTemp === "hot"
+                                  ? "border-orange-400/25 bg-orange-400/[0.08] text-amber-700"
+                                  : "border-amber-400/20 bg-amber-400/[0.05] text-amber-800")
+                              }
                             >
-                              #{tag}
+                              {customer.leadTemp} lead
                             </span>
-                          ))}
+                          )}
                         </div>
+                        {customer.name && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              copyContact(customer.contactId);
+                            }}
+                            title="Copy contact ID"
+                            className="truncate text-left text-[11px] text-ink-3 transition-colors hover:text-ink-2"
+                          >
+                            {customer.contactId}
+                          </button>
+                        )}
+                        {customer.tags.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {customer.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={"cust-tag-" + tag}
+                                className="inline-block rounded-md border px-1.5 py-0.5 text-[9px] font-medium tracking-wide"
+                                style={{
+                                  borderColor:
+                                    `hsl(${tagHue(tag)} 70% 50% / 0.3)`,
+                                  backgroundColor:
+                                    `hsl(${tagHue(tag)} 70% 50% / 0.10)`,
+                                  color: `hsl(${tagHue(tag)} 80% 72%)`,
+                                }}
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="shrink-0 sm:text-right">
+                      <p className="text-[11px] font-medium text-ink-3">
+                        {customer.conversationCount}{" "}
+                        {customer.conversationCount === 1 ? "chat" : "chats"}
+                        {customer.openCount > 0 &&
+                          " · " + customer.openCount + " open"}
+                        {" · "}
+                        {customer.channels.join(", ")}
+                      </p>
+                      {customer.lastMessagePreview && (
+                        <p className="mt-0.5 max-w-xs truncate text-xs text-ink-2 sm:ml-auto">
+                          {customer.lastMessagePreview}
+                        </p>
                       )}
+                      <p className="mt-0.5 text-[10px] text-ink-3">
+                        {formatWhen(customer.lastMessageAt)}
+                      </p>
                     </div>
                   </div>
-                  <div className="shrink-0 sm:text-right">
-                    <p className="text-[11px] text-ink-3">
-                      {customer.conversationCount}{" "}
-                      {customer.conversationCount === 1 ? "chat" : "chats"}
-                      {customer.openCount > 0 &&
-                        " · " + customer.openCount + " open"}
-                      {" · "}
-                      {customer.channels.join(", ")}
-                    </p>
-                    {customer.lastMessagePreview && (
-                      <p className="mt-0.5 max-w-xs truncate text-xs text-ink-2 sm:ml-auto">
-                        {customer.lastMessagePreview}
-                      </p>
-                    )}
-                    <p className="mt-0.5 text-[10px] text-ink-3">
-                      {formatWhen(customer.lastMessageAt)}
-                    </p>
-                  </div>
-                </div>
-                {customer.leadTemp !== "cold" && (
-                  <div className="mt-2 flex">
-                    <span
-                      className={
-                        "inline-block rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider " +
-                        (customer.leadTemp === "hot"
-                          ? "border-orange-400/25 bg-orange-400/[0.08] text-amber-700"
-                          : "border-amber-400/20 bg-amber-400/[0.05] text-amber-800")
-                      }
-                    >
-                      {customer.leadTemp} lead
-                    </span>
-                  </div>
-                )}
-              </Link>
-                <div className="flex w-14 shrink-0 flex-col border-l border-line sm:w-16">
-                  <a
-                    href={`/dashboard/customers/profile?contact=${encodeURIComponent(customer.contactId)}`}
-                    title="Open customer 360"
-                    className="border-b border-line py-2 text-[10px] font-semibold uppercase tracking-wider text-brand transition-colors duration-300 hover:text-brand"
-                  >
-                    360
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMergeOpenFor(customer.contactId);
-                      setMergeKeep("");
-                      setMergeNote("");
-                    }}
-                    title="Merge duplicate contact"
-                    className="border-b border-line py-2 text-[10px] font-semibold uppercase tracking-wider text-ink-3 transition-colors duration-300 hover:text-ink"
-                  >
-                    Merge
-                  </button>
-                  <a
-                    href={`https://wa.me/${customer.contactId.replace(/[^0-9]/g, "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Open in WhatsApp"
-                    className="flex-1 border-b border-line text-[10px] font-semibold uppercase tracking-wider text-ok transition-colors duration-300 hover:text-ok"
-                  >
-                    Chat
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => void toggleNotes(customer.contactId)}
-                    className={
-                      "flex-1 text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
-                      (notesOpenFor === customer.contactId
-                        ? "bg-brand-soft text-brand"
-                        : "text-ink-3 hover:text-ink")
+                </Link>
+
+                {/* Clean horizontal action bar + dropdown menu */}
+                <div className="flex shrink-0 items-center justify-end gap-1.5 border-t border-line px-4 py-2.5 sm:border-l sm:border-t-0 sm:py-4">
+                  <Link
+                    prefetch={false}
+                    href={
+                      "/dashboard/conversations?q=" +
+                      encodeURIComponent(customer.contactId)
                     }
+                    title="Open conversation in Inbox"
+                    className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand/25 bg-brand-soft px-3 text-xs font-semibold text-brand transition-colors hover:bg-brand/15"
                   >
-                    Notes
-                  </button>
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span>Chat</span>
+                  </Link>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -652,15 +714,120 @@ export default function CustomersClient({
                       setMsgStatus(null);
                       setMsgOpenFor(msgOpenFor === customer.contactId ? null : customer.contactId);
                     }}
+                    title="Send quick message"
                     className={
-                      "flex-1 border-t border-line text-[10px] font-semibold uppercase tracking-wider transition-colors duration-300 " +
+                      "inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors " +
                       (msgOpenFor === customer.contactId
-                        ? "bg-brand-soft text-brand"
-                        : "text-ink-3 hover:text-ink")
+                        ? "border-brand/30 bg-brand-soft text-brand"
+                        : "border-line bg-soft text-ink-2 hover:border-line-2 hover:text-ink")
                     }
                   >
-                    Message
+                    <span>Message</span>
                   </button>
+
+                  <div
+                    className="relative"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={menuOpenFor === customer.contactId}
+                      onClick={() =>
+                        setMenuOpenFor((prev) =>
+                          prev === customer.contactId ? null : customer.contactId
+                        )
+                      }
+                      title="More customer actions"
+                      className={
+                        "inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 text-xs font-medium transition-colors " +
+                        (menuOpenFor === customer.contactId ||
+                        notesOpenFor === customer.contactId ||
+                        mergeOpenFor === customer.contactId
+                          ? "border-brand/30 bg-brand-soft text-brand"
+                          : "border-line bg-white text-ink-2 hover:border-line-2 hover:text-ink")
+                      }
+                    >
+                      <span>Actions</span>
+                      <svg className="h-3.5 w-3.5 text-ink-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+
+                    {menuOpenFor === customer.contactId && (
+                      <div
+                        role="menu"
+                        className="absolute right-0 top-full z-30 mt-1.5 w-48 rounded-xl border border-line bg-white p-1.5 shadow-xl"
+                      >
+                        {canUseAdvancedCrm && (
+                          <a
+                            href={`/dashboard/customers/profile?contact=${encodeURIComponent(customer.contactId)}`}
+                            role="menuitem"
+                            className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-medium text-ink transition-colors hover:bg-soft"
+                          >
+                            <span>Customer 360 Profile</span>
+                            <span className="rounded bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold text-brand">
+                              360
+                            </span>
+                          </a>
+                        )}
+                        <a
+                          href={`https://wa.me/${customer.contactId.replace(/[^0-9]/g, "")}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          role="menuitem"
+                          onClick={() => setMenuOpenFor(null)}
+                          className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-medium text-ink transition-colors hover:bg-soft"
+                        >
+                          <span>Open in WhatsApp</span>
+                          <span className="text-[10px] font-semibold text-ok">WA ↗</span>
+                        </a>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuOpenFor(null);
+                            void toggleNotes(customer.contactId);
+                          }}
+                          className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-medium text-ink transition-colors hover:bg-soft"
+                        >
+                          <span>Customer Notes</span>
+                          {notesOpenFor === customer.contactId && (
+                            <span className="text-[10px] font-semibold text-brand">Open</span>
+                          )}
+                        </button>
+                        {canUseAdvancedCrm && (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setMenuOpenFor(null);
+                              setMergeOpenFor(
+                                mergeOpenFor === customer.contactId ? null : customer.contactId
+                              );
+                              setMergeKeep("");
+                              setMergeNote("");
+                            }}
+                            className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-medium text-ink transition-colors hover:bg-soft"
+                          >
+                            <span>Merge Duplicate</span>
+                          </button>
+                        )}
+                        <div className="my-1 border-t border-line" />
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuOpenFor(null);
+                            copyContact(customer.contactId);
+                          }}
+                          className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-medium text-ink-2 transition-colors hover:bg-soft hover:text-ink"
+                        >
+                          <span>Copy Contact ID</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               {mergeOpenFor === customer.contactId && (

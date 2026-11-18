@@ -1,10 +1,13 @@
-import { getControlPlanePrincipal } from "../../../../../../lib/omniflow/control-plane";
+import { ControlPlaneRequestError } from "../../../../../../lib/omniflow/control-plane";
 import {
   requirePortalAccessToken,
   verifyInstagramSettings,
 } from "../../../../../../lib/omniflow/portal";
-import { safeJson, sameOrigin } from "../../../../../../lib/omniflow/request-security";
-import { verifyWorkspaceInstagramSettings } from "../../../../../lib/workspace-store";
+import {
+  noStoreHeaders,
+  safeJson,
+  sameOrigin,
+} from "../../../../../../lib/omniflow/request-security";
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) {
@@ -13,6 +16,7 @@ export async function POST(request: Request) {
       403
     );
   }
+
   const accessToken = await requirePortalAccessToken();
   if (!accessToken) {
     return safeJson(
@@ -21,25 +25,48 @@ export async function POST(request: Request) {
     );
   }
 
-  let clientId = 1;
   try {
-    const p = await getControlPlanePrincipal(accessToken);
-    clientId = p.clientId || 1;
-  } catch {
-    clientId = 1;
-  }
-
-  if (!accessToken.startsWith("ofa_neon_")) {
-    try {
-      const result = await verifyInstagramSettings(accessToken);
-      if (result && result !== "not_configured" && !("providerError" in result)) {
-        return safeJson(result, 200);
-      }
-    } catch {
-      // Fall back to local verification
+    const result = await verifyInstagramSettings(accessToken);
+    if (result === "not_configured") {
+      return safeJson(
+        {
+          error: {
+            code: "not_configured",
+            message: "Save your Instagram Account ID and Access Token before verifying.",
+          },
+        },
+        409
+      );
+    }
+    if (result && "providerError" in result) {
+      return safeJson(
+        { error: { code: "provider_error", message: result.providerError } },
+        502
+      );
+    }
+    if (result && "ok" in result) {
+      return safeJson(result, 200);
+    }
+  } catch (error) {
+    if (error instanceof ControlPlaneRequestError) {
+      return safeJson(
+        { error: { code: error.code, message: error.message } },
+        error.status
+      );
     }
   }
 
-  const verified = await verifyWorkspaceInstagramSettings(clientId);
-  return safeJson(verified, 200);
+  return safeJson(
+    {
+      error: {
+        code: "instagram_test_unavailable",
+        message: "Could not verify Instagram settings against Meta Graph API.",
+      },
+    },
+    503
+  );
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: noStoreHeaders() });
 }

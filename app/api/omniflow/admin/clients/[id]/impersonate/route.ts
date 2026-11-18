@@ -37,19 +37,25 @@ export async function POST(request: Request, context: RouteContext) {
   const { id } = await context.params;
   const targetId = Number(id);
   if (!Number.isSafeInteger(targetId) || targetId <= 0) {
-    return safeJson({ error: { code: "bad_request", message: "Invalid workspace ID." } }, 400);
+    return safeJson(
+      { error: { code: "bad_request", message: "Invalid workspace ID." } },
+      400
+    );
   }
 
-  const tokens = await createAdminImpersonationSession(targetId);
-  if (!tokens) {
-    return safeJson({ error: { code: "not_found", message: "Workspace not found." } }, 404);
+  const session = await createAdminImpersonationSession(targetId);
+  if (!session) {
+    return safeJson(
+      { error: { code: "not_found", message: "Workspace not found." } },
+      404
+    );
   }
 
-  await writeSessionCookies(tokens);
+  await writeSessionCookies(session.tokens);
   return safeJson({
     ok: true,
-    client_id: tokens.clientId,
-    user_id: tokens.userId,
+    client_id: session.tokens.clientId,
+    user_id: session.tokens.userId,
     redirect: "/dashboard",
   });
 }

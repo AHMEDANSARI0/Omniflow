@@ -5,18 +5,27 @@ import { usePathname } from "next/navigation";
 import PortalIcon, { type IconName } from "./PortalIcon";
 import { useUnreadCount } from "./useUnreadCount";
 
-const TABS: { href: string; label: string; icon: IconName; exact: boolean }[] = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard", exact: true },
-  { href: "/dashboard/conversations", label: "Inbox", icon: "conversations", exact: false },
-  { href: "/dashboard/customers", label: "Customers", icon: "customers", exact: false },
-  { href: "/dashboard/broadcasts", label: "Broadcasts", icon: "marketing", exact: false },
-];
-
-export default function MobileTabBar() {
+export default function MobileTabBar({
+  enabledFeatures,
+}: {
+  enabledFeatures?: string[];
+} = {}) {
   const pathname = usePathname();
   const unreadCount = useUnreadCount();
 
   if (pathname.startsWith("/dashboard/conversations/")) return null;
+
+  const hasBroadcasts =
+    !enabledFeatures || enabledFeatures.includes("marketing.broadcasts");
+
+  const tabs: { href: string; label: string; icon: IconName; exact: boolean }[] = [
+    { href: "/dashboard", label: "Dashboard", icon: "dashboard", exact: true },
+    { href: "/dashboard/conversations", label: "Inbox", icon: "conversations", exact: false },
+    { href: "/dashboard/customers", label: "Customers", icon: "customers", exact: false },
+    hasBroadcasts
+      ? { href: "/dashboard/broadcasts", label: "Broadcasts", icon: "marketing", exact: false }
+      : { href: "/dashboard/channels/whatsapp", label: "WhatsApp", icon: "whatsapp", exact: false },
+  ];
 
   return (
     <nav
@@ -25,7 +34,7 @@ export default function MobileTabBar() {
       style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))" }}
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-between px-2 pt-1.5">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = tab.exact
             ? pathname === tab.href
             : pathname.startsWith(tab.href);

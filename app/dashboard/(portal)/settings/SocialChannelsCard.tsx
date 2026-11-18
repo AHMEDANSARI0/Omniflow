@@ -5,6 +5,7 @@
  * API mode = the merchant's own developer app + OAuth; login mode = the laptop bridge.
  */
 import { useCallback, useEffect, useState } from "react";
+import { usePortalEntitlements } from "../../components/usePortalEntitlements";
 import type {
   SocialChannelAccount,
   SocialChannelId,
@@ -71,6 +72,7 @@ async function fetchState(): Promise<SocialChannelsState | string> {
 }
 
 export default function SocialChannelsCard() {
+  const { hasConnector } = usePortalEntitlements();
   const [state, setState] = useState<SocialChannelsState | null>(null);
   const [selected, setSelected] = useState<SocialChannelId>("tiktok");
   const [draft, setDraft] = useState<KeyDraft | null>(null);
@@ -100,9 +102,18 @@ export default function SocialChannelsCard() {
     });
   }, [apply]);
 
-  const account = state?.channels.find((item) => item.channel === selected) ?? null;
+  const visibleChannels = (state?.channels ?? []).filter((item) =>
+    hasConnector(item.channel)
+  );
+  const activeSelected = visibleChannels.some((item) => item.channel === selected)
+    ? selected
+    : (visibleChannels[0]?.channel ?? selected);
+  const account =
+    visibleChannels.find((item) => item.channel === activeSelected) ?? null;
   // reset the form only when the tab or the saved keys change, not on every refresh of other fields
-  const draftKey = account ? [selected, account.app_id, account.organization_id, account.mode].join("|") : "";
+  const draftKey = account
+    ? [activeSelected, account.app_id, account.organization_id, account.mode].join("|")
+    : "";
   const [shownKey, setShownKey] = useState("");
   if (account && draftKey !== shownKey) {
     setShownKey(draftKey);
@@ -187,7 +198,11 @@ export default function SocialChannelsCard() {
   const canEdit = state?.can_edit === true;
   const mode: SocialMode = account?.mode ?? "api";
   const features = account ? account.capabilities[mode] : [];
-  const publishable = (state?.channels ?? []).filter((item) => item.enabled && item.flags.publish && item.capabilities[item.mode].includes("publish"));
+  const publishable = visibleChannels.filter((item) => item.enabled && item.flags.publish && item.capabilities[item.mode].includes("publish"));
+
+  if (loaded && visibleChannels.length === 0) {
+    return null;
+  }
 
   return (
     <div id="social" className="mt-6 rounded-xl2 border border-line bg-white p-5 shadow-card">
@@ -201,16 +216,16 @@ export default function SocialChannelsCard() {
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2" role="tablist">
-        {(state?.channels ?? []).map((item) => (
+        {visibleChannels.map((item) => (
           <button
             key={item.channel}
             type="button"
             role="tab"
-            aria-selected={item.channel === selected}
+            aria-selected={item.channel === activeSelected}
             onClick={() => setSelected(item.channel)}
             className={
               "rounded-lg border inline-flex min-h-9 items-center px-3 py-1.5 text-xs font-medium " +
-              (item.channel === selected ? "border-brand/30 bg-brand/[0.06] text-brand" : "border-line bg-soft text-ink-3 hover:text-ink")
+              (item.channel === activeSelected ? "border-brand/30 bg-brand/[0.06] text-brand" : "border-line bg-soft text-ink-3 hover:text-ink")
             }
           >
             {item.label}

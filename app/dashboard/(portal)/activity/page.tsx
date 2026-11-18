@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { usePortalEntitlements } from "../../components/usePortalEntitlements";
 
 interface ActivityRow {
   id: number;
@@ -13,19 +14,26 @@ interface ActivityRow {
   timeAgo: string;
 }
 
-const FAMILIES: { key: string; label: string }[] = [
+const FAMILIES: { key: string; label: string; featureKey?: string }[] = [
   { key: "all", label: "All" },
-  { key: "sequence", label: "Sequences" },
-  { key: "cod", label: "COD" },
-  { key: "broadcast", label: "Broadcasts" },
-  { key: "webhooks", label: "Webhooks" },
-  { key: "kb", label: "Knowledge base" },
-  { key: "customers", label: "Customers" },
-  { key: "conversation", label: "Inbox" },
-  { key: "bot", label: "Escalations" },
+  { key: "conversation", label: "Inbox", featureKey: "basic.inbox" },
+  { key: "customers", label: "Customers", featureKey: "basic.customers" },
+  { key: "bot", label: "Escalations", featureKey: "basic.hybrid_ai" },
+  { key: "sequence", label: "Sequences", featureKey: "marketing.sequences" },
+  { key: "cod", label: "COD", featureKey: "sales.cod" },
+  { key: "broadcast", label: "Broadcasts", featureKey: "marketing.broadcasts" },
+  { key: "webhooks", label: "Webhooks", featureKey: "workspace.external_api" },
+  { key: "kb", label: "Knowledge base", featureKey: "content.knowledge_base" },
 ];
 
 export default function ActivityPage() {
+  const { hasFeature, hasPermission } = usePortalEntitlements();
+  const allowedFamilies = FAMILIES.filter(
+    (entry) => !entry.featureKey || hasFeature(entry.featureKey)
+  );
+  const canExportCsv =
+    (hasFeature("sales.advanced_crm") || hasFeature("insights.advanced_analytics")) &&
+    hasPermission("export");
   const [items, setItems] = useState<ActivityRow[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [family, setFamily] = useState("all");
@@ -74,7 +82,7 @@ export default function ActivityPage() {
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          {FAMILIES.map((entry) => (
+          {allowedFamilies.map((entry) => (
             <button
               key={entry.key}
               type="button"
@@ -96,12 +104,14 @@ export default function ActivityPage() {
           >
             Refresh
           </button>
-          <a
-            href="/api/omniflow/portal/activity/export"
-            className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
-          >
-            Export CSV
-          </a>
+          {canExportCsv && (
+            <a
+              href="/api/omniflow/portal/activity/export"
+              className="rounded-lg border border-line inline-flex min-h-9 items-center px-3 py-1.5 text-xs text-ink-3 transition hover:text-ink"
+            >
+              Export CSV
+            </a>
+          )}
         </div>
 
         {items === null ? (
